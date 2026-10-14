@@ -62,7 +62,9 @@ void main() {
 
   test('seek moves position', () async {
     await player.open(_lavfi, play: false);
-    await _until(player.duration, (d) => d > Duration.zero);
+    // Wait for the first decoded frame: a seek issued while playback is
+    // still initialising can be superseded by mpv's own start-up seek.
+    await _until(player.videoParams, (v) => v != null);
     await player.seek(const Duration(milliseconds: 1000), exact: true);
     await _until(player.position,
         (p) => (p.inMilliseconds - 1000).abs() < 100);

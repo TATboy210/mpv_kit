@@ -1,0 +1,189 @@
+# Release tier: redistributable LGPL libmpv for every target.
+#
+# FFmpeg is built from the pinned source tarball (native/build/ffmpeg.sh,
+# LGPL gate); the remaining dependencies (libplacebo, libass, dav1d, ...)
+# are LGPL/BSD/MIT packages from each platform's package manager. The
+# bundle is audited (no GPL libraries, FFmpeg resolved from our prefix,
+# exported ABI) and smoke-tested before upload. Pushing a v* tag publishes
+# the bundles to a GitHub Release.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MESON_ARGS: >-
+    -Dlibmpv=true -Dcplayer=false -Dgpl=false
+    -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
+    -Drubberband=disabled -Dlibavdevice=disabled -Dtests=false
+    --buildtype=release
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux-x64
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies (no system FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build pkg-config gcc nasm patchelf \
+            libdav1d-dev libssl-dev libplacebo-dev libass-dev \
+            libvulkan-dev libegl-dev libgl-dev libdrm-dev libva-dev \
+            libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
+            mesa-vulkan-drivers zlib1g-dev
+      - name: Build FFmpeg (LGPL)
+        run: bash native/build/ffmpeg.sh "$PWD/prefix" --enable-vaapi
+      - name: Build libmpv
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+        run: |
+          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
+          meson compile -C out
+          meson install -C out
+      - name: render_vk smoke test (lavapipe)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+        run: |
+          meson setup tests-out native/tests
+          meson test -C tests-out --print-errorlogs
+      - name: Package and audit
+        run: |
+          bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
+          nm -D --defined-only dist/libmpv-${{ matrix.target }}/lib/libmpv.so.2 \
+            | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
+          diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-${{ matrix.target }}
+          path: dist/libmpv-${{ matrix.target }}
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-arm64
+          - runner: macos-15-intel
+            target: macos-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies (no system FFmpeg)
+        run: |
+          brew install meson ninja pkgconf nasm dav1d libplacebo libass \
+            molten-vk vulkan-headers vulkan-loader dylibbundler
+      - name: Build FFmpeg (LGPL)
+        run: bash native/build/ffmpeg.sh "$PWD/prefix"
+      - name: Build libmpv
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+        run: |
+          meson setup out native/mpv $MESON_ARGS -Dswift-build=disabled -Dcocoa=disabled \
+            --prefix="$PWD/prefix" --libdir=lib
+          meson compile -C out
+          meson install -C out
+      - name: render_vk smoke test (MoltenVK; skipped without Metal)
+        # See native-verify.yml: MoltenVK aborts on GitHub's Intel VMs.
+        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+        run: |
+          meson setup tests-out native/tests
+          meson test -C tests-out --print-errorlogs
+      - name: Package and audit
+        run: |
+          bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
+          nm -gU dist/libmpv-${{ matrix.target }}/lib/libmpv.2.dylib \
+            | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
+          diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-${{ matrix.target }}
+          path: dist/libmpv-${{ matrix.target }}
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            msystem: CLANG64
+            target: windows-x64
+            nasm: 'nasm:p'
+          - runner: windows-11-arm
+            msystem: CLANGARM64
+            target: windows-arm64
+            nasm: ''
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: make diffutils
+          pacboy: >-
+            toolchain:p meson:p ninja:p pkgconf:p dav1d:p libplacebo:p
+            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p
+            ntldd:p ${{ matrix.nasm }}
+      - name: Build FFmpeg (LGPL)
+        run: bash native/build/ffmpeg.sh "$PWD/prefix"
+      - name: Build libmpv
+        run: |
+          export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig"
+          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled --prefix="$PWD/prefix"
+          meson compile -C out
+          meson install -C out
+      - name: Package and audit
+        run: bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-${{ matrix.target }}
+          path: dist/libmpv-${{ matrix.target }}
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Archive bundles
+        run: |
+          mkdir release
+          for d in artifacts/libmpv-*; do
+            name=$(basename "$d")
+            tar -C "$d" -czf "release/$name.tar.gz" .
+          done
+          (cd release && sha256sum *.tar.gz > SHA256SUMS)
+          cat release/SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+            --notes "LGPL libmpv (mpv 0.41.0 + Vulkan render patch, FFmpeg 8.1.3) for mpv_kit. Verify downloads against SHA256SUMS."
