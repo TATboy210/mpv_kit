@@ -31,6 +31,9 @@ struct SharedImage {
 class VulkanInterop {
  public:
   virtual ~VulkanInterop() = default;
+  /// Vulkan entry point to use instead of the system loader (e.g. the
+  /// MoltenVK bundled inside a macOS app). nullptr: let volk find it.
+  virtual PFN_vkGetInstanceProcAddr Loader() { return nullptr; }
   virtual std::vector<const char*> InstanceExtensions() const = 0;
   virtual std::vector<const char*> DeviceExtensions() const = 0;
   /// Whether this physical device can share with the compositor (e.g. same

@@ -45,7 +45,9 @@ bool VulkanContext::Init(std::string* error) {
   // volk loads vulkan-1.dll / libvulkan.so.1 / MoltenVK at runtime, so a
   // missing loader degrades to the software backend instead of failing to
   // start the app.
-  if (volkInitialize() != VK_SUCCESS) {
+  if (PFN_vkGetInstanceProcAddr loader = interop_->Loader()) {
+    volkInitializeCustom(loader);
+  } else if (volkInitialize() != VK_SUCCESS) {
     *error = "Vulkan loader not found";
     return false;
   }

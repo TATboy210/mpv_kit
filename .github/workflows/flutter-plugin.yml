@@ -26,6 +26,8 @@ jobs:
             target: linux
           - runner: windows-2025
             target: windows
+          - runner: macos-15
+            target: macos
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5

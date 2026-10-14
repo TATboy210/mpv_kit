@@ -4,30 +4,13 @@ project(${PROJECT_NAME} LANGUAGES C CXX)
 
 set(PLUGIN_NAME "mpv_kit_video_plugin")
 
-# Vulkan headers + volk (runtime loader): pinned by tag and sha256, same as
-# Windows. libvulkan.so.1 is loaded at runtime, so systems without Vulkan
-# fall back to the software backend instead of failing to start.
-include(FetchContent)
-if(POLICY CMP0169)
-  cmake_policy(SET CMP0169 OLD)
-endif()
-if(POLICY CMP0135)
-  cmake_policy(SET CMP0135 NEW)
-endif()
-FetchContent_Declare(vulkan_headers
-  URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz
-  URL_HASH SHA256=4a078be12bef21cfebc09d878b77a63cff9d68f899254a0b00d0e37ef73e7f7e)
-FetchContent_Declare(volk
-  URL https://github.com/zeux/volk/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz
-  URL_HASH SHA256=1547d8d74395d4048fb3f4a6313da56db626e89b55db238d0d7e8944c8a645f3)
-FetchContent_GetProperties(vulkan_headers)
-if(NOT vulkan_headers_POPULATED)
-  FetchContent_Populate(vulkan_headers)
-endif()
-FetchContent_GetProperties(volk)
-if(NOT volk_POPULATED)
-  FetchContent_Populate(volk)
-endif()
+# Vulkan headers + volk (runtime loader), vendored in ../third_party (see its
+# README for versions and hashes). libvulkan.so.1 is loaded at runtime, so
+# systems without Vulkan fall back to the software backend instead of failing
+# to start.
+set(THIRD_PARTY "${CMAKE_CURRENT_SOURCE_DIR}/../third_party")
+set(vulkan_headers_SOURCE_DIR "${THIRD_PARTY}/vulkan-headers")
+set(volk_SOURCE_DIR "${THIRD_PARTY}/volk")
 
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
