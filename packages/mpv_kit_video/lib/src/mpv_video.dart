@@ -79,8 +79,12 @@ class _MpvVideoState extends State<MpvVideo> {
           );
           _requestSize(shown, dpr);
           return ClipRect(
+            // Tight on both ends: the parent may pass tight constraints that
+            // are smaller (cover) or larger (contain) than the video rect.
             child: OverflowBox(
+              minWidth: shown.width,
               maxWidth: shown.width,
+              minHeight: shown.height,
               maxHeight: shown.height,
               child: SizedBox.fromSize(
                 size: shown,
