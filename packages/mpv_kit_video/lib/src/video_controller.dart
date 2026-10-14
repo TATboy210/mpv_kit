@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -40,6 +41,8 @@ final class MpvVideoController {
     Player player, {
     bool forceSoftware = false,
   }) async {
+    // Read by the render context at creation, so it must come first.
+    _applyShaderCacheDir(player);
     final lib = player.mpv.bindings.library;
     final result = await _channel.invokeMapMethod<String, Object?>('create', {
       'handle': player.mpv.handle.address,
@@ -77,6 +80,42 @@ final class MpvVideoController {
     if (current is num && current > 0) return;
     player.mpv.setProperty('display-fps-override', hz);
   }
+
+  /// Compiling the renderer's shaders on first use costs a few frames at
+  /// every start. libmpv (config=no) has no cache directory of its own, so
+  /// point `gpu-shader-cache-dir` at a per-user cache unless the app chose
+  /// one. Keys include the driver, so one directory serves every GPU.
+  static void _applyShaderCacheDir(Player player) {
+    final current = player.mpv.tryGetProperty('gpu-shader-cache-dir');
+    if (current is String && current.isNotEmpty) return;
+    final dir = defaultShaderCacheDir();
+    if (dir == null) return;
+    player.mpv.setProperty('gpu-shader-cache-dir', dir);
+  }
+
+  /// Per-user cache location for compiled shaders, or null if the
+  /// environment does not provide one.
+  @visibleForTesting
+  static String? defaultShaderCacheDir({
+    String? os,
+    Map<String, String>? environment,
+  }) {
+    final env = environment ?? Platform.environment;
+    final system = os ?? Platform.operatingSystem;
+    final base = switch (system) {
+      'windows' => _nonEmpty(env['LOCALAPPDATA']),
+      'macos' => _join(env['HOME'], 'Library/Caches'),
+      _ => _nonEmpty(env['XDG_CACHE_HOME']) ?? _join(env['HOME'], '.cache'),
+    };
+    if (base == null) return null;
+    final sep = system == 'windows' ? r'\' : '/';
+    return '$base${sep}mpv_kit${sep}shader-cache';
+  }
+
+  static String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
+
+  static String? _join(String? base, String child) =>
+      _nonEmpty(base) == null ? null : '$base/$child';
 
   /// 播放器。
   final Player player;
