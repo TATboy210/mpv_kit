@@ -1,0 +1,151 @@
+# Verify tier: compile the patched libmpv on every target with system/distro
+# dependencies, run the render_vk smoke test, the ABI audit and the Dart core
+# tests. Distro FFmpeg builds are often GPL, so these artifacts are for
+# verification only; redistributable LGPL binaries come from release.yml.
+name: native-verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MESON_ARGS: >-
+    -Dlibmpv=true -Dcplayer=false -Dgpl=false
+    -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
+    -Drubberband=disabled -Dtests=false --buildtype=release
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build pkg-config gcc \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
+            mesa-vulkan-drivers vulkan-tools zlib1g-dev
+      - name: Build libmpv
+        run: |
+          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
+          meson compile -C out
+          meson install -C out
+          grep -E "vulkan|gl " out/config.h | head -20 || true
+      - name: ABI audit
+        run: |
+          nm -D --defined-only prefix/lib/libmpv.so.2 | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
+          diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - name: render_vk smoke test (lavapipe)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+        run: |
+          vulkaninfo --summary || true
+          meson setup tests-out native/tests
+          meson test -C tests-out --print-errorlogs
+      - uses: dart-lang/setup-dart@v1
+      - name: Dart core tests
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
+        run: |
+          dart pub get
+          cd packages/mpv_kit && dart analyze --fatal-infos && dart test
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install meson ninja pkgconf ffmpeg libplacebo libass molten-vk vulkan-headers vulkan-loader
+      - name: Build libmpv
+        run: |
+          meson setup out native/mpv $MESON_ARGS -Dswift-build=disabled -Dcocoa=disabled \
+            --prefix="$PWD/prefix" --libdir=lib
+          meson compile -C out
+          meson install -C out
+      - name: ABI audit
+        run: |
+          nm -gU prefix/lib/libmpv.2.dylib | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
+          diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - name: render_vk smoke test (MoltenVK; skipped without Metal)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+        run: |
+          meson setup tests-out native/tests
+          meson test -C tests-out --print-errorlogs
+      - uses: dart-lang/setup-dart@v1
+      - name: Dart core tests
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.2.dylib
+        run: |
+          dart pub get
+          cd packages/mpv_kit && dart analyze --fatal-infos && dart test
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            msystem: CLANG64
+          - runner: windows-11-arm
+            msystem: CLANGARM64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          pacboy: >-
+            toolchain:p meson:p ninja:p pkgconf:p ffmpeg:p libplacebo:p
+            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p
+      - name: Build libmpv
+        run: |
+          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled --prefix="$PWD/prefix"
+          meson compile -C out
+          meson install -C out
+      - name: ABI audit
+        run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt
+      - name: render_vk smoke test (skipped without a Vulkan device)
+        run: |
+          export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig" PATH="$PWD/prefix/bin:$PATH"
+          meson setup tests-out native/tests
+          meson test -C tests-out --print-errorlogs
+      - name: Stage DLL closure for Dart tests
+        run: |
+          mkdir -p stage
+          cp prefix/bin/libmpv-2.dll stage/
+          ldd prefix/bin/libmpv-2.dll | awk '/\/(clang64|clangarm64)\// {print $3}' | xargs -I{} cp {} stage/
+      - uses: dart-lang/setup-dart@v1
+      - name: Dart core tests
+        shell: pwsh
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}\stage\libmpv-2.dll
+        run: |
+          $env:PATH = "${{ github.workspace }}\stage;$env:PATH"
+          dart pub get
+          cd packages/mpv_kit
+          dart analyze --fatal-infos
+          dart test
