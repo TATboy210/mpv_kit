@@ -27,7 +27,7 @@ jobs:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -55,7 +55,7 @@ jobs:
         run: |
           vulkaninfo --summary || true
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs
+          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
       - name: Dart core tests
         env:
@@ -71,7 +71,7 @@ jobs:
         runner: [macos-15, macos-15-intel]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install dependencies
         run: brew install meson ninja pkgconf ffmpeg libplacebo libass molten-vk vulkan-headers vulkan-loader
       - name: Build libmpv
@@ -86,11 +86,13 @@ jobs:
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
         env:
+          MVK_CONFIG_LOG_LEVEL: '2'
+
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
         run: |
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs
+          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
       - name: Dart core tests
         env:
@@ -106,15 +108,42 @@ jobs:
         include:
           - runner: windows-2025
             msystem: CLANG64
+            mesa_arch: x64
           - runner: windows-11-arm
             msystem: CLANGARM64
+            mesa_arch: arm64
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # Software Vulkan (lavapipe) so the smoke test renders for real on
+      # GPU-less runners. Pinned by sha256.
+      - name: Install Mesa lavapipe
+        shell: pwsh
+        env:
+          MESA_VERSION: 26.2.4
+          MESA_SHA256: 351fc8c8b695878ffb3eaa044b3ead08672a48b1a045e3c3e3975811df0f6695
+        run: |
+          $f = "mesa.7z"
+          Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/$env:MESA_VERSION/mesa3d-$env:MESA_VERSION-release-msvc.7z" -OutFile $f
+          if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne $env:MESA_SHA256) { throw "mesa sha256 mismatch" }
+          7z x $f -omesa | Out-Null
+          $icd = Get-ChildItem "mesa/${{ matrix.mesa_arch }}" -Filter "lvp_icd.*.json" | Select-Object -First 1
+          if (-not $icd) { throw "lavapipe ICD not found" }
+          "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
       - uses: msys2/setup-msys2@v2
+        id: msys2
+        continue-on-error: true
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          pacboy: >-
+            toolchain:p meson:p ninja:p pkgconf:p ffmpeg:p libplacebo:p
+            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p
+      - uses: msys2/setup-msys2@v2
+        if: steps.msys2.outcome == 'failure'
         with:
           msystem: ${{ matrix.msystem }}
           update: true
@@ -128,11 +157,11 @@ jobs:
           meson install -C out
       - name: ABI audit
         run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt
-      - name: render_vk smoke test (skipped without a Vulkan device)
+      - name: render_vk smoke test (lavapipe)
         run: |
           export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig" PATH="$PWD/prefix/bin:$PATH"
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs
+          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - name: Stage DLL closure for Dart tests
         run: |
           mkdir -p stage

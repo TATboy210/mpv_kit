@@ -76,7 +76,9 @@ void main() {
 
     test('secure defaults are applied', () {
       expect(mpv.getProperty('load-scripts'), isFalse);
-      expect(mpv.getProperty('ytdl'), isFalse);
+      expect(mpv.getProperty('config'), isFalse);
+      // ytdl only exists in Lua-enabled builds; absent means disabled.
+      expect(mpv.tryGetProperty('ytdl'), anyOf(isNull, isFalse));
     });
 
     test('typed property get/set round-trip', () {

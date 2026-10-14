@@ -48,7 +48,14 @@ final class Mpv {
     try {
       if (secureDefaults) {
         for (final e in secureDefaultOptions.entries) {
-          if (!options.containsKey(e.key)) mpv.setOptionString(e.key, e.value);
+          if (options.containsKey(e.key)) continue;
+          try {
+            mpv.setOptionString(e.key, e.value);
+          } on MpvException catch (err) {
+            // Builds without Lua have no `ytdl`/`osc` options: the feature is
+            // absent, so there is nothing to disable.
+            if (err.error != MpvError.optionNotFound) rethrow;
+          }
         }
       }
       for (final e in options.entries) {

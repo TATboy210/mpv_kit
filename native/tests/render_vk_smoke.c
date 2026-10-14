@@ -28,6 +28,11 @@ static pthread_mutex_t queue_lock = PTHREAD_MUTEX_INITIALIZER;
 static void lock_queue(void *ctx, uint32_t qf, uint32_t qi) { (void)ctx; (void)qf; (void)qi; pthread_mutex_lock(&queue_lock); }
 static void unlock_queue(void *ctx, uint32_t qf, uint32_t qi) { (void)ctx; (void)qf; (void)qi; pthread_mutex_unlock(&queue_lock); }
 
+// Progress markers go to unbuffered stderr so CI logs show how far we got
+// even if a driver aborts the process.
+static void step(const char *what) { fprintf(stderr, "[smoke] %s
+", what); }
+
 static void sleep_ms(int ms)
 {
     struct timespec ts = { .tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000L };
@@ -47,6 +52,9 @@ static int find_memory(VkPhysicalDevice pd, uint32_t bits, VkMemoryPropertyFlags
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    step("create instance");
     // --- Vulkan instance / device ------------------------------------------
     VkApplicationInfo app = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -67,6 +75,7 @@ int main(void)
         return 77;
     }
 
+    step("enumerate devices");
     uint32_t npd = 0;
     vkEnumeratePhysicalDevices(inst, &npd, NULL);
     if (!npd) {
@@ -77,6 +86,16 @@ int main(void)
     npd = npd > 16 ? 16 : npd;
     vkEnumeratePhysicalDevices(inst, &npd, pds);
     VkPhysicalDevice pd = pds[0];
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(pd, &props);
+    fprintf(stderr, "[smoke] device: %s (api %u.%u)
+", props.deviceName,
+            VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion));
+    if (props.apiVersion < VK_API_VERSION_1_3) {
+        fprintf(stderr, "SKIP: device lacks Vulkan 1.3
+");
+        return 77;
+    }
 
     uint32_t nqf = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(pd, &nqf, NULL);
@@ -127,12 +146,14 @@ int main(void)
         .enabledExtensionCount = (uint32_t)nexts,
         .ppEnabledExtensionNames = exts,
     };
+    step("create device");
     VkDevice dev;
     VK(vkCreateDevice(pd, &dci, NULL, &dev));
     VkQueue queue;
     vkGetDeviceQueue(dev, qf, 0, &queue);
 
     // --- Render target + readback buffer -------------------------------------
+    step("create render target");
     VkImage img;
     VK(vkCreateImage(dev, &(VkImageCreateInfo){
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -182,6 +203,7 @@ int main(void)
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }, NULL, &done));
 
     // --- mpv -----------------------------------------------------------------
+    step("create mpv");
     mpv_handle *mpv = mpv_create();
     if (!mpv)
         FAIL("mpv_create");
@@ -213,6 +235,7 @@ int main(void)
         { MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &vkp },
         { 0 },
     };
+    step("create render context");
     mpv_render_context *rc;
     int err = mpv_render_context_create(&rc, mpv, params);
     if (err < 0)
@@ -222,6 +245,7 @@ int main(void)
     if (mpv_command(mpv, cmd) < 0)
         FAIL("loadfile");
 
+    step("wait for frame");
     // Wait (≤10 s) until mpv has a frame ready to render.
     bool have_frame = false;
     for (int i = 0; i < 1000 && !have_frame; i++) {
@@ -254,6 +278,7 @@ int main(void)
         { MPV_RENDER_PARAM_VULKAN_IMAGE, &target },
         { 0 },
     };
+    step("render");
     err = mpv_render_context_render(rc, rparams);
     if (err < 0)
         FAIL("mpv_render_context_render: %s", mpv_error_string(err));
@@ -306,6 +331,7 @@ int main(void)
     bool ok = c[0] >= 230 && c[1] <= 25 && c[2] <= 25;
     vkUnmapMemory(dev, buf_mem);
 
+    step("teardown");
     // --- Teardown (render context must go before the device) -----------------
     mpv_render_context_free(rc);
     mpv_terminate_destroy(mpv);
