@@ -42,14 +42,13 @@ case "$(uname -s)" in
     # libc, GPU drivers, display servers). Everything else is bundled.
     system='^(linux-vdso|ld-linux|libc|libm|libdl|libpthread|librt|libresolv|libstdc\+\+|libgcc_s|libz|libX|libxcb|libwayland|libEGL|libGL|libGLX|libGLdispatch|libgbm|libdrm|libvulkan|libva|libvdpau|libasound|libpulse|libpipewire|libjack|libsystemd|libudev|libdbus|libssl|libcrypto|libexpat|libffi|libuuid|libxkbcommon|libgnutls)'
     require_prefix_avcodec "$(ldd "$prefix/lib/libmpv.so.2")" "$prefix"
-    cp -a "$prefix"/lib/libmpv.so* "$out/lib/"
+    # Only the soname file: bundles carry regular files, no symlinks.
+    cp -L "$prefix/lib/libmpv.so.2" "$out/lib/"
     ldd "$prefix/lib/libmpv.so.2" | awk '/=> \//{print $1" "$3}' |
       while read -r name path; do
         if ! echo "$name" | grep -qE "$system"; then cp -L "$path" "$out/lib/$name"; fi
       done
-    for f in "$out"/lib/*.so*; do
-      [ -L "$f" ] || patchelf --set-rpath '$ORIGIN' "$f"
-    done
+    for f in "$out"/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f"; done
     ;;
   Darwin)
     require_prefix_avcodec "$(otool -L "$prefix/lib/libmpv.2.dylib")" "$prefix"
@@ -57,11 +56,15 @@ case "$(uname -s)" in
     # Rewrites install names to @rpath and copies the closure next to it.
     dylibbundler -of -cd -b -x "$out/lib/libmpv.2.dylib" \
       -d "$out/lib" -p @loader_path/ -s "$prefix/lib"
-    install_name_tool -id @rpath/libmpv.2.dylib "$out/lib/libmpv.2.dylib"
+    # Every install id must equal the name it is referenced by, so that
+    # Flutter's native-assets packaging can rewrite both consistently.
+    for f in "$out"/lib/*.dylib; do
+      install_name_tool -id "@loader_path/$(basename "$f")" "$f"
+    done
     # MoltenVK: the Vulkan implementation the plugin loads on macOS.
     mvk=$(brew --prefix molten-vk)/lib/libMoltenVK.dylib
     cp "$mvk" "$out/lib/"
-    install_name_tool -id @rpath/libMoltenVK.dylib "$out/lib/libMoltenVK.dylib"
+    install_name_tool -id @loader_path/libMoltenVK.dylib "$out/lib/libMoltenVK.dylib"
     # install_name_tool invalidates signatures; arm64 refuses unsigned code.
     codesign --force --sign - "$out"/lib/*.dylib
     ;;

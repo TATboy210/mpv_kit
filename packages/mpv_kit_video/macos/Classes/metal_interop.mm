@@ -34,7 +34,10 @@ PFN_vkGetInstanceProcAddr MetalInterop::Loader() {
   // ships MoltenVK in Contents/Frameworks); otherwise volk searches the
   // usual library names (e.g. a Homebrew vulkan-loader during development).
   NSString* frameworks = NSBundle.mainBundle.privateFrameworksPath;
-  for (NSString* name in @[ @"libvulkan.1.dylib", @"libMoltenVK.dylib" ]) {
+  // mpv_kit_libs' native assets become MoltenVK.framework; plain dylibs
+  // are what a manually embedded MoltenVK looks like.
+  for (NSString* name in @[ @"MoltenVK.framework/MoltenVK",
+                            @"libMoltenVK.dylib", @"libvulkan.1.dylib" ]) {
     if (!frameworks) break;
     if (PFN_vkGetInstanceProcAddr gipa =
             LoadFrom([frameworks stringByAppendingPathComponent:name]))

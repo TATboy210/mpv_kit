@@ -32,7 +32,9 @@ abstract final class MpvLibrary {
     if (Platform.isWindows) return const ['libmpv-2.dll', 'mpv-2.dll'];
     if (Platform.isMacOS) {
       return const [
-        'Mpv.framework/Mpv',
+        // mpv_kit_libs native asset (Flutter wraps each dylib in a
+        // framework named after it), resolved via the app's LC_RPATH.
+        '@rpath/mpv.2.framework/mpv.2',
         'libmpv.2.dylib',
         'libmpv.dylib',
       ];

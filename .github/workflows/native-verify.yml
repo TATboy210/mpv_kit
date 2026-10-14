@@ -57,7 +57,7 @@ jobs:
           meson setup tests-out native/tests
           meson test -C tests-out --print-errorlogs --verbose || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
-      - name: Dart core tests
+      - name: Dart tests (mpv_kit, mpv_kit_libs)
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
         run: |
@@ -65,6 +65,7 @@ jobs:
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
+          cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
   macos:
     strategy:
@@ -107,7 +108,7 @@ jobs:
           meson setup tests-out native/tests
           meson test -C tests-out --print-errorlogs --verbose || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
-      - name: Dart core tests
+      - name: Dart tests (mpv_kit, mpv_kit_libs)
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.2.dylib
         run: |
@@ -115,6 +116,7 @@ jobs:
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
+          cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
   windows:
     strategy:
@@ -199,7 +201,7 @@ jobs:
           path: stage
           retention-days: 14
       - uses: dart-lang/setup-dart@v1
-      - name: Dart core tests
+      - name: Dart tests (mpv_kit, mpv_kit_libs)
         shell: pwsh
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}\stage\libmpv-2.dll
@@ -210,5 +212,8 @@ jobs:
           Remove-Item -Recurse -Force example, packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit
+          dart analyze --fatal-infos
+          dart test
+          cd ../mpv_kit_libs
           dart analyze --fatal-infos
           dart test
