@@ -1,0 +1,13 @@
+mpv_kit licensing
+=================
+
+* packages/**, tools/**, example/**  — MIT (see LICENSE).
+* native/mpv/**  — mpv 0.41.0 source plus the mpv_kit patches in
+  native/patches/. mpv is GPLv2+, with most files available under
+  LGPLv2.1+ (see native/mpv/Copyright). mpv_kit's own additions to mpv
+  (render_vk.h is ISC like mpv's other public headers; libmpv_vk.c is
+  LGPLv2.1+).
+* Binaries distributed by mpv_kit are built with -Dgpl=false against an
+  LGPL FFmpeg and are dynamically linked, so applications using mpv_kit
+  are not subject to the GPL. The full corresponding source (mpv, patches,
+  build scripts, dependency versions) is this repository.
