@@ -121,6 +121,13 @@ class VideoRenderer {
   // compositor while it is actively consuming (not before the texture is
   // first shown, not while the window is hidden).
   std::chrono::steady_clock::time_point last_acquire_{};
+  // No frame taken for kIdleTimeout (window hidden/minimised, texture off
+  // screen): frames are advanced with SKIP_RENDERING instead of drawn.
+  // The next acquisition triggers one redraw (redraw_pending_), so the
+  // picture is current again even while paused.
+  static constexpr std::chrono::milliseconds kIdleTimeout{500};
+  bool idle_ = false;
+  bool redraw_pending_ = false;
   bool quit_ = false;
 
   // Ring state, guarded by mutex_.

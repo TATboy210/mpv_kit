@@ -144,6 +144,12 @@ Frame VideoRenderer::AcquireFront() {
   const bool presented = swap_pending_ && front_ >= 0;
   if (presented) swap_pending_ = false;
   last_acquire_ = std::chrono::steady_clock::now();
+  // Visible again after skipped frames: the front image is stale.
+  const bool resumed = idle_;
+  if (resumed) {
+    idle_ = false;
+    redraw_pending_ = true;
+  }
   if (in_use_ != front_ && in_use_ >= 0) {
     // The compositor moves on from in_use_: quarantine it (see header).
     for (int i = kQuarantine - 1; i > 0; i--) quarantine_[i] = quarantine_[i - 1];
@@ -162,6 +168,7 @@ Frame VideoRenderer::AcquireFront() {
     interop_->RetainFrame(f.platform);
   }
   lock.unlock();
+  if (resumed) cv_.notify_one();
   // Outside our lock: mpv takes its own lock and may call OnMpvUpdate.
   if (presented) api_.render_context_report_swap(render_ctx_);
   return f;
@@ -181,9 +188,12 @@ int VideoRenderer::PickBackBuffer() {
 void VideoRenderer::RenderLoop() {
   for (;;) {
     bool resized = false;
+    bool redraw = false;
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      auto ready = [&] { return quit_ || update_pending_ || resize_pending_; };
+      auto ready = [&] {
+        return quit_ || update_pending_ || resize_pending_ || redraw_pending_;
+      };
       if (swap_pending_) {
         // Nobody displayed the last frame in time (hidden window, paused
         // raster): report it anyway so mpv's flip_page never stalls.
@@ -199,19 +209,37 @@ void VideoRenderer::RenderLoop() {
       if (quit_) return;
       update_pending_ = false;
       resized = resize_pending_.exchange(false);
+      redraw = redraw_pending_;
+      redraw_pending_ = false;
     }
     const uint64_t flags = api_.render_context_update(render_ctx_);
-    // A resize must redraw even when paused (no new frame from mpv).
-    if ((flags & MPV_RENDER_UPDATE_FRAME) || resized) {
-      bool sized;
+    // A resize or a return from idle must redraw even when paused (no new
+    // frame from mpv).
+    if ((flags & MPV_RENDER_UPDATE_FRAME) || resized || redraw) {
+      bool sized, visible;
       {
         std::lock_guard<std::mutex> lock(mutex_);
         sized = width_ > 0 && height_ > 0;
+        // Only once a frame exists at the current size: the first frame
+        // (and any resize) is always drawn.
+        const bool idle = front_ >= 0 && ring_w_ == width_ &&
+                          ring_h_ == height_ &&
+                          std::chrono::steady_clock::now() - last_acquire_ >
+                              kIdleTimeout;
+        if (resized || redraw) {
+          idle_ = false;
+        } else if (idle) {
+          idle_ = true;
+        }
+        visible = !idle_;
       }
-      if (sized) {
+      if (sized && visible) {
         if (!RenderOnce()) log_("mpv_kit: frame render failed");
       } else {
         SkipFrame();
+        // Keep notifying: a texture that becomes visible again is only
+        // acquired (ending idle) when the compositor sees a new frame.
+        if (sized) interop_->FrameReady();
       }
     }
   }
