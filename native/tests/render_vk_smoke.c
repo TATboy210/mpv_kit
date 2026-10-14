@@ -30,8 +30,7 @@ static void unlock_queue(void *ctx, uint32_t qf, uint32_t qi) { (void)ctx; (void
 
 // Progress markers go to unbuffered stderr so CI logs show how far we got
 // even if a driver aborts the process.
-static void step(const char *what) { fprintf(stderr, "[smoke] %s
-", what); }
+static void step(const char *what) { fprintf(stderr, "[smoke] %s\n", what); }
 
 static void sleep_ms(int ms)
 {
@@ -88,12 +87,10 @@ int main(void)
     VkPhysicalDevice pd = pds[0];
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(pd, &props);
-    fprintf(stderr, "[smoke] device: %s (api %u.%u)
-", props.deviceName,
+    fprintf(stderr, "[smoke] device: %s (api %u.%u)\n", props.deviceName,
             VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion));
     if (props.apiVersion < VK_API_VERSION_1_3) {
-        fprintf(stderr, "SKIP: device lacks Vulkan 1.3
-");
+        fprintf(stderr, "SKIP: device lacks Vulkan 1.3\n");
         return 77;
     }
 

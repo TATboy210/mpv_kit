@@ -130,9 +130,14 @@ jobs:
           Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/$env:MESA_VERSION/mesa3d-$env:MESA_VERSION-release-msvc.7z" -OutFile $f
           if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne $env:MESA_SHA256) { throw "mesa sha256 mismatch" }
           7z x $f -omesa | Out-Null
-          $icd = Get-ChildItem "mesa/${{ matrix.mesa_arch }}" -Filter "lvp_icd.*.json" | Select-Object -First 1
-          if (-not $icd) { throw "lavapipe ICD not found" }
-          "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
+          Get-ChildItem mesa -Directory | ForEach-Object { $_.Name }
+          $icd = Get-ChildItem "mesa/${{ matrix.mesa_arch }}" -Filter "lvp_icd.*.json" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($icd) {
+            "VK_DRIVER_FILES=$($icd.FullName)" >> $env:GITHUB_ENV
+          } else {
+            # No lavapipe build for this arch: the smoke test will skip (77).
+            Write-Output "::warning::no lavapipe for ${{ matrix.mesa_arch }}; render_vk smoke test will be skipped"
+          }
       - uses: msys2/setup-msys2@v2
         id: msys2
         continue-on-error: true
@@ -167,6 +172,12 @@ jobs:
           mkdir -p stage
           cp prefix/bin/libmpv-2.dll stage/
           ldd prefix/bin/libmpv-2.dll | awk '/\/(clang64|clangarm64)\// {print $3}' | xargs -I{} cp {} stage/
+          cp -r prefix/include stage/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-${{ matrix.msystem }}
+          path: stage
+          retention-days: 14
       - uses: dart-lang/setup-dart@v1
       - name: Dart core tests
         shell: pwsh
