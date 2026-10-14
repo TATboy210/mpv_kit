@@ -9,6 +9,11 @@ bool ra_vk_ctx_init(struct ra_ctx *ctx, struct mpvk_ctx *vk,
                     struct ra_ctx_params params,
                     VkPresentModeKHR preferred_mode);
 
+// Attach an externally owned (libmpv render API) device to ctx so that
+// ra_vk_ctx_get() returns vk. ctx->ra must be created by the caller.
+void ra_vk_ctx_init_external(struct ra_ctx *ctx, struct mpvk_ctx *vk);
+void ra_vk_ctx_uninit_external(struct ra_ctx *ctx);
+
 // Helper for initializing mpvk_ctx->vulkan
 pl_vulkan mppl_create_vulkan(struct vulkan_opts *opts,
                              pl_vk_inst vkinst,
