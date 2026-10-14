@@ -61,6 +61,8 @@ jobs:
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
         run: |
+          # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
+          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
 
@@ -84,9 +86,20 @@ jobs:
         run: |
           nm -gU prefix/lib/libmpv.2.dylib | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - name: Vulkan loader diagnostics
+        continue-on-error: true
+        env:
+          VK_LOADER_DEBUG: error,warn,info
+        run: |
+          brew install vulkan-tools || true
+          vulkaninfo --summary 2>&1 | tail -40 || true
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
+        # GitHub's Intel macOS VMs expose a paravirtual GPU on which MoltenVK
+        # aborts inside vkCreateInstance; real Intel Macs are unaffected.
+        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
         env:
           MVK_CONFIG_LOG_LEVEL: '2'
+          VK_LOADER_DEBUG: error,warn
 
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
@@ -98,6 +111,8 @@ jobs:
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.2.dylib
         run: |
+          # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
+          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
 
@@ -190,6 +205,8 @@ jobs:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}\stage\libmpv-2.dll
         run: |
           $env:PATH = "${{ github.workspace }}\stage;$env:PATH"
+          # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
+          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
           dart pub get
           cd packages/mpv_kit
           dart analyze --fatal-infos

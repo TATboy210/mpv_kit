@@ -8,6 +8,13 @@ set(PLUGIN_NAME "mpv_kit_video_plugin")
 # Vulkan loader itself is loaded at runtime, so machines without Vulkan fall
 # back to the software backend instead of failing to start.
 include(FetchContent)
+# Plain source downloads (no add_subdirectory): keep Populate semantics.
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif()
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif()
 FetchContent_Declare(vulkan_headers
   URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz
   URL_HASH SHA256=4a078be12bef21cfebc09d878b77a63cff9d68f899254a0b00d0e37ef73e7f7e)
@@ -43,6 +50,9 @@ add_library(${PLUGIN_NAME} SHARED
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_17)
+# Sources are UTF-8; without this MSVC on CJK code pages (e.g. 936) warns
+# C4819, which /WX turns into an error.
+target_compile_options(${PLUGIN_NAME} PRIVATE /utf-8)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE
   FLUTTER_PLUGIN_IMPL)
 target_include_directories(${PLUGIN_NAME} INTERFACE

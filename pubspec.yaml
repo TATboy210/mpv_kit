@@ -7,3 +7,4 @@ environment:
 workspace:
   - packages/mpv_kit
   - packages/mpv_kit_video
+  - example
