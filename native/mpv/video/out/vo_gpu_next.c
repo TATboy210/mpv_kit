@@ -158,6 +158,14 @@ struct priv {
     struct frame_info perf_redraw;
 
     struct mp_image_params target_params;
+
+    // Set when driven by the libmpv render API (render_backend_gpu_next):
+    // there is no windowing context or swapchain; each frame renders into
+    // the image the API user passed to mpv_render_context_render().
+    bool libmpv;
+    struct pl_swapchain_frame libmpv_target;
+    // Decoder queue depth the renderer needs (see update_render_options).
+    int req_frames;
 };
 
 static void update_render_options(struct vo *vo);
@@ -314,10 +322,15 @@ static void update_overlays(struct vo *vo, struct mp_osd_res res,
 {
     struct priv *p = vo->priv;
     double pts = src ? src->pts : 0;
-    struct sub_bitmap_list *subs = osd_render(vo->osd, res, pts, flags, mp_draw_sub_formats);
 
     frame->overlays = state->overlays;
     frame->num_overlays = 0;
+
+    // libmpv: no OSD source until the VO attaches (update_external).
+    if (!vo->osd)
+        return;
+
+    struct sub_bitmap_list *subs = osd_render(vo->osd, res, pts, flags, mp_draw_sub_formats);
 
     for (int n = 0; n < subs->num_items; n++) {
         const struct sub_bitmaps *item = subs->items[n];
@@ -898,7 +911,7 @@ static void apply_target_options(struct priv *p, struct pl_frame *target,
     int dither_depth = opts->dither_depth;
     if (dither_depth == 0) {
         struct ra_swapchain *sw = p->ra_ctx->swapchain;
-        if (sw->fns->color_depth && sw->fns->color_depth(sw) != -1) {
+        if (sw && sw->fns->color_depth && sw->fns->color_depth(sw) != -1) {
             dither_depth = sw->fns->color_depth(sw);
         } else if (!pl_color_transfer_is_hdr(target->color.transfer)) {
             dither_depth = 8;
@@ -1089,7 +1102,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     bool pass_colorspace = false;
     struct pl_color_space target_csp = {0};
     // TODO: Implement this for all backends
-    if (sw->fns->target_csp)
+    if (sw && sw->fns->target_csp)
         target_csp = sw->fns->target_csp(sw);
     if (target_csp.primaries == PL_COLOR_PRIM_UNKNOWN)
         target_csp.primaries = get_best_prim_container(&target_csp.hdr.prim);
@@ -1110,9 +1123,13 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     target_csp.hdr.max_fall = 0;
 
     struct pl_color_space hint = {0};
-    bool target_hint = p->next_opts->target_hint == 1 ||
-                       (p->next_opts->target_hint == -1 &&
-                        target_csp.transfer != PL_COLOR_TRC_UNKNOWN);
+    // libmpv: the target's color space is fixed by the API user; there is
+    // no swapchain to hint, so render like an SDR target unless target-*
+    // options say otherwise (same as the gpu renderer under libmpv).
+    bool target_hint = !p->libmpv &&
+                       (p->next_opts->target_hint == 1 ||
+                        (p->next_opts->target_hint == -1 &&
+                         target_csp.transfer != PL_COLOR_TRC_UNKNOWN));
     // Assume HDR is supported, if target_csp() is not available
     // TODO: Remove this fallback when all backends support target_csp()
     bool target_unknown = target_csp.transfer == PL_COLOR_TRC_UNKNOWN;
@@ -1182,7 +1199,8 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
             hint.hdr.max_cll  = target->hdr.max_cll;
             hint.hdr.max_fall = target->hdr.max_fall;
         }
-        if (p->ra_ctx->fns->pass_colorspace && p->ra_ctx->fns->pass_colorspace(p->ra_ctx))
+        if (p->ra_ctx->fns && p->ra_ctx->fns->pass_colorspace &&
+            p->ra_ctx->fns->pass_colorspace(p->ra_ctx))
             pass_colorspace = true;
         if (opts->target_prim)
             hint.primaries = opts->target_prim;
@@ -1235,12 +1253,22 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     } else if (!target_hint) {
         if (!hint.hdr.min_luma)
             hint.hdr.min_luma = target_csp.hdr.min_luma;
-        pl_swapchain_colorspace_hint(p->sw, NULL);
+        if (p->sw)
+            pl_swapchain_colorspace_hint(p->sw, NULL);
     }
 
     struct pl_swapchain_frame swframe;
-    bool should_draw = sw->fns->start_frame(sw, NULL); // for wayland logic
-    if (!should_draw || !pl_swapchain_start_frame(p->sw, &swframe)) {
+    bool should_draw;
+    if (p->libmpv) {
+        // The render target was wrapped by the libmpv backend before this
+        // call; no target means SKIP_RENDERING (advance state only).
+        swframe = p->libmpv_target;
+        should_draw = !!swframe.fbo;
+    } else {
+        should_draw = sw->fns->start_frame(sw, NULL) && // for wayland logic
+                      pl_swapchain_start_frame(p->sw, &swframe);
+    }
+    if (!should_draw) {
         if (frame->current) {
             // Advance the queue state to the current PTS to discard unused frames
             struct pl_queue_params qparams = *pl_queue_params(
@@ -1478,6 +1506,20 @@ static int query_format(struct vo *vo, int format)
     return supported;
 }
 
+static void set_rects(struct priv *p, struct mp_rect src, struct mp_rect dst,
+                      struct mp_osd_res osd)
+{
+    if (mp_rect_equals(&p->src, &src) &&
+        mp_rect_equals(&p->dst, &dst) &&
+        osd_res_equals(p->osd_res, osd))
+        return;
+
+    p->osd_sync++;
+    p->osd_res = osd;
+    p->src = src;
+    p->dst = dst;
+}
+
 static void resize(struct vo *vo)
 {
     struct priv *p = vo->priv;
@@ -1488,16 +1530,7 @@ static void resize(struct vo *vo)
         gpu_ctx_resize(p->context, vo->dwidth, vo->dheight);
         vo->want_redraw = true;
     }
-
-    if (mp_rect_equals(&p->src, &src) &&
-        mp_rect_equals(&p->dst, &dst) &&
-        osd_res_equals(p->osd_res, osd))
-        return;
-
-    p->osd_sync++;
-    p->osd_res = osd;
-    p->src = src;
-    p->dst = dst;
+    set_rects(p, src, dst, osd);
 }
 
 static int reconfig(struct vo *vo, struct mp_image_params *params)
@@ -2138,17 +2171,20 @@ static int preinit(struct vo *vo)
     p->log = vo->log;
 
     struct gl_video_opts *gl_opts = p->opts_cache->opts;
-    struct ra_ctx_opts *ctx_opts = mp_get_config_group(vo, vo->global, &ra_ctx_conf);
-    update_ra_ctx_options(vo, ctx_opts);
-    p->context = gpu_ctx_create(vo, ctx_opts);
-    talloc_free(ctx_opts);
-    if (!p->context)
-        goto err_out;
-    // For the time being
-    p->ra_ctx = p->context->ra_ctx;
-    p->pllog = p->context->pllog;
-    p->gpu = p->context->gpu;
-    p->sw = p->context->swapchain;
+    if (!p->libmpv) {
+        struct ra_ctx_opts *ctx_opts = mp_get_config_group(vo, vo->global, &ra_ctx_conf);
+        update_ra_ctx_options(vo, ctx_opts);
+        p->context = gpu_ctx_create(vo, ctx_opts);
+        talloc_free(ctx_opts);
+        if (!p->context)
+            goto err_out;
+        // For the time being
+        p->ra_ctx = p->context->ra_ctx;
+        p->pllog = p->context->pllog;
+        p->gpu = p->context->gpu;
+        p->sw = p->context->swapchain;
+    }
+    // libmpv: ra_ctx, pllog and gpu were set by libmpv_init(); no swapchain.
     p->hwdec_ctx = (struct ra_hwdec_ctx) {
         .log = p->log,
         .global = p->global,
@@ -2156,16 +2192,25 @@ static int preinit(struct vo *vo)
     };
 
     vo->hwdec_devs = hwdec_devices_create();
-    hwdec_devices_set_loader(vo->hwdec_devs, load_hwdec_api, vo);
-    ra_hwdec_ctx_init(&p->hwdec_ctx, vo->hwdec_devs, gl_opts->hwdec_interop, false);
+    if (p->libmpv) {
+        // No VO to forward lazy hwdec loading requests to: load them all,
+        // like the gpu renderer does under libmpv.
+        ra_hwdec_ctx_init(&p->hwdec_ctx, vo->hwdec_devs, gl_opts->hwdec_interop, true);
+    } else {
+        hwdec_devices_set_loader(vo->hwdec_devs, load_hwdec_api, vo);
+        ra_hwdec_ctx_init(&p->hwdec_ctx, vo->hwdec_devs, gl_opts->hwdec_interop, false);
+    }
     mp_mutex_init(&p->dr_lock);
 
-    if (gl_opts->shader_cache)
+    // libmpv: the Vulkan render context already attached a shader cache
+    // with the same options and file layout to this gpu.
+    if (gl_opts->shader_cache && !p->libmpv)
         cache_init(vo, &p->shader_cache, 10 << 20, gl_opts->shader_cache_dir);
     if (gl_opts->icc_opts->cache)
         cache_init(vo, &p->icc_cache, 20 << 20, gl_opts->icc_opts->cache_dir);
 
-    pl_gpu_set_cache(p->gpu, p->shader_cache.cache);
+    if (!p->libmpv)
+        pl_gpu_set_cache(p->gpu, p->shader_cache.cache);
     p->rr = pl_renderer_create(p->pllog, p->gpu);
     p->queue = pl_queue_create(p->gpu);
     p->osd_fmt[SUBBITMAP_LIBASS] = pl_find_named_fmt(p->gpu, "r8");
@@ -2527,7 +2572,10 @@ static void update_render_options(struct vo *vo)
         req_frames += ceilf(pars->params.frame_mixer->kernel->radius) *
                       (pars->params.skip_anti_aliasing ? 1 : 2);
     }
-    vo_set_queue_params(vo, 0, MPMIN(VO_MAX_REQ_FRAMES, req_frames));
+    p->req_frames = MPMIN(VO_MAX_REQ_FRAMES, req_frames);
+    // libmpv: applied to the real VO in libmpv_update_external().
+    if (!p->libmpv)
+        vo_set_queue_params(vo, 0, p->req_frames);
 
     pars->params.deband_params = opts->deband ? &pars->deband_params : NULL;
     pars->deband_params.iterations = opts->deband_opts->iterations;
@@ -2650,3 +2698,261 @@ const struct vo_driver video_out_gpu_next = {
     .uninit = uninit,
     .priv_size = sizeof(struct priv),
 };
+
+#if HAVE_VULKAN
+
+// ---------------------------------------------------------------------------
+// libmpv render API backend (mpv_kit extension)
+//
+// Runs this renderer under mpv_render_context_render() with
+// MPV_RENDER_API_TYPE_VULKAN. The Vulkan device import and target wrapping
+// are shared with the gpu renderer (libmpv_gpu_context_vk); this part only
+// adapts the render_backend_fns entry points to the VO code above, which
+// operates on a private struct vo that carries no windowing state.
+
+#include "mpv/render_vk.h"
+#include "video/out/gpu/libmpv_gpu.h"
+#include "video/out/libmpv.h"
+
+struct libmpv_priv {
+    struct libmpv_gpu_context *context;
+    // Private VO: provides priv/log/global/params/osd/hwdec_devs to the VO
+    // functions. Never registered with the player core.
+    struct vo *vo;
+    struct mp_image_params params;
+    // Owned here: uninit() clears the VO's copy of the pointer.
+    pl_log pllog;
+};
+
+static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
+{
+    ctx->priv = talloc_zero(NULL, struct libmpv_priv);
+    struct libmpv_priv *lp = ctx->priv;
+
+    char *api = get_mpv_render_param(params, MPV_RENDER_PARAM_API_TYPE, NULL);
+    if (!api || strcmp(api, MPV_RENDER_API_TYPE_VULKAN) != 0)
+        return MPV_ERROR_NOT_IMPLEMENTED;
+    const char *renderer =
+        get_mpv_render_param(params, MPV_RENDER_PARAM_VULKAN_RENDERER, "gpu-next");
+    if (strcmp(renderer, "gpu") == 0)
+        return MPV_ERROR_NOT_IMPLEMENTED; // handled by render_backend_gpu
+    if (strcmp(renderer, "gpu-next") != 0) {
+        MP_FATAL(ctx, "Unknown MPV_RENDER_PARAM_VULKAN_RENDERER '%s'.\n", renderer);
+        return MPV_ERROR_INVALID_PARAMETER;
+    }
+
+    lp->context = talloc_zero(NULL, struct libmpv_gpu_context);
+    *lp->context = (struct libmpv_gpu_context) {
+        .global = ctx->global,
+        .log = ctx->log,
+        .fns = &libmpv_gpu_context_vk,
+    };
+    int err = lp->context->fns->init(lp->context, params);
+    if (err < 0)
+        return err;
+
+    struct vo *vo = talloc_zero(lp, struct vo);
+    vo->log = ctx->log;
+    vo->global = ctx->global;
+    vo->priv = talloc_zero(vo, struct priv);
+    mp_mutex_init(&vo->params_mutex);
+    lp->vo = vo;
+
+    struct priv *p = vo->priv;
+    p->libmpv = true;
+    p->ra_ctx = lp->context->ra_ctx;
+    p->gpu = ra_pl_get(p->ra_ctx->ra);
+    p->pllog = lp->pllog = mppl_log_create(lp, ctx->log);
+    if (!p->gpu || !p->pllog) {
+        mp_mutex_destroy(&vo->params_mutex);
+        lp->vo = NULL;
+        return MPV_ERROR_UNSUPPORTED;
+    }
+
+    if (preinit(vo) < 0) {
+        // preinit() already ran uninit() on failure.
+        mp_mutex_destroy(&vo->params_mutex);
+        lp->vo = NULL;
+        return MPV_ERROR_UNSUPPORTED;
+    }
+
+    ctx->hwdec_devs = vo->hwdec_devs;
+    ctx->driver_caps = video_out_gpu_next.caps;
+    return 0;
+}
+
+static bool libmpv_check_format(struct render_backend *ctx, int imgfmt)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    return query_format(lp->vo, imgfmt);
+}
+
+static int libmpv_set_parameter(struct render_backend *ctx, mpv_render_param param)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct priv *p = lp->vo->priv;
+
+    switch (param.type) {
+    case MPV_RENDER_PARAM_ICC_PROFILE: {
+        mpv_byte_array *data = param.data;
+        // update_icc() takes ownership of the copy.
+        update_icc(p, bstrdup(NULL, (bstr){data->data, data->size}));
+        return 0;
+    }
+    default:
+        return MPV_ERROR_NOT_IMPLEMENTED;
+    }
+}
+
+static void libmpv_reconfig(struct render_backend *ctx,
+                            struct mp_image_params *params)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct vo *vo = lp->vo;
+
+    mp_mutex_lock(&vo->params_mutex);
+    lp->params = *params;
+    vo->params = &lp->params;
+    vo->target_params = NULL;
+    mp_mutex_unlock(&vo->params_mutex);
+}
+
+static void libmpv_reset(struct render_backend *ctx)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct priv *p = lp->vo->priv;
+    // Same as VOCTRL_RESET: defer until the next new frame arrives.
+    p->want_reset = true;
+}
+
+static void libmpv_update_external(struct render_backend *ctx, struct vo *vo)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct priv *p = lp->vo->priv;
+
+    lp->vo->osd = vo ? vo->osd : NULL;
+    if (vo) {
+        // Options may have changed the interpolation radius.
+        update_options(lp->vo);
+        vo_set_queue_params(vo, 0, p->req_frames);
+    }
+}
+
+static void libmpv_resize(struct render_backend *ctx, struct mp_rect *src,
+                          struct mp_rect *dst, struct mp_osd_res *osd)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    set_rects(lp->vo->priv, *src, *dst, *osd);
+}
+
+static int libmpv_get_target_size(struct render_backend *ctx,
+                                  mpv_render_param *params,
+                                  int *out_w, int *out_h)
+{
+    struct libmpv_priv *lp = ctx->priv;
+
+    struct ra_tex *tex;
+    int err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+    if (err < 0)
+        return err;
+    *out_w = tex->params.w;
+    *out_h = tex->params.h;
+    return 0;
+}
+
+static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
+                         struct vo_frame *frame)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct priv *p = lp->vo->priv;
+
+    struct ra_tex *tex;
+    int err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+    if (err < 0)
+        return err;
+
+    bool flip = GET_MPV_RENDER_PARAM(params, MPV_RENDER_PARAM_FLIP_Y, int, 0);
+    // The host's image is a plain sRGB-encoded RGB surface, like a Vulkan
+    // SDR swapchain image.
+    p->libmpv_target = (struct pl_swapchain_frame) {
+        .fbo = tex->priv, // the pl_tex wrapped by mppl_wrap_tex()
+        .flipped = flip,
+        .color_repr = pl_color_repr_rgb,
+        .color_space = {
+            .primaries = PL_COLOR_PRIM_BT_709,
+            .transfer = PL_COLOR_TRC_SRGB,
+        },
+    };
+    draw_frame(lp->vo, frame);
+    p->libmpv_target = (struct pl_swapchain_frame) {0};
+
+    lp->context->fns->done_frame(lp->context, frame->display_synced);
+    return 0;
+}
+
+static struct mp_image *libmpv_get_image(struct render_backend *ctx, int imgfmt,
+                                         int w, int h, int stride_align,
+                                         int flags)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    return get_image(lp->vo, imgfmt, w, h, stride_align, flags);
+}
+
+static void libmpv_screenshot(struct render_backend *ctx, struct vo_frame *frame,
+                              struct voctrl_screenshot *args)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    // Renders the queue's current frame, which is the frame mpv shows.
+    video_screenshot(lp->vo, args);
+}
+
+static void libmpv_perfdata(struct render_backend *ctx,
+                            struct voctrl_performance_data *out)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    struct priv *p = lp->vo->priv;
+    copy_frame_info_to_mp(&p->perf_fresh, &out->fresh);
+    copy_frame_info_to_mp(&p->perf_redraw, &out->redraw);
+}
+
+static void libmpv_destroy(struct render_backend *ctx)
+{
+    struct libmpv_priv *lp = ctx->priv;
+    if (!lp)
+        return;
+
+    if (lp->vo) {
+        // Renderer objects first, while the device still exists. uninit()
+        // also destroys the hwdec devices (ctx->hwdec_devs).
+        uninit(lp->vo);
+        mp_mutex_destroy(&lp->vo->params_mutex);
+        lp->vo = NULL;
+    }
+    ctx->hwdec_devs = NULL;
+    pl_log_destroy(&lp->pllog);
+
+    if (lp->context) {
+        if (lp->context->fns)
+            lp->context->fns->destroy(lp->context);
+        talloc_free(lp->context->priv);
+        TA_FREEP(&lp->context);
+    }
+}
+
+const struct render_backend_fns render_backend_gpu_next = {
+    .init = libmpv_init,
+    .check_format = libmpv_check_format,
+    .set_parameter = libmpv_set_parameter,
+    .reconfig = libmpv_reconfig,
+    .reset = libmpv_reset,
+    .update_external = libmpv_update_external,
+    .resize = libmpv_resize,
+    .get_target_size = libmpv_get_target_size,
+    .render = libmpv_render,
+    .get_image = libmpv_get_image,
+    .screenshot = libmpv_screenshot,
+    .perfdata = libmpv_perfdata,
+    .destroy = libmpv_destroy,
+};
+
+#endif

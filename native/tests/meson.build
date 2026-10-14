@@ -8,4 +8,5 @@ threads = dependency('threads')
 
 smoke = executable('render_vk_smoke', 'render_vk_smoke.c',
                    dependencies: [mpv, vulkan, threads])
-test('render_vk_smoke', smoke, timeout: 60)
+test('render_vk_smoke', smoke, timeout: 60)  # gpu-next (default)
+test('render_vk_smoke_gpu', smoke, args: ['gpu'], timeout: 60)

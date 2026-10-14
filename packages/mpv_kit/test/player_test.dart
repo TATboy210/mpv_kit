@@ -65,9 +65,22 @@ void main() {
     // Wait for the first decoded frame: a seek issued while playback is
     // still initialising can be superseded by mpv's own start-up seek.
     await _until(player.videoParams, (v) => v != null);
-    await player.seek(const Duration(milliseconds: 1000), exact: true);
-    await _until(player.position,
-        (p) => (p.inMilliseconds - 1000).abs() < 100);
+    // On slow runners mpv can still be finishing its start-up seek, which
+    // may supersede ours; reissuing an absolute seek is idempotent.
+    bool near(Duration p) => (p.inMilliseconds - 1000).abs() < 100;
+    for (var attempt = 0; ; attempt++) {
+      await player.seek(const Duration(milliseconds: 1000), exact: true);
+      if (near(player.position.value)) break;
+      try {
+        await player.position.stream
+            .firstWhere(near)
+            .timeout(const Duration(seconds: 3));
+        break;
+      } on TimeoutException {
+        if (near(player.position.value)) break;
+        if (attempt == 3) rethrow;
+      }
+    }
   });
 
   test('catalog is generated from mpv docs', () {

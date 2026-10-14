@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "mpv_talloc.h"
 #include "common/common.h"
 #include "misc/bstr.h"
@@ -112,6 +113,10 @@ struct mpv_render_context {
 };
 
 const struct render_backend_fns *render_backends[] = {
+#if HAVE_VULKAN
+    // Vulkan API: gpu-next unless MPV_RENDER_PARAM_VULKAN_RENDERER is "gpu".
+    &render_backend_gpu_next,
+#endif
     &render_backend_gpu,
     &render_backend_sw,
     NULL

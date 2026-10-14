@@ -3,6 +3,7 @@
 // the pixel colour. Runs headless (lavapipe works) — no window, no swapchain.
 //
 // Exit codes: 0 pass, 1 failure, 77 skipped (no Vulkan device; meson "skip").
+// Optional argument: renderer ("gpu-next", the default, or "gpu").
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdbool.h>
@@ -52,7 +53,7 @@ static int find_memory(VkPhysicalDevice pd, uint32_t bits, VkMemoryPropertyFlags
     return -1;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
@@ -240,11 +241,14 @@ int main(void)
         .lock_queue = lock_queue,
         .unlock_queue = unlock_queue,
     };
+    const char *renderer = argc > 1 ? argv[1] : "gpu-next";
     mpv_render_param params[] = {
         { MPV_RENDER_PARAM_API_TYPE, (void *)MPV_RENDER_API_TYPE_VULKAN },
         { MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &vkp },
+        { MPV_RENDER_PARAM_VULKAN_RENDERER, (void *)renderer },
         { 0 },
     };
+    fprintf(stderr, "[smoke] renderer: %s\n", renderer);
     step("create render context");
     mpv_render_context *rc;
     int err = mpv_render_context_create(&rc, mpv, params);

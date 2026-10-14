@@ -68,24 +68,33 @@ bool VideoRenderer::StartVulkan() {
   init.queue_transfer = {vk.graphics_family(), vk.graphics_count()};
 
   int advanced = 1;
-  mpv_render_param params[] = {
-      {MPV_RENDER_PARAM_API_TYPE,
-       const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
-      {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
-      {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
-      {MPV_RENDER_PARAM_INVALID, nullptr},
-  };
-  const int err = api_.render_context_create(&render_ctx_, handle_, params);
-  if (err < 0) {
-    backend_reason_ = std::string("mpv_render_context_create: ") +
-                      api_.error_string(err);
+  // gpu-next (libplacebo's renderer) first; the older gpu renderer covers
+  // devices or libplacebo builds where it cannot initialise.
+  int err = 0;
+  for (const char* renderer : {"gpu-next", "gpu"}) {
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_API_TYPE,
+         const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
+        {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
+        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    err = api_.render_context_create(&render_ctx_, handle_, params);
+    if (err >= 0) {
+      backend_ = Backend::kVulkan;
+      backend_reason_ = std::string("vulkan (") + renderer + ") on " +
+                        vk.device_name();
+      return true;
+    }
+    log_(std::string("mpv_kit: ") + renderer + " renderer unavailable: " +
+         api_.error_string(err));
     render_ctx_ = nullptr;
-    vulkan_.reset();
-    return false;
   }
-  backend_ = Backend::kVulkan;
-  backend_reason_ = "vulkan on " + vk.device_name();
-  return true;
+  backend_reason_ = std::string("mpv_render_context_create: ") +
+                    api_.error_string(err);
+  vulkan_.reset();
+  return false;
 }
 
 bool VideoRenderer::StartSoftware() {

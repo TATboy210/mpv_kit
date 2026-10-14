@@ -56,6 +56,16 @@ extern "C" {
  */
 #define MPV_RENDER_PARAM_VULKAN_INIT_PARAMS ((mpv_render_param_type)0x6d6b0001)
 #define MPV_RENDER_PARAM_VULKAN_IMAGE       ((mpv_render_param_type)0x6d6b0002)
+/**
+ * Optional for mpv_render_context_create(): the renderer to use, as a
+ * const char* (the data pointer is the string itself, like
+ * MPV_RENDER_PARAM_API_TYPE).
+ *  - "gpu-next" (default): libplacebo's renderer, as used by --vo=gpu-next.
+ *    Better HDR/tone mapping and color management, persistent shader and
+ *    ICC caches.
+ *  - "gpu": mpv's older gl_video renderer, as used by --vo=gpu.
+ */
+#define MPV_RENDER_PARAM_VULKAN_RENDERER    ((mpv_render_param_type)0x6d6b0003)
 
 /** Queue family selection, mirrors libplacebo's pl_vulkan_queue. */
 typedef struct mpv_vulkan_queue {
