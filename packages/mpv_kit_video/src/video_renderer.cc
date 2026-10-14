@@ -133,7 +133,11 @@ void VideoRenderer::SetSize(int width, int height) {
 }
 
 Frame VideoRenderer::AcquireFront() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
+  // The compositor takes the newest frame for display: that is when mpv's
+  // frame counts as presented (vsync timing / display-resample).
+  const bool presented = swap_pending_ && front_ >= 0;
+  if (presented) swap_pending_ = false;
   if (in_use_ != front_ && in_use_ >= 0) {
     // The compositor moves on from in_use_: quarantine it (see header).
     for (int i = kQuarantine - 1; i > 0; i--) quarantine_[i] = quarantine_[i - 1];
@@ -151,6 +155,9 @@ Frame VideoRenderer::AcquireFront() {
     f.platform = vulkan_->ring()[front_].platform;
     interop_->RetainFrame(f.platform);
   }
+  lock.unlock();
+  // Outside our lock: mpv takes its own lock and may call OnMpvUpdate.
+  if (presented) api_.render_context_report_swap(render_ctx_);
   return f;
 }
 
@@ -170,7 +177,19 @@ void VideoRenderer::RenderLoop() {
     bool resized = false;
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return quit_ || update_pending_ || resize_pending_; });
+      auto ready = [&] { return quit_ || update_pending_ || resize_pending_; };
+      if (swap_pending_) {
+        // Nobody displayed the last frame in time (hidden window, paused
+        // raster): report it anyway so mpv's flip_page never stalls.
+        if (!cv_.wait_for(lock, kPresentTimeout, ready) && swap_pending_) {
+          swap_pending_ = false;
+          lock.unlock();
+          api_.render_context_report_swap(render_ctx_);
+          continue;
+        }
+      } else {
+        cv_.wait(lock, ready);
+      }
       if (quit_) return;
       update_pending_ = false;
       resized = resize_pending_.exchange(false);
@@ -268,11 +287,15 @@ bool VideoRenderer::RenderOnce() {
     log_(std::string("mpv_kit: render: ") + api_.error_string(err));
     return false;
   }
-  api_.render_context_report_swap(render_ctx_);
+  bool superseded;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     front_ = back;
+    // The previous frame was never displayed: it still counts as swapped.
+    superseded = swap_pending_;
+    swap_pending_ = true;
   }
+  if (superseded) api_.render_context_report_swap(render_ctx_);
   interop_->FrameReady();
   return true;
 }

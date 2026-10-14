@@ -65,39 +65,41 @@ class _MpvVideoState extends State<MpvVideo> {
       initialData: widget.controller.player.videoParams.value,
       builder: (context, snapshot) {
         final video = _videoSize(snapshot.data);
-        return LayoutBuilder(builder: (context, constraints) {
-          final box = constraints.biggest;
-          if (video == null || !box.isFinite || box.isEmpty) {
-            return const SizedBox.expand();
-          }
-          // applyBoxFit may crop the source (cover); scale the *whole* video
-          // by the same factors so every BoxFit keeps the right geometry.
-          final fs = applyBoxFit(widget.fit, video, box);
-          final shown = Size(
-            video.width * fs.destination.width / fs.source.width,
-            video.height * fs.destination.height / fs.source.height,
-          );
-          _requestSize(shown, dpr);
-          return ClipRect(
-            // Tight on both ends: the parent may pass tight constraints that
-            // are smaller (cover) or larger (contain) than the video rect.
-            child: OverflowBox(
-              minWidth: shown.width,
-              maxWidth: shown.width,
-              minHeight: shown.height,
-              maxHeight: shown.height,
-              child: SizedBox.fromSize(
-                size: shown,
-                child: Texture(
-                  textureId: widget.controller.textureId,
-                  // Rendered at display resolution; only transient sizes
-                  // during a debounced resize are resampled.
-                  filterQuality: FilterQuality.low,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final box = constraints.biggest;
+            if (video == null || !box.isFinite || box.isEmpty) {
+              return const SizedBox.expand();
+            }
+            // applyBoxFit may crop the source (cover); scale the *whole* video
+            // by the same factors so every BoxFit keeps the right geometry.
+            final fs = applyBoxFit(widget.fit, video, box);
+            final shown = Size(
+              video.width * fs.destination.width / fs.source.width,
+              video.height * fs.destination.height / fs.source.height,
+            );
+            _requestSize(shown, dpr);
+            return ClipRect(
+              // Tight on both ends: the parent may pass tight constraints that
+              // are smaller (cover) or larger (contain) than the video rect.
+              child: OverflowBox(
+                minWidth: shown.width,
+                maxWidth: shown.width,
+                minHeight: shown.height,
+                maxHeight: shown.height,
+                child: SizedBox.fromSize(
+                  size: shown,
+                  child: Texture(
+                    textureId: widget.controller.textureId,
+                    // Rendered at display resolution; only transient sizes
+                    // during a debounced resize are resampled.
+                    filterQuality: FilterQuality.low,
+                  ),
                 ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
   }

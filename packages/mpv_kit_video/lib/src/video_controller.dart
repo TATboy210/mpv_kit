@@ -36,8 +36,10 @@ final class MpvVideoController {
   ///
   /// [forceSoftware] skips Vulkan (diagnostics / broken drivers). Throws
   /// [PlatformException] when no backend can be initialised.
-  static Future<MpvVideoController> create(Player player,
-      {bool forceSoftware = false}) async {
+  static Future<MpvVideoController> create(
+    Player player, {
+    bool forceSoftware = false,
+  }) async {
     final lib = player.mpv.bindings.library;
     final result = await _channel.invokeMapMethod<String, Object?>('create', {
       'handle': player.mpv.handle.address,
@@ -55,9 +57,25 @@ final class MpvVideoController {
           : MpvVideoBackend.software,
       result['reason'] as String? ?? '',
     );
-    debugPrint('mpv_kit_video: ${controller.backend.name} '
-        '(${controller.reason})');
+    _applyDisplayRate(player);
+    debugPrint(
+      'mpv_kit_video: ${controller.backend.name} '
+      '(${controller.reason})',
+    );
     return controller;
+  }
+
+  /// The render API has no vsync source, so mpv would only estimate the
+  /// refresh rate from swap timing. Tell it the display's real rate, which
+  /// `video-sync=display-*` and interpolation depend on. Leaves an explicit
+  /// user setting alone.
+  static void _applyDisplayRate(Player player) {
+    final displays = PlatformDispatcher.instance.displays;
+    final hz = displays.isEmpty ? 0.0 : displays.first.refreshRate;
+    if (hz <= 0) return;
+    final current = player.mpv.tryGetProperty('display-fps-override');
+    if (current is num && current > 0) return;
+    player.mpv.setProperty('display-fps-override', hz);
   }
 
   /// 播放器。
@@ -82,8 +100,11 @@ final class MpvVideoController {
     if (_disposed || width <= 0 || height <= 0) return;
     if (_size == (width, height)) return;
     _size = (width, height);
-    await _channel.invokeMethod<void>(
-        'setSize', {'textureId': textureId, 'width': width, 'height': height});
+    await _channel.invokeMethod<void>('setSize', {
+      'textureId': textureId,
+      'width': width,
+      'height': height,
+    });
   }
 
   /// Releases the texture and render context (the [player] stays alive).

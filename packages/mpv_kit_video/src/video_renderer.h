@@ -7,6 +7,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
@@ -111,6 +112,10 @@ class VideoRenderer {
   std::mutex mutex_;
   std::condition_variable cv_;
   bool update_pending_ = false;
+  // A rendered frame awaits mpv_render_context_report_swap(): reported when
+  // the compositor first takes it, or after kPresentTimeout without one.
+  bool swap_pending_ = false;
+  static constexpr std::chrono::milliseconds kPresentTimeout{50};
   bool quit_ = false;
 
   // Ring state, guarded by mutex_.
