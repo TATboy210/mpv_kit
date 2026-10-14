@@ -92,6 +92,10 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
         return MPV_ERROR_UNSUPPORTED;
     }
     p->vk.gpu = p->vk.vulkan->gpu;
+    p->vk.num_imported_extensions = ip->num_extensions;
+    p->vk.imported_extensions = talloc_array(p, const char *, ip->num_extensions);
+    for (int i = 0; i < ip->num_extensions; i++)
+        p->vk.imported_extensions[i] = talloc_strdup(p, ip->extensions[i]);
 
     p->ra_ctx = talloc_zero(p, struct ra_ctx);
     p->ra_ctx->log = ctx->log;

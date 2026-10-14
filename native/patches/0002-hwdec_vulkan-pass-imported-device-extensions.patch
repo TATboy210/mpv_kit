@@ -1,0 +1,49 @@
+diff --git a/video/out/hwdec/hwdec_vulkan.c b/video/out/hwdec/hwdec_vulkan.c
+index c03d39f..8119c93 100644
+--- a/video/out/hwdec/hwdec_vulkan.c
++++ b/video/out/hwdec/hwdec_vulkan.c
+@@ -111,8 +111,13 @@ static int vulkan_init(struct ra_hwdec *hw)
+     device_hwctx->device_features = *vk->vulkan->features;
+     device_hwctx->enabled_inst_extensions = vk->vkinst->extensions;
+     device_hwctx->nb_enabled_inst_extensions = vk->vkinst->num_extensions;
+-    device_hwctx->enabled_dev_extensions = vk->vulkan->extensions;
+-    device_hwctx->nb_enabled_dev_extensions = vk->vulkan->num_extensions;
++    if (vk->imported_extensions) {
++        device_hwctx->enabled_dev_extensions = vk->imported_extensions;
++        device_hwctx->nb_enabled_dev_extensions = vk->num_imported_extensions;
++    } else {
++        device_hwctx->enabled_dev_extensions = vk->vulkan->extensions;
++        device_hwctx->nb_enabled_dev_extensions = vk->vulkan->num_extensions;
++    }
+ 
+ #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 34, 100)
+     device_hwctx->nb_qf = 0;
+diff --git a/video/out/vulkan/common.h b/video/out/vulkan/common.h
+index e75cb22..d18d115 100644
+--- a/video/out/vulkan/common.h
++++ b/video/out/vulkan/common.h
+@@ -36,4 +36,9 @@ struct mpvk_ctx {
+     pl_gpu gpu; // points to vulkan->gpu for convenience
+     pl_swapchain swapchain;
+     VkSurfaceKHR surface;
++    // Device extensions of an imported (host-created) device. libplacebo
++    // only fills pl_vulkan.extensions for devices it creates itself, but
++    // FFmpeg's Vulkan hwcontext needs the real list (e.g. video decode).
++    const char **imported_extensions;
++    int num_imported_extensions;
+ };
+diff --git a/video/out/vulkan/libmpv_vk.c b/video/out/vulkan/libmpv_vk.c
+index 91c6717..88bbca2 100644
+--- a/video/out/vulkan/libmpv_vk.c
++++ b/video/out/vulkan/libmpv_vk.c
+@@ -92,6 +92,10 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
+         return MPV_ERROR_UNSUPPORTED;
+     }
+     p->vk.gpu = p->vk.vulkan->gpu;
++    p->vk.num_imported_extensions = ip->num_extensions;
++    p->vk.imported_extensions = talloc_array(p, const char *, ip->num_extensions);
++    for (int i = 0; i < ip->num_extensions; i++)
++        p->vk.imported_extensions[i] = talloc_strdup(p, ip->extensions[i]);
+ 
+     p->ra_ctx = talloc_zero(p, struct ra_ctx);
+     p->ra_ctx->log = ctx->log;

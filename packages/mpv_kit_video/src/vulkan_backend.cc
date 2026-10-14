@@ -216,13 +216,17 @@ bool VulkanContext::CreateDevice(std::string* error) {
     return false;
   }
 
-  const float priorities[2] = {1.0f, 1.0f};
+  // mpv hands FFmpeg the decode family with its full queueCount
+  // (hwdec_vulkan.c), so every queue of that family must exist.
+  const std::vector<float> priorities(
+      std::max<uint32_t>(2, decode >= 0 ? qfs[decode].queueCount : 1), 1.0f);
   std::vector<VkDeviceQueueCreateInfo> queues;
   queues.push_back({VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, nullptr, 0,
-                    graphics_family_, graphics_count_, priorities});
+                    graphics_family_, graphics_count_, priorities.data()});
   if (decode >= 0 && decode != graphics) {
     queues.push_back({VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, nullptr, 0,
-                      static_cast<uint32_t>(decode), 1, priorities});
+                      static_cast<uint32_t>(decode), qfs[decode].queueCount,
+                      priorities.data()});
   }
 
   VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};

@@ -1,6 +1,7 @@
 // mpv_kit example: open a file (path as first argument or the text field),
 // show it through MpvVideo and display live render/decode statistics.
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:mpv_kit/mpv_kit.dart';
@@ -33,9 +34,14 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
-  final player = Player(options: const {
+  final player = Player(options: {
     // Vulkan Video decoding where available, else the safe platform default.
     'hwdec': 'vulkan,auto-safe',
+    // MPV_KIT_EXAMPLE_LOG=<file>: verbose mpv log for diagnostics.
+    if (Platform.environment['MPV_KIT_EXAMPLE_LOG'] case final log?) ...{
+      'log-file': log,
+      'msg-level': 'all=v',
+    },
   });
   MpvVideoController? video;
   Object? error;
