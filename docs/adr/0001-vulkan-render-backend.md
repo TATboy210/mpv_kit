@@ -40,3 +40,24 @@ future upstream values; `MPV_CLIENT_API_VERSION` is not bumped.
   on the libplacebo `ra`: `ra_pl` never fills `cached_program`. First
   frames therefore pay SPIR-V compilation (~0.4 s, a few dropped frames at
   start). A gpu-next based backend (libplacebo `pl_cache`) would fix this.
+
+## Update 2026-10-15: gpu-next and the shader cache
+
+- Patch 0003 attaches a persistent `pl_cache` to the imported `pl_gpu`
+  (`--gpu-shader-cache-dir`, vo_gpu_next's `shader_<key>` file layout).
+  mpv_kit_video defaults the directory to a per-user cache
+  (`%LOCALAPPDATA%/mpv_kit/shader-cache`, `~/Library/Caches/...`,
+  `$XDG_CACHE_HOME/...`). Paths use `/` on Windows: `mp_mkdirp` only splits
+  on `/` and silently fails to create nested backslash paths.
+- Patch 0004 adds `render_backend_gpu_next`: vo_gpu_next's renderer driven
+  by the render API through a private `struct vo`. It is the default for
+  `MPV_RENDER_API_TYPE_VULKAN`; `MPV_RENDER_PARAM_VULKAN_RENDERER = "gpu"`
+  selects gl_video. The target is treated as an SDR sRGB surface (no
+  swapchain colorspace hint). The plugin falls back to `gpu` if gpu-next
+  cannot initialise. Both renderers pass the lavapipe pixel test in CI.
+- Measured on RTX 4060 Laptop, 4K (4096x2160) H.264 25 fps, hwdec=vulkan,
+  gpu-next: first start 4 dropped frames (shader compilation), every later
+  start 0 dropped / 0 delayed (13 of 18 cache objects reused).
+- mpv_kit_video skips rendering (`SKIP_RENDERING`) while the compositor has
+  not taken a frame for 500 ms (hidden/minimised) and redraws once on the
+  next acquisition.

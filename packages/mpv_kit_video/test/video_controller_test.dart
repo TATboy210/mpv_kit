@@ -6,10 +6,10 @@ void main() {
   String? dir(String os, Map<String, String> env) =>
       MpvVideoController.defaultShaderCacheDir(os: os, environment: env);
 
-  test('Windows uses LOCALAPPDATA with backslashes', () {
+  test('Windows uses LOCALAPPDATA, joined with forward slashes', () {
     expect(
       dir('windows', {'LOCALAPPDATA': r'C:\Users\a\AppData\Local'}),
-      r'C:\Users\a\AppData\Local\mpv_kit\shader-cache',
+      r'C:\Users\a\AppData\Local' '/mpv_kit/shader-cache',
     );
   });
 

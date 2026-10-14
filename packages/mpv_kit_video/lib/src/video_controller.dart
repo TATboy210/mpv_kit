@@ -108,8 +108,9 @@ final class MpvVideoController {
       _ => _nonEmpty(env['XDG_CACHE_HOME']) ?? _join(env['HOME'], '.cache'),
     };
     if (base == null) return null;
-    final sep = system == 'windows' ? r'\' : '/';
-    return '$base${sep}mpv_kit${sep}shader-cache';
+    // Forward slashes on Windows too: mpv creates the missing parent
+    // directories (mp_mkdirp) by splitting on '/' only.
+    return '$base/mpv_kit/shader-cache';
   }
 
   static String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
