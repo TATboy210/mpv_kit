@@ -35,9 +35,9 @@ Uint8List tar(List<(String, String, String)> entries) {
 }
 
 String manifestFor(Map<String, String> files) => [
-      for (final MapEntry(:key, :value) in files.entries)
-        '${sha256Hex(utf8.encode(value))}  ./$key',
-    ].join('\n');
+  for (final MapEntry(:key, :value) in files.entries)
+    '${sha256Hex(utf8.encode(value))}  ./$key',
+].join('\n');
 
 void main() {
   late Directory tmp;
@@ -49,27 +49,32 @@ void main() {
 
   group('readTar', () {
     test('extracts regular files and skips directories', () {
-      final entries = readTar(tar([
-        ('./lib/', '5', ''),
-        ('./lib/a.so', '0', 'AAA'),
-      ]));
+      final entries = readTar(
+        tar([('./lib/', '5', ''), ('./lib/a.so', '0', 'AAA')]),
+      );
       expect(entries.single.path, 'lib/a.so');
       expect(utf8.decode(entries.single.bytes), 'AAA');
     });
 
     test('rejects parent-directory traversal', () {
-      expect(() => readTar(tar([('../evil', '0', 'x')])),
-          throwsA(isA<TarFormatException>()));
+      expect(
+        () => readTar(tar([('../evil', '0', 'x')])),
+        throwsA(isA<TarFormatException>()),
+      );
     });
 
     test('rejects absolute paths', () {
-      expect(() => readTar(tar([('/etc/passwd', '0', 'x')])),
-          throwsA(isA<TarFormatException>()));
+      expect(
+        () => readTar(tar([('/etc/passwd', '0', 'x')])),
+        throwsA(isA<TarFormatException>()),
+      );
     });
 
     test('rejects symlinks', () {
-      expect(() => readTar(tar([('lib/link', '2', '')])),
-          throwsA(isA<TarFormatException>()));
+      expect(
+        () => readTar(tar([('lib/link', '2', '')])),
+        throwsA(isA<TarFormatException>()),
+      );
     });
 
     test('detects corrupted headers', () {
@@ -83,15 +88,18 @@ void main() {
     const files = {'lib/libmpv.so.2': 'MPV', 'LICENSE.LGPL': 'L'};
 
     Uint8List validTar() => tar([
-          for (final MapEntry(:key, :value) in files.entries)
-            ('./$key', '0', value),
-          ('./MANIFEST.txt', '0', manifestFor(files)),
-        ]);
+      for (final MapEntry(:key, :value) in files.entries)
+        ('./$key', '0', value),
+      ('./MANIFEST.txt', '0', manifestFor(files)),
+    ]);
 
     test('installs a pinned, manifest-consistent bundle', () {
       final archive = writeGz(validTar());
-      final libs = installBundle(archive, sha256Hex(archive.readAsBytesSync()),
-          Directory('${tmp.path}/out'));
+      final libs = installBundle(
+        archive,
+        sha256Hex(archive.readAsBytesSync()),
+        Directory('${tmp.path}/out'),
+      );
       expect(libs.map((f) => f.uri.pathSegments.last), ['libmpv.so.2']);
       expect(libs.single.readAsStringSync(), 'MPV');
     });
@@ -99,44 +107,137 @@ void main() {
     test('rejects an archive whose hash does not match the pin', () {
       final archive = writeGz(validTar());
       expect(
-          () => installBundle(
-              archive, '0' * 64, Directory('${tmp.path}/out')),
-          throwsA(isA<BundleIntegrityException>()));
+        () => installBundle(archive, '0' * 64, Directory('${tmp.path}/out')),
+        throwsA(isA<BundleIntegrityException>()),
+      );
       expect(Directory('${tmp.path}/out').existsSync(), isFalse);
     });
 
     test('rejects a file that differs from the manifest', () {
-      final archive = writeGz(tar([
-        ('./lib/libmpv.so.2', '0', 'TAMPERED'),
-        ('./LICENSE.LGPL', '0', 'L'),
-        ('./MANIFEST.txt', '0', manifestFor(files)),
-      ]));
+      final archive = writeGz(
+        tar([
+          ('./lib/libmpv.so.2', '0', 'TAMPERED'),
+          ('./LICENSE.LGPL', '0', 'L'),
+          ('./MANIFEST.txt', '0', manifestFor(files)),
+        ]),
+      );
       expect(
-          () => installBundle(archive, sha256Hex(archive.readAsBytesSync()),
-              Directory('${tmp.path}/out')),
-          throwsA(isA<BundleIntegrityException>()));
+        () => installBundle(
+          archive,
+          sha256Hex(archive.readAsBytesSync()),
+          Directory('${tmp.path}/out'),
+        ),
+        throwsA(isA<BundleIntegrityException>()),
+      );
     });
 
     test('rejects files missing from the manifest', () {
-      final archive = writeGz(tar([
-        ('./lib/libmpv.so.2', '0', 'MPV'),
-        ('./LICENSE.LGPL', '0', 'L'),
-        ('./lib/extra.so', '0', 'X'),
-        ('./MANIFEST.txt', '0', manifestFor(files)),
-      ]));
+      final archive = writeGz(
+        tar([
+          ('./lib/libmpv.so.2', '0', 'MPV'),
+          ('./LICENSE.LGPL', '0', 'L'),
+          ('./lib/extra.so', '0', 'X'),
+          ('./MANIFEST.txt', '0', manifestFor(files)),
+        ]),
+      );
       expect(
-          () => installBundle(archive, sha256Hex(archive.readAsBytesSync()),
-              Directory('${tmp.path}/out')),
-          throwsA(isA<BundleIntegrityException>()));
+        () => installBundle(
+          archive,
+          sha256Hex(archive.readAsBytesSync()),
+          Directory('${tmp.path}/out'),
+        ),
+        throwsA(isA<BundleIntegrityException>()),
+      );
     });
 
     test('rejects a bundle without manifest', () {
       final archive = writeGz(tar([('./lib/libmpv.so.2', '0', 'MPV')]));
       expect(
-          () => installBundle(archive, sha256Hex(archive.readAsBytesSync()),
-              Directory('${tmp.path}/out')),
-          throwsA(isA<BundleIntegrityException>()));
+        () => installBundle(
+          archive,
+          sha256Hex(archive.readAsBytesSync()),
+          Directory('${tmp.path}/out'),
+        ),
+        throwsA(isA<BundleIntegrityException>()),
+      );
     });
+  });
+
+  group('local bundle directory', () {
+    Directory makeDir(Map<String, String> files, {String? manifest}) {
+      final dir = Directory('${tmp.path}/local');
+      for (final MapEntry(:key, :value) in files.entries) {
+        File('${dir.path}/$key')
+          ..createSync(recursive: true)
+          ..writeAsStringSync(value);
+      }
+      if (manifest != null) {
+        File('${dir.path}/MANIFEST.txt').writeAsStringSync(manifest);
+      }
+      return dir;
+    }
+
+    test('only shared libraries are emitted', () {
+      final dir = makeDir({
+        'lib/libmpv-2.dll': 'a',
+        'lib/libmpv.so.2': 'b',
+        'lib/libfoo.2.dylib': 'c',
+        'lib/libmpv.dll.a': 'x',
+        'lib/libmpv.la': 'x',
+        'lib/pkgconfig/mpv.pc': 'x',
+      });
+      expect(sharedLibrariesIn(dir).map((f) => f.uri.pathSegments.last), [
+        'libfoo.2.dylib',
+        'libmpv-2.dll',
+        'libmpv.so.2',
+      ]);
+    });
+
+    test('verifyDirectory accepts a matching manifest', () {
+      const files = {'lib/libmpv.so.2': 'MPV'};
+      expect(
+        () => verifyDirectory(makeDir(files, manifest: manifestFor(files))),
+        returnsNormally,
+      );
+    });
+
+    test('verifyDirectory rejects a modified file', () {
+      final dir = makeDir({
+        'lib/libmpv.so.2': 'CHANGED',
+      }, manifest: manifestFor({'lib/libmpv.so.2': 'MPV'}));
+      expect(
+        () => verifyDirectory(dir),
+        throwsA(isA<BundleIntegrityException>()),
+      );
+    });
+  });
+
+  test('installBundle replaces an existing extraction atomically', () {
+    const files = {'lib/libmpv.so.2': 'NEW'};
+    final archive = writeGz(
+      tar([
+        ('./lib/libmpv.so.2', '0', 'NEW'),
+        ('./MANIFEST.txt', '0', manifestFor(files)),
+      ]),
+    );
+    final out = Directory('${tmp.path}/out');
+    File('${out.path}/lib/stale.so')
+      ..createSync(recursive: true)
+      ..writeAsStringSync('old');
+    final libs = installBundle(
+      archive,
+      sha256Hex(archive.readAsBytesSync()),
+      out,
+    );
+    expect(libs.map((f) => f.uri.pathSegments.last), ['libmpv.so.2']);
+    expect(File('${out.path}/lib/stale.so').existsSync(), isFalse);
+    // No staging directories are left behind.
+    expect(
+      tmp.listSync().map(
+        (e) => e.uri.pathSegments.where((s) => s.isNotEmpty).last,
+      ),
+      isNot(contains(startsWith('.staging-'))),
+    );
   });
 
   test('bundleTarget covers the six release targets only', () {
@@ -149,9 +250,10 @@ void main() {
 
   test('parseManifest accepts sha256sum and shasum output', () {
     final h = '1' * 64;
-    expect(parseManifest('$h  ./lib/a\n$h *./b\n'),
-        {'lib/a': h, 'b': h});
-    expect(() => parseManifest('nothex  ./a'),
-        throwsA(isA<BundleIntegrityException>()));
+    expect(parseManifest('$h  ./lib/a\n$h *./b\n'), {'lib/a': h, 'b': h});
+    expect(
+      () => parseManifest('nothex  ./a'),
+      throwsA(isA<BundleIntegrityException>()),
+    );
   });
 }

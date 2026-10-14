@@ -4,7 +4,9 @@
 # LGPL gate); the remaining dependencies (libplacebo, libass, dav1d, ...)
 # are LGPL/BSD/MIT packages from each platform's package manager. The
 # bundle is audited (no GPL libraries, FFmpeg resolved from our prefix,
-# exported ABI) and smoke-tested before upload. Pushing a v* tag publishes
+# exported ABI) and the packaged copy itself is tested with the build
+# prefix hidden before upload. macOS bundles currently inherit Homebrew's
+# minimum OS version (reported by the workflow). Pushing a v* tag publishes
 # the bundles to a GitHub Release.
 name: release
 
@@ -71,6 +73,11 @@ jobs:
           nm -D --defined-only dist/libmpv-${{ matrix.target }}/lib/libmpv.so.2 \
             | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - name: Test the packaged bundle (build prefix hidden)
+        run: |
+          mv prefix prefix.hidden
+          LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
+          mv prefix.hidden prefix
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -93,9 +100,12 @@ jobs:
           brew install meson ninja pkgconf nasm dav1d libplacebo libass \
             molten-vk vulkan-headers vulkan-loader dylibbundler
       - name: Build FFmpeg (LGPL)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '12.0'
         run: bash native/build/ffmpeg.sh "$PWD/prefix"
       - name: Build libmpv
         env:
+          MACOSX_DEPLOYMENT_TARGET: '12.0'
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
         run: |
           meson setup out native/mpv $MESON_ARGS -Dswift-build=disabled -Dcocoa=disabled \
@@ -117,6 +127,19 @@ jobs:
           nm -gU dist/libmpv-${{ matrix.target }}/lib/libmpv.2.dylib \
             | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
+      - name: Test the packaged bundle (build prefix hidden)
+        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        run: |
+          mv prefix prefix.hidden
+          DYLD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
+          mv prefix.hidden prefix
+      - name: Report minimum macOS version of the bundle
+        run: |
+          for f in dist/libmpv-${{ matrix.target }}/lib/*.dylib; do
+            printf '%s ' "$(basename "$f")"
+            otool -l "$f" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit}'
+          done | sort -k2 -V | tee minos.txt
+          echo "::notice::bundle requires macOS $(awk '{print $2}' minos.txt | sort -V | tail -1)+"
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -160,6 +183,22 @@ jobs:
           meson install -C out
       - name: Package and audit
         run: bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
+      - uses: dart-lang/setup-dart@v1
+      - name: Test the packaged bundle (MSYS2 hidden)
+        shell: pwsh
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}\dist\libmpv-${{ matrix.target }}\lib\libmpv-2.dll
+        run: |
+          # Dart-only workspace (no Flutter SDK here).
+          (Get-Content pubspec.yaml) | Where-Object { $_ -notmatch 'mpv_kit_video|mpv_kit_libs|example' } | Set-Content pubspec.yaml
+          Remove-Item -Recurse -Force example, packages/mpv_kit_video, packages/mpv_kit_libs
+          dart pub get
+          # Only the bundle, Windows and Dart on PATH: every libmpv
+          # dependency must come from the bundle.
+          $dart = Split-Path (Get-Command dart).Source
+          $env:PATH = "${{ github.workspace }}\dist\libmpv-${{ matrix.target }}\lib;C:\Windows\system32;C:\Windows;$dart"
+          cd packages/mpv_kit
+          dart test
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}

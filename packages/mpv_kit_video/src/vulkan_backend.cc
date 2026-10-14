@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <mutex>
 
 namespace mpv_kit {
 namespace {
@@ -32,30 +33,45 @@ bool HasExtension(const std::vector<VkExtensionProperties>& list,
   });
 }
 
-}  // namespace
+/// Process-wide Vulkan instance shared by every player.
+///
+/// volk keeps its function pointers in globals, so they are loaded exactly
+/// once, before any render thread exists. volkLoadInstance() resolves the
+/// device-level entry points through vkGetInstanceProcAddr, i.e. dispatching
+/// trampolines that are valid for every device — players never call
+/// volkLoadDevice(), which would retarget the globals at one device.
+/// The instance lives until process exit.
+struct SharedInstance {
+  VkInstance instance = VK_NULL_HANDLE;
+  std::string error;
+};
 
-VulkanContext::~VulkanContext() {
-  FreeRing();
-  if (timeline_) vkDestroySemaphore(device_, timeline_, nullptr);
-  if (device_) vkDestroyDevice(device_, nullptr);
-  if (instance_) vkDestroyInstance(instance_, nullptr);
+SharedInstance CreateSharedInstance(VulkanInterop* interop);
+
+const SharedInstance& GetSharedInstance(VulkanInterop* interop) {
+  static SharedInstance shared;
+  static std::once_flag once;
+  std::call_once(once, [interop] { shared = CreateSharedInstance(interop); });
+  return shared;
 }
 
-bool VulkanContext::Init(std::string* error) {
+SharedInstance CreateSharedInstance(VulkanInterop* interop) {
+  SharedInstance out;
   // volk loads vulkan-1.dll / libvulkan.so.1 / MoltenVK at runtime, so a
   // missing loader degrades to the software backend instead of failing to
-  // start the app.
-  if (PFN_vkGetInstanceProcAddr loader = interop_->Loader()) {
+  // start the app. The interop is a per-platform type, so its Loader() and
+  // extension lists are the same for every player.
+  if (PFN_vkGetInstanceProcAddr loader = interop->Loader()) {
     volkInitializeCustom(loader);
   } else if (volkInitialize() != VK_SUCCESS) {
-    *error = "Vulkan loader not found";
-    return false;
+    out.error = "Vulkan loader not found";
+    return out;
   }
   uint32_t loader_version = VK_API_VERSION_1_0;
   if (vkEnumerateInstanceVersion) vkEnumerateInstanceVersion(&loader_version);
   if (loader_version < VK_API_VERSION_1_3) {
-    *error = "Vulkan loader older than 1.3";
-    return false;
+    out.error = "Vulkan loader older than 1.3";
+    return out;
   }
 
   uint32_t count = 0;
@@ -63,7 +79,7 @@ bool VulkanContext::Init(std::string* error) {
   std::vector<VkExtensionProperties> available(count);
   vkEnumerateInstanceExtensionProperties(nullptr, &count, available.data());
 
-  std::vector<const char*> exts = interop_->InstanceExtensions();
+  std::vector<const char*> exts = interop->InstanceExtensions();
   VkInstanceCreateFlags flags = 0;
   if (HasExtension(available, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
     exts.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
@@ -71,8 +87,8 @@ bool VulkanContext::Init(std::string* error) {
   }
   for (const char* e : exts) {
     if (!HasExtension(available, e)) {
-      *error = std::string("missing instance extension ") + e;
-      return false;
+      out.error = std::string("missing instance extension ") + e;
+      return out;
     }
   }
 
@@ -84,11 +100,31 @@ bool VulkanContext::Init(std::string* error) {
   ici.pApplicationInfo = &app;
   ici.enabledExtensionCount = static_cast<uint32_t>(exts.size());
   ici.ppEnabledExtensionNames = exts.data();
-  if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS) {
-    *error = "vkCreateInstance failed";
+  if (vkCreateInstance(&ici, nullptr, &out.instance) != VK_SUCCESS) {
+    out.instance = VK_NULL_HANDLE;
+    out.error = "vkCreateInstance failed";
+    return out;
+  }
+  volkLoadInstance(out.instance);
+  return out;
+}
+
+}  // namespace
+
+VulkanContext::~VulkanContext() {
+  FreeRing();
+  if (timeline_) vkDestroySemaphore(device_, timeline_, nullptr);
+  if (device_) vkDestroyDevice(device_, nullptr);
+  // The instance is shared (GetSharedInstance) and outlives every context.
+}
+
+bool VulkanContext::Init(std::string* error) {
+  const SharedInstance& shared = GetSharedInstance(interop_);
+  if (!shared.instance) {
+    *error = shared.error;
     return false;
   }
-  volkLoadInstance(instance_);
+  instance_ = shared.instance;
   api_version_ = VK_API_VERSION_1_3;
   return PickDevice(error) && CreateDevice(error);
 }
@@ -199,7 +235,7 @@ bool VulkanContext::CreateDevice(std::string* error) {
     *error = "vkCreateDevice failed";
     return false;
   }
-  volkLoadDevice(device_);
+  // No volkLoadDevice(): see GetSharedInstance.
 
   // One timeline semaphore for the whole ring: mpv signals increasing values,
   // the render thread waits on the CPU (no extra queue submissions needed).

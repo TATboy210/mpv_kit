@@ -23,8 +23,18 @@ constexpr VkExternalMemoryHandleTypeFlagBits kHandleType =
 // Flutter only accepts GL_RGBA8 textures.
 constexpr VkFormat kVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-std::mutex graveyard_mutex;
-std::vector<GlInterop::Image*> graveyard;
+// Images of disposed players; safe to free from any populate.
+std::mutex orphans_mutex;
+std::vector<GlInterop::Image*> orphans;
+
+void FreeImages(const std::vector<GlInterop::Image*>& images) {
+  for (GlInterop::Image* img : images) {
+    if (img->texture) glDeleteTextures(1, &img->texture);
+    if (img->memory) glDeleteMemoryObjectsEXT(1, &img->memory);
+    if (img->fd >= 0) close(img->fd);  // never imported
+    delete img;
+  }
+}
 
 /// The same EGL display Flutter's engine renders on (see the engine's
 /// fl_opengl_manager.cc): EGL returns one handle per native display.
@@ -51,11 +61,14 @@ EGLDisplay FlutterEglDisplay() {
 class EglCurrentGuard {
  public:
   EglCurrentGuard()
-      : display_(eglGetCurrentDisplay()),
+      : api_(eglQueryAPI()),
+        display_(eglGetCurrentDisplay()),
         draw_(eglGetCurrentSurface(EGL_DRAW)),
         read_(eglGetCurrentSurface(EGL_READ)),
         context_(eglGetCurrentContext()) {}
   ~EglCurrentGuard() {
+    // The current context is tracked per client API: restore that first.
+    eglBindAPI(api_);
     if (context_ != EGL_NO_CONTEXT) {
       eglMakeCurrent(display_, draw_, read_, context_);
     } else if (fallback_ != EGL_NO_DISPLAY) {
@@ -66,6 +79,7 @@ class EglCurrentGuard {
   void set_fallback(EGLDisplay d) { fallback_ = d; }
 
  private:
+  EGLenum api_;
   EGLDisplay display_;
   EGLSurface draw_, read_;
   EGLContext context_;
@@ -246,22 +260,29 @@ void GlInterop::DestroyImage(VkDevice dev, SharedImage* img) {
 }
 
 void GlInterop::Bury(Image* img) {
-  std::lock_guard<std::mutex> lock(graveyard_mutex);
-  graveyard.push_back(img);
+  std::lock_guard<std::mutex> lock(graveyard_mutex_);
+  graveyard_.push_back(img);
 }
 
 void GlInterop::DrainGraveyard() {
   std::vector<Image*> dead;
   {
-    std::lock_guard<std::mutex> lock(graveyard_mutex);
-    dead.swap(graveyard);
+    std::lock_guard<std::mutex> lock(graveyard_mutex_);
+    dead.swap(graveyard_);
   }
-  for (Image* img : dead) {
-    if (img->texture) glDeleteTextures(1, &img->texture);
-    if (img->memory) glDeleteMemoryObjectsEXT(1, &img->memory);
-    if (img->fd >= 0) close(img->fd);  // never imported
-    delete img;
+  {
+    std::lock_guard<std::mutex> lock(orphans_mutex);
+    dead.insert(dead.end(), orphans.begin(), orphans.end());
+    orphans.clear();
   }
+  FreeImages(dead);
+}
+
+void GlInterop::Orphan() {
+  std::lock_guard<std::mutex> lock(graveyard_mutex_);
+  std::lock_guard<std::mutex> lock2(orphans_mutex);
+  orphans.insert(orphans.end(), graveyard_.begin(), graveyard_.end());
+  graveyard_.clear();
 }
 
 uint32_t GlInterop::TextureFor(Image* img) {
@@ -276,6 +297,7 @@ uint32_t GlInterop::TextureFor(Image* img) {
                       img->fd);
   if (glGetError() != GL_NO_ERROR) {
     img->failed = true;  // fd still ours; closed by the graveyard
+    g_warning("mpv_kit: glImportMemoryFdEXT failed; video stays black");
     return 0;
   }
   img->fd = -1;  // owned by GL now
@@ -295,6 +317,7 @@ uint32_t GlInterop::TextureFor(Image* img) {
     glDeleteTextures(1, &img->texture);
     img->texture = 0;
     img->failed = true;
+    g_warning("mpv_kit: glTexStorageMem2DEXT failed; video stays black");
   }
   return img->texture;
 }

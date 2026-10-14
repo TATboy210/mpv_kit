@@ -65,8 +65,9 @@ List<TarEntry> readTar(Uint8List data) {
         entries.add(TarEntry(_safePath(name), Uint8List.fromList(body)));
       default:
         throw TarFormatException(
-            'unsupported entry type ${String.fromCharCode(type)} '
-            '(${longName ?? _ustarName(header)})');
+          'unsupported entry type ${String.fromCharCode(type)} '
+          '(${longName ?? _ustarName(header)})',
+        );
     }
   }
   return entries;
@@ -87,7 +88,9 @@ String _ustarName(Uint8List h) {
 String _safePath(String raw) {
   final parts = raw.replaceAll('\\', '/').split('/')
     ..removeWhere((p) => p.isEmpty || p == '.');
-  if (raw.startsWith('/') || raw.contains(':') || parts.contains('..') ||
+  if (raw.startsWith('/') ||
+      raw.contains(':') ||
+      parts.contains('..') ||
       parts.isEmpty) {
     throw TarFormatException('unsafe path in archive: $raw');
   }

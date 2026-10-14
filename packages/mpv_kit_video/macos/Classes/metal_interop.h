@@ -36,8 +36,9 @@ class MetalInterop : public Interop, public VulkanInterop {
   PFN_vkGetInstanceProcAddr Loader() override;
   std::vector<const char*> InstanceExtensions() const override { return {}; }
   std::vector<const char*> DeviceExtensions() const override;
-  /// IOSurfaces are shareable between every GPU of the machine.
-  bool AcceptDevice(VkPhysicalDevice) override { return true; }
+  /// The system default Metal device, which Flutter composites on (and
+  /// which MoltenVK reports as deviceLUID = big-endian registryID).
+  bool AcceptDevice(VkPhysicalDevice device) override;
   bool CreateImage(VkPhysicalDevice pd, VkDevice dev, int width, int height,
                    SharedImage* out) override;
   void DestroyImage(VkDevice dev, SharedImage* img) override;
@@ -48,6 +49,7 @@ class MetalInterop : public Interop, public VulkanInterop {
  private:
   std::function<void()> frame_ready_;
   bool metal_ok_ = false;
+  uint64_t registry_id_ = 0;  // of MTLCreateSystemDefaultDevice()
 };
 
 }  // namespace mpv_kit

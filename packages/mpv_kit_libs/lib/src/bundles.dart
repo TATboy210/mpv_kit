@@ -10,8 +10,10 @@ library;
 const bundleTag = '';
 
 /// Download location of the bundle for [target] (e.g. `windows-x64`).
-Uri bundleUrl(String target) => Uri.https('github.com',
-    '/TATboy210/mpv_kit/releases/download/$bundleTag/libmpv-$target.tar.gz');
+Uri bundleUrl(String target) => Uri.https(
+  'github.com',
+  '/TATboy210/mpv_kit/releases/download/$bundleTag/libmpv-$target.tar.gz',
+);
 
 /// sha256 of `libmpv-<target>.tar.gz`, keyed by target.
 const bundleSha256 = <String, String>{};

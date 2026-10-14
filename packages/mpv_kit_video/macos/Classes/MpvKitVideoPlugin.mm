@@ -65,8 +65,13 @@ using mpv_kit::VideoRenderer;
 }
 
 - (void)shutdown {
-  std::lock_guard<std::mutex> lock(_mutex);
-  _dead = true;
+  {
+    // Once dead is set, copyPixelBuffer returns early, so the (possibly
+    // slow) teardown below runs without blocking the raster thread.
+    std::lock_guard<std::mutex> lock(_mutex);
+    if (_dead) return;
+    _dead = true;
+  }
   _renderer.reset();  // joins the render thread, frees the image ring
   _interop.reset();
   if (_swBuffer) CVPixelBufferRelease(_swBuffer);

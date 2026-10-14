@@ -4,6 +4,8 @@
 #import <Metal/Metal.h>
 #include <dlfcn.h>
 
+#include <cstring>
+
 namespace mpv_kit {
 namespace {
 
@@ -26,6 +28,7 @@ MetalInterop::MetalInterop(std::function<void()> frame_ready)
   @autoreleasepool {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     metal_ok_ = device != nil;
+    if (device) registry_id_ = device.registryID;
   }
 }
 
@@ -44,6 +47,18 @@ PFN_vkGetInstanceProcAddr MetalInterop::Loader() {
       return gipa;
   }
   return nullptr;
+}
+
+bool MetalInterop::AcceptDevice(VkPhysicalDevice device) {
+  // Same GPU as the compositor: on dual-GPU Macs an image rendered on the
+  // other GPU would be migrated by the system on every frame.
+  VkPhysicalDeviceIDProperties id{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+  VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &id};
+  vkGetPhysicalDeviceProperties2(device, &props);
+  if (!id.deviceLUIDValid) return true;  // cannot tell; accept
+  uint64_t luid = 0;
+  std::memcpy(&luid, id.deviceLUID, sizeof(luid));
+  return NSSwapBigLongLongToHost(luid) == registry_id_;
 }
 
 std::vector<const char*> MetalInterop::DeviceExtensions() const {

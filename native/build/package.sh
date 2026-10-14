@@ -40,11 +40,21 @@ case "$(uname -s)" in
   Linux)
     # Host libraries every desktop provides (and that must match the host:
     # libc, GPU drivers, display servers). Everything else is bundled.
-    system='^(linux-vdso|ld-linux|libc|libm|libdl|libpthread|librt|libresolv|libstdc\+\+|libgcc_s|libz|libX|libxcb|libwayland|libEGL|libGL|libGLX|libGLdispatch|libgbm|libdrm|libvulkan|libva|libvdpau|libasound|libpulse|libpipewire|libjack|libsystemd|libudev|libdbus|libssl|libcrypto|libexpat|libffi|libuuid|libxkbcommon|libgnutls)'
-    require_prefix_avcodec "$(ldd "$prefix/lib/libmpv.so.2")" "$prefix"
+    # Exact library names (anchored at ".so" so that e.g. libc does not
+    # also match libcairo/libcap). X11 libraries are matched as families.
+    system='^(linux-vdso|ld-linux-[a-z0-9_-]+|libc|libm|libdl|libpthread|librt|libresolv|libstdc\+\+|libgcc_s|libz|libX[a-zA-Z0-9]*|libxcb[a-z0-9-]*|libwayland-[a-z]+|libEGL|libGL|libGLX|libGLdispatch|libgbm|libdrm|libvulkan|libva|libva-[a-z]+|libvdpau|libasound|libpulse|libpulse-simple|libpipewire-[0-9.]+|libjack|libsystemd|libudev|libdbus-1|libssl|libcrypto|libexpat|libffi|libuuid|libxkbcommon|libgnutls)\.so'
+    # meson installs without an rpath; resolve our own libraries from PREFIX.
+    deps=$(LD_LIBRARY_PATH="$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+      ldd "$prefix/lib/libmpv.so.2")
+    if echo "$deps" | grep -q 'not found'; then
+      echo "unresolved libmpv dependencies:" >&2
+      echo "$deps" | grep 'not found' >&2
+      exit 1
+    fi
+    require_prefix_avcodec "$deps" "$prefix"
     # Only the soname file: bundles carry regular files, no symlinks.
     cp -L "$prefix/lib/libmpv.so.2" "$out/lib/"
-    ldd "$prefix/lib/libmpv.so.2" | awk '/=> \//{print $1" "$3}' |
+    echo "$deps" | awk '/=> \//{print $1" "$3}' |
       while read -r name path; do
         if ! echo "$name" | grep -qE "$system"; then cp -L "$path" "$out/lib/$name"; fi
       done

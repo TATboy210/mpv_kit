@@ -114,11 +114,19 @@ class VideoRenderer {
   bool quit_ = false;
 
   // Ring state, guarded by mutex_.
-  static constexpr int kRingSize = 3;
+  //
+  // The compositor samples an image on the GPU some time after taking it,
+  // and no platform tells us when it is done. An image it gave back is
+  // therefore quarantined for kQuarantine further acquisitions (frames)
+  // before it is rendered into again — bounded by the compositor's frame
+  // latency. Ring = front + in use + quarantine + one free image.
+  static constexpr int kQuarantine = 2;
+  static constexpr int kRingSize = kQuarantine + 3;
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
   int in_use_ = -1;                     // frame the compositor holds
+  int quarantine_[kQuarantine] = {-1, -1};  // most recently given back first
   std::atomic<bool> resize_pending_{false};
 };
 

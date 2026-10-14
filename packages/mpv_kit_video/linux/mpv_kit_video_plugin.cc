@@ -34,7 +34,11 @@ struct State {
   std::mutex mutex;  // guards dead/renderer against populate
   bool dead = false;
   FlTextureRegistrar* registrar = nullptr;
+  // Target of frame-available notifications; cleared on dispose.
   std::atomic<FlTexture*> texture{nullptr};
+  // The plugin's reference to the texture object, dropped after the delayed
+  // release in Dispose (the texture in turn references this State).
+  FlTexture* owned_texture = nullptr;
   std::unique_ptr<GlInterop> interop;
   std::unique_ptr<VideoRenderer> renderer;
   // 1x1 black texture shown before the first frame (raster thread only).
@@ -80,14 +84,16 @@ static gboolean mpv_kit_gl_texture_populate(FlTextureGL* texture,
                                             uint32_t* target, uint32_t* name,
                                             uint32_t* width, uint32_t* height,
                                             GError** error) {
-  // Flutter's context is current: the only safe place to delete GL objects.
-  GlInterop::DrainGraveyard();
   mpv_kit::State* st = MPV_KIT_GL_TEXTURE(texture)->state->get();
   std::lock_guard<std::mutex> lock(st->mutex);
   if (st->dead) {
     g_set_error(error, g_quark_from_static_string("mpv_kit"), 1, "disposed");
     return FALSE;
   }
+  // Flutter's context is current: the only safe place to delete GL objects.
+  // This texture is about to hand out a new name, so its own retired images
+  // are no longer drawn.
+  st->interop->DrainGraveyard();
   const mpv_kit::Frame f = st->renderer->AcquireFront();
   GLuint tex = 0;
   if (f.platform) tex = GlInterop::TextureFor(static_cast<GlInterop::Image*>(f.platform));
@@ -286,6 +292,7 @@ class Plugin {
       Error(call, "render_init", "texture registration failed");
       return;
     }
+    raw->owned_texture = texture;
     raw->texture = texture;
     const int64_t id = fl_texture_get_id(texture);
     instances_[id] = st;
@@ -303,25 +310,33 @@ class Plugin {
 
   void Dispose(const StatePtr& st) {
     {
-      // Excludes populate; the render thread is joined inside reset() and
-      // buries every shared image for GL-side cleanup.
+      // Once dead is set, populate returns early without touching the
+      // renderer, so the (possibly slow) teardown runs outside the lock.
       std::lock_guard<std::mutex> lock(st->mutex);
       st->dead = true;
-      st->renderer.reset();
-      if (st->placeholder) GlInterop::Bury(st->placeholder);
-      st->placeholder = nullptr;
     }
-    st->interop.reset();
-    FlTexture* texture = st->texture.exchange(nullptr);
-    if (!texture) return;
-    fl_texture_registrar_unregister_texture(textures_, texture);
+    st->texture.store(nullptr);  // no more frame-available notifications
+    // Joins the render thread; buries every shared image for GL cleanup.
+    st->renderer.reset();
+    if (st->placeholder) st->interop->Bury(st->placeholder);
+    st->placeholder = nullptr;
+    // The interop (and its graveyard) must outlive the engine's last use of
+    // the texture: keep the state alive until the delayed release below.
+    if (st->owned_texture)
+      fl_texture_registrar_unregister_texture(textures_, st->owned_texture);
+    auto* hold = new StatePtr(st);
     g_timeout_add(
         kTextureReleaseDelayMs,
-        [](gpointer t) -> gboolean {
-          g_object_unref(t);
+        [](gpointer data) -> gboolean {
+          auto* held = static_cast<StatePtr*>(data);
+          // The engine no longer draws the texture: its images may be freed
+          // by whichever populate runs next (any player).
+          (*held)->interop->Orphan();
+          if ((*held)->owned_texture) g_object_unref((*held)->owned_texture);
+          delete held;
           return G_SOURCE_REMOVE;
         },
-        texture);
+        hold);
   }
 
   static void Error(FlMethodCall* call, const char* code, const char* msg) {

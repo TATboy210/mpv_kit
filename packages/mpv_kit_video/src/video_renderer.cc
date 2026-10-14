@@ -134,6 +134,11 @@ void VideoRenderer::SetSize(int width, int height) {
 
 Frame VideoRenderer::AcquireFront() {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (in_use_ != front_ && in_use_ >= 0) {
+    // The compositor moves on from in_use_: quarantine it (see header).
+    for (int i = kQuarantine - 1; i > 0; i--) quarantine_[i] = quarantine_[i - 1];
+    quarantine_[0] = in_use_;
+  }
   in_use_ = front_;
   Frame f;
   f.index = front_;
@@ -150,11 +155,14 @@ Frame VideoRenderer::AcquireFront() {
 }
 
 int VideoRenderer::PickBackBuffer() {
-  // Never the frame being displayed nor the one the compositor last took.
+  // Never the frame being displayed, the one the compositor holds, or one
+  // it may still be sampling (quarantined).
   for (int i = 0; i < kRingSize; i++) {
-    if (i != front_ && i != in_use_) return i;
+    bool busy = i == front_ || i == in_use_;
+    for (int q : quarantine_) busy = busy || i == q;
+    if (!busy) return i;
   }
-  return 0;  // unreachable with kRingSize >= 3
+  return 0;  // unreachable: kRingSize leaves one image free
 }
 
 void VideoRenderer::RenderLoop() {
@@ -183,6 +191,7 @@ bool VideoRenderer::RenderOnce() {
     h = height_ > 0 ? height_ : kPlaceholderSize;
     if (w != ring_w_ || h != ring_h_) {
       front_ = in_use_ = -1;  // old images are about to be replaced
+      for (int& q : quarantine_) q = -1;
     }
     back = PickBackBuffer();
   }
@@ -232,7 +241,8 @@ bool VideoRenderer::RenderOnce() {
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
     err = api_.render_context_render(render_ctx_, params);
-    img.initialized = true;
+    // Only a successful render transitions the image out of UNDEFINED.
+    if (err >= 0) img.initialized = true;
     // The compositor reads without GPU sync, so complete the frame first.
     if (err >= 0 && !vulkan_->WaitImage(back)) {
       log_("mpv_kit: GPU did not finish the frame within 1 s");

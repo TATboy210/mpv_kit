@@ -21,14 +21,14 @@ final class BundleIntegrityException implements Exception {
 /// Bundle target key (`<os>-<arch>`) used in release asset names, or null
 /// when no bundle is built for the combination.
 String? bundleTarget(String os, String arch) => switch ((os, arch)) {
-      ('windows', 'x64') => 'windows-x64',
-      ('windows', 'arm64') => 'windows-arm64',
-      ('linux', 'x64') => 'linux-x64',
-      ('linux', 'arm64') => 'linux-arm64',
-      ('macos', 'arm64') => 'macos-arm64',
-      ('macos', 'x64') => 'macos-x64',
-      _ => null,
-    };
+  ('windows', 'x64') => 'windows-x64',
+  ('windows', 'arm64') => 'windows-arm64',
+  ('linux', 'x64') => 'linux-x64',
+  ('linux', 'arm64') => 'linux-arm64',
+  ('macos', 'arm64') => 'macos-arm64',
+  ('macos', 'x64') => 'macos-x64',
+  _ => null,
+};
 
 String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
 
@@ -55,8 +55,9 @@ void verifyEntries(List<TarEntry> entries) {
   if (manifestEntry.length != 1) {
     throw BundleIntegrityException('bundle has no MANIFEST.txt');
   }
-  final manifest =
-      parseManifest(String.fromCharCodes(manifestEntry.single.bytes));
+  final manifest = parseManifest(
+    String.fromCharCodes(manifestEntry.single.bytes),
+  );
   final files = {
     for (final e in entries)
       if (e.path != 'MANIFEST.txt') e.path: e,
@@ -72,49 +73,101 @@ void verifyEntries(List<TarEntry> entries) {
   }
 }
 
-/// Extracts a verified archive into [dir] (created fresh) and returns the
-/// paths of the shared libraries under `lib/`.
+/// Whether [name] is a shared library the OS loader can map.
+bool isSharedLibrary(String name) =>
+    name.endsWith('.dll') ||
+    name.endsWith('.dylib') ||
+    RegExp(r'\.so(\.\d+)*$').hasMatch(name);
+
+/// Shared libraries directly under `<dir>/lib`; symlinks are skipped (the
+/// files they point at are listed themselves).
+List<File> sharedLibrariesIn(Directory dir) {
+  final lib = Directory('${dir.path}/lib');
+  if (!lib.existsSync()) return const [];
+  return [
+    for (final e in lib.listSync(followLinks: false))
+      if (e is File && isSharedLibrary(e.uri.pathSegments.last)) e,
+  ]..sort((a, b) => a.path.compareTo(b.path));
+}
+
+/// Verifies an extracted bundle directory against its MANIFEST.txt.
+void verifyDirectory(Directory dir) {
+  final manifestFile = File('${dir.path}/MANIFEST.txt');
+  if (!manifestFile.existsSync()) {
+    throw BundleIntegrityException('${dir.path} has no MANIFEST.txt');
+  }
+  final manifest = parseManifest(manifestFile.readAsStringSync());
+  for (final MapEntry(key: path, value: hash) in manifest.entries) {
+    final f = File('${dir.path}/$path');
+    if (!f.existsSync() || sha256Hex(f.readAsBytesSync()) != hash) {
+      throw BundleIntegrityException(
+        '${dir.path}: $path does not match MANIFEST.txt',
+      );
+    }
+  }
+}
+
+/// Extracts a verified archive into [dir] and returns its shared libraries.
+///
+/// Extraction goes to a sibling temporary directory that is renamed into
+/// place, so concurrent builds never observe a half-written bundle.
 List<File> installBundle(File archive, String expectedSha256, Directory dir) {
   final bytes = archive.readAsBytesSync();
   final actual = sha256Hex(bytes);
   if (actual != expectedSha256) {
     throw BundleIntegrityException(
-        '${archive.path}: sha256 $actual, expected $expectedSha256');
+      '${archive.path}: sha256 $actual, expected $expectedSha256',
+    );
   }
   final entries = readTar(Uint8List.fromList(gzip.decode(bytes)));
   verifyEntries(entries);
 
-  if (dir.existsSync()) dir.deleteSync(recursive: true);
-  final libs = <File>[];
-  for (final e in entries) {
-    final file = File('${dir.path}/${e.path}');
-    file.parent.createSync(recursive: true);
-    file.writeAsBytesSync(e.bytes, flush: true);
-    if (e.path.startsWith('lib/')) libs.add(file);
+  dir.parent.createSync(recursive: true);
+  final staging = dir.parent.createTempSync('.staging-');
+  try {
+    for (final e in entries) {
+      final file = File('${staging.path}/${e.path}');
+      file.parent.createSync(recursive: true);
+      file.writeAsBytesSync(e.bytes, flush: true);
+    }
+    if (!Platform.isWindows) {
+      // tar modes are not restored; shared libraries need to be mappable.
+      Process.runSync('chmod', ['-R', 'u+rwX,go+rX', staging.path]);
+    }
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+    staging.renameSync(dir.path);
+  } finally {
+    if (staging.existsSync()) staging.deleteSync(recursive: true);
   }
-  if (!Platform.isWindows) {
-    // tar modes are not restored; shared libraries need to be mappable.
-    Process.runSync('chmod', ['-R', 'u+rwX,go+rX', dir.path]);
-  }
-  return libs;
+  return sharedLibrariesIn(dir);
 }
 
 /// Downloads [url] to [target] (honours HTTPS_PROXY/HTTP_PROXY/NO_PROXY).
+///
+/// Writes to a uniquely named temporary file that is renamed into place.
 Future<void> download(Uri url, File target) async {
   final client = HttpClient()
-    ..findProxy = (uri) => HttpClient.findProxyFromEnvironment(uri,
-        environment: Platform.environment);
+    ..connectionTimeout = const Duration(seconds: 30)
+    ..idleTimeout = const Duration(seconds: 30)
+    ..findProxy = (uri) => HttpClient.findProxyFromEnvironment(
+      uri,
+      environment: Platform.environment,
+    );
+  target.parent.createSync(recursive: true);
+  final part = File(
+    '${target.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.part',
+  );
   try {
     final request = await client.getUrl(url);
     final response = await request.close();
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException('HTTP ${response.statusCode}', uri: url);
     }
-    target.parent.createSync(recursive: true);
-    final part = File('${target.path}.part');
-    await response.pipe(part.openWrite());
+    // A stalled transfer must not hang the build forever.
+    await response.timeout(const Duration(seconds: 60)).pipe(part.openWrite());
     part.renameSync(target.path);
   } finally {
     client.close(force: true);
+    if (part.existsSync()) part.deleteSync();
   }
 }
