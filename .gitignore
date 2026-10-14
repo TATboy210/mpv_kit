@@ -1,0 +1,7 @@
+.dart_tool/
+build/
+*.iml
+.idea/
+coverage/
+pubspec.lock
+native/out/
