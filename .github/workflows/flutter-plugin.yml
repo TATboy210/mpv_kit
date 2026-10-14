@@ -1,0 +1,51 @@
+# Build tier for the Flutter plugin: compiles mpv_kit_video's native code
+# (with Flutter's -Werror / /WX settings) through the example app, and runs
+# analyzer + widget tests. libmpv is loaded at runtime, so it is not needed
+# to build.
+name: flutter-plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.6
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux
+          - runner: windows-2025
+            target: windows
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Analyze plugin and example
+        run: |
+          cd packages/mpv_kit_video && flutter analyze --fatal-infos
+          cd ../../example && flutter analyze --fatal-infos
+      - name: Build example (${{ matrix.target }})
+        working-directory: example
+        run: flutter build ${{ matrix.target }} --debug

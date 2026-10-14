@@ -62,7 +62,7 @@ jobs:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
         run: |
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
-          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
+          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
 
@@ -112,7 +112,7 @@ jobs:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.2.dylib
         run: |
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
-          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
+          sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
 
@@ -207,6 +207,7 @@ jobs:
           $env:PATH = "${{ github.workspace }}\stage;$env:PATH"
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml
+          Remove-Item -Recurse -Force example, packages/mpv_kit_video
           dart pub get
           cd packages/mpv_kit
           dart analyze --fatal-infos
