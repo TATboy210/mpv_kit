@@ -20,7 +20,7 @@ env:
   MESON_ARGS: >-
     -Dlibmpv=true -Dcplayer=false -Dgpl=false
     -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
-    -Drubberband=disabled -Dlibavdevice=disabled -Dtests=false
+    -Drubberband=disabled -Dtests=false
     --buildtype=release
 
 jobs:
@@ -46,7 +46,11 @@ jobs:
             libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
             mesa-vulkan-drivers zlib1g-dev
       - name: Build FFmpeg (LGPL)
-        run: bash native/build/ffmpeg.sh "$PWD/prefix" --enable-vaapi
+        # Ubuntu 24.04 ships Vulkan headers 1.3.275; FFmpeg 8.1 needs >= 1.3.277,
+        # so FFmpeg alone is built against the vendored (pinned) headers.
+        run: |
+          bash native/build/ffmpeg.sh "$PWD/prefix" --enable-vaapi \
+            --extra-cflags="-I$PWD/packages/mpv_kit_video/third_party/vulkan-headers/include"
       - name: Build libmpv
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig

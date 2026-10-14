@@ -33,6 +33,9 @@ fi
 rm -rf "ffmpeg-$FFMPEG_VERSION"
 tar xJf "$tarball"
 cd "ffmpeg-$FFMPEG_VERSION"
+# On case-insensitive filesystems libc++'s <version> header resolves to this
+# file through -I. ; version.sh then takes the version from RELEASE instead.
+rm -f VERSION
 
 platform_args=()
 case "$(uname -s)" in
@@ -50,12 +53,13 @@ case "$(uname -s)" in
 esac
 
 # No --enable-gpl / --enable-nonfree / --enable-version3: LGPL-2.1-or-later.
-# Programs, docs and libavdevice are not used by libmpv.
+# Programs and docs are not used by libmpv; of libavdevice only the lavfi
+# input device is kept (mpv's av://lavfi: sources, used by the tests).
 ./configure \
   --prefix="$prefix" \
   --enable-shared --disable-static \
   --disable-programs --disable-doc --disable-debug \
-  --disable-avdevice \
+  --disable-indevs --enable-indev=lavfi --disable-outdevs \
   --enable-pic \
   --enable-libdav1d \
   --enable-vulkan \
