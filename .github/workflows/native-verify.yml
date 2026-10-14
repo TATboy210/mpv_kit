@@ -55,7 +55,7 @@ jobs:
         run: |
           vulkaninfo --summary || true
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
+          meson test -C tests-out --print-errorlogs --verbose || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
       - name: Dart core tests
         env:
@@ -92,7 +92,7 @@ jobs:
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
         run: |
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
+          meson test -C tests-out --print-errorlogs --verbose || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - uses: dart-lang/setup-dart@v1
       - name: Dart core tests
         env:
@@ -146,7 +146,7 @@ jobs:
           update: true
           pacboy: >-
             toolchain:p meson:p ninja:p pkgconf:p ffmpeg:p libplacebo:p
-            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p
+            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p ntldd:p
       - uses: msys2/setup-msys2@v2
         if: steps.msys2.outcome == 'failure'
         with:
@@ -154,7 +154,7 @@ jobs:
           update: true
           pacboy: >-
             toolchain:p meson:p ninja:p pkgconf:p ffmpeg:p libplacebo:p
-            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p
+            libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p ntldd:p
       - name: Build libmpv
         run: |
           meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled --prefix="$PWD/prefix"
@@ -166,12 +166,17 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig" PATH="$PWD/prefix/bin:$PATH"
           meson setup tests-out native/tests
-          meson test -C tests-out --print-errorlogs || { cat tests-out/meson-logs/testlog.txt; exit 1; }
+          meson test -C tests-out --print-errorlogs --verbose || { cat tests-out/meson-logs/testlog.txt; exit 1; }
       - name: Stage DLL closure for Dart tests
         run: |
           mkdir -p stage
           cp prefix/bin/libmpv-2.dll stage/
-          ldd prefix/bin/libmpv-2.dll | awk '/\/(clang64|clangarm64)\// {print $3}' | xargs -I{} cp {} stage/
+          # ntldd reads PE imports natively (msys2's ldd is unreliable on arm64).
+          ntldd -R prefix/bin/libmpv-2.dll | tr -d '\r' \
+            | grep -iE '[\/](clang64|clangarm64)[\/]bin[\/]' \
+            | sed -E 's/.*=> (.*) \(0x[0-9a-fA-F]+\)$/\1/' \
+            | while read -r dll; do cp "$(cygpath -u "$dll")" stage/; done
+          ls stage
           cp -r prefix/include stage/
       - uses: actions/upload-artifact@v4
         with:

@@ -117,8 +117,8 @@ void main() {
       mpv.command(['loadfile', _lavfi]);
       await loaded;
       expect(mpv.getProperty('width'), 320);
-      // lavfi 是流式源，mpv 报告的 duration 不可靠，仅断言类型
-      expect(mpv.getProperty('duration'), isA<double>());
+      // lavfi is a stream: duration may be unavailable or approximate.
+      expect(mpv.tryGetProperty('duration'), anyOf(isNull, isA<double>()));
       final end = await ended;
       expect(end.reason, EndFileReason.eof);
     });

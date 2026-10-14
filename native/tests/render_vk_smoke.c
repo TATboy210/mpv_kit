@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#ifdef __APPLE__
+#include <dlfcn.h>
+#endif
 #include <time.h>
 
 #include <mpv/client.h>
@@ -53,6 +56,16 @@ int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+#ifdef __APPLE__
+    // MoltenVK aborts the process (instead of failing) without a Metal
+    // device, e.g. on GPU-less VMs. Probe Metal first.
+    void *metal = dlopen("/System/Library/Frameworks/Metal.framework/Metal", RTLD_LAZY);
+    void *(*create_dev)(void) = metal ? (void *(*)(void))dlsym(metal, "MTLCreateSystemDefaultDevice") : NULL;
+    if (!create_dev || !create_dev()) {
+        fprintf(stderr, "SKIP: no Metal device\n");
+        return 77;
+    }
+#endif
     step("create instance");
     // --- Vulkan instance / device ------------------------------------------
     VkApplicationInfo app = {
