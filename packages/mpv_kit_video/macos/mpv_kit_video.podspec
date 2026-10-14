@@ -13,7 +13,6 @@ Pod::Spec.new do |s|
   s.dependency 'FlutterMacOS'
   s.platform = :osx, '10.15'
   s.frameworks = 'Metal', 'CoreVideo', 'IOSurface'
-  s.library = 'c++'
   # Shared renderer, mpv headers and vendored Vulkan headers/volk live next
   # to this directory in the package.
   s.pod_target_xcconfig = {
@@ -25,6 +24,9 @@ Pod::Spec.new do |s|
       '"${PODS_TARGET_SRCROOT}/../third_party/vulkan-headers/include"',
       '"${PODS_TARGET_SRCROOT}/../third_party/volk"',
     ].join(' '),
+    # ObjC++ (.mm) does not auto-link modules, so FlutterMacOS must be
+    # linked explicitly (flutter_tools only adds its search path).
+    'OTHER_LDFLAGS' => '$(inherited) -framework FlutterMacOS',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) VK_NO_PROTOTYPES=1 VK_USE_PLATFORM_METAL_EXT=1',
   }
   s.swift_version = '5.0'
