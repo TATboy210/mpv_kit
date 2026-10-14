@@ -7,10 +7,6 @@
 namespace mpv_kit {
 namespace {
 
-// Placeholder target before the widget reports its size, so mpv keeps
-// presenting (vo_libmpv expects frames to be consumed).
-constexpr int kPlaceholderSize = 16;
-
 }  // namespace
 
 VideoRenderer::VideoRenderer(const MpvApi& api, mpv_handle* handle,
@@ -138,6 +134,7 @@ Frame VideoRenderer::AcquireFront() {
   // frame counts as presented (vsync timing / display-resample).
   const bool presented = swap_pending_ && front_ >= 0;
   if (presented) swap_pending_ = false;
+  last_acquire_ = std::chrono::steady_clock::now();
   if (in_use_ != front_ && in_use_ >= 0) {
     // The compositor moves on from in_use_: quarantine it (see header).
     for (int i = kQuarantine - 1; i > 0; i--) quarantine_[i] = quarantine_[i - 1];
@@ -197,17 +194,40 @@ void VideoRenderer::RenderLoop() {
     const uint64_t flags = api_.render_context_update(render_ctx_);
     // A resize must redraw even when paused (no new frame from mpv).
     if ((flags & MPV_RENDER_UPDATE_FRAME) || resized) {
-      if (!RenderOnce()) log_("mpv_kit: frame render failed");
+      bool sized;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        sized = width_ > 0 && height_ > 0;
+      }
+      if (sized) {
+        if (!RenderOnce()) log_("mpv_kit: frame render failed");
+      } else {
+        SkipFrame();
+      }
     }
   }
+}
+
+void VideoRenderer::SkipFrame() {
+  // No target size yet (widget not laid out): let mpv advance its frame
+  // state without drawing, instead of rendering (and compiling shaders
+  // for) a throwaway placeholder. vo_libmpv still expects a render call
+  // and a swap for every frame.
+  int skip = 1;
+  mpv_render_param params[] = {
+      {MPV_RENDER_PARAM_SKIP_RENDERING, &skip},
+      {MPV_RENDER_PARAM_INVALID, nullptr},
+  };
+  api_.render_context_render(render_ctx_, params);
+  api_.render_context_report_swap(render_ctx_);
 }
 
 bool VideoRenderer::RenderOnce() {
   int w, h, back;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    w = width_ > 0 ? width_ : kPlaceholderSize;
-    h = height_ > 0 ? height_ : kPlaceholderSize;
+    w = width_;
+    h = height_;
     if (w != ring_w_ || h != ring_h_) {
       front_ = in_use_ = -1;  // old images are about to be replaced
       for (int& q : quarantine_) q = -1;
@@ -287,15 +307,19 @@ bool VideoRenderer::RenderOnce() {
     log_(std::string("mpv_kit: render: ") + api_.error_string(err));
     return false;
   }
-  bool superseded;
+  int swaps = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     front_ = back;
     // The previous frame was never displayed: it still counts as swapped.
-    superseded = swap_pending_;
-    swap_pending_ = true;
+    if (swap_pending_) swaps++;
+    const bool consuming = std::chrono::steady_clock::now() - last_acquire_ <
+                           kPresentTimeout;
+    // Without an active consumer, report this frame right away.
+    swap_pending_ = consuming;
+    if (!consuming) swaps++;
   }
-  if (superseded) api_.render_context_report_swap(render_ctx_);
+  for (int i = 0; i < swaps; i++) api_.render_context_report_swap(render_ctx_);
   interop_->FrameReady();
   return true;
 }

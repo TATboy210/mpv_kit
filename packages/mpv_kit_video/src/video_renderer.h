@@ -88,6 +88,7 @@ class VideoRenderer {
   static void OnMpvUpdate(void* self);
   void RenderLoop();
   bool RenderOnce();
+  void SkipFrame();
   bool StartVulkan();
   bool StartSoftware();
   int PickBackBuffer();
@@ -116,6 +117,10 @@ class VideoRenderer {
   // the compositor first takes it, or after kPresentTimeout without one.
   bool swap_pending_ = false;
   static constexpr std::chrono::milliseconds kPresentTimeout{50};
+  // Last time the compositor took a frame. Swaps are only deferred to the
+  // compositor while it is actively consuming (not before the texture is
+  // first shown, not while the window is hidden).
+  std::chrono::steady_clock::time_point last_acquire_{};
   bool quit_ = false;
 
   // Ring state, guarded by mutex_.

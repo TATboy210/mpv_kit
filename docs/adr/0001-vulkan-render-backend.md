@@ -29,3 +29,14 @@ future upstream values; `MPV_CLIENT_API_VERSION` is not bumped.
 * OpenGL and SW remain as fallbacks (device without Vulkan 1.3, missing
   interop extensions, adapter mismatch).
 * We must build libmpv ourselves on all targets (ADR 0002).
+
+## Findings while enabling Vulkan hwdec (2026-10-15)
+
+* libplacebo leaves `pl_vulkan.extensions` empty for imported devices, so
+  mpv's hwdec_vulkan gave FFmpeg no extensions and Vulkan Video decoding
+  silently fell back to `*-copy` hwdecs. Patch 0002 passes the host's list.
+  Verified on an RTX 4060: `Using hardware decoding (vulkan)`.
+* The legacy renderer's disk shader cache (`gpu-shader-cache`) is a no-op
+  on the libplacebo `ra`: `ra_pl` never fills `cached_program`. First
+  frames therefore pay SPIR-V compilation (~0.4 s, a few dropped frames at
+  start). A gpu-next based backend (libplacebo `pl_cache`) would fix this.
