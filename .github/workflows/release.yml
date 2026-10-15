@@ -89,7 +89,8 @@ jobs:
           bash tools/make_format_samples.sh samples
           sed -i.bak -e "/mpv_kit_video/d" -e "/mpv_kit_libs/d" -e "/example/d" pubspec.yaml
           rm -rf example packages/mpv_kit_video packages/mpv_kit_libs
-          mv prefix prefix.hidden
+          # The smoke step may have stopped with the prefix still hidden.
+          [ -d prefix ] && mv prefix prefix.hidden
           dart pub get
           cd packages/mpv_kit
           dart test -x format -x devices
@@ -166,7 +167,8 @@ jobs:
           bash tools/make_format_samples.sh samples
           sed -i.bak -e "/mpv_kit_video/d" -e "/mpv_kit_libs/d" -e "/example/d" pubspec.yaml
           rm -rf example packages/mpv_kit_video packages/mpv_kit_libs
-          mv prefix prefix.hidden
+          # The smoke step may have stopped with the prefix still hidden.
+          [ -d prefix ] && mv prefix prefix.hidden
           dart pub get
           cd packages/mpv_kit
           dart test -x format -x devices
@@ -244,7 +246,9 @@ jobs:
           dart test -x format -x devices
           dart test -j 1 -r expanded test/format_matrix_test.dart
           # Runners have no audio endpoint; enumeration there is diagnostic.
-          dart test -r expanded test/audio_devices_test.dart || echo "::warning::audio device enumeration failed on this runner"
+          dart test -r expanded test/audio_devices_test.dart
+          if ($LASTEXITCODE -ne 0) { Write-Output "::warning::audio device enumeration failed on this runner" }
+          $global:LASTEXITCODE = 0
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
