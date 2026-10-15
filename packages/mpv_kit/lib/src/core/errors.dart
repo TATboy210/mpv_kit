@@ -56,8 +56,6 @@ enum MpvError {
   final int code;
 
   /// 由数值查找；未知值返回 [unknown]。
-  static MpvError fromCode(int code) => values.firstWhere(
-        (e) => e.code == code,
-        orElse: () => unknown,
-      );
+  static MpvError fromCode(int code) =>
+      values.firstWhere((e) => e.code == code, orElse: () => unknown);
 }

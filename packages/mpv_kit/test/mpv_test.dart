@@ -16,20 +16,18 @@ import 'package:test/test.dart';
 /// 2 秒彩条 + 正弦音的 lavfi 合成源。
 const _lavfi = 'av://lavfi:testsrc2=size=320x240:rate=30:duration=2';
 
-Mpv _create() => Mpv.create(options: const {
-      'vo': 'null',
-      'ao': 'null',
-      'idle': 'yes',
-      'terminal': 'no',
-    });
+Mpv _create() => Mpv.create(
+  options: const {'vo': 'null', 'ao': 'null', 'idle': 'yes', 'terminal': 'no'},
+);
 
-Future<T> _firstWhere<T extends MpvEventData>(Mpv mpv,
-        [bool Function(T)? test]) =>
-    mpv.events
-        .where((e) => e is T && (test == null || test(e)))
-        .cast<T>()
-        .first
-        .timeout(const Duration(seconds: 10));
+Future<T> _firstWhere<T extends MpvEventData>(
+  Mpv mpv, [
+  bool Function(T)? test,
+]) => mpv.events
+    .where((e) => e is T && (test == null || test(e)))
+    .cast<T>()
+    .first
+    .timeout(const Duration(seconds: 10));
 
 void main() {
   group('library', () {
@@ -64,8 +62,10 @@ void main() {
     });
 
     test('rejects unsupported types', () {
-      expect(() => using((a) => writeNode(DateTime(2000), a)),
-          throwsArgumentError);
+      expect(
+        () => using((a) => writeNode(DateTime(2000), a)),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -93,9 +93,15 @@ void main() {
 
     test('errors map to MpvException with typed code', () {
       expect(
-          () => mpv.getProperty('no-such-property'),
-          throwsA(isA<MpvException>().having(
-              (e) => e.error, 'error', MpvError.propertyNotFound)));
+        () => mpv.getProperty('no-such-property'),
+        throwsA(
+          isA<MpvException>().having(
+            (e) => e.error,
+            'error',
+            MpvError.propertyNotFound,
+          ),
+        ),
+      );
       expect(mpv.tryGetProperty('duration'), isNull);
     });
 
@@ -107,8 +113,10 @@ void main() {
     test('async property round-trip', () async {
       await mpv.setPropertyAsync('volume', 10);
       expect(await mpv.getPropertyAsync('volume'), 10.0);
-      await expectLater(mpv.getPropertyAsync('nope'),
-          throwsA(isA<MpvException>()));
+      await expectLater(
+        mpv.getPropertyAsync('nope'),
+        throwsA(isA<MpvException>()),
+      );
     });
 
     test('plays synthetic media and emits lifecycle events', () async {
@@ -173,9 +181,12 @@ void main() {
       mpv.dispose();
       expect(mpv.isDisposed, isTrue);
       // 可能已在 dispose 前收到应答，二者均合法
-      await pending.then((_) {}, onError: (Object e) {
-        expect(e, isA<StateError>());
-      });
+      await pending.then(
+        (_) {},
+        onError: (Object e) {
+          expect(e, isA<StateError>());
+        },
+      );
     });
   });
 

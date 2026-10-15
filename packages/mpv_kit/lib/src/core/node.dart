@@ -30,8 +30,10 @@ Object? readNode(Pointer<MpvNode> node) {
     case MpvFormat.nodeArray:
       final list = n.u.list.ref;
       return List<Object?>.generate(
-          list.num, (i) => readNode(list.values + i),
-          growable: false);
+        list.num,
+        (i) => readNode(list.values + i),
+        growable: false,
+      );
     case MpvFormat.nodeMap:
       final list = n.u.list.ref;
       return <String, Object?>{
@@ -49,8 +51,10 @@ Object? readNode(Pointer<MpvNode> node) {
 /// 以 UTF-8 解码 C 字符串（mpv 保证 UTF-8，非法序列替换为 U+FFFD）。
 String readUtf8(Pointer<Utf8> p) {
   if (p == nullptr) return '';
-  return utf8.decode(p.cast<Uint8>().asTypedList(p.length),
-      allowMalformed: true);
+  return utf8.decode(
+    p.cast<Uint8>().asTypedList(p.length),
+    allowMalformed: true,
+  );
 }
 
 /// 在 [arena] 中构造与 [value] 等价的 `mpv_node`；arena 释放时整体回收。
@@ -97,12 +101,18 @@ void _fill(Pointer<MpvNode> node, Object? value, Arena arena) {
       n.u.list = _list(map.values.toList(), map.keys.toList(), arena);
     default:
       throw ArgumentError.value(
-          value, 'value', 'Unsupported type ${value.runtimeType} for mpv_node');
+        value,
+        'value',
+        'Unsupported type ${value.runtimeType} for mpv_node',
+      );
   }
 }
 
 Pointer<MpvNodeList> _list(
-    List<Object?> values, List<String>? keys, Arena arena) {
+  List<Object?> values,
+  List<String>? keys,
+  Arena arena,
+) {
   final list = arena<MpvNodeList>();
   final count = values.length;
   // calloc(0) 可能返回 nullptr，分配至少 1 个元素保持指针有效

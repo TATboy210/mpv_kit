@@ -28,6 +28,10 @@ mpv_get_wakeup_pipe
 mpv_hook_add
 mpv_hook_continue
 mpv_initialize
+mpv_kit_stream_add
+mpv_kit_stream_begin
+mpv_kit_stream_complete
+mpv_kit_stream_shutdown
 mpv_load_config_file
 mpv_observe_property
 mpv_render_context_create
@@ -52,7 +56,3 @@ mpv_unobserve_property
 mpv_wait_async_requests
 mpv_wait_event
 mpv_wakeup
-mpv_kit_stream_add
-mpv_kit_stream_begin
-mpv_kit_stream_complete
-mpv_kit_stream_shutdown

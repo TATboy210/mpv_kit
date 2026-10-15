@@ -26,12 +26,22 @@ sealed class MpvEventData {
       MpvEventId.shutdown => ShutdownEvent(ud, err),
       MpvEventId.logMessage => _log(data.cast(), ud, err),
       MpvEventId.getPropertyReply => GetPropertyReplyEvent(
-          ud, err, _prop(data.cast()).$1, _prop(data.cast()).$2),
+        ud,
+        err,
+        _prop(data.cast()).$1,
+        _prop(data.cast()).$2,
+      ),
       MpvEventId.setPropertyReply => SetPropertyReplyEvent(ud, err),
-      MpvEventId.commandReply => CommandReplyEvent(ud, err,
-          data == nullptr ? null : readNode(data.cast<MpvEventCommand>().cast())),
-      MpvEventId.startFile =>
-        StartFileEvent(ud, err, data.cast<MpvEventStartFile>().ref.playlistEntryId),
+      MpvEventId.commandReply => CommandReplyEvent(
+        ud,
+        err,
+        data == nullptr ? null : readNode(data.cast<MpvEventCommand>().cast()),
+      ),
+      MpvEventId.startFile => StartFileEvent(
+        ud,
+        err,
+        data.cast<MpvEventStartFile>().ref.playlistEntryId,
+      ),
       MpvEventId.endFile => _endFile(data.cast(), ud, err),
       MpvEventId.fileLoaded => FileLoadedEvent(ud, err),
       MpvEventId.idle => IdleEvent(ud, err),
@@ -42,11 +52,18 @@ sealed class MpvEventData {
       MpvEventId.seek => SeekEvent(ud, err),
       MpvEventId.playbackRestart => PlaybackRestartEvent(ud, err),
       MpvEventId.propertyChange => PropertyChangeEvent(
-          ud, err, _prop(data.cast()).$1, _prop(data.cast()).$2),
+        ud,
+        err,
+        _prop(data.cast()).$1,
+        _prop(data.cast()).$2,
+      ),
       MpvEventId.queueOverflow => QueueOverflowEvent(ud, err),
-      MpvEventId.hook => HookEvent(ud, err,
-          readUtf8(data.cast<MpvEventHook>().ref.name),
-          data.cast<MpvEventHook>().ref.id),
+      MpvEventId.hook => HookEvent(
+        ud,
+        err,
+        readUtf8(data.cast<MpvEventHook>().ref.name),
+        data.cast<MpvEventHook>().ref.id,
+      ),
       final id => UnknownEvent(ud, err, id),
     };
   }
@@ -62,21 +79,38 @@ sealed class MpvEventData {
 
   static LogMessageEvent _log(Pointer<MpvEventLogMessage> p, int ud, int err) {
     final r = p.ref;
-    return LogMessageEvent(ud, err, readUtf8(r.prefix), readUtf8(r.level),
-        readUtf8(r.text), r.logLevel);
+    return LogMessageEvent(
+      ud,
+      err,
+      readUtf8(r.prefix),
+      readUtf8(r.level),
+      readUtf8(r.text),
+      r.logLevel,
+    );
   }
 
   static EndFileEvent _endFile(Pointer<MpvEventEndFile> p, int ud, int err) {
     final r = p.ref;
-    return EndFileEvent(ud, err, EndFileReason.fromCode(r.reason), r.error,
-        r.playlistEntryId, r.playlistInsertId, r.playlistInsertNumEntries);
+    return EndFileEvent(
+      ud,
+      err,
+      EndFileReason.fromCode(r.reason),
+      r.error,
+      r.playlistEntryId,
+      r.playlistInsertId,
+      r.playlistInsertNumEntries,
+    );
   }
 
   static ClientMessageEvent _clientMessage(
-      Pointer<MpvEventClientMessage> p, int ud, int err) {
+    Pointer<MpvEventClientMessage> p,
+    int ud,
+    int err,
+  ) {
     final r = p.ref;
-    return ClientMessageEvent(ud, err,
-        [for (var i = 0; i < r.numArgs; i++) readUtf8((r.args + i).value)]);
+    return ClientMessageEvent(ud, err, [
+      for (var i = 0; i < r.numArgs; i++) readUtf8((r.args + i).value),
+    ]);
   }
 }
 
@@ -87,8 +121,14 @@ final class ShutdownEvent extends MpvEventData {
 
 /// 日志消息（需先 requestLogMessages）。
 final class LogMessageEvent extends MpvEventData {
-  const LogMessageEvent(super.ud, super.err, this.prefix, this.level, this.text,
-      this.logLevel);
+  const LogMessageEvent(
+    super.ud,
+    super.err,
+    this.prefix,
+    this.level,
+    this.text,
+    this.logLevel,
+  );
   final String prefix;
   final String level;
   final String text;
@@ -138,8 +178,15 @@ enum EndFileReason {
 
 /// 文件结束或被中断。
 final class EndFileEvent extends MpvEventData {
-  const EndFileEvent(super.ud, super.err, this.reason, this.fileError,
-      this.playlistEntryId, this.playlistInsertId, this.playlistInsertNumEntries);
+  const EndFileEvent(
+    super.ud,
+    super.err,
+    this.reason,
+    this.fileError,
+    this.playlistEntryId,
+    this.playlistInsertId,
+    this.playlistInsertNumEntries,
+  );
   final EndFileReason reason;
 
   /// reason==error 时的 mpv 错误码。

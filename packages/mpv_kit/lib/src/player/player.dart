@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 
+import '../core/errors.dart';
 import '../core/events.dart';
 import '../core/mpv.dart';
 import 'models.dart';
@@ -37,6 +38,11 @@ final class MpvState<T> {
 }
 
 /// 高层播放器。
+///
+/// Commands fall in two groups: playback (open, seek, playlist) and
+/// rendering/audio adjustments (delays, filters, image adjustments). Both
+/// are thin, documented wrappers over mpv properties and commands, so the
+/// behaviour is mpv's own (see `mpv(1)` for each property).
 final class Player {
   /// 创建播放器。[options] 在 `mpv_initialize` 前生效（如 `hwdec`、`vo`）。
   ///
@@ -46,14 +52,17 @@ final class Player {
     Map<String, String> options = const {},
     String? libraryPath,
   }) {
-    final mpv = Mpv.create(libraryPath: libraryPath, options: {
-      'vo': 'libmpv',
-      'hwdec': 'auto-safe',
-      'keep-open': 'yes',
-      'idle': 'yes',
-      'terminal': 'no',
-      ...options,
-    });
+    final mpv = Mpv.create(
+      libraryPath: libraryPath,
+      options: {
+        'vo': 'libmpv',
+        'hwdec': 'auto-safe',
+        'keep-open': 'yes',
+        'idle': 'yes',
+        'terminal': 'no',
+        ...options,
+      },
+    );
     return Player._(mpv);
   }
 
@@ -65,23 +74,60 @@ final class Player {
     _bind('idle-active', idle, (v) => v == true);
     _bind('eof-reached', completed, (v) => v == true);
     _bind('paused-for-cache', buffering, (v) => v == true);
+    _bind('cache-buffering-state', bufferingPercent, (v) => nodeInt(v) ?? 0);
+    _bind('seeking', seeking, (v) => v == true);
     _bind('time-pos', position, (v) => secondsToDuration(v) ?? Duration.zero);
     _bind('duration', duration, (v) => secondsToDuration(v) ?? Duration.zero);
-    _bind('demuxer-cache-duration', bufferedAhead,
-        (v) => secondsToDuration(v) ?? Duration.zero);
+    _bind(
+      'demuxer-cache-duration',
+      bufferedAhead,
+      (v) => secondsToDuration(v) ?? Duration.zero,
+    );
     _bind('volume', volume, (v) => (v as num?)?.toDouble() ?? 100);
     _bind('mute', muted, (v) => v == true);
     _bind('speed', speed, (v) => (v as num?)?.toDouble() ?? 1);
     _bind('media-title', title, (v) => v as String?);
     _bind('path', path, (v) => v as String?);
-    _bind('track-list', tracks, (v) => _maps(v).map(MpvTrack.fromNode).toList());
-    _bind('playlist', playlist,
-        (v) => _maps(v).map(MpvPlaylistEntry.fromNode).toList());
+    _bind(
+      'track-list',
+      tracks,
+      (v) => _maps(v).map(MpvTrack.fromNode).toList(),
+    );
+    _bind('vid', videoTrack, _trackId);
+    _bind('aid', audioTrack, _trackId);
+    _bind('sid', subtitleTrack, _trackId);
+    _bind('sub-text', subtitleText, (v) => v as String? ?? '');
+    _bind('sub-visibility', subtitlesVisible, (v) => v != false);
+    _bind(
+      'sub-delay',
+      subtitleDelay,
+      (v) => secondsToDuration(v) ?? Duration.zero,
+    );
+    _bind(
+      'audio-delay',
+      audioDelay,
+      (v) => secondsToDuration(v) ?? Duration.zero,
+    );
+    _bind(
+      'playlist',
+      playlist,
+      (v) => _maps(v).map(MpvPlaylistEntry.fromNode).toList(),
+    );
     _bind('playlist-pos', playlistIndex, (v) => (v as int?) ?? -1);
-    _bind('chapter-list', chapters,
-        (v) => _maps(v).map(MpvChapter.fromNode).toList());
-    _bind('video-params', videoParams,
-        (v) => v is Map<String, Object?> ? MpvVideoParams.fromNode(v) : null);
+    // `inf` / a count / `no` (false): any value but `no` loops.
+    _bind('loop-file', loopFile, (v) => v != false && v != 'no');
+    _bind('loop-playlist', loopPlaylist, (v) => v != false && v != 'no');
+    _bind(
+      'chapter-list',
+      chapters,
+      (v) => _maps(v).map(MpvChapter.fromNode).toList(),
+    );
+    _bind('chapter', chapter, (v) => nodeInt(v) ?? -1);
+    _bind(
+      'video-params',
+      videoParams,
+      (v) => v is Map<String, Object?> ? MpvVideoParams.fromNode(v) : null,
+    );
     _bind('hwdec-current', hwdecCurrent, (v) => v as String?);
     _subs.add(mpv.events.listen(_onEvent));
   }
@@ -91,13 +137,24 @@ final class Player {
 
   final _subs = <StreamSubscription<Object?>>[];
   final _states = <MpvState<Object?>>[];
-  final _errors = StreamController<EndFileEvent>.broadcast();
+  final _errors = StreamController<MpvPlaybackError>.broadcast();
+  final _logs = StreamController<LogMessageEvent>.broadcast();
+  final _disposeHooks = <Future<void> Function()>[];
+  var _disposed = false;
 
-  // --- State -------------------------------------------------------------
+  // --- Playback state ----------------------------------------------------
   final paused = MpvState<bool>._(true);
   final idle = MpvState<bool>._(true);
   final completed = MpvState<bool>._(false);
+
+  /// Playback waits for the network cache (`paused-for-cache`).
   final buffering = MpvState<bool>._(false);
+
+  /// Cache fill while [buffering], 0–100 (`cache-buffering-state`).
+  final bufferingPercent = MpvState<int>._(0);
+
+  /// A seek is in progress (`seeking`).
+  final seeking = MpvState<bool>._(false);
   final position = MpvState<Duration>._(Duration.zero);
   final duration = MpvState<Duration>._(Duration.zero);
   final bufferedAhead = MpvState<Duration>._(Duration.zero);
@@ -106,35 +163,89 @@ final class Player {
   final speed = MpvState<double>._(1);
   final title = MpvState<String?>._(null);
   final path = MpvState<String?>._(null);
+
+  // --- Tracks and subtitles ----------------------------------------------
   final tracks = MpvState<List<MpvTrack>>._(const []);
+
+  /// Selected track ids (`vid`/`aid`/`sid`), null when disabled.
+  final videoTrack = MpvState<int?>._(null);
+  final audioTrack = MpvState<int?>._(null);
+  final subtitleTrack = MpvState<int?>._(null);
+
+  /// Text of the current subtitle line (`sub-text`), empty between lines.
+  final subtitleText = MpvState<String>._('');
+  final subtitlesVisible = MpvState<bool>._(true);
+  final subtitleDelay = MpvState<Duration>._(Duration.zero);
+  final audioDelay = MpvState<Duration>._(Duration.zero);
+
+  // --- Playlist and chapters ---------------------------------------------
   final playlist = MpvState<List<MpvPlaylistEntry>>._(const []);
   final playlistIndex = MpvState<int>._(-1);
+  final loopFile = MpvState<bool>._(false);
+  final loopPlaylist = MpvState<bool>._(false);
   final chapters = MpvState<List<MpvChapter>>._(const []);
+
+  /// Current chapter index, -1 before the first chapter / without chapters.
+  final chapter = MpvState<int>._(-1);
+
+  // --- Video -------------------------------------------------------------
   final videoParams = MpvState<MpvVideoParams?>._(null);
 
   /// 实际生效的硬解后端（如 `vulkan`、`d3d11va`），软解时为 null/`no`。
   final hwdecCurrent = MpvState<String?>._(null);
 
-  /// 播放失败（END_FILE reason=error）事件流。
-  Stream<EndFileEvent> get errors => _errors.stream;
+  /// Files that failed to load (`end-file` with reason `error`).
+  Stream<MpvPlaybackError> get errors => _errors.stream;
 
-  // --- Commands ----------------------------------------------------------
+  /// mpv log messages at or above the level set with [setLogLevel].
+  Stream<LogMessageEvent> get logs => _logs.stream;
 
-  /// 打开媒体（替换当前播放）。
-  Future<void> open(String url, {bool play = true, Duration? start}) async {
+  // --- Opening -----------------------------------------------------------
+
+  /// 打开媒体（替换当前播放）。[options] are per-file options (e.g.
+  /// `{'sub-file': path}`), [start] the initial position.
+  Future<void> open(
+    String url, {
+    bool play = true,
+    Duration? start,
+    Map<String, String>? options,
+  }) async {
     mpv.setProperty('pause', !play);
     await mpv.commandAsync({
       'name': 'loadfile',
       'url': url,
       'flags': 'replace',
-      if (start != null) 'options': {'start': '${start.inMicroseconds / 1e6}'},
+      if (start != null || options != null)
+        'options': {...?options, if (start != null) 'start': _seconds(start)},
     }).result;
+  }
+
+  /// Replaces the playlist with [urls] and starts playing [startIndex].
+  Future<void> openPlaylist(
+    List<String> urls, {
+    int startIndex = 0,
+    bool play = true,
+  }) async {
+    if (urls.isEmpty) {
+      stop();
+      return;
+    }
+    RangeError.checkValidIndex(startIndex, urls, 'startIndex');
+    mpv.setProperty('pause', !play);
+    // `stop` clears the playlist; appended entries do not start playback
+    // on their own, so the chosen entry is started explicitly.
+    mpv.command(['stop']);
+    for (final url in urls) {
+      await mpv.commandAsync(['loadfile', url, 'append']).result;
+    }
+    mpv.command(['playlist-play-index', startIndex]);
   }
 
   /// 追加到播放列表末尾。
   Future<void> add(String url) =>
       mpv.commandAsync(['loadfile', url, 'append']).result;
 
+  // --- Transport ---------------------------------------------------------
   void play() => mpv.setProperty('pause', false);
   void pause() => mpv.setProperty('pause', true);
   void playOrPause() => mpv.command(['cycle', 'pause']);
@@ -142,42 +253,190 @@ final class Player {
 
   /// 跳转到绝对位置；[exact] 为 true 时逐帧精确（较慢）。
   Future<void> seek(Duration to, {bool exact = false}) => mpv.commandAsync([
+    'seek',
+    _seconds(to),
+    exact ? 'absolute+exact' : 'absolute+keyframes',
+  ]).result;
+
+  /// Seeks by [delta] relative to the current position.
+  Future<void> seekRelative(Duration delta, {bool exact = false}) =>
+      mpv.commandAsync([
         'seek',
-        '${to.inMicroseconds / 1e6}',
-        exact ? 'absolute+exact' : 'absolute+keyframes',
+        _seconds(delta),
+        exact ? 'relative+exact' : 'relative',
       ]).result;
 
+  /// Steps one frame forward (pauses), or backward with [backward].
+  void frameStep({bool backward = false}) =>
+      mpv.command([backward ? 'frame-back-step' : 'frame-step']);
+
+  /// Loops between [a] and [b] (`ab-loop-a`/`ab-loop-b`); null clears a
+  /// point.
+  void setAbLoop(Duration? a, Duration? b) {
+    mpv.setProperty('ab-loop-a', a == null ? 'no' : _seconds(a));
+    mpv.setProperty('ab-loop-b', b == null ? 'no' : _seconds(b));
+  }
+
+  // --- Playlist ----------------------------------------------------------
   void next() => mpv.command(['playlist-next']);
   void previous() => mpv.command(['playlist-prev']);
-  void jump(int index) => mpv.setProperty('playlist-pos', index);
+
+  /// Plays playlist entry [index].
+  void jump(int index) => mpv.command(['playlist-play-index', index]);
   void move(int from, int to) => mpv.command(['playlist-move', from, to]);
   void remove(int index) => mpv.command(['playlist-remove', index]);
 
+  /// Removes every entry except the one playing.
+  void clearPlaylist() => mpv.command(['playlist-clear']);
+
+  /// Shuffles the playlist (`playlist-shuffle`); [unshufflePlaylist]
+  /// restores the original order.
+  void shufflePlaylist() => mpv.command(['playlist-shuffle']);
+  void unshufflePlaylist() => mpv.command(['playlist-unshuffle']);
+
+  /// Repeats the current file.
+  void setLoopFile(bool loop) =>
+      mpv.setProperty('loop-file', loop ? 'inf' : 'no');
+
+  /// Repeats the whole playlist.
+  void setLoopPlaylist(bool loop) =>
+      mpv.setProperty('loop-playlist', loop ? 'inf' : 'no');
+
+  /// Seeks to chapter [index].
+  void setChapter(int index) => mpv.setProperty('chapter', index);
+
+  // --- Audio -------------------------------------------------------------
   void setVolume(double v) => mpv.setProperty('volume', v);
   void setMute(bool m) => mpv.setProperty('mute', m);
   void setSpeed(double s) => mpv.setProperty('speed', s);
 
+  /// Positive values delay audio relative to video.
+  void setAudioDelay(Duration d) => mpv.setProperty('audio-delay', _sec(d));
+
+  /// Audio filter chain in mpv `--af` syntax (e.g. an equalizer
+  /// `lavfi=[superequalizer=...]`); null or empty removes all filters.
+  void setAudioFilters(String? filters) =>
+      mpv.setPropertyString('af', filters ?? '');
+
+  // --- Tracks and subtitles ----------------------------------------------
+
   /// 选择轨道；传 null 关闭该类型（`no`）。
-  void selectTrack(MpvTrackType type, int? id) => mpv.setProperty(
-        switch (type) {
-          MpvTrackType.video => 'vid',
-          MpvTrackType.audio => 'aid',
-          MpvTrackType.sub || MpvTrackType.unknown => 'sid',
-        },
-        id ?? 'no',
-      );
+  void selectTrack(MpvTrackType type, int? id) =>
+      mpv.setProperty(switch (type) {
+        MpvTrackType.video => 'vid',
+        MpvTrackType.audio => 'aid',
+        MpvTrackType.sub || MpvTrackType.unknown => 'sid',
+      }, id ?? 'no');
 
   /// 加载外挂字幕。
   Future<void> addSubtitle(String url, {bool select = true}) =>
       mpv.commandAsync(['sub-add', url, select ? 'select' : 'auto']).result;
 
-  /// 释放 mpv 与全部状态流。
+  /// Shows or hides subtitles without deselecting the track.
+  void setSubtitlesVisible(bool visible) =>
+      mpv.setProperty('sub-visibility', visible);
+
+  /// Positive values show subtitles later.
+  void setSubtitleDelay(Duration d) => mpv.setProperty('sub-delay', _sec(d));
+
+  // --- Video -------------------------------------------------------------
+
+  /// Sets an image adjustment to [value] in -100..100.
+  void setVideoAdjustment(MpvVideoAdjustment adjustment, int value) =>
+      mpv.setProperty(adjustment.property, value.clamp(-100, 100));
+
+  /// Rotation in degrees (multiples of 90), on top of the file's own.
+  void setRotation(int degrees) =>
+      mpv.setProperty('video-rotate', degrees % 360);
+
+  /// Display aspect ratio override (e.g. 16 / 9); null restores the file's.
+  void setAspectRatio(double? ratio) =>
+      mpv.setProperty('video-aspect-override', ratio ?? -1.0);
+
+  /// Deinterlacing (`deinterlace`): true forces it on, false off.
+  void setDeinterlace(bool enable) => mpv.setProperty('deinterlace', enable);
+
+  /// Hardware decoding mode, e.g. `auto-safe`, `vulkan`, `no`. Takes effect
+  /// for the next decoder (mpv reinitialises the current one).
+  void setHardwareDecoding(String mode) => mpv.setPropertyString('hwdec', mode);
+
+  /// Current frame as raw pixels (`screenshot-raw`). With
+  /// [includeSubtitles] the subtitles are drawn in (video resolution).
+  Future<MpvScreenshot?> screenshot({bool includeSubtitles = false}) async {
+    final node = await mpv.commandAsync([
+      'screenshot-raw',
+      includeSubtitles ? 'subtitles' : 'video',
+    ]).result;
+    return MpvScreenshot.fromNode(node);
+  }
+
+  /// Writes the current frame to [file]; the extension picks the format
+  /// (`.png`, `.jpg`, `.webp`).
+  Future<void> screenshotToFile(String file, {bool includeSubtitles = false}) =>
+      mpv.commandAsync([
+        'screenshot-to-file',
+        file,
+        includeSubtitles ? 'subtitles' : 'video',
+      ]).result;
+
+  /// Codec and stream facts of the current file.
+  MpvMediaInfo mediaInfo() {
+    Object? p(String name) => mpv.tryGetProperty(name);
+    final vp = videoParams.value;
+    return MpvMediaInfo(
+      path: p('path') as String?,
+      fileFormat: p('file-format') as String?,
+      fileSize: nodeInt(p('file-size')),
+      duration: secondsToDuration(p('duration')),
+      videoCodec: p('video-codec') as String?,
+      width: vp?.width,
+      height: vp?.height,
+      fps: (p('container-fps') as num?)?.toDouble(),
+      videoBitrate: nodeInt(p('video-bitrate')),
+      pixelFormat: vp?.pixelFormat,
+      hwdec: switch (p('hwdec-current')) {
+        final String s when s != 'no' && s.isNotEmpty => s,
+        _ => null,
+      },
+      audioCodec: p('audio-codec') as String?,
+      audioSampleRate: nodeInt(p('audio-params/samplerate')),
+      audioChannels: nodeInt(p('audio-params/channel-count')),
+      audioBitrate: nodeInt(p('audio-bitrate')),
+    );
+  }
+
+  // --- Diagnostics -------------------------------------------------------
+
+  /// Enables [logs] at [level] (`no`, `fatal`, `error`, `warn`, `info`,
+  /// `v`, `debug`, `trace`).
+  void setLogLevel(String level) => mpv.requestLogMessages(level);
+
+  // --- Lifetime ----------------------------------------------------------
+
+  /// Runs [hook] at the start of [dispose], before the mpv core is
+  /// destroyed. Render contexts (mpv_kit_video) use this: libmpv requires
+  /// them to be freed first.
+  void addDisposeHook(Future<void> Function() hook) => _disposeHooks.add(hook);
+
+  /// Undoes [addDisposeHook].
+  void removeDisposeHook(Future<void> Function() hook) =>
+      _disposeHooks.remove(hook);
+
+  /// 释放 mpv 与全部状态流。Idempotent.
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    // Copy: hooks remove themselves while running.
+    for (final hook in List.of(_disposeHooks)) {
+      await hook();
+    }
+    _disposeHooks.clear();
     for (final s in _subs) {
       await s.cancel();
     }
     mpv.dispose();
     await _errors.close();
+    await _logs.close();
     for (final s in _states) {
       await s._close();
     }
@@ -191,13 +450,32 @@ final class Player {
   }
 
   void _onEvent(MpvEventData e) {
-    if (e case EndFileEvent(reason: EndFileReason.error)) _errors.add(e);
-    if (e is ShutdownEvent) {
-      for (final s in _states) {
-        s._reset();
-      }
+    switch (e) {
+      case EndFileEvent(reason: EndFileReason.error):
+        _errors.add(
+          MpvPlaybackError(
+            error: MpvError.fromCode(e.fileError),
+            message: mpv.errorString(e.fileError),
+            playlistEntryId: e.playlistEntryId,
+          ),
+        );
+      case LogMessageEvent():
+        if (!_logs.isClosed) _logs.add(e);
+      case ShutdownEvent():
+        for (final s in _states) {
+          s._reset();
+        }
+      default:
+        break;
     }
   }
+
+  /// `vid`/`aid`/`sid`: a track id, or `no`/false when disabled.
+  static int? _trackId(Object? v) => v is bool ? null : nodeInt(v);
+
+  static String _seconds(Duration d) => '${d.inMicroseconds / 1e6}';
+
+  static double _sec(Duration d) => d.inMicroseconds / 1e6;
 
   static Iterable<Map<String, Object?>> _maps(Object? v) =>
       v is List<Object?> ? v.whereType<Map<String, Object?>>() : const [];

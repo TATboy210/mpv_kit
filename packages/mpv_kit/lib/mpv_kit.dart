@@ -5,6 +5,8 @@
 /// * [Player] — typed high-level player state and commands.
 /// * [mpvProperties], [mpvCommands], [mpvOptions] — catalog generated from
 ///   the bundled mpv documentation.
+/// * [MpvOptions] — every option of the bundled libmpv as a typed
+///   [MpvOption], for [Mpv.getOptionValue] / [Mpv.setOptionValue].
 /// * [MpvBindings] — raw symbol table for anything not wrapped.
 library;
 
@@ -12,9 +14,13 @@ export 'src/core/errors.dart';
 export 'src/core/events.dart';
 export 'src/core/mpv.dart';
 export 'src/core/node.dart' show readNode, writeNode;
+export 'src/core/stream_bridge.dart'
+    show MpvMemoryStreamSource, MpvStreamOpener, MpvStreamSource;
 export 'src/ffi/bindings.dart';
 export 'src/ffi/library.dart';
 export 'src/generated/catalog.dart';
 export 'src/generated/catalog_types.dart';
-export 'src/player/models.dart' hide secondsToDuration;
+export 'src/generated/option_types.dart';
+export 'src/generated/options.dart';
+export 'src/player/models.dart' hide secondsToDuration, nodeInt;
 export 'src/player/player.dart';

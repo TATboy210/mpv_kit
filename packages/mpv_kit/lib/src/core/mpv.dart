@@ -13,9 +13,11 @@ import 'package:ffi/ffi.dart';
 
 import '../ffi/bindings.dart';
 import '../ffi/library.dart';
+import '../generated/option_types.dart';
 import 'errors.dart';
 import 'events.dart';
 import 'node.dart';
+import 'stream_bridge.dart';
 
 /// 一个 mpv 客户端（主句柄或通过 [createClient] 派生的子客户端）。
 final class Mpv {
@@ -41,8 +43,11 @@ final class Mpv {
     final b = MpvLibrary.open(path: libraryPath);
     final h = b.create();
     if (h == nullptr) {
-      throw const MpvException(-2, 'mpv_create returned NULL',
-          operation: 'create');
+      throw const MpvException(
+        -2,
+        'mpv_create returned NULL',
+        operation: 'create',
+      );
     }
     final mpv = Mpv._(b, h, owner: true);
     try {
@@ -90,6 +95,7 @@ final class Mpv {
   final _events = StreamController<MpvEventData>.broadcast(sync: true);
   final _pending = <int, Completer<Object?>>{};
   final _observers = <int, StreamController<Object?>>{};
+  final _streamBridges = <StreamBridge>[];
   var _nextId = 1;
   var _disposed = false;
 
@@ -124,16 +130,22 @@ final class Mpv {
           : bindings.createClient(handle, n);
     });
     if (h == nullptr) {
-      throw const MpvException(-2, 'client creation failed',
-          operation: 'create_client');
+      throw const MpvException(
+        -2,
+        'client creation failed',
+        operation: 'create_client',
+      );
     }
     return Mpv._(bindings, h, owner: false);
   }
 
   /// `mpv_load_config_file`。
-  void loadConfigFile(String path) => using((a) => _check(
+  void loadConfigFile(String path) => using(
+    (a) => _check(
       bindings.loadConfigFile(handle, path.toNativeUtf8(allocator: a)),
-      'load_config_file($path)'));
+      'load_config_file($path)',
+    ),
+  );
 
   /// 销毁句柄。主句柄使用 `mpv_terminate_destroy` 终止核心。
   ///
@@ -144,7 +156,16 @@ final class Mpv {
     _disposed = true;
     bindings.setWakeupCallback(handle, nullptr, nullptr);
     _wakeup.close();
+    // Unblock mpv threads waiting on Dart stream sources, or destroying the
+    // core would wait for them forever (this isolate is busy right here).
+    for (final b in _streamBridges) {
+      b.shutdown();
+    }
     (_owner ? bindings.terminateDestroy : bindings.destroy)(handle);
+    for (final b in _streamBridges) {
+      b.close();
+    }
+    _streamBridges.clear();
     for (final c in _pending.values) {
       c.completeError(StateError('mpv handle disposed'));
     }
@@ -161,16 +182,29 @@ final class Mpv {
   // ---------------------------------------------------------------------
 
   /// `mpv_set_option_string`。
-  void setOptionString(String name, String value) => using((a) => _check(
-      bindings.setOptionString(handle, name.toNativeUtf8(allocator: a),
-          value.toNativeUtf8(allocator: a)),
-      'set_option($name)'));
+  void setOptionString(String name, String value) => using(
+    (a) => _check(
+      bindings.setOptionString(
+        handle,
+        name.toNativeUtf8(allocator: a),
+        value.toNativeUtf8(allocator: a),
+      ),
+      'set_option($name)',
+    ),
+  );
 
   /// `mpv_set_option`（MPV_FORMAT_NODE）。
-  void setOption(String name, Object? value) => using((a) => _check(
-      bindings.setOption(handle, name.toNativeUtf8(allocator: a),
-          MpvFormat.node, writeNode(value, a).cast()),
-      'set_option($name)'));
+  void setOption(String name, Object? value) => using(
+    (a) => _check(
+      bindings.setOption(
+        handle,
+        name.toNativeUtf8(allocator: a),
+        MpvFormat.node,
+        writeNode(value, a).cast(),
+      ),
+      'set_option($name)',
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // Commands
@@ -181,20 +215,25 @@ final class Mpv {
   /// [args] may be a positional list (`['loadfile', path]`) or a named map
   /// (`{'name': 'loadfile', 'url': path}`).
   Object? command(Object args) => using((a) {
-        final result = a<MpvNode>();
-        _check(bindings.commandNode(handle, writeNode(args, a), result),
-            'command(${_describe(args)})');
-        try {
-          return readNode(result);
-        } finally {
-          bindings.freeNodeContents(result);
-        }
-      });
+    final result = a<MpvNode>();
+    _check(
+      bindings.commandNode(handle, writeNode(args, a), result),
+      'command(${_describe(args)})',
+    );
+    try {
+      return readNode(result);
+    } finally {
+      bindings.freeNodeContents(result);
+    }
+  });
 
   /// `mpv_command_string`：解析 input.conf 语法的命令串。
-  void commandString(String command) => using((a) => _check(
+  void commandString(String command) => using(
+    (a) => _check(
       bindings.commandString(handle, command.toNativeUtf8(allocator: a)),
-      'command_string($command)'));
+      'command_string($command)',
+    ),
+  );
 
   /// `mpv_command_node_async`：异步命令，结果经 COMMAND_REPLY 事件返回。
   ///
@@ -219,35 +258,56 @@ final class Mpv {
   // ---------------------------------------------------------------------
 
   /// `mpv_set_property`（MPV_FORMAT_NODE，自动类型转换）。
-  void setProperty(String name, Object? value) => using((a) => _check(
-      bindings.setProperty(handle, name.toNativeUtf8(allocator: a),
-          MpvFormat.node, writeNode(value, a).cast()),
-      'set_property($name)'));
+  void setProperty(String name, Object? value) => using(
+    (a) => _check(
+      bindings.setProperty(
+        handle,
+        name.toNativeUtf8(allocator: a),
+        MpvFormat.node,
+        writeNode(value, a).cast(),
+      ),
+      'set_property($name)',
+    ),
+  );
 
   /// `mpv_set_property_string`。
-  void setPropertyString(String name, String value) => using((a) => _check(
-      bindings.setPropertyString(handle, name.toNativeUtf8(allocator: a),
-          value.toNativeUtf8(allocator: a)),
-      'set_property($name)'));
+  void setPropertyString(String name, String value) => using(
+    (a) => _check(
+      bindings.setPropertyString(
+        handle,
+        name.toNativeUtf8(allocator: a),
+        value.toNativeUtf8(allocator: a),
+      ),
+      'set_property($name)',
+    ),
+  );
 
   /// `mpv_del_property`。
-  void deleteProperty(String name) => using((a) => _check(
+  void deleteProperty(String name) => using(
+    (a) => _check(
       bindings.delProperty(handle, name.toNativeUtf8(allocator: a)),
-      'del_property($name)'));
+      'del_property($name)',
+    ),
+  );
 
   /// `mpv_get_property`（MPV_FORMAT_NODE）。
   Object? getProperty(String name) => using((a) {
-        final node = a<MpvNode>();
-        _check(
-            bindings.getProperty(handle, name.toNativeUtf8(allocator: a),
-                MpvFormat.node, node.cast()),
-            'get_property($name)');
-        try {
-          return readNode(node);
-        } finally {
-          bindings.freeNodeContents(node);
-        }
-      });
+    final node = a<MpvNode>();
+    _check(
+      bindings.getProperty(
+        handle,
+        name.toNativeUtf8(allocator: a),
+        MpvFormat.node,
+        node.cast(),
+      ),
+      'get_property($name)',
+    );
+    try {
+      return readNode(node);
+    } finally {
+      bindings.freeNodeContents(node);
+    }
+  });
 
   /// 读取属性，不可用/不存在时返回 null 而不是抛错。
   Object? tryGetProperty(String name) {
@@ -264,17 +324,17 @@ final class Mpv {
 
   /// `mpv_get_property_string` / `mpv_get_property_osd_string`。
   String? getPropertyString(String name, {bool osd = false}) => using((a) {
-        final n = name.toNativeUtf8(allocator: a);
-        final p = osd
-            ? bindings.getPropertyOsdString(handle, n)
-            : bindings.getPropertyString(handle, n);
-        if (p == nullptr) return null;
-        try {
-          return readUtf8(p);
-        } finally {
-          bindings.free(p.cast());
-        }
-      });
+    final n = name.toNativeUtf8(allocator: a);
+    final p = osd
+        ? bindings.getPropertyOsdString(handle, n)
+        : bindings.getPropertyString(handle, n);
+    if (p == nullptr) return null;
+    try {
+      return readUtf8(p);
+    } finally {
+      bindings.free(p.cast());
+    }
+  });
 
   /// `mpv_set_property_async`。
   Future<void> setPropertyAsync(String name, Object? value) {
@@ -282,9 +342,13 @@ final class Mpv {
     final c = Completer<Object?>();
     _pending[id] = c;
     using((a) {
-      final rc = bindings.setPropertyAsync(handle, id,
-          name.toNativeUtf8(allocator: a), MpvFormat.node,
-          writeNode(value, a).cast());
+      final rc = bindings.setPropertyAsync(
+        handle,
+        id,
+        name.toNativeUtf8(allocator: a),
+        MpvFormat.node,
+        writeNode(value, a).cast(),
+      );
       if (rc < 0) {
         _pending.remove(id);
         c.completeError(_error(rc, 'set_property_async($name)'));
@@ -300,7 +364,11 @@ final class Mpv {
     _pending[id] = c;
     using((a) {
       final rc = bindings.getPropertyAsync(
-          handle, id, name.toNativeUtf8(allocator: a), MpvFormat.node);
+        handle,
+        id,
+        name.toNativeUtf8(allocator: a),
+        MpvFormat.node,
+      );
       if (rc < 0) {
         _pending.remove(id);
         c.completeError(_error(rc, 'get_property_async($name)'));
@@ -319,7 +387,11 @@ final class Mpv {
       sync: true,
       onListen: () => using((a) {
         final rc = bindings.observeProperty(
-            handle, id, name.toNativeUtf8(allocator: a), MpvFormat.node);
+          handle,
+          id,
+          name.toNativeUtf8(allocator: a),
+          MpvFormat.node,
+        );
         if (rc < 0) {
           controller.addError(_error(rc, 'observe_property($name)'));
           unawaited(controller.close());
@@ -336,26 +408,83 @@ final class Mpv {
     return controller.stream;
   }
 
+  /// Reads [option] (see `MpvOptions`) as its Dart type; null when the
+  /// value is unavailable (e.g. `no` for an optional number).
+  T? getOptionValue<T extends Object>(MpvOption<T> option) {
+    final Object? v = switch (option.type) {
+      MpvOptionType.flag => switch (tryGetProperty(option.name)) {
+        final bool b => b,
+        _ => null,
+      },
+      MpvOptionType.integer => switch (tryGetProperty(option.name)) {
+        final int i => i,
+        final double d => d.round(),
+        _ => null,
+      },
+      MpvOptionType.real => switch (tryGetProperty(option.name)) {
+        final num n => n.toDouble(),
+        _ => null,
+      },
+      MpvOptionType.choice ||
+      MpvOptionType.string => getPropertyString(option.name),
+    };
+    return v is T ? v : null;
+  }
+
+  /// Sets [option] at runtime after checking the declared choices/range.
+  /// Init-only options must be passed to [Mpv.create] instead.
+  void setOptionValue<T extends Object>(MpvOption<T> option, T value) {
+    option.check(value);
+    switch (value) {
+      case final String s:
+        setPropertyString(option.name, s);
+      default:
+        setProperty(option.name, value);
+    }
+  }
+
+  /// Serves `protocol://` URIs from Dart: mpv asks [open] for a
+  /// [MpvStreamSource] whenever such a URI is loaded (e.g. `loadfile
+  /// dart://movie`). Useful for encrypted files, in-memory media or custom
+  /// network transports. One registration per protocol and core.
+  ///
+  /// Throws [UnsupportedError] if the loaded libmpv lacks the mpv_kit stream
+  /// bridge, [MpvException] if the protocol is taken.
+  void registerStreamProtocol(String protocol, MpvStreamOpener open) {
+    _streamBridges.add(StreamBridge.register(bindings, handle, protocol, open));
+  }
+
   // ---------------------------------------------------------------------
   // Events, logs, hooks
   // ---------------------------------------------------------------------
 
   /// `mpv_request_log_messages`（`no`/`fatal`/`error`/`warn`/`info`/`v`/`debug`/`trace`）。
-  void requestLogMessages(String minLevel) => using((a) => _check(
+  void requestLogMessages(String minLevel) => using(
+    (a) => _check(
       bindings.requestLogMessages(handle, minLevel.toNativeUtf8(allocator: a)),
-      'request_log_messages($minLevel)'));
+      'request_log_messages($minLevel)',
+    ),
+  );
 
   /// `mpv_request_event`：启用/禁用某类事件。
   void requestEvent(int eventId, {required bool enable}) => _check(
-      bindings.requestEvent(handle, eventId, enable ? 1 : 0),
-      'request_event($eventId)');
+    bindings.requestEvent(handle, eventId, enable ? 1 : 0),
+    'request_event($eventId)',
+  );
 
   /// `mpv_hook_add`：注册 hook（如 `on_load`）；在 [events] 上收到
   /// [HookEvent] 后必须调用 [hookContinue]。
-  void hookAdd(String name, {int priority = 0}) => using((a) => _check(
-      bindings.hookAdd(handle, _allocId(), name.toNativeUtf8(allocator: a),
-          priority),
-      'hook_add($name)'));
+  void hookAdd(String name, {int priority = 0}) => using(
+    (a) => _check(
+      bindings.hookAdd(
+        handle,
+        _allocId(),
+        name.toNativeUtf8(allocator: a),
+        priority,
+      ),
+      'hook_add($name)',
+    ),
+  );
 
   /// `mpv_hook_continue`。
   void hookContinue(int id) =>
@@ -392,8 +521,12 @@ final class Mpv {
     switch (event) {
       case PropertyChangeEvent(:final replyUserdata, :final value):
         _observers[replyUserdata]?.add(value);
-      case GetPropertyReplyEvent(:final replyUserdata, :final error, :final value,
-            :final name):
+      case GetPropertyReplyEvent(
+        :final replyUserdata,
+        :final error,
+        :final value,
+        :final name,
+      ):
         _complete(replyUserdata, error, value, 'get_property_async($name)');
       case SetPropertyReplyEvent(:final replyUserdata, :final error):
         _complete(replyUserdata, error, null, 'set_property_async');
@@ -423,10 +556,10 @@ final class Mpv {
   }
 
   static String _describe(Object args) => switch (args) {
-        final List<Object?> l when l.isNotEmpty => '${l.first}',
-        final Map<String, Object?> m => '${m['name']}',
-        _ => '?',
-      };
+    final List<Object?> l when l.isNotEmpty => '${l.first}',
+    final Map<String, Object?> m => '${m['name']}',
+    _ => '?',
+  };
 }
 
 /// 进行中的异步命令。
