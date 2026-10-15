@@ -4,10 +4,23 @@ library;
 import '../core/errors.dart';
 
 /// `track-list` 中的轨道类型。
-enum MpvTrackType { video, audio, sub, unknown }
+enum MpvTrackType {
+  /// Video track.
+  video,
+
+  /// Audio track.
+  audio,
+
+  /// Subtitle track.
+  sub,
+
+  /// A type this binding does not know.
+  unknown,
+}
 
 /// 一条音/视/字幕轨道（`track-list/N`）。
 final class MpvTrack {
+  /// Creates a track description.
   const MpvTrack({
     required this.id,
     required this.type,
@@ -44,16 +57,37 @@ final class MpvTrack {
     raw: m,
   );
 
+  /// Track id, as used by `vid`/`aid`/`sid`.
   final int id;
+
+  /// Kind of track.
   final MpvTrackType type;
+
+  /// Title, if the file or entry provides one.
   final String? title;
+
+  /// Language tag (e.g. `eng`), if known.
   final String? lang;
+
+  /// Codec name (e.g. `h264`, `aac`).
   final String? codec;
+
+  /// Whether the track is currently selected.
   final bool selected;
+
+  /// Whether the file marks the track as default.
   final bool isDefault;
+
+  /// Whether the track comes from an external file.
   final bool external;
+
+  /// Width in pixels, if known.
   final int? width;
+
+  /// Height in pixels, if known.
   final int? height;
+
+  /// Audio channel count, if known.
   final int? channels;
 
   /// 完整原始字段（mpv 提供的所有键）。
@@ -62,6 +96,7 @@ final class MpvTrack {
 
 /// `playlist/N`。
 final class MpvPlaylistEntry {
+  /// Creates a playlist entry.
   const MpvPlaylistEntry({
     required this.filename,
     this.title,
@@ -69,6 +104,7 @@ final class MpvPlaylistEntry {
     this.id,
   });
 
+  /// Parses one `playlist` node.
   factory MpvPlaylistEntry.fromNode(Map<String, Object?> m) => MpvPlaylistEntry(
     filename: m['filename'] as String? ?? '',
     title: m['title'] as String?,
@@ -76,27 +112,40 @@ final class MpvPlaylistEntry {
     id: _int(m['id']),
   );
 
+  /// File name or URL as added to the playlist.
   final String filename;
+
+  /// Title, if the file or entry provides one.
   final String? title;
+
+  /// Whether this entry is the one being played.
   final bool current;
+
+  /// Stable playlist entry id (`playlist/N/id`).
   final int? id;
 }
 
 /// `chapter-list/N`。
 final class MpvChapter {
+  /// Creates a chapter.
   const MpvChapter({required this.time, this.title});
 
+  /// Parses one `chapter-list` node.
   factory MpvChapter.fromNode(Map<String, Object?> m) => MpvChapter(
     time: _duration(m['time']) ?? Duration.zero,
     title: m['title'] as String?,
   );
 
+  /// Start time of the chapter.
   final Duration time;
+
+  /// Title, if the file or entry provides one.
   final String? title;
 }
 
 /// `video-params`：解码后视频的几何与色彩参数。
 final class MpvVideoParams {
+  /// Creates video parameters.
   const MpvVideoParams({
     this.width,
     this.height,
@@ -108,6 +157,7 @@ final class MpvVideoParams {
     this.raw = const {},
   });
 
+  /// Parses the `video-params` node.
   factory MpvVideoParams.fromNode(Map<String, Object?> m) => MpvVideoParams(
     width: _int(m['w']),
     height: _int(m['h']),
@@ -119,15 +169,28 @@ final class MpvVideoParams {
     raw: m,
   );
 
+  /// Width in pixels, if known.
   final int? width;
+
+  /// Height in pixels, if known.
   final int? height;
+
+  /// Pixel format (e.g. `yuv420p`, `nv12`).
   final String? pixelFormat;
+
+  /// Color primaries (e.g. `bt.709`, `bt.2020`).
   final String? primaries;
 
   /// 传输特性，例如 `pq`（HDR10）、`hlg`、`bt.1886`。
   final String? gamma;
+
+  /// Rotation in degrees from the file's metadata.
   final int rotate;
+
+  /// Display aspect ratio (width / height), if known.
   final double? aspect;
+
+  /// All raw fields of the mpv node.
   final Map<String, Object?> raw;
 }
 
@@ -148,6 +211,7 @@ Duration? secondsToDuration(Object? v) => _duration(v);
 
 /// A failed or aborted load (`end-file` with reason `error`).
 final class MpvPlaybackError {
+  /// Creates an error for a failed playlist entry.
   const MpvPlaybackError({
     required this.error,
     required this.message,
@@ -170,12 +234,22 @@ final class MpvPlaybackError {
 /// Image adjustments of the `brightness`/`contrast`/... properties, each an
 /// integer in -100..100 (0 = unchanged).
 enum MpvVideoAdjustment {
+  /// Brightness (`brightness`).
   brightness('brightness'),
+
+  /// Contrast (`contrast`).
   contrast('contrast'),
+
+  /// Saturation (`saturation`).
   saturation('saturation'),
+
+  /// Gamma (`gamma`).
   gamma('gamma'),
+
+  /// Hue (`hue`).
   hue('hue');
 
+  /// Creates an adjustment bound to its mpv [property].
   const MpvVideoAdjustment(this.property);
 
   /// mpv property name.
@@ -184,6 +258,7 @@ enum MpvVideoAdjustment {
 
 /// Uncompressed screenshot from `screenshot-raw`.
 final class MpvScreenshot {
+  /// Creates a screenshot from raw pixel data.
   const MpvScreenshot({
     required this.width,
     required this.height,
@@ -207,7 +282,10 @@ final class MpvScreenshot {
     );
   }
 
+  /// Width in pixels.
   final int width;
+
+  /// Height in pixels.
   final int height;
 
   /// Bytes per row (may exceed `width * 4`).
@@ -224,6 +302,7 @@ final class MpvScreenshot {
 /// Snapshot of codec and stream facts for the current file (as shown in a
 /// "media info" dialog). Fields are null when mpv does not know them.
 final class MpvMediaInfo {
+  /// Creates a media info snapshot.
   const MpvMediaInfo({
     this.path,
     this.fileFormat,
@@ -242,12 +321,25 @@ final class MpvMediaInfo {
     this.audioBitrate,
   });
 
+  /// Path or URL of the file.
   final String? path;
+
+  /// Container format (`file-format`).
   final String? fileFormat;
+
+  /// File size in bytes.
   final int? fileSize;
+
+  /// Duration of the file.
   final Duration? duration;
+
+  /// Video codec description (`video-codec`).
   final String? videoCodec;
+
+  /// Width in pixels, if known.
   final int? width;
+
+  /// Height in pixels, if known.
   final int? height;
 
   /// Container frame rate.
@@ -255,12 +347,20 @@ final class MpvMediaInfo {
 
   /// Bits per second.
   final int? videoBitrate;
+
+  /// Pixel format (e.g. `yuv420p`, `nv12`).
   final String? pixelFormat;
 
   /// Active hardware decoder, null for software decoding.
   final String? hwdec;
+
+  /// Audio codec description (`audio-codec`).
   final String? audioCodec;
+
+  /// Audio sample rate in Hz.
   final int? audioSampleRate;
+
+  /// Audio channel count.
   final int? audioChannels;
 
   /// Bits per second.

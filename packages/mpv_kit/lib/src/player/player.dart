@@ -143,8 +143,14 @@ final class Player {
   var _disposed = false;
 
   // --- Playback state ----------------------------------------------------
+  /// Whether playback is paused (`pause`).
   final paused = MpvState<bool>._(true);
+
+  /// Whether no file is loaded (`idle-active`).
   final idle = MpvState<bool>._(true);
+
+  /// Whether the end of the file was reached (`eof-reached`; stays
+  /// on the last frame with the default `keep-open=yes`).
   final completed = MpvState<bool>._(false);
 
   /// Playback waits for the network cache (`paused-for-cache`).
@@ -155,40 +161,79 @@ final class Player {
 
   /// A seek is in progress (`seeking`).
   final seeking = MpvState<bool>._(false);
+
+  /// Current playback position (`time-pos`).
   final position = MpvState<Duration>._(Duration.zero);
+
+  /// Duration of the current file (`duration`), zero if unknown.
   final duration = MpvState<Duration>._(Duration.zero);
+
+  /// Demuxer cache ahead of the playback position
+  /// (`demuxer-cache-duration`).
   final bufferedAhead = MpvState<Duration>._(Duration.zero);
+
+  /// Volume in percent (`volume`), 100 is unchanged.
   final volume = MpvState<double>._(100);
+
+  /// Whether audio is muted (`mute`).
   final muted = MpvState<bool>._(false);
+
+  /// Playback speed factor (`speed`).
   final speed = MpvState<double>._(1);
+
+  /// Title of the current file (`media-title`).
   final title = MpvState<String?>._(null);
+
+  /// Path or URL of the current file (`path`).
   final path = MpvState<String?>._(null);
 
   // --- Tracks and subtitles ----------------------------------------------
+  /// Every track of the current file (`track-list`).
   final tracks = MpvState<List<MpvTrack>>._(const []);
 
   /// Selected track ids (`vid`/`aid`/`sid`), null when disabled.
   final videoTrack = MpvState<int?>._(null);
+
+  /// Selected audio track id (`aid`), null when disabled.
   final audioTrack = MpvState<int?>._(null);
+
+  /// Selected subtitle track id (`sid`), null when disabled.
   final subtitleTrack = MpvState<int?>._(null);
 
   /// Text of the current subtitle line (`sub-text`), empty between lines.
   final subtitleText = MpvState<String>._('');
+
+  /// Whether subtitles are shown (`sub-visibility`).
   final subtitlesVisible = MpvState<bool>._(true);
+
+  /// Subtitle delay (`sub-delay`); positive shows them later.
   final subtitleDelay = MpvState<Duration>._(Duration.zero);
+
+  /// Audio delay (`audio-delay`); positive delays audio.
   final audioDelay = MpvState<Duration>._(Duration.zero);
 
   // --- Playlist and chapters ---------------------------------------------
+  /// Playlist entries (`playlist`).
   final playlist = MpvState<List<MpvPlaylistEntry>>._(const []);
+
+  /// Index of the current playlist entry (`playlist-pos`), -1 if none.
   final playlistIndex = MpvState<int>._(-1);
+
+  /// Whether the current file repeats (`loop-file`).
   final loopFile = MpvState<bool>._(false);
+
+  /// Whether the playlist repeats (`loop-playlist`).
   final loopPlaylist = MpvState<bool>._(false);
+
+  /// Chapters of the current file (`chapter-list`).
   final chapters = MpvState<List<MpvChapter>>._(const []);
 
   /// Current chapter index, -1 before the first chapter / without chapters.
   final chapter = MpvState<int>._(-1);
 
   // --- Video -------------------------------------------------------------
+  /// Parameters of the decoded video (`video-params`), null without
+  /// video.
   final videoParams = MpvState<MpvVideoParams?>._(null);
 
   /// 实际生效的硬解后端（如 `vulkan`、`d3d11va`），软解时为 null/`no`。
@@ -246,9 +291,16 @@ final class Player {
       mpv.commandAsync(['loadfile', url, 'append']).result;
 
   // --- Transport ---------------------------------------------------------
+  /// Resumes playback.
   void play() => mpv.setProperty('pause', false);
+
+  /// Pauses playback.
   void pause() => mpv.setProperty('pause', true);
+
+  /// Toggles pause.
   void playOrPause() => mpv.command(['cycle', 'pause']);
+
+  /// Stops playback and clears the playlist (`stop`).
   void stop() => mpv.command(['stop']);
 
   /// 跳转到绝对位置；[exact] 为 true 时逐帧精确（较慢）。
@@ -278,12 +330,19 @@ final class Player {
   }
 
   // --- Playlist ----------------------------------------------------------
+  /// Plays the next playlist entry.
   void next() => mpv.command(['playlist-next']);
+
+  /// Plays the previous playlist entry.
   void previous() => mpv.command(['playlist-prev']);
 
   /// Plays playlist entry [index].
   void jump(int index) => mpv.command(['playlist-play-index', index]);
+
+  /// Moves playlist entry [from] to position [to] (`playlist-move`).
   void move(int from, int to) => mpv.command(['playlist-move', from, to]);
+
+  /// Removes playlist entry [index].
   void remove(int index) => mpv.command(['playlist-remove', index]);
 
   /// Removes every entry except the one playing.
@@ -292,6 +351,8 @@ final class Player {
   /// Shuffles the playlist (`playlist-shuffle`); [unshufflePlaylist]
   /// restores the original order.
   void shufflePlaylist() => mpv.command(['playlist-shuffle']);
+
+  /// Restores the order from before [shufflePlaylist].
   void unshufflePlaylist() => mpv.command(['playlist-unshuffle']);
 
   /// Repeats the current file.
@@ -306,8 +367,13 @@ final class Player {
   void setChapter(int index) => mpv.setProperty('chapter', index);
 
   // --- Audio -------------------------------------------------------------
+  /// Sets the volume in percent (100 is unchanged).
   void setVolume(double v) => mpv.setProperty('volume', v);
+
+  /// Mutes or unmutes audio.
   void setMute(bool m) => mpv.setProperty('mute', m);
+
+  /// Sets the playback speed factor.
   void setSpeed(double s) => mpv.setProperty('speed', s);
 
   /// Positive values delay audio relative to video.
