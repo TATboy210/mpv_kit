@@ -95,7 +95,6 @@ jobs:
           dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: libmpv-${{ matrix.target }}
           path: dist/libmpv-${{ matrix.target }}
@@ -171,7 +170,6 @@ jobs:
           dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: libmpv-${{ matrix.target }}
           path: dist/libmpv-${{ matrix.target }}
@@ -242,7 +240,6 @@ jobs:
           dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: libmpv-${{ matrix.target }}
           path: dist/libmpv-${{ matrix.target }}
