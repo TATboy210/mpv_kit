@@ -38,7 +38,7 @@ class _PlayerPageState extends State<PlayerPage> {
     'hwdec': 'vulkan,auto-safe',
     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
     // click a forcibly killed audio stream makes in the speakers).
-    if (Platform.environment['MPV_KIT_EXAMPLE_AO'] case final ao?) 'ao': ao,
+    'ao': ?Platform.environment['MPV_KIT_EXAMPLE_AO'],
     // MPV_KIT_EXAMPLE_LOG=<file>: verbose mpv log for diagnostics.
     if (Platform.environment['MPV_KIT_EXAMPLE_LOG'] case final log?) ...{
       'log-file': log,
