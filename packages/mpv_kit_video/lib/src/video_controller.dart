@@ -12,11 +12,107 @@ import 'package:mpv_kit/mpv_kit.dart';
 /// 实际生效的渲染后端。
 enum MpvVideoBackend { vulkan, software }
 
+/// Renderer to request from [MpvVideoController.create].
+///
+/// Vulkan renderers fall back to [software] when the GPU or the platform
+/// interop cannot be used; [MpvVideoController.reason] says what happened.
+enum MpvVideoRenderer {
+  /// gpu-next, then gpu, then software (default).
+  auto('auto'),
+
+  /// libplacebo's renderer (`--vo=gpu-next`): best HDR tone mapping and
+  /// color management.
+  gpuNext('gpu-next'),
+
+  /// mpv's older gl_video renderer (`--vo=gpu`).
+  gpu('gpu'),
+
+  /// CPU rendering into a pixel buffer. Slow; for diagnostics and machines
+  /// without a usable Vulkan driver.
+  software('software');
+
+  const MpvVideoRenderer(this.wireName);
+
+  /// Name used on the method channel and in `MPV_KIT_VIDEO_RENDERER`.
+  final String wireName;
+
+  /// Parses [wireName]; null if unknown.
+  static MpvVideoRenderer? tryParse(String? name) {
+    for (final r in values) {
+      if (r.wireName == name) return r;
+    }
+    return null;
+  }
+}
+
+/// Kinds of [MpvVideoEvent].
+enum MpvVideoEventKind {
+  /// Render targets were reallocated; message is `WxH` in pixels.
+  resize,
+
+  /// The texture is not being displayed (hidden or minimised window):
+  /// frames are advanced without rendering.
+  idle,
+
+  /// The texture is displayed again after [idle].
+  active,
+
+  /// A frame failed to render. Rendering is retried with a growing delay.
+  renderError,
+
+  /// The GPU did not finish a frame within one second (retried).
+  gpuTimeout,
+
+  /// Rendering works again after [renderError] / [gpuTimeout].
+  recovered,
+
+  /// The Vulkan device was lost: this controller renders nothing anymore.
+  /// Dispose it and create a new one (for example with
+  /// [MpvVideoRenderer.software]).
+  deviceLost,
+
+  /// A kind this version does not know (newer plugin).
+  unknown;
+
+  static MpvVideoEventKind _parse(String? wire) => switch (wire) {
+    'resize' => resize,
+    'idle' => idle,
+    'active' => active,
+    'render_error' => renderError,
+    'gpu_timeout' => gpuTimeout,
+    'recovered' => recovered,
+    'device_lost' => deviceLost,
+    _ => unknown,
+  };
+}
+
+/// A diagnostic event from the native renderer.
+@immutable
+final class MpvVideoEvent {
+  const MpvVideoEvent(this.kind, this.message);
+
+  final MpvVideoEventKind kind;
+
+  /// Details, e.g. `3840x2160` for [MpvVideoEventKind.resize] or the error
+  /// for [MpvVideoEventKind.renderError]. May be empty.
+  final String message;
+
+  @override
+  String toString() => message.isEmpty
+      ? 'MpvVideoEvent(${kind.name})'
+      : 'MpvVideoEvent(${kind.name}: $message)';
+}
+
 /// Owns the Flutter texture that shows [player]'s video.
 ///
 /// The mpv instance must be created with `vo=libmpv` (the [Player] default).
 /// Rendering runs on a native thread; the UI thread only receives
 /// "frame available" notifications.
+///
+/// Lifetime: libmpv requires the render context to be freed before the mpv
+/// core is destroyed. The controller registers itself with
+/// [Player.addDisposeHook], so `player.dispose()` disposes it first; calling
+/// [dispose] earlier is fine too.
 final class MpvVideoController {
   MpvVideoController._(this.player, this.textureId, this.backend, this.reason);
 
@@ -31,23 +127,43 @@ final class MpvVideoController {
     'mpv_render_context_report_swap',
     'mpv_render_context_free',
     'mpv_error_string',
+    'mpv_render_context_get_info',
+    'mpv_render_context_set_parameter',
   ];
+
+  /// Live controllers by texture id, for routing native events.
+  static final _live = <int, MpvVideoController>{};
+  static var _handlerInstalled = false;
+
+  /// Environment variable that overrides the requested renderer (`auto`,
+  /// `gpu-next`, `gpu`, `software`): a way to diagnose driver problems in a
+  /// shipped app without code changes.
+  static const rendererOverrideVariable = 'MPV_KIT_VIDEO_RENDERER';
 
   /// Creates the render context and texture.
   ///
-  /// [forceSoftware] skips Vulkan (diagnostics / broken drivers). Throws
-  /// [PlatformException] when no backend can be initialised.
+  /// [renderer] selects the renderer; `MPV_KIT_VIDEO_RENDERER` in the
+  /// environment takes precedence. Throws [PlatformException] when no
+  /// backend can be initialised.
   static Future<MpvVideoController> create(
     Player player, {
+    MpvVideoRenderer renderer = MpvVideoRenderer.auto,
+    @Deprecated('Use renderer: MpvVideoRenderer.software')
     bool forceSoftware = false,
   }) async {
+    _installHandler();
+    final requested =
+        MpvVideoRenderer.tryParse(
+          Platform.environment[rendererOverrideVariable],
+        ) ??
+        (forceSoftware ? MpvVideoRenderer.software : renderer);
     // Read by the render context at creation, so it must come first.
     _applyShaderCacheDir(player);
     final lib = player.mpv.bindings.library;
     final result = await _channel.invokeMapMethod<String, Object?>('create', {
       'handle': player.mpv.handle.address,
       'symbols': [for (final s in _symbols) lib.lookup<Void>(s).address],
-      'forceSoftware': forceSoftware,
+      'renderer': requested.wireName,
     });
     if (result == null) {
       throw PlatformException(code: 'render_init', message: 'no result');
@@ -60,12 +176,32 @@ final class MpvVideoController {
           : MpvVideoBackend.software,
       result['reason'] as String? ?? '',
     );
+    _live[controller.textureId] = controller;
+    player.addDisposeHook(controller.dispose);
     _applyDisplayRate(player);
     debugPrint(
       'mpv_kit_video: ${controller.backend.name} '
       '(${controller.reason})',
     );
     return controller;
+  }
+
+  static void _installHandler() {
+    if (_handlerInstalled) return;
+    _handlerInstalled = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'event') return;
+      final args = call.arguments;
+      if (args is! Map) return;
+      final id = args['textureId'];
+      final controller = id is int ? _live[id] : null;
+      controller?._onEvent(
+        MpvVideoEvent(
+          MpvVideoEventKind._parse(args['kind'] as String?),
+          args['message'] as String? ?? '',
+        ),
+      );
+    });
   }
 
   /// The render API has no vsync source, so mpv would only estimate the
@@ -127,11 +263,26 @@ final class MpvVideoController {
   /// 生效的后端。
   final MpvVideoBackend backend;
 
-  /// 后端选择说明（例如设备名或回退原因）。
+  /// Backend description: renderer and device (`vulkan (gpu-next) on ...`)
+  /// or why software rendering is used.
   final String reason;
 
+  final _events = StreamController<MpvVideoEvent>.broadcast();
   var _disposed = false;
   (int, int)? _size;
+
+  /// Diagnostic events from the native renderer (resizes, idle/active,
+  /// render errors, device loss).
+  Stream<MpvVideoEvent> get events => _events.stream;
+
+  /// Whether rendering stopped for good ([MpvVideoEventKind.deviceLost]).
+  bool get isBroken => _broken;
+  var _broken = false;
+
+  void _onEvent(MpvVideoEvent e) {
+    if (e.kind == MpvVideoEventKind.deviceLost) _broken = true;
+    if (!_events.isClosed) _events.add(e);
+  }
 
   /// Sets the render resolution in physical pixels (usually the widget size
   /// times devicePixelRatio, capped at the video size). Cheap to call often:
@@ -147,10 +298,31 @@ final class MpvVideoController {
     });
   }
 
+  /// Color-manages output for the display described by [profile] (the raw
+  /// ICC file contents), or turns color management off when null/empty.
+  ///
+  /// Sets mpv's `icc-profile-auto` accordingly (the render API only uses
+  /// the profile with that option enabled). Not supported by the software
+  /// renderer. A file path can also be used via
+  /// `player.mpv.setProperty('icc-profile', path)`.
+  Future<void> setIccProfile(Uint8List? profile) async {
+    if (_disposed) return;
+    final enable = profile != null && profile.isNotEmpty;
+    player.mpv.setProperty('icc-profile-auto', enable);
+    await _channel.invokeMethod<void>('setIccProfile', {
+      'textureId': textureId,
+      'profile': enable ? profile : Uint8List(0),
+    });
+  }
+
   /// Releases the texture and render context (the [player] stays alive).
+  /// Idempotent.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _live.remove(textureId);
+    player.removeDisposeHook(dispose);
     await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
+    await _events.close();
   }
 }

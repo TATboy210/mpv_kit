@@ -281,15 +281,15 @@ uint64_t VulkanContext::NextSignalValue(int i) {
   return ring_[i].ready_value;
 }
 
-bool VulkanContext::WaitImage(int i) {
+VkResult VulkanContext::WaitImage(int i) {
   const SharedImage& img = ring_[i];
-  if (img.ready_value == 0) return true;
+  if (img.ready_value == 0) return VK_SUCCESS;
   VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
   wi.semaphoreCount = 1;
   wi.pSemaphores = &timeline_;
   wi.pValues = &img.ready_value;
   // 1 s timeout: a stuck GPU must not wedge the render thread forever.
-  return vkWaitSemaphores(device_, &wi, 1'000'000'000ull) == VK_SUCCESS;
+  return vkWaitSemaphores(device_, &wi, 1'000'000'000ull);
 }
 
 }  // namespace mpv_kit

@@ -21,9 +21,13 @@ struct MpvApi {
   void (*render_context_report_swap)(mpv_render_context*) = nullptr;
   void (*render_context_free)(mpv_render_context*) = nullptr;
   const char* (*error_string)(int) = nullptr;
+  int (*render_context_get_info)(mpv_render_context*,
+                                 mpv_render_param) = nullptr;
+  int (*render_context_set_parameter)(mpv_render_context*,
+                                      mpv_render_param) = nullptr;
 
   // Order must match MpvVideoController._symbols on the Dart side.
-  static constexpr int kSymbolCount = 7;
+  static constexpr int kSymbolCount = 9;
 
   /// Builds the table from raw addresses; false if any is null.
   bool Load(const int64_t* addresses, int count) {
@@ -36,6 +40,8 @@ struct MpvApi {
         reinterpret_cast<void**>(&render_context_report_swap),
         reinterpret_cast<void**>(&render_context_free),
         reinterpret_cast<void**>(&error_string),
+        reinterpret_cast<void**>(&render_context_get_info),
+        reinterpret_cast<void**>(&render_context_set_parameter),
     };
     for (int i = 0; i < kSymbolCount; i++) {
       if (addresses[i] == 0) return false;

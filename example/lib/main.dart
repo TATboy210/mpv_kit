@@ -49,6 +49,8 @@ class _PlayerPageState extends State<PlayerPage> {
       TextEditingController(text: widget.initialPath ?? '');
   Timer? statsTimer;
   String stats = '';
+  StreamSubscription<MpvVideoEvent>? videoEvents;
+  final recentEvents = <String>[];
 
   @override
   void initState() {
@@ -61,6 +63,11 @@ class _PlayerPageState extends State<PlayerPage> {
       final v = await MpvVideoController.create(player);
       if (!mounted) return;
       setState(() => video = v);
+      videoEvents = v.events.listen((e) {
+        // Keep the last few renderer events on screen for diagnostics.
+        recentEvents.add('$e');
+        if (recentEvents.length > 3) recentEvents.removeAt(0);
+      });
       if (path.text.isNotEmpty) await player.open(path.text);
     } on Object catch (e) {
       if (mounted) setState(() => error = e);
@@ -76,14 +83,16 @@ class _PlayerPageState extends State<PlayerPage> {
           'hwdec ${p('hwdec-current')}  codec ${p('video-codec')}\n'
           'size ${p('width')}x${p('height')}  fps ${p('container-fps')}\n'
           'dropped ${p('frame-drop-count')}  decoder-dropped '
-          '${p('decoder-frame-drop-count')}  delayed ${p('vo-delayed-frame-count')}';
+          '${p('decoder-frame-drop-count')}  delayed ${p('vo-delayed-frame-count')}'
+          '${recentEvents.isEmpty ? '' : '\nevents ${recentEvents.join(' | ')}'}';
     });
   }
 
   @override
   void dispose() {
     statsTimer?.cancel();
-    unawaited(video?.dispose());
+    unawaited(videoEvents?.cancel());
+    // Player.dispose frees the render context first (dispose hook).
     unawaited(player.dispose());
     path.dispose();
     super.dispose();

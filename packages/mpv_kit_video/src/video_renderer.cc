@@ -2,16 +2,26 @@
 
 #include <mpv/render_vk.h>
 
+#include <algorithm>
+
 #include "vulkan_backend.h"
 
 namespace mpv_kit {
-namespace {
 
-}  // namespace
+RendererChoice ParseRendererChoice(const std::string& name) {
+  if (name == "gpu-next") return RendererChoice::kGpuNext;
+  if (name == "gpu") return RendererChoice::kGpu;
+  if (name == "software") return RendererChoice::kSoftware;
+  return RendererChoice::kAuto;
+}
 
 VideoRenderer::VideoRenderer(const MpvApi& api, mpv_handle* handle,
-                             Interop* interop, LogFn log)
-    : api_(api), handle_(handle), interop_(interop), log_(std::move(log)) {}
+                             Interop* interop, LogFn log, EventFn event)
+    : api_(api),
+      handle_(handle),
+      interop_(interop),
+      log_(std::move(log)),
+      event_(std::move(event)) {}
 
 VideoRenderer::~VideoRenderer() {
   {
@@ -29,17 +39,22 @@ VideoRenderer::~VideoRenderer() {
   vulkan_.reset();
 }
 
-bool VideoRenderer::Start(bool force_software) {
+bool VideoRenderer::Start(RendererChoice choice) {
   bool ok = false;
-  if (!force_software && interop_->vulkan()) {
-    ok = StartVulkan();
+  if (choice != RendererChoice::kSoftware && interop_->vulkan()) {
+    ok = StartVulkan(choice);
     if (!ok) log_("mpv_kit: Vulkan backend unavailable (" + backend_reason_ +
                   "), falling back to software rendering");
   } else {
-    backend_reason_ = force_software ? "software rendering forced"
-                                     : "platform has no Vulkan interop";
+    backend_reason_ = choice == RendererChoice::kSoftware
+                          ? "software rendering requested"
+                          : "platform has no Vulkan interop";
   }
-  if (!ok) ok = StartSoftware();
+  if (!ok) {
+    const std::string why = backend_reason_;
+    ok = StartSoftware();
+    backend_reason_ = "software (" + why + ")";
+  }
   if (!ok) return false;
 
   api_.render_context_set_update_callback(render_ctx_, &OnMpvUpdate, this);
@@ -47,7 +62,7 @@ bool VideoRenderer::Start(bool force_software) {
   return true;
 }
 
-bool VideoRenderer::StartVulkan() {
+bool VideoRenderer::StartVulkan(RendererChoice choice) {
   vulkan_ = std::make_unique<VulkanContext>(interop_->vulkan());
   if (!vulkan_->Init(&backend_reason_)) {
     vulkan_.reset();
@@ -67,11 +82,16 @@ bool VideoRenderer::StartVulkan() {
   init.queue_compute = {vk.graphics_family(), vk.graphics_count()};
   init.queue_transfer = {vk.graphics_family(), vk.graphics_count()};
 
-  int advanced = 1;
   // gpu-next (libplacebo's renderer) first; the older gpu renderer covers
   // devices or libplacebo builds where it cannot initialise.
+  std::vector<const char*> renderers;
+  if (choice != RendererChoice::kGpu) renderers.push_back("gpu-next");
+  if (choice != RendererChoice::kGpuNext) renderers.push_back("gpu");
+
+  int advanced = 1;
   int err = 0;
-  for (const char* renderer : {"gpu-next", "gpu"}) {
+  std::string tried;
+  for (const char* renderer : renderers) {
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE,
          const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
@@ -82,17 +102,25 @@ bool VideoRenderer::StartVulkan() {
     };
     err = api_.render_context_create(&render_ctx_, handle_, params);
     if (err >= 0) {
+      // Ask mpv which renderer it really built: a libmpv without the
+      // renderer parameter ignores it and always uses its default.
+      const char* active = nullptr;
+      const int info = api_.render_context_get_info(
+          render_ctx_, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+      const std::string name =
+          info >= 0 && active ? active : "unknown renderer";
       backend_ = Backend::kVulkan;
-      backend_reason_ = std::string("vulkan (") + renderer + ") on " +
-                        vk.device_name();
+      backend_reason_ = "vulkan (" + name + ") on " + vk.device_name();
+      if (!tried.empty()) backend_reason_ += "; " + tried;
       return true;
     }
-    log_(std::string("mpv_kit: ") + renderer + " renderer unavailable: " +
-         api_.error_string(err));
+    const std::string why = std::string(renderer) + " unavailable: " +
+                            api_.error_string(err);
+    log_("mpv_kit: " + why);
+    tried += tried.empty() ? why : ", " + why;
     render_ctx_ = nullptr;
   }
-  backend_reason_ = std::string("mpv_render_context_create: ") +
-                    api_.error_string(err);
+  backend_reason_ = "mpv_render_context_create: " + tried;
   vulkan_.reset();
   return false;
 }
@@ -125,6 +153,10 @@ void VideoRenderer::OnMpvUpdate(void* self) {
   r->cv_.notify_one();
 }
 
+void VideoRenderer::Emit(const char* kind, const std::string& msg) {
+  if (event_) event_(kind, msg);
+}
+
 void VideoRenderer::SetSize(int width, int height) {
   if (width <= 0 || height <= 0) return;
   {
@@ -135,6 +167,35 @@ void VideoRenderer::SetSize(int width, int height) {
     resize_pending_ = true;
   }
   cv_.notify_one();
+}
+
+void VideoRenderer::SetIccProfile(std::vector<uint8_t> profile) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    icc_profile_ = std::move(profile);
+    icc_pending_ = true;
+    redraw_pending_ = true;  // show the change even while paused
+  }
+  cv_.notify_one();
+}
+
+void VideoRenderer::ApplyIccProfile() {
+  std::vector<uint8_t> profile;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!icc_pending_) return;
+    icc_pending_ = false;
+    profile = std::move(icc_profile_);
+  }
+  // mpv copies the data. Used when --icc-profile-auto is enabled (the Dart
+  // side sets it); the software renderer does not support ICC.
+  mpv_byte_array data{profile.empty() ? nullptr : profile.data(),
+                      profile.size()};
+  const int err = api_.render_context_set_parameter(
+      render_ctx_, {MPV_RENDER_PARAM_ICC_PROFILE, &data});
+  if (err < 0)
+    log_(std::string("mpv_kit: ICC profile rejected: ") +
+         api_.error_string(err));
 }
 
 Frame VideoRenderer::AcquireFront() {
@@ -186,70 +247,123 @@ int VideoRenderer::PickBackBuffer() {
 }
 
 void VideoRenderer::RenderLoop() {
+  using clock = std::chrono::steady_clock;
   for (;;) {
     bool resized = false;
     bool redraw = false;
+    bool retry = false;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       auto ready = [&] {
         return quit_ || update_pending_ || resize_pending_ || redraw_pending_;
       };
-      if (swap_pending_) {
-        // Nobody displayed the last frame in time (hidden window, paused
-        // raster): report it anyway so mpv's flip_page never stalls.
-        if (!cv_.wait_for(lock, kPresentTimeout, ready) && swap_pending_) {
+      // Wake for whichever comes first: a pending swap that nobody
+      // displayed, or the end of a failure backoff.
+      clock::time_point deadline = clock::time_point::max();
+      if (swap_pending_) deadline = clock::now() + kPresentTimeout;
+      if (failures_ > 0 && !device_lost_)
+        deadline = std::min(deadline, retry_at_);
+      if (deadline == clock::time_point::max()) {
+        cv_.wait(lock, ready);
+      } else if (!cv_.wait_until(lock, deadline, ready)) {
+        if (swap_pending_ && clock::now() >= deadline) {
+          // Nobody displayed the last frame in time (hidden window, paused
+          // raster): report it anyway so mpv's flip_page never stalls.
           swap_pending_ = false;
           lock.unlock();
           api_.render_context_report_swap(render_ctx_);
           continue;
         }
-      } else {
-        cv_.wait(lock, ready);
+        // Backoff over: try again even if mpv has no new frame (paused).
+        retry = failures_ > 0 && clock::now() >= retry_at_;
+        if (!retry) continue;
       }
       if (quit_) return;
       update_pending_ = false;
       resized = resize_pending_.exchange(false);
-      redraw = redraw_pending_;
+      redraw = redraw_pending_ || retry;
       redraw_pending_ = false;
     }
+    ApplyIccProfile();
+    // A new size is the usual cure for allocation failures: retry now.
+    if (resized && failures_ > 0) retry_at_ = clock::now();
     const uint64_t flags = api_.render_context_update(render_ctx_);
     // A resize or a return from idle must redraw even when paused (no new
     // frame from mpv).
-    if ((flags & MPV_RENDER_UPDATE_FRAME) || resized || redraw) {
-      bool sized, visible;
-      {
-        std::lock_guard<std::mutex> lock(mutex_);
-        sized = width_ > 0 && height_ > 0;
-        // Only once a frame exists at the current size: the first frame
-        // (and any resize) is always drawn.
-        const bool idle = front_ >= 0 && ring_w_ == width_ &&
-                          ring_h_ == height_ &&
-                          std::chrono::steady_clock::now() - last_acquire_ >
-                              kIdleTimeout;
-        if (resized || redraw) {
-          idle_ = false;
-        } else if (idle) {
-          idle_ = true;
-        }
-        visible = !idle_;
+    if (!(flags & MPV_RENDER_UPDATE_FRAME) && !resized && !redraw) continue;
+
+    bool sized, visible;
+    bool became_idle = false, became_active = false;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      sized = width_ > 0 && height_ > 0;
+      // Only once a frame exists at the current size: the first frame
+      // (and any resize) is always drawn.
+      const bool idle = front_ >= 0 && ring_w_ == width_ &&
+                        ring_h_ == height_ &&
+                        clock::now() - last_acquire_ > kIdleTimeout;
+      const bool was_idle = idle_;
+      if (resized || redraw) {
+        idle_ = false;
+      } else if (idle) {
+        idle_ = true;
       }
-      if (sized && visible) {
-        if (!RenderOnce()) log_("mpv_kit: frame render failed");
-      } else {
-        SkipFrame();
-        // Keep notifying: a texture that becomes visible again is only
-        // acquired (ending idle) when the compositor sees a new frame.
-        if (sized) interop_->FrameReady();
-      }
+      became_idle = idle_ && !was_idle;
+      // AcquireFront clears idle_ when the compositor comes back.
+      became_active = !idle_ && reported_idle_;
+      reported_idle_ = idle_;
+      visible = !idle_;
+    }
+    if (became_idle) Emit("idle");
+    if (became_active) Emit("active");
+    const bool backing_off =
+        device_lost_ || (failures_ > 0 && clock::now() < retry_at_);
+    if (sized && visible && !backing_off) {
+      std::string error;
+      OnRenderResult(RenderOnce(&error), error);
+    } else {
+      SkipFrame();
+      // Keep notifying: a texture that becomes visible again is only
+      // acquired (ending idle) when the compositor sees a new frame.
+      if (sized && !backing_off) interop_->FrameReady();
     }
   }
 }
 
+void VideoRenderer::OnRenderResult(RenderResult result,
+                                   const std::string& error) {
+  if (result == RenderResult::kOk) {
+    if (failures_ > 0) {
+      log_("mpv_kit: rendering recovered after " + std::to_string(failures_) +
+           " failed frame(s)");
+      Emit("recovered");
+    }
+    failures_ = 0;
+    return;
+  }
+  if (result == RenderResult::kDeviceLost) {
+    device_lost_ = true;
+    log_("mpv_kit: Vulkan device lost; video rendering stopped (" + error +
+         ")");
+    Emit("device_lost", error);
+    return;
+  }
+  failures_++;
+  const auto backoff = std::min<std::chrono::milliseconds>(
+      kMaxBackoff, kMinBackoff * (1 << std::min(failures_ - 1, 6)));
+  retry_at_ = std::chrono::steady_clock::now() + backoff;
+  // Report the first failure and then every doubling, not every frame.
+  if ((failures_ & (failures_ - 1)) == 0) {
+    log_("mpv_kit: frame render failed (" + std::to_string(failures_) +
+         "x): " + error);
+    Emit(error == "gpu timeout" ? "gpu_timeout" : "render_error", error);
+  }
+}
+
 void VideoRenderer::SkipFrame() {
-  // No target size yet (widget not laid out): let mpv advance its frame
-  // state without drawing, instead of rendering (and compiling shaders
-  // for) a throwaway placeholder. vo_libmpv still expects a render call
-  // and a swap for every frame.
+  // No target size yet (widget not laid out), hidden, or backing off after
+  // a failure: let mpv advance its frame state without drawing. vo_libmpv
+  // still expects a render call and a swap for every frame.
   int skip = 1;
   mpv_render_param params[] = {
       {MPV_RENDER_PARAM_SKIP_RENDERING, &skip},
@@ -259,8 +373,9 @@ void VideoRenderer::SkipFrame() {
   api_.render_context_report_swap(render_ctx_);
 }
 
-bool VideoRenderer::RenderOnce() {
+VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   int w, h, back;
+  bool failed_before_render = false;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     w = width_;
@@ -273,28 +388,41 @@ bool VideoRenderer::RenderOnce() {
   }
 
   if (w != ring_w_ || h != ring_h_) {
-    // Under the lock: AcquireFront() must never observe a half-built ring.
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (backend_ == Backend::kVulkan) {
-      std::string error;
-      if (!vulkan_->AllocateRing(kRingSize, w, h, &error)) {
-        log_("mpv_kit: " + error);
-        ring_w_ = ring_h_ = 0;
-        return false;
+    {
+      // Under the lock: AcquireFront() must never observe a half-built ring.
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (backend_ == Backend::kVulkan) {
+        if (!vulkan_->AllocateRing(kRingSize, w, h, error)) {
+          ring_w_ = ring_h_ = 0;
+          failed_before_render = true;
+        }
+      } else {
+        sw_retired_ = std::move(sw_buffers_);
+        sw_buffers_.assign(kRingSize, std::vector<uint8_t>(size_t(w) * h * 4));
       }
-    } else {
-      sw_retired_ = std::move(sw_buffers_);
-      sw_buffers_.assign(kRingSize, std::vector<uint8_t>(size_t(w) * h * 4));
+      if (!failed_before_render) {
+        ring_w_ = w;
+        ring_h_ = h;
+      }
     }
-    ring_w_ = w;
-    ring_h_ = h;
+    if (failed_before_render) {
+      SkipFrame();  // mpv still waits for this frame to be consumed
+      return RenderResult::kFailed;
+    }
+    Emit("resize", std::to_string(w) + "x" + std::to_string(h));
   }
 
   int err;
   if (backend_ == Backend::kVulkan) {
     SharedImage& img = vulkan_->ring()[back];
     // Previous use of this image must be finished before we write to it.
-    vulkan_->WaitImage(back);
+    const VkResult prev = vulkan_->WaitImage(back);
+    if (prev != VK_SUCCESS) {
+      SkipFrame();
+      *error = prev == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
+      return prev == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
+                                          : RenderResult::kFailed;
+    }
     mpv_vulkan_image target{};
     target.image = img.image;
     target.format = img.format;
@@ -319,10 +447,15 @@ bool VideoRenderer::RenderOnce() {
     err = api_.render_context_render(render_ctx_, params);
     // Only a successful render transitions the image out of UNDEFINED.
     if (err >= 0) img.initialized = true;
-    // The compositor reads without GPU sync, so complete the frame first.
-    if (err >= 0 && !vulkan_->WaitImage(back)) {
-      log_("mpv_kit: GPU did not finish the frame within 1 s");
-      return false;
+    if (err >= 0) {
+      // The compositor reads without GPU sync, so complete the frame first.
+      const VkResult done = vulkan_->WaitImage(back);
+      if (done != VK_SUCCESS) {
+        api_.render_context_report_swap(render_ctx_);  // frame consumed
+        *error = done == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
+        return done == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
+                                            : RenderResult::kFailed;
+      }
     }
   } else {
     int size[2] = {w, h};
@@ -341,8 +474,11 @@ bool VideoRenderer::RenderOnce() {
     for (size_t i = 3, n = size_t(w) * h * 4; i < n; i += 4) px[i] = 0xff;
   }
   if (err < 0) {
-    log_(std::string("mpv_kit: render: ") + api_.error_string(err));
-    return false;
+    *error = std::string("render: ") + api_.error_string(err);
+    // The frame was consumed (unless the target was rejected up front,
+    // where an extra swap is harmless): keep vo_libmpv's counts moving.
+    api_.render_context_report_swap(render_ctx_);
+    return RenderResult::kFailed;
   }
   int swaps = 0;
   {
@@ -358,7 +494,7 @@ bool VideoRenderer::RenderOnce() {
   }
   for (int i = 0; i < swaps; i++) api_.render_context_report_swap(render_ctx_);
   interop_->FrameReady();
-  return true;
+  return RenderResult::kOk;
 }
 
 }  // namespace mpv_kit

@@ -1,10 +1,13 @@
 // macOS plugin: one Flutter texture per mpv instance.
 //
 // Method channel "mpv_kit_video" (same contract as Windows/Linux):
-//   create  {symbols: List<int>, handle: int, forceSoftware: bool}
+//   create  {symbols: List<int>, handle: int, renderer: String}
 //           -> {textureId: int, backend: "vulkan"|"software", reason: String}
 //   setSize {textureId: int, width: int, height: int}
+//   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
+// Native -> Dart:
+//   event   {textureId: int, kind: String, message: String}
 #import "MpvKitVideoPlugin.h"
 
 #include <cstring>
@@ -19,6 +22,7 @@ using mpv_kit::Backend;
 using mpv_kit::Frame;
 using mpv_kit::MetalInterop;
 using mpv_kit::MpvApi;
+using mpv_kit::ParseRendererChoice;
 using mpv_kit::VideoRenderer;
 
 /// Texture object retained by the engine; may outlive dispose, so every
@@ -138,6 +142,7 @@ using mpv_kit::VideoRenderer;
 @end
 
 @implementation MpvKitVideoPlugin {
+  FlutterMethodChannel* _channel;
   NSObject<FlutterTextureRegistry>* _textures;
   NSMutableDictionary<NSNumber*, MpvKitTexture*>* _instances;
 }
@@ -147,6 +152,7 @@ using mpv_kit::VideoRenderer;
       [FlutterMethodChannel methodChannelWithName:@"mpv_kit_video"
                                   binaryMessenger:registrar.messenger];
   MpvKitVideoPlugin* plugin = [[MpvKitVideoPlugin alloc] init];
+  plugin->_channel = channel;
   plugin->_textures = registrar.textures;
   plugin->_instances = [NSMutableDictionary dictionary];
   [registrar addMethodCallDelegate:plugin channel:channel];
@@ -170,6 +176,16 @@ using mpv_kit::VideoRenderer;
     result([FlutterError errorWithCode:@"no_texture" message:@"unknown textureId" details:nil]);
   } else if ([call.method isEqualToString:@"setSize"]) {
     texture.renderer->SetSize([args[@"width"] intValue], [args[@"height"] intValue]);
+    result(nil);
+  } else if ([call.method isEqualToString:@"setIccProfile"]) {
+    FlutterStandardTypedData* p =
+        [args[@"profile"] isKindOfClass:FlutterStandardTypedData.class]
+            ? args[@"profile"]
+            : nil;
+    const auto* bytes = static_cast<const uint8_t*>(p.data.bytes);
+    texture.renderer->SetIccProfile(
+        p ? std::vector<uint8_t>(bytes, bytes + p.data.length)
+          : std::vector<uint8_t>());
     result(nil);
   } else if ([call.method isEqualToString:@"dispose"]) {
     [_instances removeObjectForKey:textureId];
@@ -199,7 +215,9 @@ using mpv_kit::VideoRenderer;
                                details:nil]);
     return;
   }
-  const bool forceSoftware = [args[@"forceSoftware"] boolValue];
+  NSString* rendererName =
+      [args[@"renderer"] isKindOfClass:NSString.class] ? args[@"renderer"] : @"auto";
+  const auto choice = ParseRendererChoice(rendererName.UTF8String);
 
   // The texture id is only known after registration; the render thread
   // reads it through this shared cell.
@@ -209,10 +227,22 @@ using mpv_kit::VideoRenderer;
     const int64_t tid = textureIdCell->load();
     if (tid >= 0) [weakTextures textureFrameAvailable:tid];
   });
+  __weak FlutterMethodChannel* weakChannel = _channel;
   auto renderer = std::make_unique<VideoRenderer>(
       api, reinterpret_cast<mpv_handle*>(static_cast<intptr_t>(handle.longLongValue)),
-      interop.get(), [](const std::string& msg) { NSLog(@"%s", msg.c_str()); });
-  if (!renderer->Start(forceSoftware)) {
+      interop.get(), [](const std::string& msg) { NSLog(@"%s", msg.c_str()); },
+      [textureIdCell, weakChannel](const char* kind, const std::string& msg) {
+        // Render thread: the channel may only be used on the main thread.
+        const int64_t tid = textureIdCell->load();
+        if (tid < 0) return;
+        NSString* k = [NSString stringWithUTF8String:kind];
+        NSString* m = [NSString stringWithUTF8String:msg.c_str()] ?: @"";
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [weakChannel invokeMethod:@"event"
+                          arguments:@{@"textureId" : @(tid), @"kind" : k, @"message" : m}];
+        });
+      });
+  if (!renderer->Start(choice)) {
     result([FlutterError errorWithCode:@"render_init"
                                message:@"no usable render backend"
                                details:nil]);

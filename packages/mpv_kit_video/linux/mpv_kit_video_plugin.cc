@@ -1,10 +1,13 @@
 // Linux plugin: one Flutter texture per mpv instance.
 //
 // Method channel "mpv_kit_video" (same contract as Windows):
-//   create  {symbols: List<int>, handle: int, forceSoftware: bool}
+//   create  {symbols: List<int>, handle: int, renderer: String}
 //           -> {textureId: int, backend: "vulkan"|"software", reason: String}
 //   setSize {textureId: int, width: int, height: int}
+//   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
+// Native -> Dart:
+//   event   {textureId: int, kind: String, message: String}
 #include <epoxy/gl.h>
 
 #include "include/mpv_kit_video/mpv_kit_video_plugin.h"
@@ -34,6 +37,8 @@ struct State {
   std::mutex mutex;  // guards dead/renderer against populate
   bool dead = false;
   FlTextureRegistrar* registrar = nullptr;
+  FlMethodChannel* channel = nullptr;  // lives as long as the plugin
+  std::atomic<int64_t> texture_id{-1};
   // Target of frame-available notifications; cleared on dispose.
   std::atomic<FlTexture*> texture{nullptr};
   // The plugin's reference to the texture object, dropped after the delayed
@@ -48,6 +53,34 @@ struct State {
 using StatePtr = std::shared_ptr<State>;
 
 const uint8_t kBlackPixel[4] = {0, 0, 0, 0xff};
+
+/// A renderer event on its way from the render thread to Dart.
+struct PendingEvent {
+  FlMethodChannel* channel;
+  int64_t texture_id;
+  std::string kind, message;
+};
+
+/// Any thread: the channel may only be used on the main loop.
+void PostEvent(FlMethodChannel* channel, int64_t texture_id, const char* kind,
+               const std::string& message) {
+  if (texture_id < 0) return;
+  g_idle_add(
+      [](gpointer data) -> gboolean {
+        std::unique_ptr<PendingEvent> e(static_cast<PendingEvent*>(data));
+        g_autoptr(FlValue) args = fl_value_new_map();
+        fl_value_set_string_take(args, "textureId",
+                                 fl_value_new_int(e->texture_id));
+        fl_value_set_string_take(args, "kind",
+                                 fl_value_new_string(e->kind.c_str()));
+        fl_value_set_string_take(args, "message",
+                                 fl_value_new_string(e->message.c_str()));
+        fl_method_channel_invoke_method(e->channel, "event", args, nullptr,
+                                        nullptr, nullptr);
+        return G_SOURCE_REMOVE;
+      },
+      new PendingEvent{channel, texture_id, kind, message});
+}
 
 }  // namespace
 }  // namespace mpv_kit
@@ -221,6 +254,15 @@ class Plugin {
       it->second->renderer->SetSize(static_cast<int>(IntArg(args, "width")),
                                     static_cast<int>(IntArg(args, "height")));
       fl_method_call_respond_success(call, nullptr, nullptr);
+    } else if (m == "setIccProfile") {
+      FlValue* p = fl_value_lookup_string(args, "profile");
+      std::vector<uint8_t> profile;
+      if (p && fl_value_get_type(p) == FL_VALUE_TYPE_UINT8_LIST) {
+        const uint8_t* data = fl_value_get_uint8_list(p);
+        profile.assign(data, data + fl_value_get_length(p));
+      }
+      it->second->renderer->SetIccProfile(std::move(profile));
+      fl_method_call_respond_success(call, nullptr, nullptr);
     } else if (m == "dispose") {
       StatePtr st = it->second;
       instances_.erase(it);
@@ -250,9 +292,11 @@ class Plugin {
       return;
     }
     const int64_t handle = IntArg(args, "handle");
-    FlValue* fs = fl_value_lookup_string(args, "forceSoftware");
-    const bool force_sw = fs && fl_value_get_type(fs) == FL_VALUE_TYPE_BOOL &&
-                          fl_value_get_bool(fs);
+    FlValue* rv = fl_value_lookup_string(args, "renderer");
+    const RendererChoice choice = ParseRendererChoice(
+        rv && fl_value_get_type(rv) == FL_VALUE_TYPE_STRING
+            ? fl_value_get_string(rv)
+            : "auto");
     if (!handle) {
       Error(call, "bad_args", "symbols/handle");
       return;
@@ -261,6 +305,7 @@ class Plugin {
     auto st = std::make_shared<State>();
     State* raw = st.get();
     raw->registrar = textures_;
+    raw->channel = channel_;
     // Render thread: the texture is registered before the first frame can
     // be published, but guard anyway.
     raw->interop = std::make_unique<GlInterop>([raw] {
@@ -270,8 +315,11 @@ class Plugin {
     raw->renderer = std::make_unique<VideoRenderer>(
         api, reinterpret_cast<mpv_handle*>(static_cast<intptr_t>(handle)),
         raw->interop.get(),
-        [](const std::string& msg) { g_message("%s", msg.c_str()); });
-    if (!raw->renderer->Start(force_sw)) {
+        [](const std::string& msg) { g_message("%s", msg.c_str()); },
+        [raw](const char* kind, const std::string& msg) {
+          PostEvent(raw->channel, raw->texture_id.load(), kind, msg);
+        });
+    if (!raw->renderer->Start(choice)) {
       Error(call, "render_init", "no usable render backend");
       return;
     }
@@ -295,6 +343,7 @@ class Plugin {
     raw->owned_texture = texture;
     raw->texture = texture;
     const int64_t id = fl_texture_get_id(texture);
+    raw->texture_id = id;
     instances_[id] = st;
 
     std::string reason = raw->renderer->backend_reason();
@@ -316,6 +365,7 @@ class Plugin {
       st->dead = true;
     }
     st->texture.store(nullptr);  // no more frame-available notifications
+    st->texture_id = -1;         // and no more events
     // Joins the render thread; buries every shared image for GL cleanup.
     st->renderer.reset();
     if (st->placeholder) st->interop->Bury(st->placeholder);

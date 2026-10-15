@@ -61,8 +61,9 @@ class VulkanContext {
 
   /// Reserves the next timeline value for a render into ring[i].
   uint64_t NextSignalValue(int i);
-  /// Waits until rendering into ring[i] has completed on the GPU.
-  bool WaitImage(int i);
+  /// Waits until rendering into ring[i] has completed on the GPU:
+  /// VK_SUCCESS, VK_TIMEOUT (1 s) or an error such as VK_ERROR_DEVICE_LOST.
+  VkResult WaitImage(int i);
   VkSemaphore timeline() const { return timeline_; }
 
   VkInstance instance() const { return instance_; }
