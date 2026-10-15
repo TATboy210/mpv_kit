@@ -46,7 +46,7 @@ jobs:
         run: flutter pub get
       - name: Analyze plugin and example
         run: |
-          cd packages/mpv_kit_video && flutter analyze --fatal-infos
+          cd packages/mpv_kit_video && flutter analyze --fatal-infos && flutter test
           cd ../../example && flutter analyze --fatal-infos
       - name: Build example (${{ matrix.target }})
         working-directory: example
