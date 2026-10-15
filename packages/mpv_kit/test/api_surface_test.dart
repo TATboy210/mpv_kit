@@ -110,10 +110,12 @@ void main() {
     Object? prop(String name) => player.mpv.getProperty(name);
 
     test('transport, A-B loop and frame stepping', () async {
-      await player.open(_lavfi, play: false);
-      await player.mpv.events
+      // Subscribe first: file-loaded may arrive before open() returns.
+      final loaded = player.mpv.events
           .firstWhere((e) => e is FileLoadedEvent)
           .timeout(_timeout);
+      await player.open(_lavfi, play: false);
+      await loaded;
       player.play();
       expect(prop('pause'), isFalse);
       player.pause();
@@ -123,7 +125,10 @@ void main() {
       player.pause();
       await player.seek(const Duration(milliseconds: 500), exact: true);
       await player.seekRelative(const Duration(milliseconds: 200));
-      await player.seekRelative(const Duration(milliseconds: -100), exact: true);
+      await player.seekRelative(
+        const Duration(milliseconds: -100),
+        exact: true,
+      );
       player.frameStep();
       player.frameStep(backward: true);
       player.setAbLoop(const Duration(milliseconds: 100), null);
@@ -136,10 +141,12 @@ void main() {
     });
 
     test('playlist editing', () async {
-      await player.openPlaylist([_lavfi, _lavfi, _lavfi], play: false);
-      await player.mpv.events
+      // Subscribe first: file-loaded may arrive before open() returns.
+      final loaded = player.mpv.events
           .firstWhere((e) => e is FileLoadedEvent)
           .timeout(_timeout);
+      await player.openPlaylist([_lavfi, _lavfi, _lavfi], play: false);
+      await loaded;
       expect(prop('playlist-count'), 3);
       // Step while the current entry is the first one.
       player.next();

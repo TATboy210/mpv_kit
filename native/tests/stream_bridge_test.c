@@ -142,7 +142,8 @@ static bool queue_overflow;
 static int64_t stream_pos[MAX_STREAMS];   // indexed by host stream id
 static bool stream_open[MAX_STREAMS];
 static uint64_t next_stream = 1;
-static int opens, reads, closes;
+static int opens, reads;
+static volatile int closes;  // observed in a debugger only
 static int64_t bytes_served;
 
 static void mem_request(void *user_data, uint64_t request, int op,
@@ -243,7 +244,7 @@ static void host_thread(void)
 
 // --- "pending://": requests are recorded but never answered ----------------
 static uint64_t pending_request;   // last request id seen
-static int pending_calls;
+static volatile int pending_calls;  // observed in a debugger only
 static bool pending_shutdown_done; // set after mpv_kit_stream_shutdown returned
 static int pending_late_calls;     // request_fn calls after shutdown (must be 0)
 
