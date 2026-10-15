@@ -13,7 +13,8 @@ namespace {
 // libplacebo's recommended interop set (vaapi dma-buf import, CUDA/nvdec
 // export, host pointers). Each is enabled only when the device has it.
 constexpr const char* kOptionalDeviceExtensions[] = {
-    // mpv context.c opt_extensions
+    // mpv context.c opt_extensions (VK_EXT_shader_object omitted: mpv master
+    // dropped it from the list after 0.41)
     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
     VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
     VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
@@ -22,7 +23,6 @@ constexpr const char* kOptionalDeviceExtensions[] = {
     VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
     VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
     VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME,
-    VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
     VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
     VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME,
     VK_KHR_SHADER_EXPECT_ASSUME_EXTENSION_NAME,
@@ -271,8 +271,6 @@ bool VulkanContext::CreateDevice(std::string* error) {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT);
   chain(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, ext_.atomic_float,
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT);
-  chain(VK_EXT_SHADER_OBJECT_EXTENSION_NAME, ext_.shader_object,
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT);
   chain(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME, ext_.cooperative_matrix,
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR);
   chain(VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME, ext_.video_maintenance1,

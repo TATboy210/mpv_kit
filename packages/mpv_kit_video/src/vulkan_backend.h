@@ -112,7 +112,6 @@ class VulkanContext {
   struct {
     VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer;
     VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomic_float;
-    VkPhysicalDeviceShaderObjectFeaturesEXT shader_object;
     VkPhysicalDeviceCooperativeMatrixFeaturesKHR cooperative_matrix;
     VkPhysicalDeviceVideoMaintenance1FeaturesKHR video_maintenance1;
     VkPhysicalDeviceShaderExpectAssumeFeaturesKHR expect_assume;
