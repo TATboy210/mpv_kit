@@ -391,8 +391,8 @@ typedef MpvWakeupFn = Void Function(Pointer<Void> d);
 typedef MpvRenderUpdateFn = Void Function(Pointer<Void> cbCtx);
 
 /// `mpv_stream_cb_read_fn`.
-typedef MpvStreamCbReadFn = Int64 Function(
-    Pointer<Void> cookie, Pointer<Uint8> buf, Uint64 nbytes);
+typedef MpvStreamCbReadFn =
+    Int64 Function(Pointer<Void> cookie, Pointer<Uint8> buf, Uint64 nbytes);
 
 /// `mpv_stream_cb_seek_fn`.
 typedef MpvStreamCbSeekFn = Int64 Function(Pointer<Void> cookie, Int64 offset);
@@ -407,8 +407,12 @@ typedef MpvStreamCbCloseFn = Void Function(Pointer<Void> cookie);
 typedef MpvStreamCbCancelFn = Void Function(Pointer<Void> cookie);
 
 /// `mpv_stream_cb_open_ro_fn`.
-typedef MpvStreamCbOpenRoFn = Int32 Function(
-    Pointer<Void> userData, Pointer<Utf8> uri, Pointer<MpvStreamCbInfo> info);
+typedef MpvStreamCbOpenRoFn =
+    Int32 Function(
+      Pointer<Void> userData,
+      Pointer<Utf8> uri,
+      Pointer<MpvStreamCbInfo> info,
+    );
 
 // ---------------------------------------------------------------------------
 // Function table
@@ -431,312 +435,424 @@ final class MpvBindings {
 
   // --- client.h: lifecycle & meta --------------------------------------
   /// `mpv_client_api_version`.
-  late final clientApiVersion =
-      library.lookupFunction<UnsignedLong Function(), int Function()>(
-          'mpv_client_api_version');
+  late final clientApiVersion = library
+      .lookupFunction<UnsignedLong Function(), int Function()>(
+        'mpv_client_api_version',
+      );
 
   /// `mpv_error_string`.
-  late final errorString =
-      library.lookupFunction<_S Function(Int32), _S Function(int)>(
-          'mpv_error_string');
+  late final errorString = library
+      .lookupFunction<_S Function(Int32), _S Function(int)>('mpv_error_string');
 
   /// `mpv_free`.
-  late final free = library.lookupFunction<Void Function(Pointer<Void>),
-      void Function(Pointer<Void>)>('mpv_free');
+  late final free = library
+      .lookupFunction<
+        Void Function(Pointer<Void>),
+        void Function(Pointer<Void>)
+      >('mpv_free');
 
   /// `mpv_client_name`.
-  late final clientName =
-      library.lookupFunction<_S Function(_H), _S Function(_H)>(
-          'mpv_client_name');
+  late final clientName = library
+      .lookupFunction<_S Function(_H), _S Function(_H)>('mpv_client_name');
 
   /// `mpv_client_id`.
-  late final clientId =
-      library.lookupFunction<Int64 Function(_H), int Function(_H)>(
-          'mpv_client_id');
+  late final clientId = library
+      .lookupFunction<Int64 Function(_H), int Function(_H)>('mpv_client_id');
 
   /// `mpv_create`.
-  late final create =
-      library.lookupFunction<_H Function(), _H Function()>('mpv_create');
+  late final create = library.lookupFunction<_H Function(), _H Function()>(
+    'mpv_create',
+  );
 
   /// `mpv_initialize`.
-  late final initialize =
-      library.lookupFunction<Int32 Function(_H), int Function(_H)>(
-          'mpv_initialize');
+  late final initialize = library
+      .lookupFunction<Int32 Function(_H), int Function(_H)>('mpv_initialize');
 
   /// `mpv_destroy`.
-  late final destroy =
-      library.lookupFunction<Void Function(_H), void Function(_H)>(
-          'mpv_destroy');
+  late final destroy = library
+      .lookupFunction<Void Function(_H), void Function(_H)>('mpv_destroy');
 
   /// `mpv_terminate_destroy`.
-  late final terminateDestroy =
-      library.lookupFunction<Void Function(_H), void Function(_H)>(
-          'mpv_terminate_destroy');
+  late final terminateDestroy = library
+      .lookupFunction<Void Function(_H), void Function(_H)>(
+        'mpv_terminate_destroy',
+      );
 
   /// `mpv_create_client`.
-  late final createClient =
-      library.lookupFunction<_H Function(_H, _S), _H Function(_H, _S)>(
-          'mpv_create_client');
+  late final createClient = library
+      .lookupFunction<_H Function(_H, _S), _H Function(_H, _S)>(
+        'mpv_create_client',
+      );
 
   /// `mpv_create_weak_client`.
-  late final createWeakClient =
-      library.lookupFunction<_H Function(_H, _S), _H Function(_H, _S)>(
-          'mpv_create_weak_client');
+  late final createWeakClient = library
+      .lookupFunction<_H Function(_H, _S), _H Function(_H, _S)>(
+        'mpv_create_weak_client',
+      );
 
   /// `mpv_load_config_file`.
-  late final loadConfigFile =
-      library.lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
-          'mpv_load_config_file');
+  late final loadConfigFile = library
+      .lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
+        'mpv_load_config_file',
+      );
 
   /// `mpv_get_time_ns`.
-  late final getTimeNs =
-      library.lookupFunction<Int64 Function(_H), int Function(_H)>(
-          'mpv_get_time_ns');
+  late final getTimeNs = library
+      .lookupFunction<Int64 Function(_H), int Function(_H)>('mpv_get_time_ns');
 
   /// `mpv_get_time_us`.
-  late final getTimeUs =
-      library.lookupFunction<Int64 Function(_H), int Function(_H)>(
-          'mpv_get_time_us');
+  late final getTimeUs = library
+      .lookupFunction<Int64 Function(_H), int Function(_H)>('mpv_get_time_us');
 
   // --- client.h: nodes & options ----------------------------------------
   /// `mpv_free_node_contents`.
-  late final freeNodeContents = library.lookupFunction<
-      Void Function(Pointer<MpvNode>),
-      void Function(Pointer<MpvNode>)>('mpv_free_node_contents');
+  late final freeNodeContents = library
+      .lookupFunction<
+        Void Function(Pointer<MpvNode>),
+        void Function(Pointer<MpvNode>)
+      >('mpv_free_node_contents');
 
   /// `mpv_set_option`.
-  late final setOption = library.lookupFunction<
-      Int32 Function(_H, _S, Int32, Pointer<Void>),
-      int Function(_H, _S, int, Pointer<Void>)>('mpv_set_option');
+  late final setOption = library
+      .lookupFunction<
+        Int32 Function(_H, _S, Int32, Pointer<Void>),
+        int Function(_H, _S, int, Pointer<Void>)
+      >('mpv_set_option');
 
   /// `mpv_set_option_string`.
-  late final setOptionString = library.lookupFunction<
-      Int32 Function(_H, _S, _S), int Function(_H, _S, _S)>(
-      'mpv_set_option_string');
+  late final setOptionString = library
+      .lookupFunction<Int32 Function(_H, _S, _S), int Function(_H, _S, _S)>(
+        'mpv_set_option_string',
+      );
 
   // --- client.h: commands ------------------------------------------------
   /// `mpv_command`.
-  late final command = library.lookupFunction<
-      Int32 Function(_H, Pointer<_S>),
-      int Function(_H, Pointer<_S>)>('mpv_command');
+  late final command = library
+      .lookupFunction<
+        Int32 Function(_H, Pointer<_S>),
+        int Function(_H, Pointer<_S>)
+      >('mpv_command');
 
   /// `mpv_command_node`.
-  late final commandNode = library.lookupFunction<
-      Int32 Function(_H, Pointer<MpvNode>, Pointer<MpvNode>),
-      int Function(_H, Pointer<MpvNode>, Pointer<MpvNode>)>('mpv_command_node');
+  late final commandNode = library
+      .lookupFunction<
+        Int32 Function(_H, Pointer<MpvNode>, Pointer<MpvNode>),
+        int Function(_H, Pointer<MpvNode>, Pointer<MpvNode>)
+      >('mpv_command_node');
 
   /// `mpv_command_ret`.
-  late final commandRet = library.lookupFunction<
-      Int32 Function(_H, Pointer<_S>, Pointer<MpvNode>),
-      int Function(_H, Pointer<_S>, Pointer<MpvNode>)>('mpv_command_ret');
+  late final commandRet = library
+      .lookupFunction<
+        Int32 Function(_H, Pointer<_S>, Pointer<MpvNode>),
+        int Function(_H, Pointer<_S>, Pointer<MpvNode>)
+      >('mpv_command_ret');
 
   /// `mpv_command_string`.
-  late final commandString =
-      library.lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
-          'mpv_command_string');
+  late final commandString = library
+      .lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
+        'mpv_command_string',
+      );
 
   /// `mpv_command_async`.
-  late final commandAsync = library.lookupFunction<
-      Int32 Function(_H, Uint64, Pointer<_S>),
-      int Function(_H, int, Pointer<_S>)>('mpv_command_async');
+  late final commandAsync = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, Pointer<_S>),
+        int Function(_H, int, Pointer<_S>)
+      >('mpv_command_async');
 
   /// `mpv_command_node_async`.
-  late final commandNodeAsync = library.lookupFunction<
-      Int32 Function(_H, Uint64, Pointer<MpvNode>),
-      int Function(_H, int, Pointer<MpvNode>)>('mpv_command_node_async');
+  late final commandNodeAsync = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, Pointer<MpvNode>),
+        int Function(_H, int, Pointer<MpvNode>)
+      >('mpv_command_node_async');
 
   /// `mpv_abort_async_command`.
-  late final abortAsyncCommand = library.lookupFunction<
-      Void Function(_H, Uint64), void Function(_H, int)>(
-      'mpv_abort_async_command');
+  late final abortAsyncCommand = library
+      .lookupFunction<Void Function(_H, Uint64), void Function(_H, int)>(
+        'mpv_abort_async_command',
+      );
 
   // --- client.h: properties ----------------------------------------------
   /// `mpv_set_property`.
-  late final setProperty = library.lookupFunction<
-      Int32 Function(_H, _S, Int32, Pointer<Void>),
-      int Function(_H, _S, int, Pointer<Void>)>('mpv_set_property');
+  late final setProperty = library
+      .lookupFunction<
+        Int32 Function(_H, _S, Int32, Pointer<Void>),
+        int Function(_H, _S, int, Pointer<Void>)
+      >('mpv_set_property');
 
   /// `mpv_set_property_string`.
-  late final setPropertyString = library.lookupFunction<
-      Int32 Function(_H, _S, _S), int Function(_H, _S, _S)>(
-      'mpv_set_property_string');
+  late final setPropertyString = library
+      .lookupFunction<Int32 Function(_H, _S, _S), int Function(_H, _S, _S)>(
+        'mpv_set_property_string',
+      );
 
   /// `mpv_del_property`.
-  late final delProperty =
-      library.lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
-          'mpv_del_property');
+  late final delProperty = library
+      .lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
+        'mpv_del_property',
+      );
 
   /// `mpv_set_property_async`.
-  late final setPropertyAsync = library.lookupFunction<
-      Int32 Function(_H, Uint64, _S, Int32, Pointer<Void>),
-      int Function(_H, int, _S, int, Pointer<Void>)>('mpv_set_property_async');
+  late final setPropertyAsync = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, _S, Int32, Pointer<Void>),
+        int Function(_H, int, _S, int, Pointer<Void>)
+      >('mpv_set_property_async');
 
   /// `mpv_get_property`.
-  late final getProperty = library.lookupFunction<
-      Int32 Function(_H, _S, Int32, Pointer<Void>),
-      int Function(_H, _S, int, Pointer<Void>)>('mpv_get_property');
+  late final getProperty = library
+      .lookupFunction<
+        Int32 Function(_H, _S, Int32, Pointer<Void>),
+        int Function(_H, _S, int, Pointer<Void>)
+      >('mpv_get_property');
 
   /// `mpv_get_property_string`.
-  late final getPropertyString =
-      library.lookupFunction<_S Function(_H, _S), _S Function(_H, _S)>(
-          'mpv_get_property_string');
+  late final getPropertyString = library
+      .lookupFunction<_S Function(_H, _S), _S Function(_H, _S)>(
+        'mpv_get_property_string',
+      );
 
   /// `mpv_get_property_osd_string`.
-  late final getPropertyOsdString =
-      library.lookupFunction<_S Function(_H, _S), _S Function(_H, _S)>(
-          'mpv_get_property_osd_string');
+  late final getPropertyOsdString = library
+      .lookupFunction<_S Function(_H, _S), _S Function(_H, _S)>(
+        'mpv_get_property_osd_string',
+      );
 
   /// `mpv_get_property_async`.
-  late final getPropertyAsync = library.lookupFunction<
-      Int32 Function(_H, Uint64, _S, Int32),
-      int Function(_H, int, _S, int)>('mpv_get_property_async');
+  late final getPropertyAsync = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, _S, Int32),
+        int Function(_H, int, _S, int)
+      >('mpv_get_property_async');
 
   /// `mpv_observe_property`.
-  late final observeProperty = library.lookupFunction<
-      Int32 Function(_H, Uint64, _S, Int32),
-      int Function(_H, int, _S, int)>('mpv_observe_property');
+  late final observeProperty = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, _S, Int32),
+        int Function(_H, int, _S, int)
+      >('mpv_observe_property');
 
   /// `mpv_unobserve_property`.
-  late final unobserveProperty = library.lookupFunction<
-      Int32 Function(_H, Uint64), int Function(_H, int)>(
-      'mpv_unobserve_property');
+  late final unobserveProperty = library
+      .lookupFunction<Int32 Function(_H, Uint64), int Function(_H, int)>(
+        'mpv_unobserve_property',
+      );
 
   // --- client.h: events --------------------------------------------------
   /// `mpv_event_name`.
-  late final eventName =
-      library.lookupFunction<_S Function(Int32), _S Function(int)>(
-          'mpv_event_name');
+  late final eventName = library
+      .lookupFunction<_S Function(Int32), _S Function(int)>('mpv_event_name');
 
   /// `mpv_event_to_node`.
-  late final eventToNode = library.lookupFunction<
-      Int32 Function(Pointer<MpvNode>, Pointer<MpvEvent>),
-      int Function(Pointer<MpvNode>, Pointer<MpvEvent>)>('mpv_event_to_node');
+  late final eventToNode = library
+      .lookupFunction<
+        Int32 Function(Pointer<MpvNode>, Pointer<MpvEvent>),
+        int Function(Pointer<MpvNode>, Pointer<MpvEvent>)
+      >('mpv_event_to_node');
 
   /// `mpv_request_event`.
-  late final requestEvent = library.lookupFunction<
-      Int32 Function(_H, Int32, Int32),
-      int Function(_H, int, int)>('mpv_request_event');
+  late final requestEvent = library
+      .lookupFunction<
+        Int32 Function(_H, Int32, Int32),
+        int Function(_H, int, int)
+      >('mpv_request_event');
 
   /// `mpv_request_log_messages`.
-  late final requestLogMessages =
-      library.lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
-          'mpv_request_log_messages');
+  late final requestLogMessages = library
+      .lookupFunction<Int32 Function(_H, _S), int Function(_H, _S)>(
+        'mpv_request_log_messages',
+      );
 
   /// `mpv_wait_event`.
-  late final waitEvent = library.lookupFunction<
-      Pointer<MpvEvent> Function(_H, Double),
-      Pointer<MpvEvent> Function(_H, double)>('mpv_wait_event');
+  late final waitEvent = library
+      .lookupFunction<
+        Pointer<MpvEvent> Function(_H, Double),
+        Pointer<MpvEvent> Function(_H, double)
+      >('mpv_wait_event');
 
   /// `mpv_wakeup`.
-  late final wakeup =
-      library.lookupFunction<Void Function(_H), void Function(_H)>(
-          'mpv_wakeup');
+  late final wakeup = library
+      .lookupFunction<Void Function(_H), void Function(_H)>('mpv_wakeup');
 
   /// `mpv_set_wakeup_callback`.
-  late final setWakeupCallback = library.lookupFunction<
-      Void Function(_H, Pointer<NativeFunction<MpvWakeupFn>>, Pointer<Void>),
-      void Function(_H, Pointer<NativeFunction<MpvWakeupFn>>,
-          Pointer<Void>)>('mpv_set_wakeup_callback');
+  late final setWakeupCallback = library
+      .lookupFunction<
+        Void Function(_H, Pointer<NativeFunction<MpvWakeupFn>>, Pointer<Void>),
+        void Function(_H, Pointer<NativeFunction<MpvWakeupFn>>, Pointer<Void>)
+      >('mpv_set_wakeup_callback');
 
   /// `mpv_wait_async_requests`.
-  late final waitAsyncRequests =
-      library.lookupFunction<Void Function(_H), void Function(_H)>(
-          'mpv_wait_async_requests');
+  late final waitAsyncRequests = library
+      .lookupFunction<Void Function(_H), void Function(_H)>(
+        'mpv_wait_async_requests',
+      );
 
   /// `mpv_hook_add`.
-  late final hookAdd = library.lookupFunction<
-      Int32 Function(_H, Uint64, _S, Int32),
-      int Function(_H, int, _S, int)>('mpv_hook_add');
+  late final hookAdd = library
+      .lookupFunction<
+        Int32 Function(_H, Uint64, _S, Int32),
+        int Function(_H, int, _S, int)
+      >('mpv_hook_add');
 
   /// `mpv_hook_continue`.
-  late final hookContinue = library.lookupFunction<
-      Int32 Function(_H, Uint64), int Function(_H, int)>('mpv_hook_continue');
+  late final hookContinue = library
+      .lookupFunction<Int32 Function(_H, Uint64), int Function(_H, int)>(
+        'mpv_hook_continue',
+      );
 
   /// `mpv_get_wakeup_pipe`.
-  late final getWakeupPipe =
-      library.lookupFunction<Int32 Function(_H), int Function(_H)>(
-          'mpv_get_wakeup_pipe');
+  late final getWakeupPipe = library
+      .lookupFunction<Int32 Function(_H), int Function(_H)>(
+        'mpv_get_wakeup_pipe',
+      );
 
   // --- render.h ----------------------------------------------------------
   /// `mpv_render_context_create`.
-  late final renderContextCreate = library.lookupFunction<
-      Int32 Function(
-          Pointer<Pointer<MpvRenderContext>>, _H, Pointer<MpvRenderParam>),
-      int Function(Pointer<Pointer<MpvRenderContext>>, _H,
-          Pointer<MpvRenderParam>)>('mpv_render_context_create');
+  late final renderContextCreate = library
+      .lookupFunction<
+        Int32 Function(
+          Pointer<Pointer<MpvRenderContext>>,
+          _H,
+          Pointer<MpvRenderParam>,
+        ),
+        int Function(
+          Pointer<Pointer<MpvRenderContext>>,
+          _H,
+          Pointer<MpvRenderParam>,
+        )
+      >('mpv_render_context_create');
 
   /// `mpv_render_context_set_parameter`.
-  late final renderContextSetParameter = library.lookupFunction<
-      Int32 Function(Pointer<MpvRenderContext>, MpvRenderParam),
-      int Function(Pointer<MpvRenderContext>,
-          MpvRenderParam)>('mpv_render_context_set_parameter');
+  late final renderContextSetParameter = library
+      .lookupFunction<
+        Int32 Function(Pointer<MpvRenderContext>, MpvRenderParam),
+        int Function(Pointer<MpvRenderContext>, MpvRenderParam)
+      >('mpv_render_context_set_parameter');
 
   /// `mpv_render_context_get_info`.
-  late final renderContextGetInfo = library.lookupFunction<
-      Int32 Function(Pointer<MpvRenderContext>, MpvRenderParam),
-      int Function(
-          Pointer<MpvRenderContext>, MpvRenderParam)>('mpv_render_context_get_info');
+  late final renderContextGetInfo = library
+      .lookupFunction<
+        Int32 Function(Pointer<MpvRenderContext>, MpvRenderParam),
+        int Function(Pointer<MpvRenderContext>, MpvRenderParam)
+      >('mpv_render_context_get_info');
 
   /// `mpv_render_context_set_update_callback`.
-  late final renderContextSetUpdateCallback = library.lookupFunction<
-      Void Function(Pointer<MpvRenderContext>,
-          Pointer<NativeFunction<MpvRenderUpdateFn>>, Pointer<Void>),
-      void Function(Pointer<MpvRenderContext>,
+  late final renderContextSetUpdateCallback = library
+      .lookupFunction<
+        Void Function(
+          Pointer<MpvRenderContext>,
           Pointer<NativeFunction<MpvRenderUpdateFn>>,
-          Pointer<Void>)>('mpv_render_context_set_update_callback');
+          Pointer<Void>,
+        ),
+        void Function(
+          Pointer<MpvRenderContext>,
+          Pointer<NativeFunction<MpvRenderUpdateFn>>,
+          Pointer<Void>,
+        )
+      >('mpv_render_context_set_update_callback');
 
   /// `mpv_render_context_update`.
-  late final renderContextUpdate = library.lookupFunction<
-      Uint64 Function(Pointer<MpvRenderContext>),
-      int Function(Pointer<MpvRenderContext>)>('mpv_render_context_update');
+  late final renderContextUpdate = library
+      .lookupFunction<
+        Uint64 Function(Pointer<MpvRenderContext>),
+        int Function(Pointer<MpvRenderContext>)
+      >('mpv_render_context_update');
 
   /// `mpv_render_context_render`.
-  late final renderContextRender = library.lookupFunction<
-      Int32 Function(Pointer<MpvRenderContext>, Pointer<MpvRenderParam>),
-      int Function(Pointer<MpvRenderContext>,
-          Pointer<MpvRenderParam>)>('mpv_render_context_render');
+  late final renderContextRender = library
+      .lookupFunction<
+        Int32 Function(Pointer<MpvRenderContext>, Pointer<MpvRenderParam>),
+        int Function(Pointer<MpvRenderContext>, Pointer<MpvRenderParam>)
+      >('mpv_render_context_render');
 
   /// `mpv_render_context_report_swap`.
-  late final renderContextReportSwap = library.lookupFunction<
-      Void Function(Pointer<MpvRenderContext>),
-      void Function(Pointer<MpvRenderContext>)>(
-      'mpv_render_context_report_swap');
+  late final renderContextReportSwap = library
+      .lookupFunction<
+        Void Function(Pointer<MpvRenderContext>),
+        void Function(Pointer<MpvRenderContext>)
+      >('mpv_render_context_report_swap');
 
   /// `mpv_render_context_free`.
-  late final renderContextFree = library.lookupFunction<
-      Void Function(Pointer<MpvRenderContext>),
-      void Function(Pointer<MpvRenderContext>)>('mpv_render_context_free');
+  late final renderContextFree = library
+      .lookupFunction<
+        Void Function(Pointer<MpvRenderContext>),
+        void Function(Pointer<MpvRenderContext>)
+      >('mpv_render_context_free');
 
   // --- stream_cb.h -------------------------------------------------------
   /// `mpv_stream_cb_add_ro`.
-  late final streamCbAddRo = library.lookupFunction<
-      Int32 Function(_H, _S, Pointer<Void>,
-          Pointer<NativeFunction<MpvStreamCbOpenRoFn>>),
-      int Function(_H, _S, Pointer<Void>,
-          Pointer<NativeFunction<MpvStreamCbOpenRoFn>>)>('mpv_stream_cb_add_ro');
+  late final streamCbAddRo = library
+      .lookupFunction<
+        Int32 Function(
+          _H,
+          _S,
+          Pointer<Void>,
+          Pointer<NativeFunction<MpvStreamCbOpenRoFn>>,
+        ),
+        int Function(
+          _H,
+          _S,
+          Pointer<Void>,
+          Pointer<NativeFunction<MpvStreamCbOpenRoFn>>,
+        )
+      >('mpv_stream_cb_add_ro');
 
   /// 全部绑定的 C 符号名（供 ABI 自检与测试使用）。
   static const symbols = <String>[
-    'mpv_abort_async_command', 'mpv_client_api_version', 'mpv_client_id',
-    'mpv_client_name', 'mpv_command', 'mpv_command_async', 'mpv_command_node',
-    'mpv_command_node_async', 'mpv_command_ret', 'mpv_command_string',
-    'mpv_create', 'mpv_create_client', 'mpv_create_weak_client',
-    'mpv_del_property', 'mpv_destroy', 'mpv_error_string', 'mpv_event_name',
-    'mpv_event_to_node', 'mpv_free', 'mpv_free_node_contents',
-    'mpv_get_property', 'mpv_get_property_async',
-    'mpv_get_property_osd_string', 'mpv_get_property_string',
-    'mpv_get_time_ns', 'mpv_get_time_us', 'mpv_get_wakeup_pipe',
-    'mpv_hook_add', 'mpv_hook_continue', 'mpv_initialize',
-    'mpv_load_config_file', 'mpv_observe_property',
-    'mpv_render_context_create', 'mpv_render_context_free',
-    'mpv_render_context_get_info', 'mpv_render_context_render',
-    'mpv_render_context_report_swap', 'mpv_render_context_set_parameter',
-    'mpv_render_context_set_update_callback', 'mpv_render_context_update',
-    'mpv_request_event', 'mpv_request_log_messages', 'mpv_set_option',
-    'mpv_set_option_string', 'mpv_set_property', 'mpv_set_property_async',
-    'mpv_set_property_string', 'mpv_set_wakeup_callback',
-    'mpv_stream_cb_add_ro', 'mpv_terminate_destroy',
-    'mpv_unobserve_property', 'mpv_wait_async_requests', 'mpv_wait_event',
+    'mpv_abort_async_command',
+    'mpv_client_api_version',
+    'mpv_client_id',
+    'mpv_client_name',
+    'mpv_command',
+    'mpv_command_async',
+    'mpv_command_node',
+    'mpv_command_node_async',
+    'mpv_command_ret',
+    'mpv_command_string',
+    'mpv_create',
+    'mpv_create_client',
+    'mpv_create_weak_client',
+    'mpv_del_property',
+    'mpv_destroy',
+    'mpv_error_string',
+    'mpv_event_name',
+    'mpv_event_to_node',
+    'mpv_free',
+    'mpv_free_node_contents',
+    'mpv_get_property',
+    'mpv_get_property_async',
+    'mpv_get_property_osd_string',
+    'mpv_get_property_string',
+    'mpv_get_time_ns',
+    'mpv_get_time_us',
+    'mpv_get_wakeup_pipe',
+    'mpv_hook_add',
+    'mpv_hook_continue',
+    'mpv_initialize',
+    'mpv_load_config_file',
+    'mpv_observe_property',
+    'mpv_render_context_create',
+    'mpv_render_context_free',
+    'mpv_render_context_get_info',
+    'mpv_render_context_render',
+    'mpv_render_context_report_swap',
+    'mpv_render_context_set_parameter',
+    'mpv_render_context_set_update_callback',
+    'mpv_render_context_update',
+    'mpv_request_event',
+    'mpv_request_log_messages',
+    'mpv_set_option',
+    'mpv_set_option_string',
+    'mpv_set_property',
+    'mpv_set_property_async',
+    'mpv_set_property_string',
+    'mpv_set_wakeup_callback',
+    'mpv_stream_cb_add_ro',
+    'mpv_terminate_destroy',
+    'mpv_unobserve_property',
+    'mpv_wait_async_requests',
+    'mpv_wait_event',
     'mpv_wakeup',
   ];
 }

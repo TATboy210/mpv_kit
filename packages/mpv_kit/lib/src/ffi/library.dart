@@ -14,7 +14,8 @@ final class MpvLibraryNotFound implements Exception {
   final Map<String, String> attempts;
 
   @override
-  String toString() => 'MpvLibraryNotFound: libmpv could not be loaded.\n'
+  String toString() =>
+      'MpvLibraryNotFound: libmpv could not be loaded.\n'
       '${attempts.entries.map((e) => '  ${e.key}: ${e.value}').join('\n')}\n'
       'Set MPV_KIT_LIBMPV_PATH or pass an explicit path to MpvLibrary.open().';
 }
@@ -76,8 +77,9 @@ abstract final class MpvLibrary {
     final major = v >> 16;
     if (major != requiredMajor) {
       throw UnsupportedError(
-          'libmpv client API $major.${v & 0xffff} is incompatible '
-          '(need $requiredMajor.x)');
+        'libmpv client API $major.${v & 0xffff} is incompatible '
+        '(need $requiredMajor.x)',
+      );
     }
   }
 

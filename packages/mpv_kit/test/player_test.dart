@@ -115,6 +115,40 @@ void main() {
     expect(player.mpv.getPropertyString('ab-loop-b'), 'no');
   });
 
+  test('audio-only media exposes audio params and no video', () async {
+    await player.open(
+      'av://lavfi:sine=frequency=440:sample_rate=48000:duration=2',
+    );
+    final ap = await _until(player.audioParams, (p) => p != null);
+    expect(ap!.sampleRate, 48000);
+    expect(ap.channelCount, greaterThan(0));
+    final tracks = await _until(player.tracks, (t) => t.isNotEmpty);
+    expect(tracks.single.type, MpvTrackType.audio);
+    expect(tracks.single.isAlbumArt, isFalse);
+    expect(player.videoParams.value, isNull);
+    await _until(player.position, (p) => p > Duration.zero);
+  });
+
+  test('loop mode, replay gain and audio device', () async {
+    await player.open(_lavfi, play: false);
+    player.setLoopMode(MpvLoopMode.file);
+    await _until(player.loopFile, (v) => v);
+    expect(player.loopMode, MpvLoopMode.file);
+    player.setLoopMode(MpvLoopMode.playlist);
+    await _until(player.loopPlaylist, (v) => v);
+    await _until(player.loopFile, (v) => !v);
+    expect(player.loopMode, MpvLoopMode.playlist);
+    player.setLoopMode(MpvLoopMode.none);
+    await _until(player.loopPlaylist, (v) => !v);
+    expect(player.loopMode, MpvLoopMode.none);
+    player.setReplayGain(MpvReplayGain.album);
+    expect(player.mpv.getPropertyString('replaygain'), 'album');
+    player.setAudioDevice('auto');
+    expect(player.audioDevice.value, 'auto');
+    expect(player.metadata.value, isA<Map<String, String>>());
+    expect(player.bufferedPosition.value, isA<Duration>());
+  });
+
   test('selected track ids follow vid/aid/sid', () async {
     await player.open(_lavfi);
     await _until(player.videoTrack, (id) => id == 1);

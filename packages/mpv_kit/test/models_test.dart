@@ -72,6 +72,43 @@ void main() {
     expect(MpvChapter.fromNode(const {}).time, Duration.zero);
   });
 
+  test('MpvAudioParams.fromNode', () {
+    final p = MpvAudioParams.fromNode({
+      'format': 'floatp',
+      'samplerate': 44100,
+      'channels': 'stereo',
+      'channel-count': 2,
+    });
+    expect(p.format, 'floatp');
+    expect(p.sampleRate, 44100);
+    expect(p.channels, 'stereo');
+    expect(p.channelCount, 2);
+    expect(MpvAudioParams.fromNode({}).sampleRate, isNull);
+  });
+
+  test('MpvAudioDevice value semantics', () {
+    final a = MpvAudioDevice.fromNode({'name': 'auto', 'description': 'Auto'});
+    expect(a, const MpvAudioDevice(name: 'auto', description: 'Auto'));
+    expect(
+      a.hashCode,
+      const MpvAudioDevice(name: 'auto', description: 'Auto').hashCode,
+    );
+    expect(a.toString(), 'MpvAudioDevice(auto: Auto)');
+    expect(MpvAudioDevice.fromNode({}).name, '');
+  });
+
+  test('album art tracks and replay gain values', () {
+    expect(
+      MpvTrack.fromNode({
+        'id': 1,
+        'type': 'video',
+        'albumart': true,
+      }).isAlbumArt,
+      isTrue,
+    );
+    expect(MpvReplayGain.values.map((g) => g.value), ['no', 'track', 'album']);
+  });
+
   test('MpvVideoParams.fromNode', () {
     final node = <String, Object?>{
       'w': 3840,
@@ -136,8 +173,10 @@ void main() {
       audioChannels: 2,
       duration: Duration(seconds: 3),
     );
-    expect((info.path, info.width, info.fps, info.audioChannels),
-        ('/a.mkv', 640, 25.0, 2));
+    expect(
+      (info.path, info.width, info.fps, info.audioChannels),
+      ('/a.mkv', 640, 25.0, 2),
+    );
     expect(info.hwdec, isNull);
     const err = MpvPlaybackError(
       error: MpvError.loadingFailed,
@@ -145,8 +184,13 @@ void main() {
       playlistEntryId: 3,
     );
     expect(err.toString(), 'MpvPlaybackError(loadingFailed: loading failed)');
-    expect(MpvVideoAdjustment.values.map((a) => a.property),
-        ['brightness', 'contrast', 'saturation', 'gamma', 'hue']);
+    expect(MpvVideoAdjustment.values.map((a) => a.property), [
+      'brightness',
+      'contrast',
+      'saturation',
+      'gamma',
+      'hue',
+    ]);
   });
 
   group('errors', () {
@@ -159,11 +203,16 @@ void main() {
     });
 
     test('MpvException exposes the typed error and formats itself', () {
-      const withOp = MpvException(-8, 'property not found',
-          operation: 'get_property(foo)');
+      const withOp = MpvException(
+        -8,
+        'property not found',
+        operation: 'get_property(foo)',
+      );
       expect(withOp.error, MpvError.propertyNotFound);
-      expect(withOp.toString(),
-          'MpvException(propertyNotFound @ get_property(foo)): property not found');
+      expect(
+        withOp.toString(),
+        'MpvException(propertyNotFound @ get_property(foo)): property not found',
+      );
       const bare = MpvException(-20, 'error running command');
       expect(bare.toString(), 'MpvException(generic): error running command');
     });
@@ -179,12 +228,24 @@ void main() {
   });
 
   group('MpvOption.check', () {
-    const range = MpvOption<double>('volume', MpvOptionType.real,
-        min: 0, max: 100);
-    const choiceRange = MpvOption<String>('aid', MpvOptionType.choice,
-        choices: ['no', 'auto'], min: 0, max: 10);
-    const choiceOnly = MpvOption<String>('mode', MpvOptionType.choice,
-        choices: ['a', 'b']);
+    const range = MpvOption<double>(
+      'volume',
+      MpvOptionType.real,
+      min: 0,
+      max: 100,
+    );
+    const choiceRange = MpvOption<String>(
+      'aid',
+      MpvOptionType.choice,
+      choices: ['no', 'auto'],
+      min: 0,
+      max: 10,
+    );
+    const choiceOnly = MpvOption<String>(
+      'mode',
+      MpvOptionType.choice,
+      choices: ['a', 'b'],
+    );
     const openEnded = MpvOption<int>('n', MpvOptionType.integer, min: 1);
 
     test('numeric ranges', () {

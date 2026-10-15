@@ -23,8 +23,13 @@ enum MpvOptionType {
 
 /// One option of the bundled mpv, with the type its value has in Dart.
 final class MpvOption<T extends Object> {
-  const MpvOption(this.name, this.type,
-      {this.choices = const [], this.min, this.max});
+  const MpvOption(
+    this.name,
+    this.type, {
+    this.choices = const [],
+    this.min,
+    this.max,
+  });
 
   /// Name as used with the property and option APIs.
   final String name;
@@ -47,7 +52,8 @@ final class MpvOption<T extends Object> {
     } else if (type == MpvOptionType.choice && value is String) {
       // Numeric strings are allowed for choice options with a range.
       final numeric = num.tryParse(value);
-      final inRange = numeric != null &&
+      final inRange =
+          numeric != null &&
           (min != null || max != null) &&
           (min == null || numeric >= min!) &&
           (max == null || numeric <= max!);

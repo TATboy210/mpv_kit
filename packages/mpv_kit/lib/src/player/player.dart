@@ -129,6 +129,18 @@ final class Player {
       (v) => v is Map<String, Object?> ? MpvVideoParams.fromNode(v) : null,
     );
     _bind('hwdec-current', hwdecCurrent, (v) => v as String?);
+    _bind(
+      'demuxer-cache-time',
+      bufferedPosition,
+      (v) => secondsToDuration(v) ?? Duration.zero,
+    );
+    _bind('metadata', metadata, _stringMap);
+    _bind(
+      'audio-params',
+      audioParams,
+      (v) => v is Map<String, Object?> ? MpvAudioParams.fromNode(v) : null,
+    );
+    _bind('audio-device', audioDevice, (v) => v as String? ?? 'auto');
     _subs.add(mpv.events.listen(_onEvent));
   }
 
@@ -238,6 +250,39 @@ final class Player {
 
   /// 实际生效的硬解后端（如 `vulkan`、`d3d11va`），软解时为 null/`no`。
   final hwdecCurrent = MpvState<String?>._(null);
+
+  /// Absolute position up to which the demuxer has cached data
+  /// (`demuxer-cache-time`); zero when nothing is cached.
+  final bufferedPosition = MpvState<Duration>._(Duration.zero);
+
+  // --- Audio -------------------------------------------------------------
+  /// 当前文件/流的元数据标签（`metadata`），键名保持文件原样（如
+  /// `title`、`artist`、`album`；不同容器的大小写不同，例如 ID3 为
+  /// `ARTIST`）。网络电台的 ICY 标题也在这里更新（`icy-title`）。
+  final metadata = MpvState<Map<String, String>>._(const {});
+
+  /// Decoded audio format (`audio-params`), null without audio.
+  final audioParams = MpvState<MpvAudioParams?>._(null);
+
+  /// Audio output devices of the active audio driver
+  /// (`audio-device-list`).
+  ///
+  /// Observed from the first access only: listing devices starts the audio
+  /// drivers' hotplug monitoring, which players that never show a device
+  /// picker should not pay for.
+  late final MpvState<List<MpvAudioDevice>> audioDevices = () {
+    final state = MpvState<List<MpvAudioDevice>>._(const []);
+    if (_disposed) return state;
+    _bind(
+      'audio-device-list',
+      state,
+      (v) => _maps(v).map(MpvAudioDevice.fromNode).toList(),
+    );
+    return state;
+  }();
+
+  /// Selected audio output device (`audio-device`), `auto` by default.
+  final audioDevice = MpvState<String>._('auto');
 
   /// Files that failed to load (`end-file` with reason `error`).
   Stream<MpvPlaybackError> get errors => _errors.stream;
@@ -359,6 +404,20 @@ final class Player {
   void setLoopFile(bool loop) =>
       mpv.setProperty('loop-file', loop ? 'inf' : 'no');
 
+  /// Sets [loopFile] / [loopPlaylist] at once (media_kit's PlaylistMode).
+  void setLoopMode(MpvLoopMode mode) {
+    setLoopFile(mode == MpvLoopMode.file);
+    setLoopPlaylist(mode == MpvLoopMode.playlist);
+  }
+
+  /// Current loop mode, derived from [loopFile] and [loopPlaylist]
+  /// (a looping file takes precedence).
+  MpvLoopMode get loopMode => loopFile.value
+      ? MpvLoopMode.file
+      : loopPlaylist.value
+      ? MpvLoopMode.playlist
+      : MpvLoopMode.none;
+
   /// Repeats the whole playlist.
   void setLoopPlaylist(bool loop) =>
       mpv.setProperty('loop-playlist', loop ? 'inf' : 'no');
@@ -378,6 +437,15 @@ final class Player {
 
   /// Positive values delay audio relative to video.
   void setAudioDelay(Duration d) => mpv.setProperty('audio-delay', _sec(d));
+
+  /// Sends audio to [device], a name from [audioDevices] (`auto` follows
+  /// the system default). Takes effect immediately.
+  void setAudioDevice(String device) =>
+      mpv.setPropertyString('audio-device', device);
+
+  /// Applies ReplayGain tags of the file (`replaygain`).
+  void setReplayGain(MpvReplayGain mode) =>
+      mpv.setPropertyString('replaygain', mode.value);
 
   /// Audio filter chain in mpv `--af` syntax (e.g. an equalizer
   /// `lavfi=[superequalizer=...]`); null or empty removes all filters.
@@ -542,6 +610,13 @@ final class Player {
   static String _seconds(Duration d) => '${d.inMicroseconds / 1e6}';
 
   static double _sec(Duration d) => d.inMicroseconds / 1e6;
+
+  static Map<String, String> _stringMap(Object? v) => v is Map<String, Object?>
+      ? Map.unmodifiable({
+          for (final MapEntry(:key, :value) in v.entries)
+            if (value != null) key: '$value',
+        })
+      : const {};
 
   static Iterable<Map<String, Object?>> _maps(Object? v) =>
       v is List<Object?> ? v.whereType<Map<String, Object?>>() : const [];

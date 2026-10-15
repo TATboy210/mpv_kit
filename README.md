@@ -15,6 +15,10 @@ textures on Windows, Linux and macOS.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
+Prebuilt libmpv runs on Windows 10+, macOS 12+ and Linux with glibc 2.35+
+(x64 and arm64). Coming from media_kit? See
+[docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
+
 ## Quick start
 
 Depend on **`mpv_kit_video` only**: it re-exports the whole `mpv_kit` API
