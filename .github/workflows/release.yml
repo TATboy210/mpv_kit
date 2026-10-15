@@ -225,7 +225,7 @@ jobs:
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
       - name: Format samples (MSYS2 ffmpeg CLI, after packaging)
         run: |
-          pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-ffmpeg"
+          for i in 1 2 3; do pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-ffmpeg" && break; sleep 20; done
           bash tools/make_format_samples.sh samples
       - uses: dart-lang/setup-dart@v1
       - name: Test the packaged bundle (MSYS2 hidden)
