@@ -162,6 +162,7 @@ sources = files(
     ## Player
     'player/audio.c',
     'player/client.c',
+    'player/stream_bridge.c',
     'player/command.c',
     'player/configfiles.c',
     'player/external_files.c',
@@ -1797,7 +1798,8 @@ if get_option('libmpv')
                  description: 'mpv media player client library')
 
     headers = ['include/mpv/client.h', 'include/mpv/render.h',
-               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h']
+               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h',
+               'include/mpv/stream_bridge.h']
     if features['vulkan']
         headers += 'include/mpv/render_vk.h'
     endif

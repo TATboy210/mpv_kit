@@ -28,6 +28,10 @@
 
 #include "libmpv.h"
 
+#if HAVE_VULKAN
+#include "mpv/render_vk.h"
+#endif
+
 #if HAVE_MACOS_COCOA_CB
 #include "osdep/mac/app_bridge.h"
 #endif
@@ -483,6 +487,19 @@ int mpv_render_context_get_info(mpv_render_context *ctx,
         res = 0;
         break;
     }
+#if HAVE_VULKAN
+    case MPV_RENDER_PARAM_VULKAN_RENDERER: {
+        // mpv_kit: which renderer the context was created with, so the API
+        // user can tell gpu-next from a fallback (or an older libmpv, which
+        // returns MPV_ERROR_NOT_IMPLEMENTED here).
+        const char **name = param.data;
+        const struct render_backend_fns *fns = ctx->renderer->fns;
+        *name = fns == &render_backend_gpu_next ? "gpu-next" :
+                fns == &render_backend_gpu ? "gpu" : "sw";
+        res = 0;
+        break;
+    }
+#endif
     default:;
     }
 

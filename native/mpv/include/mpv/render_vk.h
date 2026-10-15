@@ -64,6 +64,10 @@ extern "C" {
  *    Better HDR/tone mapping and color management, persistent shader and
  *    ICC caches.
  *  - "gpu": mpv's older gl_video renderer, as used by --vo=gpu.
+ *
+ * Also valid for mpv_render_context_get_info(): data is a const char**
+ * that receives the active renderer ("gpu-next", "gpu" or "sw"). The string
+ * is static. Builds without this extension return MPV_ERROR_NOT_IMPLEMENTED.
  */
 #define MPV_RENDER_PARAM_VULKAN_RENDERER    ((mpv_render_param_type)0x6d6b0003)
 

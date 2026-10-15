@@ -52,3 +52,7 @@ mpv_unobserve_property
 mpv_wait_async_requests
 mpv_wait_event
 mpv_wakeup
+mpv_kit_stream_add
+mpv_kit_stream_begin
+mpv_kit_stream_complete
+mpv_kit_stream_shutdown
