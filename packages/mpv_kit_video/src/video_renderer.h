@@ -74,6 +74,10 @@ class Interop {
   /// Takes a reference on a shared image for the compositor. Called with the
   /// renderer lock held, so the image cannot be freed concurrently.
   virtual void RetainFrame(void* platform) { (void)platform; }
+  /// How many further frames the compositor may still sample an image it
+  /// gave back (its GPU queue depth); see VideoRenderer's quarantine.
+  /// Clamped to [1, VideoRenderer::kMaxQuarantine].
+  virtual int CompositorLatency() const { return 2; }
 };
 
 class VulkanContext;  // vulkan_backend.cc
@@ -124,6 +128,7 @@ class VideoRenderer {
   bool StartVulkan(RendererChoice choice);
   bool StartSoftware();
   int PickBackBuffer();
+  void FreeRetiredIfDone();
 
   const MpvApi api_;
   mpv_handle* const handle_;
@@ -182,17 +187,28 @@ class VideoRenderer {
   // Ring state, guarded by mutex_.
   //
   // The compositor samples an image on the GPU some time after taking it,
-  // and no platform tells us when it is done. An image it gave back is
-  // therefore quarantined for kQuarantine further acquisitions (frames)
-  // before it is rendered into again — bounded by the compositor's frame
-  // latency. Ring = front + in use + quarantine + one free image.
-  static constexpr int kQuarantine = 2;
-  static constexpr int kRingSize = kQuarantine + 3;
+  // and no platform tells us when it is done (Flutter's Windows texture
+  // path even drops its reference right after binding, before drawing). An
+  // image it gave back is therefore quarantined for quarantine_ further
+  // acquisitions (frames) before it is rendered into again — bounded by the
+  // compositor's frame latency (Interop::CompositorLatency()).
+  // Ring = front + in use + quarantine + one free image.
+ public:
+  static constexpr int kMaxQuarantine = 4;
+
+ private:
+  int quarantine_count_ = 2;
+  int ring_size_ = 5;
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
   int in_use_ = -1;                     // frame the compositor holds
-  int quarantine_[kQuarantine] = {-1, -1};  // most recently given back first
+  int quarantine_[kMaxQuarantine] = {-1, -1, -1, -1};  // newest first
+  // After a reallocation the previous generation's last frame stays on
+  // screen until the first frame at the new size exists (no black flash),
+  // and is freed once the compositor can no longer sample it.
+  Frame retired_front_;
+  int retired_countdown_ = -1;  // acquisitions left; 0: free it
   std::atomic<bool> resize_pending_{false};
 };
 

@@ -24,6 +24,12 @@ class D3D11Interop : public Interop, public VulkanInterop {
   VulkanInterop* vulkan() override { return device_ ? this : nullptr; }
   bool SoftwareIsBgra() const override { return false; }  // Flutter wants RGBA
   void FrameReady() override { frame_ready_(); }
+  // Flutter (ExternalTextureD3d::CreateOrUpdateTexture, verified by
+  // decompiling flutter_windows.dll) binds the shared texture through ANGLE
+  // and calls our release callback immediately, with no GPU fence or keyed
+  // mutex: the only bound on when ANGLE stops sampling an image is the
+  // swap chain queue (DXGI default: 3 frames) plus the frame being built.
+  int CompositorLatency() const override { return 4; }
   /// AddRef for Flutter; released by the descriptor's release_callback.
   void RetainFrame(void* platform) override {
     static_cast<Texture*>(platform)->texture->AddRef();

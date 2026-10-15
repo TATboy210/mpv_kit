@@ -40,6 +40,9 @@ VideoRenderer::~VideoRenderer() {
 }
 
 bool VideoRenderer::Start(RendererChoice choice) {
+  quarantine_count_ =
+      std::clamp(interop_->CompositorLatency(), 1, kMaxQuarantine);
+  ring_size_ = quarantine_count_ + 3;
   bool ok = false;
   if (choice != RendererChoice::kSoftware && interop_->vulkan()) {
     ok = StartVulkan(choice);
@@ -78,9 +81,10 @@ bool VideoRenderer::StartVulkan(RendererChoice choice) {
   init.extensions = vk.enabled_extensions().data();
   init.num_extensions = static_cast<int>(vk.enabled_extensions().size());
   init.features = vk.features();
-  init.queue_graphics = {vk.graphics_family(), vk.graphics_count()};
-  init.queue_compute = {vk.graphics_family(), vk.graphics_count()};
-  init.queue_transfer = {vk.graphics_family(), vk.graphics_count()};
+  init.queue_graphics = {vk.graphics_queues().index, vk.graphics_queues().count};
+  init.queue_compute = {vk.compute_queues().index, vk.compute_queues().count};
+  init.queue_transfer = {vk.transfer_queues().index,
+                         vk.transfer_queues().count};
 
   // gpu-next (libplacebo's renderer) first; the older gpu renderer covers
   // devices or libplacebo builds where it cannot initialise.
@@ -213,15 +217,29 @@ Frame VideoRenderer::AcquireFront() {
   }
   if (in_use_ != front_ && in_use_ >= 0) {
     // The compositor moves on from in_use_: quarantine it (see header).
-    for (int i = kQuarantine - 1; i > 0; i--) quarantine_[i] = quarantine_[i - 1];
+    for (int i = quarantine_count_ - 1; i > 0; i--)
+      quarantine_[i] = quarantine_[i - 1];
     quarantine_[0] = in_use_;
   }
+  if (in_use_ != front_ && retired_countdown_ > 0) retired_countdown_--;
   in_use_ = front_;
   Frame f;
   f.index = front_;
   f.width = ring_w_;
   f.height = ring_h_;
-  if (front_ < 0) return f;
+  if (front_ < 0) {
+    // Reallocated, nothing rendered at the new size yet: keep showing the
+    // previous generation's last frame.
+    if (retired_front_.platform) {
+      f = retired_front_;
+      interop_->RetainFrame(f.platform);
+    } else if (retired_front_.pixels) {
+      f = retired_front_;
+    }
+    lock.unlock();
+    if (resumed) cv_.notify_one();
+    return f;
+  }
   if (backend_ == Backend::kSoftware) {
     f.pixels = sw_buffers_[front_].data();
   } else {
@@ -238,12 +256,24 @@ Frame VideoRenderer::AcquireFront() {
 int VideoRenderer::PickBackBuffer() {
   // Never the frame being displayed, the one the compositor holds, or one
   // it may still be sampling (quarantined).
-  for (int i = 0; i < kRingSize; i++) {
+  for (int i = 0; i < ring_size_; i++) {
     bool busy = i == front_ || i == in_use_;
-    for (int q : quarantine_) busy = busy || i == q;
+    for (int q = 0; q < quarantine_count_; q++) busy = busy || i == quarantine_[q];
     if (!busy) return i;
   }
-  return 0;  // unreachable: kRingSize leaves one image free
+  return 0;  // unreachable: ring_size_ leaves one image free
+}
+
+void VideoRenderer::FreeRetiredIfDone() {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (retired_countdown_ != 0) return;
+    retired_countdown_ = -1;
+    retired_front_ = Frame{};
+    // Software: the retired buffers only back retired_front_.
+    sw_retired_.clear();
+  }
+  if (vulkan_) vulkan_->FreeRetired();
 }
 
 void VideoRenderer::RenderLoop() {
@@ -285,6 +315,7 @@ void VideoRenderer::RenderLoop() {
       redraw_pending_ = false;
     }
     ApplyIccProfile();
+    FreeRetiredIfDone();
     // A new size is the usual cure for allocation failures: retry now.
     if (resized && failures_ > 0) retry_at_ = clock::now();
     const uint64_t flags = api_.render_context_update(render_ctx_);
@@ -381,7 +412,21 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     w = width_;
     h = height_;
     if (w != ring_w_ || h != ring_h_) {
-      front_ = in_use_ = -1;  // old images are about to be replaced
+      // Old images are about to be retired; their last frame stays on
+      // screen until a new one exists.
+      if (front_ >= 0) {
+        retired_front_ = Frame{};
+        retired_front_.index = -2;  // never equal to a ring index
+        retired_front_.width = ring_w_;
+        retired_front_.height = ring_h_;
+        if (backend_ == Backend::kSoftware) {
+          retired_front_.pixels = sw_buffers_[front_].data();
+        } else {
+          retired_front_.platform = vulkan_->ring()[front_].platform;
+        }
+      }
+      retired_countdown_ = -1;
+      front_ = in_use_ = -1;
       for (int& q : quarantine_) q = -1;
     }
     back = PickBackBuffer();
@@ -392,13 +437,14 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       // Under the lock: AcquireFront() must never observe a half-built ring.
       std::lock_guard<std::mutex> lock(mutex_);
       if (backend_ == Backend::kVulkan) {
-        if (!vulkan_->AllocateRing(kRingSize, w, h, error)) {
+        if (!vulkan_->AllocateRing(ring_size_, w, h, error)) {
           ring_w_ = ring_h_ = 0;
+          retired_front_ = Frame{};  // AllocateRing freed everything
           failed_before_render = true;
         }
       } else {
         sw_retired_ = std::move(sw_buffers_);
-        sw_buffers_.assign(kRingSize, std::vector<uint8_t>(size_t(w) * h * 4));
+        sw_buffers_.assign(ring_size_, std::vector<uint8_t>(size_t(w) * h * 4));
       }
       if (!failed_before_render) {
         ring_w_ = w;
@@ -484,6 +530,10 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     front_ = back;
+    // First frame of a new generation: the retired one may go once the
+    // compositor has moved past it (same rule as the quarantine).
+    if (retired_countdown_ < 0 && (retired_front_.platform || retired_front_.pixels))
+      retired_countdown_ = quarantine_count_ + 1;
     // The previous frame was never displayed: it still counts as swapped.
     if (swap_pending_) swaps++;
     const bool consuming = std::chrono::steady_clock::now() - last_acquire_ <
