@@ -15,34 +15,6 @@ textures on Windows, Linux and macOS.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
-## Platform matrix
-
-| OS | x64 | arm64 |
-|---|---|---|
-| Windows | CI + **real hardware** (NVIDIA RTX 4060) | CI |
-| Linux | CI | CI |
-| macOS | CI | CI |
-
-"CI" means the `native-verify` / `release` workflows build the patched
-libmpv for that target and run the Vulkan render smoke test (lavapipe on
-Linux, MoltenVK on macOS; it reports "skipped" where no Vulkan device is
-available) plus the Dart tests, and `flutter-plugin` compiles the plugin
-through the example app. **Only Windows x64 (RTX 4060) has been tested on
-real hardware**; treat the other targets as build- and smoke-verified until
-you have tried them on your own GPUs.
-
-Minimum systems of the release bundles (checked by `tools/bundle_report.sh`
-in the release workflow): **Windows 10** (UCRT), **macOS 12**, **Linux with
-glibc 2.35** (Ubuntu 22.04, Debian 12, Fedora 36 or newer) and a Vulkan
-driver, falling back to software rendering without one. On Linux the
-desktop's PulseAudio (or PipeWire's pulse server), ALSA and fontconfig are
-used; everything else ships in the bundle.
-
-Coming from media_kit? See [docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
-Supported formats are FFmpeg's full decoder set; `tools/make_format_samples.sh`
-plus `test/format_matrix_test.dart` verify ~45 audio, video and subtitle
-formats against the release bundles.
-
 ## Why a patched mpv?
 
 Upstream libmpv's render API only offers OpenGL and software backends.
