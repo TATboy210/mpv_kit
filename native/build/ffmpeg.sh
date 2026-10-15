@@ -44,7 +44,10 @@ case "$(uname -s)" in
     platform_args+=(--cc=clang --cxx=clang++ --enable-d3d11va --enable-dxva2)
     ;;
   Darwin)
-    platform_args+=(--enable-videotoolbox)
+    # Only system frameworks/libraries: Homebrew copies (xz, X11, SDL2 on
+    # CI runners) would raise the minimum macOS version of the bundle.
+    platform_args+=(--enable-videotoolbox --disable-lzma --disable-xlib
+      --disable-libxcb --disable-sdl2)
     ;;
   Linux)
     # Distros ship libssl; OpenSSL 3 is compatible with an LGPL build.
@@ -52,14 +55,28 @@ case "$(uname -s)" in
     ;;
 esac
 
+# Headers installed by deps.sh (Vulkan, dav1d) take precedence over the
+# host's, which may be too old (FFmpeg 8.1 needs Vulkan headers 1.3.277+).
+if [ -d "$prefix/include" ]; then
+  platform_args+=(--extra-cflags="-I$prefix/include")
+fi
+
 # No --enable-gpl / --enable-nonfree / --enable-version3: LGPL-2.1-or-later.
 # Programs and docs are not used by libmpv; of libavdevice only the lavfi
 # input device is kept (mpv's av://lavfi: sources, used by the tests).
+# Playback needs every decoder/demuxer but almost no encoder or muxer:
+#   encoders png, mjpeg  screenshots (screenshot-to-file .png/.jpg)
+#            ac3         af=lavcac3enc (AC-3 over S/PDIF)
+#   muxers   spdif       audio passthrough (ao spdif)
+#            matroska, mov/mp4, mpegts  stream-record / dump-cache
+# The full encoder set is roughly a third of libavcodec.
 ./configure \
   --prefix="$prefix" \
   --enable-shared --disable-static \
   --disable-programs --disable-doc --disable-debug \
   --disable-indevs --enable-indev=lavfi --disable-outdevs \
+  --disable-encoders --enable-encoder=png,mjpeg,ac3 \
+  --disable-muxers --enable-muxer=spdif,matroska,webm,mov,mp4,mpegts \
   --enable-pic \
   --enable-libdav1d \
   --enable-vulkan \

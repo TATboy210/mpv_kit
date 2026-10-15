@@ -42,7 +42,7 @@ case "$(uname -s)" in
     # libc, GPU drivers, display servers). Everything else is bundled.
     # Exact library names (anchored at ".so" so that e.g. libc does not
     # also match libcairo/libcap). X11 libraries are matched as families.
-    system='^(linux-vdso|ld-linux-[a-z0-9_-]+|libc|libm|libdl|libpthread|librt|libresolv|libstdc\+\+|libgcc_s|libz|libX[a-zA-Z0-9]*|libxcb[a-z0-9-]*|libwayland-[a-z]+|libEGL|libGL|libGLX|libGLdispatch|libgbm|libdrm|libvulkan|libva|libva-[a-z]+|libvdpau|libasound|libpulse|libpulse-simple|libpipewire-[0-9.]+|libjack|libsystemd|libudev|libdbus-1|libssl|libcrypto|libexpat|libffi|libuuid|libxkbcommon|libgnutls)\.so'
+    system='^(linux-vdso|ld-linux-[a-z0-9_-]+|libc|libm|libdl|libpthread|librt|libresolv|libstdc\+\+|libgcc_s|libz|libX[a-zA-Z0-9]*|libxcb[a-z0-9-]*|libwayland-[a-z]+|libEGL|libGL|libGLX|libGLdispatch|libgbm|libdrm|libvulkan|libva|libva-[a-z0-9]+|libvdpau|libasound|libpulse|libpulse-simple|libpipewire-[0-9.]+|libjack|libsystemd|libudev|libdbus-1|libssl|libcrypto|libexpat|libffi|libuuid|libxkbcommon|libgnutls|libfontconfig)\.so'
     # meson installs without an rpath; resolve our own libraries from PREFIX.
     deps=$(LD_LIBRARY_PATH="$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
       ldd "$prefix/lib/libmpv.so.2")
@@ -71,10 +71,9 @@ case "$(uname -s)" in
     for f in "$out"/lib/*.dylib; do
       install_name_tool -id "@loader_path/$(basename "$f")" "$f"
     done
-    # MoltenVK: the Vulkan implementation the plugin loads on macOS.
-    mvk=$(brew --prefix molten-vk)/lib/libMoltenVK.dylib
-    cp "$mvk" "$out/lib/"
-    install_name_tool -id @loader_path/libMoltenVK.dylib "$out/lib/libMoltenVK.dylib"
+    # MoltenVK (libmpv links it directly, see deps.sh) is part of the
+    # closure; the Flutter plugin loads the same copy.
+    [ -f "$out/lib/libMoltenVK.dylib" ] || { echo "libMoltenVK.dylib missing from bundle" >&2; exit 1; }
     # install_name_tool invalidates signatures; arm64 refuses unsigned code.
     codesign --force --sign - "$out"/lib/*.dylib
     ;;
@@ -106,6 +105,8 @@ esac
 check_gpl
 cp -r "$prefix/include/mpv" "$out/include/"
 cp "$root/native/mpv/LICENSE.LGPL" "$out/LICENSE.LGPL"
+# Third-party licenses of the bundled dependencies (deps.sh).
+if [ -d "$prefix/share/licenses" ]; then cp -r "$prefix/share/licenses" "$out/"; fi
 cp "$root/native/patches/"*.patch "$out/"
 
 # Manifest: every shipped file with its sha256, for mpv_kit_libs to verify.
