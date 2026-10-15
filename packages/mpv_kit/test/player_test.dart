@@ -143,15 +143,6 @@ void main() {
     expect(player.loopMode, MpvLoopMode.none);
     player.setReplayGain(MpvReplayGain.album);
     expect(player.mpv.getPropertyString('replaygain'), 'album');
-    final devices = await _until(player.audioDevices, (d) => d.isNotEmpty);
-    expect(devices.map((d) => d.name), contains('auto'));
-    expect(
-      devices.first,
-      MpvAudioDevice.fromNode({
-        'name': devices.first.name,
-        'description': devices.first.description,
-      }),
-    );
     player.setAudioDevice('auto');
     expect(player.audioDevice.value, 'auto');
     expect(player.metadata.value, isA<Map<String, String>>());

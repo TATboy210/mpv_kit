@@ -140,11 +140,6 @@ final class Player {
       audioParams,
       (v) => v is Map<String, Object?> ? MpvAudioParams.fromNode(v) : null,
     );
-    _bind(
-      'audio-device-list',
-      audioDevices,
-      (v) => _maps(v).map(MpvAudioDevice.fromNode).toList(),
-    );
     _bind('audio-device', audioDevice, (v) => v as String? ?? 'auto');
     _subs.add(mpv.events.listen(_onEvent));
   }
@@ -271,7 +266,20 @@ final class Player {
 
   /// Audio output devices of the active audio driver
   /// (`audio-device-list`).
-  final audioDevices = MpvState<List<MpvAudioDevice>>._(const []);
+  ///
+  /// Observed from the first access only: listing devices starts the audio
+  /// drivers' hotplug monitoring, which players that never show a device
+  /// picker should not pay for.
+  late final MpvState<List<MpvAudioDevice>> audioDevices = () {
+    final state = MpvState<List<MpvAudioDevice>>._(const []);
+    if (_disposed) return state;
+    _bind(
+      'audio-device-list',
+      state,
+      (v) => _maps(v).map(MpvAudioDevice.fromNode).toList(),
+    );
+    return state;
+  }();
 
   /// Selected audio output device (`audio-device`), `auto` by default.
   final audioDevice = MpvState<String>._('auto');
