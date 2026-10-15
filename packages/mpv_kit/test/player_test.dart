@@ -123,8 +123,11 @@ void main() {
   });
 
   test('screenshot returns raw pixels of the current frame', () async {
-    await player.open(_lavfi, play: false);
-    await _until(player.videoParams, (v) => v != null);
+    // video-params can precede the first displayed frame on slow runners;
+    // a frame exists once playback time advances.
+    await player.open(_lavfi);
+    await _until(player.position, (p) => p > Duration.zero);
+    player.pause();
     final shot = await player.screenshot();
     expect(shot, isNotNull);
     expect(shot!.width, 320);

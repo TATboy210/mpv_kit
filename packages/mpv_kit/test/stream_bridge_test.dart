@@ -58,8 +58,9 @@ void main() {
     // A real media file without fixtures: mpv's own screenshot of lavfi.
     final p = Player(options: const {'vo': 'null', 'ao': 'null'});
     final file = '${Directory.systemTemp.path}/mpv_kit_bridge_test.png';
-    await p.open(_lavfi, play: false);
-    await _until(p.videoParams, (v) => v != null);
+    await p.open(_lavfi);
+    await _until(p.position, (pos) => pos > Duration.zero);
+    p.pause();
     await p.screenshotToFile(file);
     png = File(file).readAsBytesSync();
     await p.dispose();
