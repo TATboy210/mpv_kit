@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:mpv_kit/mpv_kit.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
 void main(List<String> args) {
@@ -37,6 +36,9 @@ class _PlayerPageState extends State<PlayerPage> {
   final player = Player(options: {
     // Vulkan Video decoding where available, else the safe platform default.
     'hwdec': 'vulkan,auto-safe',
+    // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
+    // click a forcibly killed audio stream makes in the speakers).
+    if (Platform.environment['MPV_KIT_EXAMPLE_AO'] case final ao?) 'ao': ao,
     // MPV_KIT_EXAMPLE_LOG=<file>: verbose mpv log for diagnostics.
     if (Platform.environment['MPV_KIT_EXAMPLE_LOG'] case final log?) ...{
       'log-file': log,

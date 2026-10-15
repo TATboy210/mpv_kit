@@ -10,13 +10,17 @@ topics: [mpv, video, vulkan, player]
 resolution: workspace
 
 environment:
-  sdk: ^3.8.0
-  flutter: ">=3.32.0"
+  # mpv_kit_libs' build hook needs Dart 3.10 (Flutter 3.38).
+  sdk: ^3.10.0
+  flutter: ">=3.38.0"
 
 dependencies:
   flutter:
     sdk: flutter
   mpv_kit: ^0.1.0-dev.1
+  # Bundles the matching libmpv build into the app. Emits nothing while no
+  # release is pinned; MPV_KIT_LIBMPV_PATH / a system libmpv apply then.
+  mpv_kit_libs: ^0.1.0-dev.1
 
 dev_dependencies:
   flutter_test:
