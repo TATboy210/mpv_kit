@@ -31,6 +31,18 @@ through the example app. **Only Windows x64 (RTX 4060) has been tested on
 real hardware**; treat the other targets as build- and smoke-verified until
 you have tried them on your own GPUs.
 
+Minimum systems of the release bundles (checked by `tools/bundle_report.sh`
+in the release workflow): **Windows 10** (UCRT), **macOS 12**, **Linux with
+glibc 2.35** (Ubuntu 22.04, Debian 12, Fedora 36 or newer) and a Vulkan
+driver, falling back to software rendering without one. On Linux the
+desktop's PulseAudio (or PipeWire's pulse server), ALSA and fontconfig are
+used; everything else ships in the bundle.
+
+Coming from media_kit? See [docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
+Supported formats are FFmpeg's full decoder set; `tools/make_format_samples.sh`
+plus `test/format_matrix_test.dart` verify ~45 audio, video and subtitle
+formats against the release bundles.
+
 ## Why a patched mpv?
 
 Upstream libmpv's render API only offers OpenGL and software backends.

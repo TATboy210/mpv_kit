@@ -45,7 +45,8 @@ jobs:
             build-essential pkg-config python3-pip python3-jinja2 ninja-build \
             nasm curl ca-certificates xz-utils git patchelf binutils \
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
-            libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1
+            libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
+            ffmpeg unzip
           pip3 install 'meson==1.9.1' 'cmake==3.31.6'
       - uses: actions/checkout@v5
       - uses: actions/cache@v4
@@ -79,6 +80,18 @@ jobs:
           mv prefix prefix.hidden
           LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
           mv prefix.hidden prefix
+      - uses: dart-lang/setup-dart@v1
+      - name: Dart tests and format matrix on the packaged bundle
+        env:
+          MPV_KIT_libmpv.so.2_PATH: ${{ github.workspace }}/dist/libmpv-${{ matrix.target }}/lib/libmpv.so.2
+          MPV_KIT_FORMAT_SAMPLES: ${{ github.workspace }}/samples
+        run: |
+          bash tools/make_format_samples.sh samples
+          sed -i.bak -e "/mpv_kit_video/d" -e "/mpv_kit_libs/d" -e "/example/d" pubspec.yaml
+          rm -rf example packages/mpv_kit_video packages/mpv_kit_libs
+          mv prefix prefix.hidden
+          dart pub get
+          cd packages/mpv_kit && dart test
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -138,6 +151,20 @@ jobs:
           mv prefix prefix.hidden
           DYLD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
           mv prefix.hidden prefix
+      - name: Install ffmpeg CLI (sample generation only)
+        run: brew install ffmpeg
+      - uses: dart-lang/setup-dart@v1
+      - name: Dart tests and format matrix on the packaged bundle
+        env:
+          MPV_KIT_libmpv.2.dylib_PATH: ${{ github.workspace }}/dist/libmpv-${{ matrix.target }}/lib/libmpv.2.dylib
+          MPV_KIT_FORMAT_SAMPLES: ${{ github.workspace }}/samples
+        run: |
+          bash tools/make_format_samples.sh samples
+          sed -i.bak -e "/mpv_kit_video/d" -e "/mpv_kit_libs/d" -e "/example/d" pubspec.yaml
+          rm -rf example packages/mpv_kit_video packages/mpv_kit_libs
+          mv prefix prefix.hidden
+          dart pub get
+          cd packages/mpv_kit && dart test
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -186,11 +213,16 @@ jobs:
         run: |
           bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
+      - name: Format samples (MSYS2 ffmpeg CLI, after packaging)
+        run: |
+          pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-ffmpeg"
+          bash tools/make_format_samples.sh samples
       - uses: dart-lang/setup-dart@v1
       - name: Test the packaged bundle (MSYS2 hidden)
         shell: pwsh
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}\dist\libmpv-${{ matrix.target }}\lib\libmpv-2.dll
+          MPV_KIT_FORMAT_SAMPLES: ${{ github.workspace }}\samples
         run: |
           # Dart-only workspace (no Flutter SDK here).
           (Get-Content pubspec.yaml) | Where-Object { $_ -notmatch 'mpv_kit_video|mpv_kit_libs|example' } | Set-Content pubspec.yaml

@@ -11,5 +11,8 @@ Base: mpv 0.41.0. Checked against mpv master on 2026-10-15.
 | 0005 active renderer via get_info | Tiny API addition; depends on 0004. | Part of the series. |
 | 0006 asynchronous stream bridge | mpv-specific glue for hosts that cannot answer stream_cb synchronously (Dart). Upstream's view so far is that stream_cb is enough. | Keep downstream. |
 
-Submitting a PR to mpv-player/mpv is an outward-facing action and is only
-done with the project owner's explicit go-ahead, under their account.
+**Decision (2026-10-15):** the patches are maintained downstream only; no
+upstream submission is planned. The table stays as the record of how each
+patch relates to mpv master, which matters when rebasing onto a new mpv
+release. Priorities for the patches are runtime efficiency and stability
+in mpv_kit, not upstream acceptability.
