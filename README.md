@@ -15,31 +15,6 @@ textures on Windows, Linux and macOS.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
-## Platform matrix
-
-| OS | x64 | arm64 |
-|---|---|---|
-| Windows | CI + **real hardware** (NVIDIA RTX 4060) | CI |
-| Linux | CI | CI |
-| macOS | CI | CI |
-
-"CI" means the `native-verify` / `release` workflows build the patched
-libmpv for that target and run the Vulkan render smoke test (lavapipe on
-Linux, MoltenVK on macOS; it reports "skipped" where no Vulkan device is
-available) plus the Dart tests, and `flutter-plugin` compiles the plugin
-through the example app. **Only Windows x64 (RTX 4060) has been tested on
-real hardware**; treat the other targets as build- and smoke-verified until
-you have tried them on your own GPUs.
-
-## Why a patched mpv?
-
-Upstream libmpv's render API only offers OpenGL and software backends.
-mpv_kit adds `MPV_RENDER_API_TYPE_VULKAN`, which imports the host's
-`VkDevice` into libplacebo and reuses mpv's own renderers (gpu-next or
-gpu), HDR handling and Vulkan hardware decoding unchanged. See
-`native/mpv/include/mpv/render_vk.h` and
-[ADR 0001](docs/adr/0001-vulkan-render-backend.md).
-
 ## Quick start
 
 Depend on **`mpv_kit_video` only**: it re-exports the whole `mpv_kit` API
