@@ -67,6 +67,34 @@ jobs:
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
+  # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
+  # driven by the native tests. Tests are built with the same sanitizers so
+  # the runtime is loaded first. Leak checking is off (system libraries such
+  # as Mesa keep process-lifetime allocations); any other report fails.
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+      - name: Build libmpv (debug, ASan + UBSan)
+        run: |
+          meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib
+          meson compile -C out
+          meson install -C out
+      - name: Native tests under sanitizers (lavapipe)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          vulkaninfo --summary || true
+          meson setup tests-out native/tests --buildtype=debug             -Db_sanitize=address,undefined -Db_lundef=false
+          meson test -C tests-out --print-errorlogs --verbose --timeout-multiplier 3             || { cat tests-out/meson-logs/testlog.txt; exit 1; }
+
   macos:
     strategy:
       fail-fast: false
