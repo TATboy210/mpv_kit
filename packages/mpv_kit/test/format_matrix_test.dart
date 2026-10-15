@@ -3,6 +3,7 @@
 // MPV_KIT_FORMAT_SAMPLES points at the generated directory (CI generates
 // it for the release bundles, whose FFmpeg build is trimmed).
 @TestOn('vm')
+@Tags(['format'])
 @Timeout(Duration(minutes: 5))
 library;
 

@@ -129,6 +129,13 @@ case "$os" in
     cmake_build vulkan-loader -DBUILD_TESTS=OFF \
       -DBUILD_WSI_XCB_SUPPORT=OFF -DBUILD_WSI_XLIB_SUPPORT=OFF \
       -DBUILD_WSI_XLIB_XRANDR_SUPPORT=OFF -DBUILD_WSI_WAYLAND_SUPPORT=OFF
+    # mpv's DRM support (needed for VA-API over render nodes) requires
+    # libdisplay-info, which Ubuntu 22.04 does not ship. Small, MIT.
+    fetch libdisplay-info \
+      "https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.2.0/downloads/libdisplay-info-0.2.0.tar.xz" \
+      5a2f002a16f42dd3540c8846f80a90b8f4bdcd067a94b9d2087bc2feae974176
+    meson_build libdisplay-info
+    license libdisplay-info LICENSE
     ;;
   macos)
     # MoltenVK is linked directly (it exports the whole Vulkan API); it is
