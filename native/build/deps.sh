@@ -49,9 +49,16 @@ sha256() {
 # extracts into $work/src/NAME (the archive's single top-level directory).
 fetch() {
   local name=$1 url=$2 want=$3 file="$work/dl/$1-${2##*/}"
+  # URL may list mirrors (space-separated) serving the identical file.
   if [ ! -f "$file" ]; then
-    curl -fsSL --retry 3 -o "$file.part" "$url"
-    mv "$file.part" "$file"
+    local u
+    for u in $url; do
+      if curl -fsSL --retry 5 --retry-all-errors -o "$file.part" "$u"; then
+        mv "$file.part" "$file"
+        break
+      fi
+    done
+    [ -f "$file" ] || { echo "$name: download failed" >&2; exit 1; }
   fi
   local got
   got=$(sha256 "$file")
@@ -238,7 +245,7 @@ meson_build libass "${ass_fonts[@]}" -Dlibunibreak=disabled \
 license libass COPYING
 
 # --- Subtitle charset detection (sub-codepage=auto, e.g. GBK .srt) ------
-fetch uchardet https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz \
+fetch uchardet "https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz https://deb.debian.org/debian/pool/main/u/uchardet/uchardet_0.0.8.orig.tar.xz" \
   e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0
 cmake_build uchardet -DBUILD_BINARY=OFF -DBUILD_STATIC=OFF -DCHECK_SSE2=OFF
 license uchardet COPYING
