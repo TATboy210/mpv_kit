@@ -55,9 +55,12 @@ class VulkanContext {
   /// Creates instance + device. On failure [error] explains why.
   bool Init(std::string* error);
 
-  /// (Re)allocates [count] images of the given size. Waits for the GPU.
+  /// (Re)allocates [count] images of the given size. The previous ring is
+  /// kept (retired) until FreeRetired() or the next reallocation, so its
+  /// last frame can stay on screen meanwhile. Waits for the GPU.
   bool AllocateRing(int count, int width, int height, std::string* error);
   void FreeRing();
+  void FreeRetired();
 
   /// Reserves the next timeline value for a render into ring[i].
   uint64_t NextSignalValue(int i);
@@ -70,8 +73,15 @@ class VulkanContext {
   VkPhysicalDevice physical_device() const { return physical_device_; }
   VkDevice device() const { return device_; }
   uint32_t api_version() const { return api_version_; }
-  uint32_t graphics_family() const { return graphics_family_; }
-  uint32_t graphics_count() const { return graphics_count_; }
+  /// Queue family index and number of queues created in it.
+  struct QueueFamily {
+    uint32_t index = 0;
+    uint32_t count = 0;
+  };
+  QueueFamily graphics_queues() const { return graphics_; }
+  /// Dedicated async families, or the graphics family if the GPU has none.
+  QueueFamily compute_queues() const { return compute_; }
+  QueueFamily transfer_queues() const { return transfer_; }
   const std::vector<const char*>& enabled_extensions() const {
     return device_extensions_;
   }
@@ -88,8 +98,7 @@ class VulkanContext {
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
   uint32_t api_version_ = 0;
-  uint32_t graphics_family_ = 0;
-  uint32_t graphics_count_ = 1;
+  QueueFamily graphics_, compute_, transfer_;
   std::string device_name_;
   std::vector<std::string> extension_storage_;
   std::vector<const char*> device_extensions_;
@@ -98,7 +107,23 @@ class VulkanContext {
   VkPhysicalDeviceVulkan11Features features11_{};
   VkPhysicalDeviceVulkan12Features features12_{};
   VkPhysicalDeviceVulkan13Features features13_{};
+  // Extension feature structs, chained after features13_ when their
+  // extension is enabled (see CreateDevice).
+  struct {
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer;
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomic_float;
+    VkPhysicalDeviceShaderObjectFeaturesEXT shader_object;
+    VkPhysicalDeviceCooperativeMatrixFeaturesKHR cooperative_matrix;
+    VkPhysicalDeviceVideoMaintenance1FeaturesKHR video_maintenance1;
+    VkPhysicalDeviceShaderExpectAssumeFeaturesKHR expect_assume;
+    VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR subgroup_rotate;
+    VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR
+        relaxed_extended_instruction;
+    VkPhysicalDeviceVideoMaintenance2FeaturesKHR video_maintenance2;
+    VkPhysicalDeviceVideoDecodeVP9FeaturesKHR video_decode_vp9;
+  } ext_{};
   std::vector<SharedImage> ring_;
+  std::vector<SharedImage> retired_;
   VkSemaphore timeline_ = VK_NULL_HANDLE;
   uint64_t timeline_value_ = 0;
 };

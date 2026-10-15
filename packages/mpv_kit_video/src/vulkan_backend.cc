@@ -1,30 +1,67 @@
 #include "vulkan_backend.h"
 
 #include <algorithm>
+#include <bitset>
 #include <cstring>
 #include <mutex>
 
 namespace mpv_kit {
 namespace {
 
-// Same optional device extensions mpv requests in mppl_create_vulkan()
-// (video/out/vulkan/context.c) so FFmpeg's Vulkan hwcontext and Vulkan Video
-// decoding (--hwdec=vulkan) work, plus what libplacebo uses opportunistically.
+// Optional device extensions, copied from mpv's mppl_create_vulkan()
+// (video/out/vulkan/context.c: FFmpeg Vulkan hwcontext + Vulkan Video) plus
+// libplacebo's recommended interop set (vaapi dma-buf import, CUDA/nvdec
+// export, host pointers). Each is enabled only when the device has it.
 constexpr const char* kOptionalDeviceExtensions[] = {
+    // mpv context.c opt_extensions
     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
     VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
-    VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
     VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
     VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
-    "VK_KHR_video_decode_av1",
-    "VK_KHR_video_maintenance1",
+    VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
     VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME,
+    VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+    VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
+    VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME,
+    VK_KHR_SHADER_EXPECT_ASSUME_EXTENSION_NAME,
+    VK_KHR_SHADER_SUBGROUP_ROTATE_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME,
+    VK_KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION_EXTENSION_NAME,
+    VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_VP9_EXTENSION_NAME,
+    // libplacebo recommended (interop / zero-copy hwdec)
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
     VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+    VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+    "VK_KHR_external_memory_win32",
+    "VK_KHR_external_semaphore_win32",
     VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
     VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME,
+    VK_EXT_PCI_BUS_INFO_EXTENSION_NAME,
     "VK_KHR_portability_subset",  // required on MoltenVK when exposed
 };
+
+/// Queue family with all of [want], none of [avoid] and as few other
+/// capabilities as possible (libplacebo's find_qf()), or -1.
+int FindQueueFamily(const std::vector<VkQueueFamilyProperties>& qfs,
+                    VkQueueFlags want, VkQueueFlags avoid) {
+  int best = -1;
+  size_t best_extra = 64;
+  for (size_t i = 0; i < qfs.size(); i++) {
+    const VkQueueFlags f = qfs[i].queueFlags;
+    if ((f & want) != want || (f & avoid) || qfs[i].queueCount == 0) continue;
+    const size_t extra = std::bitset<32>(f & ~want).count();
+    if (extra < best_extra) {
+      best = static_cast<int>(i);
+      best_extra = extra;
+    }
+  }
+  return best;
+}
 
 bool HasExtension(const std::vector<VkExtensionProperties>& list,
                   const char* name) {
@@ -166,21 +203,28 @@ bool VulkanContext::CreateDevice(std::string* error) {
   std::vector<VkQueueFamilyProperties> qfs(nqf);
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &nqf, qfs.data());
 
-  int graphics = -1, decode = -1;
-  for (uint32_t i = 0; i < nqf; i++) {
-    if (graphics < 0 && (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
-        (qfs[i].queueFlags & VK_QUEUE_COMPUTE_BIT))
-      graphics = static_cast<int>(i);
-    if (decode < 0 && (qfs[i].queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR))
-      decode = static_cast<int>(i);
-  }
+  // Queue layout as libplacebo builds it for mpv (async_transfer and
+  // async_compute on, queue_count 1): a graphics+compute family, dedicated
+  // compute and transfer families where they exist, and the video decode
+  // family for FFmpeg.
+  const int graphics = FindQueueFamily(
+      qfs, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, 0);
   if (graphics < 0) {
     *error = "no graphics+compute queue family";
     return false;
   }
-  graphics_family_ = static_cast<uint32_t>(graphics);
-  // Two graphics queues let libplacebo overlap uploads with rendering.
-  graphics_count_ = std::min<uint32_t>(2, qfs[graphics].queueCount);
+  const int compute =
+      FindQueueFamily(qfs, VK_QUEUE_COMPUTE_BIT, VK_QUEUE_GRAPHICS_BIT);
+  const int transfer = FindQueueFamily(
+      qfs, VK_QUEUE_TRANSFER_BIT,
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
+          VK_QUEUE_VIDEO_DECODE_BIT_KHR | VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
+  const int decode = FindQueueFamily(qfs, VK_QUEUE_VIDEO_DECODE_BIT_KHR, 0);
+  graphics_ = {static_cast<uint32_t>(graphics), 1};
+  compute_ = compute >= 0 ? QueueFamily{static_cast<uint32_t>(compute), 1}
+                          : graphics_;
+  transfer_ = transfer >= 0 ? QueueFamily{static_cast<uint32_t>(transfer), 1}
+                            : graphics_;
 
   // Extensions: interop-required + every supported optional one.
   uint32_t n = 0;
@@ -188,26 +232,62 @@ bool VulkanContext::CreateDevice(std::string* error) {
   std::vector<VkExtensionProperties> available(n);
   vkEnumerateDeviceExtensionProperties(physical_device_, nullptr, &n,
                                        available.data());
+  auto enabled = [&](const char* name) {
+    return std::find(extension_storage_.begin(), extension_storage_.end(),
+                     name) != extension_storage_.end();
+  };
   for (const char* e : interop_->DeviceExtensions()) {
     if (!HasExtension(available, e)) {
       *error = std::string("missing device extension ") + e;
       return false;
     }
-    extension_storage_.emplace_back(e);
+    if (!enabled(e)) extension_storage_.emplace_back(e);
   }
   for (const char* e : kOptionalDeviceExtensions) {
-    if (HasExtension(available, e)) extension_storage_.emplace_back(e);
+    if (HasExtension(available, e) && !enabled(e))
+      extension_storage_.emplace_back(e);
   }
   for (const auto& e : extension_storage_) device_extensions_.push_back(e.c_str());
 
-  // Features: enable everything the device supports except robustness
-  // (costly and unneeded); libplacebo and FFmpeg pick what they need.
+  // Features: mpv requests the feature structs of its optional extensions
+  // too (context.c), because FFmpeg reads them from the chain handed over
+  // in hwdec_vulkan.c. Query what the device supports and enable all of it
+  // except robustness (costly and unneeded).
   features13_ = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
   features12_ = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
                  &features13_};
   features11_ = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
                  &features12_};
   features_ = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &features11_};
+  void** tail = &features13_.pNext;
+  auto chain = [&](const char* ext, auto& s, VkStructureType type) {
+    if (!enabled(ext)) return;
+    s = {};
+    s.sType = type;
+    *tail = &s;
+    tail = &s.pNext;
+  };
+  chain(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME, ext_.descriptor_buffer,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT);
+  chain(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, ext_.atomic_float,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT);
+  chain(VK_EXT_SHADER_OBJECT_EXTENSION_NAME, ext_.shader_object,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT);
+  chain(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME, ext_.cooperative_matrix,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR);
+  chain(VK_KHR_VIDEO_MAINTENANCE_1_EXTENSION_NAME, ext_.video_maintenance1,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR);
+  chain(VK_KHR_SHADER_EXPECT_ASSUME_EXTENSION_NAME, ext_.expect_assume,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES_KHR);
+  chain(VK_KHR_SHADER_SUBGROUP_ROTATE_EXTENSION_NAME, ext_.subgroup_rotate,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR);
+  chain(VK_KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION_EXTENSION_NAME,
+        ext_.relaxed_extended_instruction,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR);
+  chain(VK_KHR_VIDEO_MAINTENANCE_2_EXTENSION_NAME, ext_.video_maintenance2,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR);
+  chain(VK_KHR_VIDEO_DECODE_VP9_EXTENSION_NAME, ext_.video_decode_vp9,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_DECODE_VP9_FEATURES_KHR);
   vkGetPhysicalDeviceFeatures2(physical_device_, &features_);
   features_.features.robustBufferAccess = VK_FALSE;
   features13_.robustImageAccess = VK_FALSE;
@@ -216,17 +296,24 @@ bool VulkanContext::CreateDevice(std::string* error) {
     return false;
   }
 
-  // mpv hands FFmpeg the decode family with its full queueCount
-  // (hwdec_vulkan.c), so every queue of that family must exist.
+  // One VkDeviceQueueCreateInfo per family. mpv hands FFmpeg the decode
+  // family with its full queueCount (hwdec_vulkan.c), so every queue of
+  // that family must exist.
+  std::vector<uint32_t> counts(nqf, 0);
+  auto want = [&](int family, uint32_t count) {
+    if (family >= 0) counts[family] = std::max(counts[family], count);
+  };
+  want(graphics, graphics_.count);
+  want(compute, compute_.count);
+  want(transfer, transfer_.count);
+  if (decode >= 0) want(decode, qfs[decode].queueCount);
   const std::vector<float> priorities(
-      std::max<uint32_t>(2, decode >= 0 ? qfs[decode].queueCount : 1), 1.0f);
+      *std::max_element(counts.begin(), counts.end()), 1.0f);
   std::vector<VkDeviceQueueCreateInfo> queues;
-  queues.push_back({VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, nullptr, 0,
-                    graphics_family_, graphics_count_, priorities.data()});
-  if (decode >= 0 && decode != graphics) {
-    queues.push_back({VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, nullptr, 0,
-                      static_cast<uint32_t>(decode), qfs[decode].queueCount,
-                      priorities.data()});
+  for (uint32_t i = 0; i < nqf; i++) {
+    if (counts[i])
+      queues.push_back({VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, nullptr, 0,
+                        i, counts[i], priorities.data()});
   }
 
   VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
@@ -255,7 +342,9 @@ bool VulkanContext::CreateDevice(std::string* error) {
 
 bool VulkanContext::AllocateRing(int count, int width, int height,
                                  std::string* error) {
-  FreeRing();
+  FreeRetired();
+  retired_ = std::move(ring_);
+  ring_.clear();
   ring_.resize(count);
   for (auto& img : ring_) {
     if (!interop_->CreateImage(physical_device_, device_, width, height, &img)) {
@@ -267,14 +356,24 @@ bool VulkanContext::AllocateRing(int count, int width, int height,
   return true;
 }
 
-void VulkanContext::FreeRing() {
-  if (!device_ || ring_.empty()) return;
-  vkDeviceWaitIdle(device_);
-  for (auto& img : ring_) {
-    interop_->DestroyImage(device_, &img);
+namespace {
+void DestroyAll(VkDevice device, VulkanInterop* interop,
+                std::vector<SharedImage>* images) {
+  if (!device || images->empty()) return;
+  vkDeviceWaitIdle(device);
+  for (auto& img : *images) {
+    if (img.image || img.platform) interop->DestroyImage(device, &img);
   }
-  ring_.clear();
+  images->clear();
 }
+}  // namespace
+
+void VulkanContext::FreeRing() {
+  DestroyAll(device_, interop_, &ring_);
+  FreeRetired();
+}
+
+void VulkanContext::FreeRetired() { DestroyAll(device_, interop_, &retired_); }
 
 uint64_t VulkanContext::NextSignalValue(int i) {
   ring_[i].ready_value = ++timeline_value_;
