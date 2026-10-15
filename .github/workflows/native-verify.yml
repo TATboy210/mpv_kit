@@ -67,8 +67,7 @@ jobs:
           dart pub global activate coverage
           cd packages/mpv_kit && dart analyze --fatal-infos
           dart pub global run coverage:test_with_coverage
-          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)
-",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)

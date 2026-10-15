@@ -22,9 +22,13 @@ void main() {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   late List<MethodCall> calls;
+  // Assigned in setUp only when libmpv is available; the tests that use it
+  // are skipped otherwise.
   late Player player;
+  var hasPlayer = false;
 
   setUp(() {
+    if (skip != null) return;
     calls = [];
     messenger.setMockMethodCallHandler(_channel, (call) async {
       calls.add(call);
@@ -34,10 +38,12 @@ void main() {
       return null;
     });
     player = Player(options: const {'vo': 'null', 'ao': 'null'});
+    hasPlayer = true;
   });
 
   tearDown(() async {
-    await player.dispose();
+    if (hasPlayer) await player.dispose();
+    hasPlayer = false;
     messenger.setMockMethodCallHandler(_channel, null);
   });
 
