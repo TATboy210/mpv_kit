@@ -58,7 +58,9 @@ esac
 # Headers installed by deps.sh (Vulkan, dav1d) take precedence over the
 # host's, which may be too old (FFmpeg 8.1 needs Vulkan headers 1.3.277+).
 if [ -d "$prefix/include" ]; then
-  platform_args+=(--extra-cflags="-I$prefix/include")
+  inc=$prefix/include
+  if command -v cygpath >/dev/null; then inc=$(cygpath -m "$inc"); fi
+  platform_args+=(--extra-cflags="-I$inc")
 fi
 
 # No --enable-gpl / --enable-nonfree / --enable-version3: LGPL-2.1-or-later.

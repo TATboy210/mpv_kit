@@ -17,8 +17,12 @@
 set -euo pipefail
 
 prefix=${1:?usage: deps.sh PREFIX}
-mkdir -p "$prefix"
+mkdir -p "$prefix/lib/pkgconfig" "$prefix/include"
 prefix=$(cd "$prefix" && pwd)
+# Native Windows tools (meson, clang) need drive-letter paths (X:/...) in
+# arguments; MSYS2 only converts whole path arguments.
+nprefix=$prefix
+if command -v cygpath >/dev/null; then nprefix=$(cygpath -m "$prefix"); fi
 work=${DEPS_WORKDIR:-$PWD/.deps-build}
 mkdir -p "$work/src" "$work/dl"
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
@@ -44,7 +48,7 @@ sha256() {
 # fetch NAME URL SHA256: downloads (cached in $work/dl), verifies and
 # extracts into $work/src/NAME (the archive's single top-level directory).
 fetch() {
-  local name=$1 url=$2 want=$3 file="$work/dl/${2##*/}"
+  local name=$1 url=$2 want=$3 file="$work/dl/$1-${2##*/}"
   if [ ! -f "$file" ]; then
     curl -fsSL --retry 3 -o "$file.part" "$url"
     mv "$file.part" "$file"
@@ -169,9 +173,14 @@ fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.
 # Vulkan only: mpv_kit renders through the Vulkan render API (OpenGL and
 # D3D11 backends would only add size). Dolby Vision metadata is handled
 # by libplacebo itself (libdovi is optional).
-meson_build libplacebo -Dprefer_static=true \
+# libplacebo finds glslang with find_library, which searches only the
+# -Dvulkan-sdk directory and not for every library: point both at PREFIX.
+sed -i.orig "s|find_library('glslang', required: required, static: static)|find_library('glslang', required: required, static: static, dirs: vulkan_lib_dirs)|" \
+  "$work/src/libplacebo/src/glsl/meson.build"
+meson_build libplacebo -Dprefer_static=true -Dvulkan-sdk="$nprefix" \
+  -Dc_args="-I$nprefix/include" -Dcpp_args="-I$nprefix/include" \
   -Dvulkan=enabled -Dvk-proc-addr=enabled \
-  -Dvulkan-registry="$prefix/share/vulkan/registry/vk.xml" \
+  -Dvulkan-registry="$nprefix/share/vulkan/registry/vk.xml" \
   -Dopengl=disabled -Dd3d11=disabled -Dglslang=enabled -Dshaderc=disabled \
   -Dlcms=enabled -Ddovi=enabled -Dlibdovi=disabled -Dunwind=disabled \
   -Dxxhash=disabled -Ddemos=false -Dtests=false -Dbench=false -Dfuzz=false
