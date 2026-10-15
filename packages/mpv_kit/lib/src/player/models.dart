@@ -33,6 +33,7 @@ final class MpvTrack {
     this.width,
     this.height,
     this.channels,
+    this.isAlbumArt = false,
     this.raw = const {},
   });
 
@@ -54,6 +55,7 @@ final class MpvTrack {
     width: _int(m['demux-w']),
     height: _int(m['demux-h']),
     channels: _int(m['demux-channel-count']),
+    isAlbumArt: m['albumart'] == true,
     raw: m,
   );
 
@@ -89,6 +91,10 @@ final class MpvTrack {
 
   /// Audio channel count, if known.
   final int? channels;
+
+  /// 视频轨实为音频文件内嵌的封面图（`albumart`）。音乐播放时 mpv 默认把
+  /// 封面当作一帧静止画面显示（`audio-display=embedded-first`）。
+  final bool isAlbumArt;
 
   /// 完整原始字段（mpv 提供的所有键）。
   final Map<String, Object?> raw;
@@ -192,6 +198,102 @@ final class MpvVideoParams {
 
   /// All raw fields of the mpv node.
   final Map<String, Object?> raw;
+}
+
+/// `audio-params`：解码后（滤镜前）的音频格式。
+final class MpvAudioParams {
+  /// Creates audio parameters.
+  const MpvAudioParams({
+    this.format,
+    this.sampleRate,
+    this.channels,
+    this.channelCount,
+    this.raw = const {},
+  });
+
+  /// Parses the `audio-params` node.
+  factory MpvAudioParams.fromNode(Map<String, Object?> m) => MpvAudioParams(
+    format: m['format'] as String?,
+    sampleRate: _int(m['samplerate']),
+    channels: m['channels'] as String?,
+    channelCount: _int(m['channel-count']),
+    raw: m,
+  );
+
+  /// Sample format (e.g. `floatp`, `s16`, `s32`).
+  final String? format;
+
+  /// Sample rate in Hz.
+  final int? sampleRate;
+
+  /// Channel layout (e.g. `stereo`, `5.1`).
+  final String? channels;
+
+  /// Number of channels.
+  final int? channelCount;
+
+  /// All raw fields of the mpv node.
+  final Map<String, Object?> raw;
+}
+
+/// 一个音频输出设备（`audio-device-list/N`）。
+final class MpvAudioDevice {
+  /// Creates a device description.
+  const MpvAudioDevice({required this.name, required this.description});
+
+  /// Parses an `audio-device-list` entry.
+  factory MpvAudioDevice.fromNode(Map<String, Object?> m) => MpvAudioDevice(
+    name: m['name'] as String? ?? '',
+    description: m['description'] as String? ?? '',
+  );
+
+  /// Value for `audio-device` (e.g. `auto`, `wasapi/{guid}`).
+  final String name;
+
+  /// Human-readable name shown by the system.
+  final String description;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MpvAudioDevice &&
+      other.name == name &&
+      other.description == description;
+
+  @override
+  int get hashCode => Object.hash(name, description);
+
+  @override
+  String toString() => 'MpvAudioDevice($name: $description)';
+}
+
+/// 循环方式：`loop-file` / `loop-playlist` 的组合（对应 media_kit 的
+/// `PlaylistMode.single` / `loop` / `none`）。
+enum MpvLoopMode {
+  /// Play the playlist once.
+  none,
+
+  /// Repeat the current file (`loop-file=inf`).
+  file,
+
+  /// Repeat the whole playlist (`loop-playlist=inf`).
+  playlist,
+}
+
+/// 响度均衡（`replaygain`）：使用文件中的 ReplayGain 标签。
+enum MpvReplayGain {
+  /// Ignore ReplayGain tags.
+  off('no'),
+
+  /// Per-track gain.
+  track('track'),
+
+  /// Per-album gain (consistent loudness within an album).
+  album('album');
+
+  const MpvReplayGain(this.value);
+
+  /// mpv value of `replaygain`.
+  final String value;
 }
 
 int? _int(Object? v) => switch (v) {

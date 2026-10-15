@@ -11,3180 +11,7607 @@ abstract final class MpvOptions {
   ///
   /// mpv type: Print.
   static const V = MpvOption<String>('V', MpvOptionType.string);
+
   /// Set loop points.
   ///
   /// mpv type: Time.
   static const abLoopA = MpvOption<double>('ab-loop-a', MpvOptionType.real);
+
   ///
   /// mpv type: Time.
   static const abLoopB = MpvOption<double>('ab-loop-b', MpvOptionType.real);
+
   /// Run A-B loops only N times, then ignore the A-B loop points (default: inf).
   ///
   /// mpv type: Choice; choices: inf.
-  static const abLoopCount = MpvOption<String>('ab-loop-count', MpvOptionType.choice, choices: ['inf'], min: 0, max: 2147483647);
+  static const abLoopCount = MpvOption<String>(
+    'ab-loop-count',
+    MpvOptionType.choice,
+    choices: ['inf'],
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Follow any references in the file being opened (default: yes).
   ///
   /// mpv type: Flag.
-  static const accessReferences = MpvOption<bool>('access-references', MpvOptionType.flag);
+  static const accessReferences = MpvOption<bool>(
+    'access-references',
+    MpvOptionType.flag,
+  );
+
   /// Specify a priority list of audio decoders to be used, according to their decoder name.
   ///
   /// mpv type: String.
   static const ad = MpvOption<String>('ad', MpvOptionType.string);
+
   /// Select the Dynamic Range Compression level for AC-3 audio streams.
   ///
   /// mpv type: Float.
-  static const adLavcAc3drc = MpvOption<double>('ad-lavc-ac3drc', MpvOptionType.real, min: 0, max: 6);
+  static const adLavcAc3drc = MpvOption<double>(
+    'ad-lavc-ac3drc',
+    MpvOptionType.real,
+    min: 0,
+    max: 6,
+  );
+
   /// Whether to request audio channel downmixing from the decoder (default: no).
   ///
   /// mpv type: Flag.
-  static const adLavcDownmix = MpvOption<bool>('ad-lavc-downmix', MpvOptionType.flag);
+  static const adLavcDownmix = MpvOption<bool>(
+    'ad-lavc-downmix',
+    MpvOptionType.flag,
+  );
+
   /// Pass AVOptions to libavcodec decoder.
   ///
   /// mpv type: Key/value list.
   static const adLavcO = MpvOption<String>('ad-lavc-o', MpvOptionType.string);
+
   /// Number of threads to use for decoding.
   ///
   /// mpv type: Integer.
-  static const adLavcThreads = MpvOption<int>('ad-lavc-threads', MpvOptionType.integer, min: 0, max: 16);
+  static const adLavcThreads = MpvOption<int>(
+    'ad-lavc-threads',
+    MpvOptionType.integer,
+    min: 0,
+    max: 16,
+  );
+
   ///
   /// mpv type: Flag.
-  static const adQueueEnable = MpvOption<bool>('ad-queue-enable', MpvOptionType.flag);
+  static const adQueueEnable = MpvOption<bool>(
+    'ad-queue-enable',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: ByteSize.
-  static const adQueueMaxBytes = MpvOption<int>('ad-queue-max-bytes', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const adQueueMaxBytes = MpvOption<int>(
+    'ad-queue-max-bytes',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   ///
   /// mpv type: Integer64.
-  static const adQueueMaxSamples = MpvOption<int>('ad-queue-max-samples', MpvOptionType.integer, min: 0);
+  static const adQueueMaxSamples = MpvOption<int>(
+    'ad-queue-max-samples',
+    MpvOptionType.integer,
+    min: 0,
+  );
+
   ///
   /// mpv type: Double.
-  static const adQueueMaxSecs = MpvOption<double>('ad-queue-max-secs', MpvOptionType.real, min: 0);
+  static const adQueueMaxSecs = MpvOption<double>(
+    'ad-queue-max-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Specify a list of audio filters to apply to the audio stream.
   ///
   /// mpv type: Object settings list; choices: lavfi, lavfi-bridge, scaletempo, scaletempo2, format, rubberband, lavcac3enc, drop, abench, acompressor, acontrast, acopy, acue, acrossfade, acrossover, acrusher, adeclick, adeclip, adecorrelate, adelay, adenorm, aderivative, adrc, adynamicequalizer, adynamicsmooth, aecho, aemphasis, aeval, aexciter, afade, afftdn, afftfilt, afir, aformat, afreqshift, afwtdn, agate, aiir, aintegral, ainterleave, alatency, alimiter, allpass, aloop, amerge, ametadata, amix, anequalizer, anlmdn, anull, apad, aperms, aphaser, aphaseshift, apsyclip, apulsator, arealtime, aresample, areverse, arnndn, asegment, aselect, asendcmd, asetnsamples, asetpts, asetrate, asettb, ashowinfo, asidedata, asoftclip, aspectralstats, asplit, astats, astreamselect, asubboost, asubcut, asupercut, asuperpass, asuperstop, atempo, atilt, atrim, bandpass, bandreject, bass, biquad, bs2b, channelmap, channelsplit, chorus, compand, compensationdelay, crossfeed, crystalizer, dcshift, deesser, dialoguenhance, drmeter, dynaudnorm, earwax, ebur128, equalizer, extrastereo, firequalizer, flanger, haas, hdcd, headphone, highpass, highshelf, join, loudnorm, lowpass, lowshelf, mcompand, pan, replaygain, rubberband, silencedetect, silenceremove, sofalizer, speechnorm, stereotools, stereowiden, superequalizer, surround, tiltshelf, treble, tremolo, vibrato, virtualbass, volume, volumedetect, streamselect, aphasemeter, concat.
-  static const af = MpvOption<String>('af', MpvOptionType.string, choices: ['lavfi', 'lavfi-bridge', 'scaletempo', 'scaletempo2', 'format', 'rubberband', 'lavcac3enc', 'drop', 'abench', 'acompressor', 'acontrast', 'acopy', 'acue', 'acrossfade', 'acrossover', 'acrusher', 'adeclick', 'adeclip', 'adecorrelate', 'adelay', 'adenorm', 'aderivative', 'adrc', 'adynamicequalizer', 'adynamicsmooth', 'aecho', 'aemphasis', 'aeval', 'aexciter', 'afade', 'afftdn', 'afftfilt', 'afir', 'aformat', 'afreqshift', 'afwtdn', 'agate', 'aiir', 'aintegral', 'ainterleave', 'alatency', 'alimiter', 'allpass', 'aloop', 'amerge', 'ametadata', 'amix', 'anequalizer', 'anlmdn', 'anull', 'apad', 'aperms', 'aphaser', 'aphaseshift', 'apsyclip', 'apulsator', 'arealtime', 'aresample', 'areverse', 'arnndn', 'asegment', 'aselect', 'asendcmd', 'asetnsamples', 'asetpts', 'asetrate', 'asettb', 'ashowinfo', 'asidedata', 'asoftclip', 'aspectralstats', 'asplit', 'astats', 'astreamselect', 'asubboost', 'asubcut', 'asupercut', 'asuperpass', 'asuperstop', 'atempo', 'atilt', 'atrim', 'bandpass', 'bandreject', 'bass', 'biquad', 'bs2b', 'channelmap', 'channelsplit', 'chorus', 'compand', 'compensationdelay', 'crossfeed', 'crystalizer', 'dcshift', 'deesser', 'dialoguenhance', 'drmeter', 'dynaudnorm', 'earwax', 'ebur128', 'equalizer', 'extrastereo', 'firequalizer', 'flanger', 'haas', 'hdcd', 'headphone', 'highpass', 'highshelf', 'join', 'loudnorm', 'lowpass', 'lowshelf', 'mcompand', 'pan', 'replaygain', 'rubberband', 'silencedetect', 'silenceremove', 'sofalizer', 'speechnorm', 'stereotools', 'stereowiden', 'superequalizer', 'surround', 'tiltshelf', 'treble', 'tremolo', 'vibrato', 'virtualbass', 'volume', 'volumedetect', 'streamselect', 'aphasemeter', 'concat']);
+  static const af = MpvOption<String>(
+    'af',
+    MpvOptionType.string,
+    choices: [
+      'lavfi',
+      'lavfi-bridge',
+      'scaletempo',
+      'scaletempo2',
+      'format',
+      'rubberband',
+      'lavcac3enc',
+      'drop',
+      'abench',
+      'acompressor',
+      'acontrast',
+      'acopy',
+      'acue',
+      'acrossfade',
+      'acrossover',
+      'acrusher',
+      'adeclick',
+      'adeclip',
+      'adecorrelate',
+      'adelay',
+      'adenorm',
+      'aderivative',
+      'adrc',
+      'adynamicequalizer',
+      'adynamicsmooth',
+      'aecho',
+      'aemphasis',
+      'aeval',
+      'aexciter',
+      'afade',
+      'afftdn',
+      'afftfilt',
+      'afir',
+      'aformat',
+      'afreqshift',
+      'afwtdn',
+      'agate',
+      'aiir',
+      'aintegral',
+      'ainterleave',
+      'alatency',
+      'alimiter',
+      'allpass',
+      'aloop',
+      'amerge',
+      'ametadata',
+      'amix',
+      'anequalizer',
+      'anlmdn',
+      'anull',
+      'apad',
+      'aperms',
+      'aphaser',
+      'aphaseshift',
+      'apsyclip',
+      'apulsator',
+      'arealtime',
+      'aresample',
+      'areverse',
+      'arnndn',
+      'asegment',
+      'aselect',
+      'asendcmd',
+      'asetnsamples',
+      'asetpts',
+      'asetrate',
+      'asettb',
+      'ashowinfo',
+      'asidedata',
+      'asoftclip',
+      'aspectralstats',
+      'asplit',
+      'astats',
+      'astreamselect',
+      'asubboost',
+      'asubcut',
+      'asupercut',
+      'asuperpass',
+      'asuperstop',
+      'atempo',
+      'atilt',
+      'atrim',
+      'bandpass',
+      'bandreject',
+      'bass',
+      'biquad',
+      'bs2b',
+      'channelmap',
+      'channelsplit',
+      'chorus',
+      'compand',
+      'compensationdelay',
+      'crossfeed',
+      'crystalizer',
+      'dcshift',
+      'deesser',
+      'dialoguenhance',
+      'drmeter',
+      'dynaudnorm',
+      'earwax',
+      'ebur128',
+      'equalizer',
+      'extrastereo',
+      'firequalizer',
+      'flanger',
+      'haas',
+      'hdcd',
+      'headphone',
+      'highpass',
+      'highshelf',
+      'join',
+      'loudnorm',
+      'lowpass',
+      'lowshelf',
+      'mcompand',
+      'pan',
+      'replaygain',
+      'rubberband',
+      'silencedetect',
+      'silenceremove',
+      'sofalizer',
+      'speechnorm',
+      'stereotools',
+      'stereowiden',
+      'superequalizer',
+      'surround',
+      'tiltshelf',
+      'treble',
+      'tremolo',
+      'vibrato',
+      'virtualbass',
+      'volume',
+      'volumedetect',
+      'streamselect',
+      'aphasemeter',
+      'concat',
+    ],
+  );
+
   /// Select audio track.
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const aid = MpvOption<String>('aid', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const aid = MpvOption<String>(
+    'aid',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// Specify a prioritized list of audio languages to use, as IETF language tags.
   ///
   /// mpv type: String list.
   static const alang = MpvOption<String>('alang', MpvOptionType.string);
+
   /// When using --hdr-compute-peak, allow delaying the detected peak by a frame when beneficial for performance.
   ///
   /// mpv type: Flag.
-  static const allowDelayedPeakDetect = MpvOption<bool>('allow-delayed-peak-detect', MpvOptionType.flag);
+  static const allowDelayedPeakDetect = MpvOption<bool>(
+    'allow-delayed-peak-detect',
+    MpvOptionType.flag,
+  );
+
   /// Selects a specific feature level when using the ANGLE backend with D3D11.
   ///
   /// mpv type: Choice; choices: 11_0, 10_1, 10_0, 9_3.
-  static const angleD3d11FeatureLevel = MpvOption<String>('angle-d3d11-feature-level', MpvOptionType.choice, choices: ['11_0', '10_1', '10_0', '9_3']);
+  static const angleD3d11FeatureLevel = MpvOption<String>(
+    'angle-d3d11-feature-level',
+    MpvOptionType.choice,
+    choices: ['11_0', '10_1', '10_0', '9_3'],
+  );
+
   /// Use WARP (Windows Advanced Rasterization Platform) when using the ANGLE backend with D3D11 (default: auto).
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const angleD3d11Warp = MpvOption<String>('angle-d3d11-warp', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const angleD3d11Warp = MpvOption<String>(
+    'angle-d3d11-warp',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// Use ANGLE's built in EGL windowing functions to create a swap chain (default: auto).
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const angleEglWindowing = MpvOption<String>('angle-egl-windowing', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const angleEglWindowing = MpvOption<String>(
+    'angle-egl-windowing',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// Enable flip-model presentation, which avoids unnecessarily copying the backbuffer by sharing surfaces with the DWM (default: yes).
   ///
   /// mpv type: Flag.
   static const angleFlip = MpvOption<bool>('angle-flip', MpvOptionType.flag);
+
   /// Forces a specific renderer when using the ANGLE backend (default: auto).
   ///
   /// mpv type: Choice; choices: auto, d3d9, d3d11.
-  static const angleRenderer = MpvOption<String>('angle-renderer', MpvOptionType.choice, choices: ['auto', 'd3d9', 'd3d11']);
+  static const angleRenderer = MpvOption<String>(
+    'angle-renderer',
+    MpvOptionType.choice,
+    choices: ['auto', 'd3d9', 'd3d11'],
+  );
+
   /// Specify the audio output drivers to be used.
   ///
   /// mpv type: Object settings list; choices: wasapi, openal, null, pcm, lavc.
-  static const ao = MpvOption<String>('ao', MpvOptionType.string, choices: ['wasapi', 'openal', 'null', 'pcm', 'lavc']);
+  static const ao = MpvOption<String>(
+    'ao',
+    MpvOptionType.string,
+    choices: ['wasapi', 'openal', 'null', 'pcm', 'lavc'],
+  );
+
   ///
   /// mpv type: Flag.
-  static const aoNullBrokenDelay = MpvOption<bool>('ao-null-broken-delay', MpvOptionType.flag);
+  static const aoNullBrokenDelay = MpvOption<bool>(
+    'ao-null-broken-delay',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const aoNullBrokenEof = MpvOption<bool>('ao-null-broken-eof', MpvOptionType.flag);
+  static const aoNullBrokenEof = MpvOption<bool>(
+    'ao-null-broken-eof',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Float.
-  static const aoNullBuffer = MpvOption<double>('ao-null-buffer', MpvOptionType.real, min: 0, max: 100);
+  static const aoNullBuffer = MpvOption<double>(
+    'ao-null-buffer',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   ///
   /// mpv type: Audio channels or channel map.
-  static const aoNullChannelLayouts = MpvOption<String>('ao-null-channel-layouts', MpvOptionType.string);
+  static const aoNullChannelLayouts = MpvOption<String>(
+    'ao-null-channel-layouts',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Audio format.
-  static const aoNullFormat = MpvOption<String>('ao-null-format', MpvOptionType.string);
+  static const aoNullFormat = MpvOption<String>(
+    'ao-null-format',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Float.
-  static const aoNullLatency = MpvOption<double>('ao-null-latency', MpvOptionType.real, min: 0, max: 100);
+  static const aoNullLatency = MpvOption<double>(
+    'ao-null-latency',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   ///
   /// mpv type: Integer.
-  static const aoNullOutburst = MpvOption<int>('ao-null-outburst', MpvOptionType.integer, min: 1, max: 100000);
+  static const aoNullOutburst = MpvOption<int>(
+    'ao-null-outburst',
+    MpvOptionType.integer,
+    min: 1,
+    max: 100000,
+  );
+
   ///
   /// mpv type: Float.
-  static const aoNullSpeed = MpvOption<double>('ao-null-speed', MpvOptionType.real, min: 0, max: 10000);
+  static const aoNullSpeed = MpvOption<double>(
+    'ao-null-speed',
+    MpvOptionType.real,
+    min: 0,
+    max: 10000,
+  );
+
   ///
   /// mpv type: Flag.
-  static const aoNullUntimed = MpvOption<bool>('ao-null-untimed', MpvOptionType.flag);
+  static const aoNullUntimed = MpvOption<bool>(
+    'ao-null-untimed',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const aoPcmAppend = MpvOption<bool>('ao-pcm-append', MpvOptionType.flag);
+  static const aoPcmAppend = MpvOption<bool>(
+    'ao-pcm-append',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: String.
-  static const aoPcmFile = MpvOption<String>('ao-pcm-file', MpvOptionType.string);
+  static const aoPcmFile = MpvOption<String>(
+    'ao-pcm-file',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Flag.
-  static const aoPcmWaveheader = MpvOption<bool>('ao-pcm-waveheader', MpvOptionType.flag);
+  static const aoPcmWaveheader = MpvOption<bool>(
+    'ao-pcm-waveheader',
+    MpvOptionType.flag,
+  );
+
   /// Archive file extensions to try to match when using --autocreate-playlist or --directory-filter-types.
   ///
   /// mpv type: String list.
-  static const archiveExts = MpvOption<String>('archive-exts', MpvOptionType.string);
+  static const archiveExts = MpvOption<String>(
+    'archive-exts',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const audio = MpvOption<String>('audio', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const audio = MpvOption<String>(
+    'audio',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   ///
   /// mpv type: Integer.
-  static const audioBackwardBatch = MpvOption<int>('audio-backward-batch', MpvOptionType.integer, min: 0, max: 1024);
+  static const audioBackwardBatch = MpvOption<int>(
+    'audio-backward-batch',
+    MpvOptionType.integer,
+    min: 0,
+    max: 1024,
+  );
+
   ///
   /// mpv type: Choice; choices: auto.
-  static const audioBackwardOverlap = MpvOption<String>('audio-backward-overlap', MpvOptionType.choice, choices: ['auto'], min: 0, max: 1024);
+  static const audioBackwardOverlap = MpvOption<String>(
+    'audio-backward-overlap',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 0,
+    max: 1024,
+  );
+
   /// Set the audio output minimum buffer.
   ///
   /// mpv type: Double.
-  static const audioBuffer = MpvOption<double>('audio-buffer', MpvOptionType.real, min: 0, max: 10);
+  static const audioBuffer = MpvOption<double>(
+    'audio-buffer',
+    MpvOptionType.real,
+    min: 0,
+    max: 10,
+  );
+
   /// Control which audio channels are output (e.g.
   ///
   /// mpv type: Audio channels or channel map.
-  static const audioChannels = MpvOption<String>('audio-channels', MpvOptionType.string);
+  static const audioChannels = MpvOption<String>(
+    'audio-channels',
+    MpvOptionType.string,
+  );
+
   /// The application name the player reports to the audio API.
   ///
   /// mpv type: String.
-  static const audioClientName = MpvOption<String>('audio-client-name', MpvOptionType.string);
+  static const audioClientName = MpvOption<String>(
+    'audio-client-name',
+    MpvOptionType.string,
+  );
+
   /// Audio delay in seconds (positive or negative float value).
   ///
   /// mpv type: Float.
-  static const audioDelay = MpvOption<double>('audio-delay', MpvOptionType.real);
+  static const audioDelay = MpvOption<double>(
+    'audio-delay',
+    MpvOptionType.real,
+  );
+
   /// Use this audio demuxer type when using --audio-file.
   ///
   /// mpv type: String.
-  static const audioDemuxer = MpvOption<String>('audio-demuxer', MpvOptionType.string);
+  static const audioDemuxer = MpvOption<String>(
+    'audio-demuxer',
+    MpvOptionType.string,
+  );
+
   /// Use the given audio device.
   ///
   /// mpv type: String.
-  static const audioDevice = MpvOption<String>('audio-device', MpvOptionType.string);
+  static const audioDevice = MpvOption<String>(
+    'audio-device',
+    MpvOptionType.string,
+  );
+
   /// Determines whether to display cover art when playing audio files and with what priority.
   ///
   /// mpv type: Choice; choices: no, embedded-first, external-first.
-  static const audioDisplay = MpvOption<String>('audio-display', MpvOptionType.choice, choices: ['no', 'embedded-first', 'external-first']);
+  static const audioDisplay = MpvOption<String>(
+    'audio-display',
+    MpvOptionType.choice,
+    choices: ['no', 'embedded-first', 'external-first'],
+  );
+
   /// Enable exclusive output mode.
   ///
   /// mpv type: Flag.
-  static const audioExclusive = MpvOption<bool>('audio-exclusive', MpvOptionType.flag);
+  static const audioExclusive = MpvOption<bool>(
+    'audio-exclusive',
+    MpvOptionType.flag,
+  );
+
   /// Audio file extensions to try to match when using --audio-file-auto, --autocreate-playlist or --directory-filter-types.
   ///
   /// mpv type: String list.
-  static const audioExts = MpvOption<String>('audio-exts', MpvOptionType.string);
+  static const audioExts = MpvOption<String>(
+    'audio-exts',
+    MpvOptionType.string,
+  );
+
   /// If no audio device can be opened, behave as if --ao=null was given.
   ///
   /// mpv type: Flag.
-  static const audioFallbackToNull = MpvOption<bool>('audio-fallback-to-null', MpvOptionType.flag);
+  static const audioFallbackToNull = MpvOption<bool>(
+    'audio-fallback-to-null',
+    MpvOptionType.flag,
+  );
+
   /// Load additional audio files matching the video filename.
   ///
   /// mpv type: Choice; choices: no, exact, fuzzy, all.
-  static const audioFileAuto = MpvOption<String>('audio-file-auto', MpvOptionType.choice, choices: ['no', 'exact', 'fuzzy', 'all']);
+  static const audioFileAuto = MpvOption<String>(
+    'audio-file-auto',
+    MpvOptionType.choice,
+    choices: ['no', 'exact', 'fuzzy', 'all'],
+  );
+
   ///
   /// mpv type: String list.
-  static const audioFileAutoExts = MpvOption<String>('audio-file-auto-exts', MpvOptionType.string);
+  static const audioFileAutoExts = MpvOption<String>(
+    'audio-file-auto-exts',
+    MpvOptionType.string,
+  );
+
   /// Analogous to --sub-file-paths option, but for auto-loaded audio files.
   ///
   /// mpv type: String list.
-  static const audioFilePaths = MpvOption<String>('audio-file-paths', MpvOptionType.string);
+  static const audioFilePaths = MpvOption<String>(
+    'audio-file-paths',
+    MpvOptionType.string,
+  );
+
   /// Play audio from an external file while viewing a video.
   ///
   /// mpv type: String list.
-  static const audioFiles = MpvOption<String>('audio-files', MpvOptionType.string);
+  static const audioFiles = MpvOption<String>(
+    'audio-files',
+    MpvOptionType.string,
+  );
+
   /// Select the sample format used for output from the audio filter layer to the sound card.
   ///
   /// mpv type: Audio format.
-  static const audioFormat = MpvOption<String>('audio-format', MpvOptionType.string);
+  static const audioFormat = MpvOption<String>(
+    'audio-format',
+    MpvOptionType.string,
+  );
+
   /// Enable/disable normalization if surround audio is downmixed to stereo (default: no).
   ///
   /// mpv type: Flag.
-  static const audioNormalizeDownmix = MpvOption<bool>('audio-normalize-downmix', MpvOptionType.flag);
+  static const audioNormalizeDownmix = MpvOption<bool>(
+    'audio-normalize-downmix',
+    MpvOptionType.flag,
+  );
+
   /// If this is enabled (default), playing with a speed different from normal automatically inserts the scaletempo2 audio filter.
   ///
   /// mpv type: Flag.
-  static const audioPitchCorrection = MpvOption<bool>('audio-pitch-correction', MpvOptionType.flag);
+  static const audioPitchCorrection = MpvOption<bool>(
+    'audio-pitch-correction',
+    MpvOptionType.flag,
+  );
+
   /// Cutoff frequency (0.0-1.0), default set depending upon filter length.
   ///
   /// mpv type: Double.
-  static const audioResampleCutoff = MpvOption<double>('audio-resample-cutoff', MpvOptionType.real, min: 0, max: 1);
+  static const audioResampleCutoff = MpvOption<double>(
+    'audio-resample-cutoff',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Length of the filter with respect to the lower sampling rate.
   ///
   /// mpv type: Integer.
-  static const audioResampleFilterSize = MpvOption<int>('audio-resample-filter-size', MpvOptionType.integer, min: 0, max: 32);
+  static const audioResampleFilterSize = MpvOption<int>(
+    'audio-resample-filter-size',
+    MpvOptionType.integer,
+    min: 0,
+    max: 32,
+  );
+
   /// If set then filters will be linearly interpolated between polyphase entries.
   ///
   /// mpv type: Flag.
-  static const audioResampleLinear = MpvOption<bool>('audio-resample-linear', MpvOptionType.flag);
+  static const audioResampleLinear = MpvOption<bool>(
+    'audio-resample-linear',
+    MpvOptionType.flag,
+  );
+
   /// Limit maximum size of audio frames filtered at once, in ms (default: 40).
   ///
   /// mpv type: Double.
-  static const audioResampleMaxOutputSize = MpvOption<double>('audio-resample-max-output-size', MpvOptionType.real);
+  static const audioResampleMaxOutputSize = MpvOption<double>(
+    'audio-resample-max-output-size',
+    MpvOptionType.real,
+  );
+
   /// Log2 of the number of polyphase entries.
   ///
   /// mpv type: Integer.
-  static const audioResamplePhaseShift = MpvOption<int>('audio-resample-phase-shift', MpvOptionType.integer, min: 0, max: 30);
+  static const audioResamplePhaseShift = MpvOption<int>(
+    'audio-resample-phase-shift',
+    MpvOptionType.integer,
+    min: 0,
+    max: 30,
+  );
+
   ///
   /// mpv type: ByteSize.
-  static const audioReversalBuffer = MpvOption<int>('audio-reversal-buffer', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const audioReversalBuffer = MpvOption<int>(
+    'audio-reversal-buffer',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Select the output sample rate to be used (of course sound cards have limits on this).
   ///
   /// mpv type: Integer.
-  static const audioSamplerate = MpvOption<int>('audio-samplerate', MpvOptionType.integer, min: 0, max: 768000);
+  static const audioSamplerate = MpvOption<int>(
+    'audio-samplerate',
+    MpvOptionType.integer,
+    min: 0,
+    max: 768000,
+  );
+
   /// If enabled, mpv will set the appropriate media role on supported audio servers to indicate whether mpv is playing a video or an audio-only file.
   ///
   /// mpv type: Flag.
-  static const audioSetMediaRole = MpvOption<bool>('audio-set-media-role', MpvOptionType.flag);
+  static const audioSetMediaRole = MpvOption<bool>(
+    'audio-set-media-role',
+    MpvOptionType.flag,
+  );
+
   /// List of codecs for which compressed audio passthrough should be used.
   ///
   /// mpv type: String.
-  static const audioSpdif = MpvOption<String>('audio-spdif', MpvOptionType.string);
+  static const audioSpdif = MpvOption<String>(
+    'audio-spdif',
+    MpvOptionType.string,
+  );
+
   /// Cash-grab consumer audio hardware (such as A/V receivers) often ignore initial audio sent over HDMI.
   ///
   /// mpv type: Flag.
-  static const audioStreamSilence = MpvOption<bool>('audio-stream-silence', MpvOptionType.flag);
+  static const audioStreamSilence = MpvOption<bool>(
+    'audio-stream-silence',
+    MpvOptionType.flag,
+  );
+
   /// Set AVOptions on the SwrContext or AVAudioResampleContext.
   ///
   /// mpv type: Key/value list.
-  static const audioSwresampleO = MpvOption<String>('audio-swresample-o', MpvOptionType.string);
+  static const audioSwresampleO = MpvOption<String>(
+    'audio-swresample-o',
+    MpvOptionType.string,
+  );
+
   /// This makes sense for use with --audio-stream-silence=yes.
   ///
   /// mpv type: Float.
-  static const audioWaitOpen = MpvOption<double>('audio-wait-open', MpvOptionType.real, min: 0, max: 60);
+  static const audioWaitOpen = MpvOption<double>(
+    'audio-wait-open',
+    MpvOptionType.real,
+    min: 0,
+    max: 60,
+  );
+
   /// By default, mpv will automatically resize itself if the video's size changes (i.e.
   ///
   /// mpv type: Flag.
-  static const autoWindowResize = MpvOption<bool>('auto-window-resize', MpvOptionType.flag);
+  static const autoWindowResize = MpvOption<bool>(
+    'auto-window-resize',
+    MpvOptionType.flag,
+  );
+
   /// When opening a local file, act as if the parent directory is opened and create a playlist automatically.
   ///
   /// mpv type: Choice; choices: no, filter, same.
-  static const autocreatePlaylist = MpvOption<String>('autocreate-playlist', MpvOptionType.choice, choices: ['no', 'filter', 'same']);
+  static const autocreatePlaylist = MpvOption<String>(
+    'autocreate-playlist',
+    MpvOptionType.choice,
+    choices: ['no', 'filter', 'same'],
+  );
+
   /// Set the initial window size to a maximum size specified by WxH, without changing the window's aspect ratio.
   ///
   /// mpv type: Window size.
   static const autofit = MpvOption<String>('autofit', MpvOptionType.string);
+
   /// This option behaves exactly like --autofit, except that it sets the maximum size of the window.
   ///
   /// mpv type: Window size.
-  static const autofitLarger = MpvOption<String>('autofit-larger', MpvOptionType.string);
+  static const autofitLarger = MpvOption<String>(
+    'autofit-larger',
+    MpvOptionType.string,
+  );
+
   /// This option behaves exactly like --autofit, except that it sets the minimum size of the window (just as --autofit-larger sets the maximum).
   ///
   /// mpv type: Window size.
-  static const autofitSmaller = MpvOption<String>('autofit-smaller', MpvOptionType.string);
+  static const autofitSmaller = MpvOption<String>(
+    'autofit-smaller',
+    MpvOptionType.string,
+  );
+
   /// Automatically load/select external files (default: yes).
   ///
   /// mpv type: Flag.
-  static const autoloadFiles = MpvOption<bool>('autoload-files', MpvOptionType.flag);
+  static const autoloadFiles = MpvOption<bool>(
+    'autoload-files',
+    MpvOptionType.flag,
+  );
+
   /// Gradually adjusts the A/V sync based on audio delay measurements.
   ///
   /// mpv type: Choice; choices: no.
-  static const autosync = MpvOption<String>('autosync', MpvOptionType.choice, choices: ['no'], min: 0, max: 10000);
+  static const autosync = MpvOption<String>(
+    'autosync',
+    MpvOptionType.choice,
+    choices: ['no'],
+    min: 0,
+    max: 10000,
+  );
+
   /// (Windows only) Controls the backdrop/border style.
   ///
   /// mpv type: Choice; choices: auto, none, mica, acrylic, mica-alt.
-  static const backdropType = MpvOption<String>('backdrop-type', MpvOptionType.choice, choices: ['auto', 'none', 'mica', 'acrylic', 'mica-alt']);
+  static const backdropType = MpvOption<String>(
+    'backdrop-type',
+    MpvOptionType.choice,
+    choices: ['auto', 'none', 'mica', 'acrylic', 'mica-alt'],
+  );
+
   /// If the frame has an alpha component, decide what kind of background, if any, to blend it with.
   ///
   /// mpv type: Choice; choices: none, color, tiles.
-  static const background = MpvOption<String>('background', MpvOptionType.choice, choices: ['none', 'color', 'tiles']);
+  static const background = MpvOption<String>(
+    'background',
+    MpvOptionType.choice,
+    choices: ['none', 'color', 'tiles'],
+  );
+
   /// The blur radius (in pixels) to use for --border-background=blur
   ///
   /// mpv type: Float.
-  static const backgroundBlurRadius = MpvOption<double>('background-blur-radius', MpvOptionType.real);
+  static const backgroundBlurRadius = MpvOption<double>(
+    'background-blur-radius',
+    MpvOptionType.real,
+  );
+
   /// Color used to draw parts of the mpv window not covered by video in --background=color mode.
   ///
   /// mpv type: Color.
-  static const backgroundColor = MpvOption<String>('background-color', MpvOptionType.string);
+  static const backgroundColor = MpvOption<String>(
+    'background-color',
+    MpvOptionType.string,
+  );
+
   /// Colors used to draw parts of the mpv window not covered by video in --background=tiles mode.
   ///
   /// mpv type: Color.
-  static const backgroundTileColor0 = MpvOption<String>('background-tile-color-0', MpvOptionType.string);
+  static const backgroundTileColor0 = MpvOption<String>(
+    'background-tile-color-0',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Color.
-  static const backgroundTileColor1 = MpvOption<String>('background-tile-color-1', MpvOptionType.string);
+  static const backgroundTileColor1 = MpvOption<String>(
+    'background-tile-color-1',
+    MpvOptionType.string,
+  );
+
   /// Tile size used to draw parts of the mpv window not covered by video in --background=tiles mode (default: 16).
   ///
   /// mpv type: Integer.
-  static const backgroundTileSize = MpvOption<int>('background-tile-size', MpvOptionType.integer, min: 1, max: 4096);
+  static const backgroundTileSize = MpvOption<int>(
+    'background-tile-size',
+    MpvOptionType.integer,
+    min: 1,
+    max: 4096,
+  );
+
   /// Blend subtitles directly onto upscaled video frames, before interpolation and/or color management (default: no).
   ///
   /// mpv type: Choice; choices: no, yes, video.
-  static const blendSubtitles = MpvOption<String>('blend-subtitles', MpvOptionType.choice, choices: ['no', 'yes', 'video']);
+  static const blendSubtitles = MpvOption<String>(
+    'blend-subtitles',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'video'],
+  );
+
   /// Some Blu-ray discs contain scenes that can be viewed from multiple angles.
   ///
   /// mpv type: Integer.
-  static const blurayAngle = MpvOption<int>('bluray-angle', MpvOptionType.integer, min: 1, max: 999);
+  static const blurayAngle = MpvOption<int>(
+    'bluray-angle',
+    MpvOptionType.integer,
+    min: 1,
+    max: 999,
+  );
+
   /// Specify the Blu-ray disc location.
   ///
   /// mpv type: String.
-  static const blurayDevice = MpvOption<String>('bluray-device', MpvOptionType.string);
+  static const blurayDevice = MpvOption<String>(
+    'bluray-device',
+    MpvOptionType.string,
+  );
+
   /// Play video with window border and decorations.
   ///
   /// mpv type: Flag.
   static const border = MpvOption<bool>('border', MpvOptionType.flag);
+
   /// Same as --background but only applies to the black bar/border area of the window.
   ///
   /// mpv type: Choice; choices: none, color, tiles, blur.
-  static const borderBackground = MpvOption<String>('border-background', MpvOptionType.choice, choices: ['none', 'color', 'tiles', 'blur']);
+  static const borderBackground = MpvOption<String>(
+    'border-background',
+    MpvOptionType.choice,
+    choices: ['none', 'color', 'tiles', 'blur'],
+  );
+
   /// Adjust the brightness of the video signal (default: 0).
   ///
   /// mpv type: Float.
-  static const brightness = MpvOption<double>('brightness', MpvOptionType.real, min: -100, max: 100);
+  static const brightness = MpvOption<double>(
+    'brightness',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Decide whether to use network cache settings (default: auto).
   ///
   /// mpv type: Choice; choices: no, auto, yes.
-  static const cache = MpvOption<String>('cache', MpvOptionType.choice, choices: ['no', 'auto', 'yes']);
+  static const cache = MpvOption<String>(
+    'cache',
+    MpvOptionType.choice,
+    choices: ['no', 'auto', 'yes'],
+  );
+
   /// Write packet data to a temporary file, instead of keeping them in memory.
   ///
   /// mpv type: Flag.
-  static const cacheOnDisk = MpvOption<bool>('cache-on-disk', MpvOptionType.flag);
+  static const cacheOnDisk = MpvOption<bool>(
+    'cache-on-disk',
+    MpvOptionType.flag,
+  );
+
   /// Whether the player should automatically pause when the cache runs out of data and stalls decoding/playback (default: yes).
   ///
   /// mpv type: Flag.
   static const cachePause = MpvOption<bool>('cache-pause', MpvOptionType.flag);
+
   /// Enter "buffering" mode before starting playback (default: no).
   ///
   /// mpv type: Flag.
-  static const cachePauseInitial = MpvOption<bool>('cache-pause-initial', MpvOptionType.flag);
+  static const cachePauseInitial = MpvOption<bool>(
+    'cache-pause-initial',
+    MpvOptionType.flag,
+  );
+
   /// Number of seconds the packet cache should have buffered before starting playback again if "buffering" was entered (default: 1).
   ///
   /// mpv type: Float.
-  static const cachePauseWait = MpvOption<double>('cache-pause-wait', MpvOptionType.real, min: 0, max: double.maxFinite);
+  static const cachePauseWait = MpvOption<double>(
+    'cache-pause-wait',
+    MpvOptionType.real,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// How many seconds of audio/video to prefetch if the cache is active.
   ///
   /// mpv type: Double.
-  static const cacheSecs = MpvOption<double>('cache-secs', MpvOptionType.real, min: 0);
+  static const cacheSecs = MpvOption<double>(
+    'cache-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Threshold for merging almost consecutive ordered chapter parts in milliseconds (default: 100).
   ///
   /// mpv type: Integer.
-  static const chapterMergeThreshold = MpvOption<int>('chapter-merge-threshold', MpvOptionType.integer, min: 0, max: 10000);
+  static const chapterMergeThreshold = MpvOption<int>(
+    'chapter-merge-threshold',
+    MpvOptionType.integer,
+    min: 0,
+    max: 10000,
+  );
+
   /// Distance in seconds from the beginning of a chapter within which a backward chapter seek will go to the previous chapter (default: 5.0).
   ///
   /// mpv type: Double.
-  static const chapterSeekThreshold = MpvOption<double>('chapter-seek-threshold', MpvOptionType.real);
+  static const chapterSeekThreshold = MpvOption<double>(
+    'chapter-seek-threshold',
+    MpvOptionType.real,
+  );
+
   /// Load chapters from this file, instead of using the chapter metadata found in the main file.
   ///
   /// mpv type: String.
-  static const chaptersFile = MpvOption<String>('chapters-file', MpvOptionType.string);
+  static const chaptersFile = MpvOption<String>(
+    'chapters-file',
+    MpvOptionType.string,
+  );
+
   /// Specify a priority list of the clipboard backends to be used.
   ///
   /// mpv type: Object settings list; choices: win32, vo.
-  static const clipboardBackends = MpvOption<String>('clipboard-backends', MpvOptionType.string, choices: ['win32', 'vo']);
+  static const clipboardBackends = MpvOption<String>(
+    'clipboard-backends',
+    MpvOptionType.string,
+    choices: ['win32', 'vo'],
+  );
+
   /// Enable clipboard monitoring so that the clipboard property can be observed for content changes (default: no).
   ///
   /// mpv type: Flag.
-  static const clipboardMonitor = MpvOption<bool>('clipboard-monitor', MpvOptionType.flag);
+  static const clipboardMonitor = MpvOption<bool>(
+    'clipboard-monitor',
+    MpvOptionType.flag,
+  );
+
   /// Enable X11 clipboard backend in suspected Wayland environments (default: no).
   ///
   /// mpv type: Flag.
-  static const clipboardXwayland = MpvOption<bool>('clipboard-xwayland', MpvOptionType.flag);
+  static const clipboardXwayland = MpvOption<bool>(
+    'clipboard-xwayland',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
   static const config = MpvOption<bool>('config', MpvOptionType.flag);
+
   /// Force a different configuration directory.
   ///
   /// mpv type: String.
-  static const configDir = MpvOption<String>('config-dir', MpvOptionType.string);
+  static const configDir = MpvOption<String>(
+    'config-dir',
+    MpvOptionType.string,
+  );
+
   /// Override video framerate.
   ///
   /// mpv type: Double.
-  static const containerFpsOverride = MpvOption<double>('container-fps-override', MpvOptionType.real, min: 0);
+  static const containerFpsOverride = MpvOption<double>(
+    'container-fps-override',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Adjust the contrast of the video signal (default: 0).
   ///
   /// mpv type: Float.
-  static const contrast = MpvOption<double>('contrast', MpvOptionType.real, min: -100, max: 100);
+  static const contrast = MpvOption<double>(
+    'contrast',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Support cookies when making HTTP requests.
   ///
   /// mpv type: Flag.
   static const cookies = MpvOption<bool>('cookies', MpvOptionType.flag);
+
   /// Read HTTP cookies from `<filename>`.
   ///
   /// mpv type: String.
-  static const cookiesFile = MpvOption<String>('cookies-file', MpvOptionType.string);
+  static const cookiesFile = MpvOption<String>(
+    'cookies-file',
+    MpvOptionType.string,
+  );
+
   /// If set to a value above 0.0, the output will be rendered with rounded corners, as if an alpha transparency mask had been applied.
   ///
   /// mpv type: Float.
-  static const cornerRounding = MpvOption<double>('corner-rounding', MpvOptionType.real, min: 0, max: 1);
+  static const cornerRounding = MpvOption<double>(
+    'corner-rounding',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// When using convolution based filters, extend the filter size when downscaling.
   ///
   /// mpv type: Flag.
-  static const correctDownscaling = MpvOption<bool>('correct-downscaling', MpvOptionType.flag);
+  static const correctDownscaling = MpvOption<bool>(
+    'correct-downscaling',
+    MpvOptionType.flag,
+  );
+
   /// --correct-pts=no switches mpv to a mode where video timing is determined using a fixed framerate value (either using the --container-fps-override option, or using file information).
   ///
   /// mpv type: Flag.
   static const correctPts = MpvOption<bool>('correct-pts', MpvOptionType.flag);
+
   /// Whether to load _external_ cover art automatically.
   ///
   /// mpv type: Choice; choices: no, exact, fuzzy, all.
-  static const coverArtAuto = MpvOption<String>('cover-art-auto', MpvOptionType.choice, choices: ['no', 'exact', 'fuzzy', 'all']);
+  static const coverArtAuto = MpvOption<String>(
+    'cover-art-auto',
+    MpvOptionType.choice,
+    choices: ['no', 'exact', 'fuzzy', 'all'],
+  );
+
   ///
   /// mpv type: String list.
-  static const coverArtAutoExts = MpvOption<String>('cover-art-auto-exts', MpvOptionType.string);
+  static const coverArtAutoExts = MpvOption<String>(
+    'cover-art-auto-exts',
+    MpvOptionType.string,
+  );
+
   /// Use an external file as cover art while playing audio.
   ///
   /// mpv type: String list.
-  static const coverArtFiles = MpvOption<String>('cover-art-files', MpvOptionType.string);
+  static const coverArtFiles = MpvOption<String>(
+    'cover-art-files',
+    MpvOptionType.string,
+  );
+
   /// Filenames to load as cover art, sorted by descending priority.
   ///
   /// mpv type: String list.
-  static const coverArtWhitelist = MpvOption<String>('cover-art-whitelist', MpvOptionType.string);
+  static const coverArtWhitelist = MpvOption<String>(
+    'cover-art-whitelist',
+    MpvOptionType.string,
+  );
+
   /// As --scale, but for interpolating chroma information.
   ///
   /// mpv type: Choice; choices: , bilinear, bicubic_fast, oversample, spline16, spline36, spline64, sinc, lanczos, ginseng, bicubic, hermite, catmull_rom, mitchell, robidoux, robidouxsharp, box, nearest, triangle, gaussian, jinc, ewa_lanczos, ewa_hanning, ewa_ginseng, ewa_lanczossharp, ewa_lanczos4sharpest, ewa_lanczossoft, haasnsoft, ewa_robidoux, ewa_robidouxsharp, bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx.
-  static const cscale = MpvOption<String>('cscale', MpvOptionType.choice, choices: ['', 'bilinear', 'bicubic_fast', 'oversample', 'spline16', 'spline36', 'spline64', 'sinc', 'lanczos', 'ginseng', 'bicubic', 'hermite', 'catmull_rom', 'mitchell', 'robidoux', 'robidouxsharp', 'box', 'nearest', 'triangle', 'gaussian', 'jinc', 'ewa_lanczos', 'ewa_hanning', 'ewa_ginseng', 'ewa_lanczossharp', 'ewa_lanczos4sharpest', 'ewa_lanczossoft', 'haasnsoft', 'ewa_robidoux', 'ewa_robidouxsharp', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx']);
+  static const cscale = MpvOption<String>(
+    'cscale',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bilinear',
+      'bicubic_fast',
+      'oversample',
+      'spline16',
+      'spline36',
+      'spline64',
+      'sinc',
+      'lanczos',
+      'ginseng',
+      'bicubic',
+      'hermite',
+      'catmull_rom',
+      'mitchell',
+      'robidoux',
+      'robidouxsharp',
+      'box',
+      'nearest',
+      'triangle',
+      'gaussian',
+      'jinc',
+      'ewa_lanczos',
+      'ewa_hanning',
+      'ewa_ginseng',
+      'ewa_lanczossharp',
+      'ewa_lanczos4sharpest',
+      'ewa_lanczossoft',
+      'haasnsoft',
+      'ewa_robidoux',
+      'ewa_robidouxsharp',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleAntiring = MpvOption<double>('cscale-antiring', MpvOptionType.real, min: 0, max: 1);
+  static const cscaleAntiring = MpvOption<double>(
+    'cscale-antiring',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleBlur = MpvOption<double>('cscale-blur', MpvOptionType.real);
+  static const cscaleBlur = MpvOption<double>(
+    'cscale-blur',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleClamp = MpvOption<double>('cscale-clamp', MpvOptionType.real, min: 0, max: 1);
+  static const cscaleClamp = MpvOption<double>(
+    'cscale-clamp',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleParam1 = MpvOption<double>('cscale-param1', MpvOptionType.real);
+  static const cscaleParam1 = MpvOption<double>(
+    'cscale-param1',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleParam2 = MpvOption<double>('cscale-param2', MpvOptionType.real);
+  static const cscaleParam2 = MpvOption<double>(
+    'cscale-param2',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleRadius = MpvOption<double>('cscale-radius', MpvOptionType.real, min: 0.5, max: 16);
+  static const cscaleRadius = MpvOption<double>(
+    'cscale-radius',
+    MpvOptionType.real,
+    min: 0.5,
+    max: 16,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleTaper = MpvOption<double>('cscale-taper', MpvOptionType.real, min: 0, max: 1);
+  static const cscaleTaper = MpvOption<double>(
+    'cscale-taper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Choice; choices: , bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx, jinc.
-  static const cscaleWindow = MpvOption<String>('cscale-window', MpvOptionType.choice, choices: ['', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx', 'jinc']);
+  static const cscaleWindow = MpvOption<String>(
+    'cscale-window',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+      'jinc',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleWparam = MpvOption<double>('cscale-wparam', MpvOptionType.real);
+  static const cscaleWparam = MpvOption<double>(
+    'cscale-wparam',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const cscaleWtaper = MpvOption<double>('cscale-wtaper', MpvOptionType.real, min: 0, max: 1);
+  static const cscaleWtaper = MpvOption<double>(
+    'cscale-wtaper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Choose the GPU device used for decoding when using the cuda or nvdec hwdecs with the OpenGL GPU backend, and with the cuda-copy or nvdec-copy hwdecs in all cases.
   ///
   /// mpv type: Choice; choices: auto.
-  static const cudaDecodeDevice = MpvOption<String>('cuda-decode-device', MpvOptionType.choice, choices: ['auto'], min: 0, max: 2147483647);
+  static const cudaDecodeDevice = MpvOption<String>(
+    'cuda-decode-device',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Make mouse cursor automatically hide after given number of milliseconds (default: 1000 ms).
   ///
   /// mpv type: Choice; choices: no, always.
-  static const cursorAutohide = MpvOption<String>('cursor-autohide', MpvOptionType.choice, choices: ['no', 'always'], min: 0, max: 30000);
+  static const cursorAutohide = MpvOption<String>(
+    'cursor-autohide',
+    MpvOptionType.choice,
+    choices: ['no', 'always'],
+    min: 0,
+    max: 30000,
+  );
+
   /// If this option is given, the cursor is always visible in windowed mode.
   ///
   /// mpv type: Flag.
-  static const cursorAutohideFsOnly = MpvOption<bool>('cursor-autohide-fs-only', MpvOptionType.flag);
+  static const cursorAutohideFsOnly = MpvOption<bool>(
+    'cursor-autohide-fs-only',
+    MpvOptionType.flag,
+  );
+
   /// Select a specific D3D11 adapter to utilize for D3D11 rendering.
   ///
   /// mpv type: String.
-  static const d3d11Adapter = MpvOption<String>('d3d11-adapter', MpvOptionType.string);
+  static const d3d11Adapter = MpvOption<String>(
+    'd3d11-adapter',
+    MpvOptionType.string,
+  );
+
   /// Set size of the output for d3d11 composition mode.
   ///
   /// mpv type: Window size.
-  static const d3d11CompositionSize = MpvOption<String>('d3d11-composition-size', MpvOptionType.string);
+  static const d3d11CompositionSize = MpvOption<String>(
+    'd3d11-composition-size',
+    MpvOptionType.string,
+  );
+
   /// Switches the D3D11 swap chain fullscreen state to 'fullscreen' when fullscreen video is requested.
   ///
   /// mpv type: Flag.
-  static const d3d11ExclusiveFs = MpvOption<bool>('d3d11-exclusive-fs', MpvOptionType.flag);
+  static const d3d11ExclusiveFs = MpvOption<bool>(
+    'd3d11-exclusive-fs',
+    MpvOptionType.flag,
+  );
+
   /// Select a specific feature level when using the D3D11 GPU backend.
   ///
   /// mpv type: Choice; choices: 12_1, 12_0, 11_1, 11_0, 10_1, 10_0, 9_3, 9_2, 9_1.
-  static const d3d11FeatureLevel = MpvOption<String>('d3d11-feature-level', MpvOptionType.choice, choices: ['12_1', '12_0', '11_1', '11_0', '10_1', '10_0', '9_3', '9_2', '9_1']);
+  static const d3d11FeatureLevel = MpvOption<String>(
+    'd3d11-feature-level',
+    MpvOptionType.choice,
+    choices: [
+      '12_1',
+      '12_0',
+      '11_1',
+      '11_0',
+      '10_1',
+      '10_0',
+      '9_3',
+      '9_2',
+      '9_1',
+    ],
+  );
+
   /// Enable flip-model presentation, which avoids unnecessarily copying the backbuffer by sharing surfaces with the DWM (default: yes).
   ///
   /// mpv type: Flag.
   static const d3d11Flip = MpvOption<bool>('d3d11-flip', MpvOptionType.flag);
+
   /// Select a specific D3D11 output color space to utilize for D3D11 rendering.
   ///
   /// mpv type: Choice; choices: auto, srgb, linear, pq, bt.2020.
-  static const d3d11OutputCsp = MpvOption<String>('d3d11-output-csp', MpvOptionType.choice, choices: ['auto', 'srgb', 'linear', 'pq', 'bt.2020']);
+  static const d3d11OutputCsp = MpvOption<String>(
+    'd3d11-output-csp',
+    MpvOptionType.choice,
+    choices: ['auto', 'srgb', 'linear', 'pq', 'bt.2020'],
+  );
+
   /// Select a specific D3D11 output format to utilize for D3D11 rendering.
   ///
   /// mpv type: Choice; choices: auto, rgba8, bgra8, rgb10_a2, rgba16f.
-  static const d3d11OutputFormat = MpvOption<String>('d3d11-output-format', MpvOptionType.choice, choices: ['auto', 'rgba8', 'bgra8', 'rgb10_a2', 'rgba16f']);
+  static const d3d11OutputFormat = MpvOption<String>(
+    'd3d11-output-format',
+    MpvOptionType.choice,
+    choices: ['auto', 'rgba8', 'bgra8', 'rgb10_a2', 'rgba16f'],
+  );
+
   /// Use a specific output mode for creating the D3D11 swapchain.
   ///
   /// mpv type: Choice; choices: auto, window, composition.
-  static const d3d11OutputMode = MpvOption<String>('d3d11-output-mode', MpvOptionType.choice, choices: ['auto', 'window', 'composition']);
+  static const d3d11OutputMode = MpvOption<String>(
+    'd3d11-output-mode',
+    MpvOptionType.choice,
+    choices: ['auto', 'window', 'composition'],
+  );
+
   /// Schedule each frame to be presented for this number of VBlank intervals.
   ///
   /// mpv type: Integer.
-  static const d3d11SyncInterval = MpvOption<int>('d3d11-sync-interval', MpvOptionType.integer, min: 0, max: 4);
+  static const d3d11SyncInterval = MpvOption<int>(
+    'd3d11-sync-interval',
+    MpvOptionType.integer,
+    min: 0,
+    max: 4,
+  );
+
   /// Use WARP (Windows Advanced Rasterization Platform) with the D3D11 GPU backend (default: auto).
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const d3d11Warp = MpvOption<String>('d3d11-warp', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const d3d11Warp = MpvOption<String>(
+    'd3d11-warp',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// By default, when using hardware decoding with --gpu-api=d3d11, the video image will be copied (GPU-to-GPU) from the decoder surface to a shader resource.
   ///
   /// mpv type: Flag.
-  static const d3d11vaZeroCopy = MpvOption<bool>('d3d11va-zero-copy', MpvOptionType.flag);
+  static const d3d11vaZeroCopy = MpvOption<bool>(
+    'd3d11va-zero-copy',
+    MpvOptionType.flag,
+  );
+
   /// Enable the debanding algorithm.
   ///
   /// mpv type: Flag.
   static const deband = MpvOption<bool>('deband', MpvOptionType.flag);
+
   /// Add some extra noise to the image.
   ///
   /// mpv type: Float.
-  static const debandGrain = MpvOption<double>('deband-grain', MpvOptionType.real, min: 0, max: 4096);
+  static const debandGrain = MpvOption<double>(
+    'deband-grain',
+    MpvOptionType.real,
+    min: 0,
+    max: 4096,
+  );
+
   /// The number of debanding steps to perform per sample.
   ///
   /// mpv type: Integer.
-  static const debandIterations = MpvOption<int>('deband-iterations', MpvOptionType.integer, min: 0, max: 16);
+  static const debandIterations = MpvOption<int>(
+    'deband-iterations',
+    MpvOptionType.integer,
+    min: 0,
+    max: 16,
+  );
+
   /// The debanding filter's initial radius.
   ///
   /// mpv type: Float.
-  static const debandRange = MpvOption<double>('deband-range', MpvOptionType.real, min: 1, max: 64);
+  static const debandRange = MpvOption<double>(
+    'deband-range',
+    MpvOptionType.real,
+    min: 1,
+    max: 64,
+  );
+
   /// The debanding filter's cut-off threshold.
   ///
   /// mpv type: Float.
-  static const debandThreshold = MpvOption<double>('deband-threshold', MpvOptionType.real, min: 0, max: 4096);
+  static const debandThreshold = MpvOption<double>(
+    'deband-threshold',
+    MpvOptionType.real,
+    min: 0,
+    max: 4096,
+  );
+
   /// Enable or disable deinterlacing (default: no).
   ///
   /// mpv type: Choice; choices: no, yes, auto.
-  static const deinterlace = MpvOption<String>('deinterlace', MpvOptionType.choice, choices: ['no', 'yes', 'auto']);
+  static const deinterlace = MpvOption<String>(
+    'deinterlace',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'auto'],
+  );
+
   /// Specify the field parity/order when deinterlacing (default: auto).
   ///
   /// mpv type: Choice; choices: tff, bff, auto.
-  static const deinterlaceFieldParity = MpvOption<String>('deinterlace-field-parity', MpvOptionType.choice, choices: ['tff', 'bff', 'auto']);
+  static const deinterlaceFieldParity = MpvOption<String>(
+    'deinterlace-field-parity',
+    MpvOptionType.choice,
+    choices: ['tff', 'bff', 'auto'],
+  );
+
   /// Force demuxer type.
   ///
   /// mpv type: String.
   static const demuxer = MpvOption<String>('demuxer', MpvOptionType.string);
+
   /// Number of seconds the demuxer should seek back to get new packets during backward playback (default: 60).
   ///
   /// mpv type: Double.
-  static const demuxerBackwardPlaybackStep = MpvOption<double>('demuxer-backward-playback-step', MpvOptionType.real, min: 0);
+  static const demuxerBackwardPlaybackStep = MpvOption<double>(
+    'demuxer-backward-playback-step',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Directory where to create temporary files.
   ///
   /// mpv type: String.
-  static const demuxerCacheDir = MpvOption<String>('demuxer-cache-dir', MpvOptionType.string);
+  static const demuxerCacheDir = MpvOption<String>(
+    'demuxer-cache-dir',
+    MpvOptionType.string,
+  );
+
   /// Whether or when to unlink cache files (default: immediate).
   ///
   /// mpv type: Choice; choices: immediate, whendone, no.
-  static const demuxerCacheUnlinkFiles = MpvOption<String>('demuxer-cache-unlink-files', MpvOptionType.choice, choices: ['immediate', 'whendone', 'no']);
+  static const demuxerCacheUnlinkFiles = MpvOption<String>(
+    'demuxer-cache-unlink-files',
+    MpvOptionType.choice,
+    choices: ['immediate', 'whendone', 'no'],
+  );
+
   /// Before starting playback, read data until either the end of the file was reached, or the demuxer cache has reached maximum capacity.
   ///
   /// mpv type: Flag.
-  static const demuxerCacheWait = MpvOption<bool>('demuxer-cache-wait', MpvOptionType.flag);
+  static const demuxerCacheWait = MpvOption<bool>(
+    'demuxer-cache-wait',
+    MpvOptionType.flag,
+  );
+
   /// Whether to let the back buffer use part of the forward buffer (default: yes).
   ///
   /// mpv type: Flag.
-  static const demuxerDonateBuffer = MpvOption<bool>('demuxer-donate-buffer', MpvOptionType.flag);
+  static const demuxerDonateBuffer = MpvOption<bool>(
+    'demuxer-donate-buffer',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: ByteSize.
-  static const demuxerHysteresisBytes = MpvOption<int>('demuxer-hysteresis-bytes', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const demuxerHysteresisBytes = MpvOption<int>(
+    'demuxer-hysteresis-bytes',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Once the demuxer limit is reached (--demuxer-max-bytes, --demuxer-readahead-secs or --cache-secs), this value can be used to specify a hysteresis before the demuxer will buffer ahead again.
   ///
   /// mpv type: Double.
-  static const demuxerHysteresisSecs = MpvOption<double>('demuxer-hysteresis-secs', MpvOptionType.real, min: 0);
+  static const demuxerHysteresisSecs = MpvOption<double>(
+    'demuxer-hysteresis-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Allow deriving the format from the HTTP MIME type (default: yes).
   ///
   /// mpv type: Flag.
-  static const demuxerLavfAllowMimetype = MpvOption<bool>('demuxer-lavf-allow-mimetype', MpvOptionType.flag);
+  static const demuxerLavfAllowMimetype = MpvOption<bool>(
+    'demuxer-lavf-allow-mimetype',
+    MpvOptionType.flag,
+  );
+
   /// Maximum length in seconds to analyze the stream properties.
   ///
   /// mpv type: Float.
-  static const demuxerLavfAnalyzeduration = MpvOption<double>('demuxer-lavf-analyzeduration', MpvOptionType.real, min: 0, max: 3600);
+  static const demuxerLavfAnalyzeduration = MpvOption<double>(
+    'demuxer-lavf-analyzeduration',
+    MpvOptionType.real,
+    min: 0,
+    max: 3600,
+  );
+
   /// Size of the stream read buffer allocated for libavformat in bytes (default: 32768).
   ///
   /// mpv type: Integer.
-  static const demuxerLavfBuffersize = MpvOption<int>('demuxer-lavf-buffersize', MpvOptionType.integer, min: 1, max: 10485760);
+  static const demuxerLavfBuffersize = MpvOption<int>(
+    'demuxer-lavf-buffersize',
+    MpvOptionType.integer,
+    min: 1,
+    max: 10485760,
+  );
+
   /// Force a specific libavformat demuxer.
   ///
   /// mpv type: String.
-  static const demuxerLavfFormat = MpvOption<String>('demuxer-lavf-format', MpvOptionType.string);
+  static const demuxerLavfFormat = MpvOption<String>(
+    'demuxer-lavf-format',
+    MpvOptionType.string,
+  );
+
   /// By default, some formats will be handled differently from other formats by explicitly checking for them.
   ///
   /// mpv type: Flag.
-  static const demuxerLavfHacks = MpvOption<bool>('demuxer-lavf-hacks', MpvOptionType.flag);
+  static const demuxerLavfHacks = MpvOption<bool>(
+    'demuxer-lavf-hacks',
+    MpvOptionType.flag,
+  );
+
   /// Attempt to linearize timestamp resets in demuxed streams (default: auto).
   ///
   /// mpv type: Choice; choices: no, auto, yes.
-  static const demuxerLavfLinearizeTimestamps = MpvOption<String>('demuxer-lavf-linearize-timestamps', MpvOptionType.choice, choices: ['no', 'auto', 'yes']);
+  static const demuxerLavfLinearizeTimestamps = MpvOption<String>(
+    'demuxer-lavf-linearize-timestamps',
+    MpvOptionType.choice,
+    choices: ['no', 'auto', 'yes'],
+  );
+
   /// Pass AVOptions to libavformat demuxer.
   ///
   /// mpv type: Key/value list.
-  static const demuxerLavfO = MpvOption<String>('demuxer-lavf-o', MpvOptionType.string);
+  static const demuxerLavfO = MpvOption<String>(
+    'demuxer-lavf-o',
+    MpvOptionType.string,
+  );
+
   /// Whether to probe stream information (default: auto).
   ///
   /// mpv type: Choice; choices: no, yes, auto, nostreams.
-  static const demuxerLavfProbeInfo = MpvOption<String>('demuxer-lavf-probe-info', MpvOptionType.choice, choices: ['no', 'yes', 'auto', 'nostreams']);
+  static const demuxerLavfProbeInfo = MpvOption<String>(
+    'demuxer-lavf-probe-info',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'auto', 'nostreams'],
+  );
+
   /// Minimum required libavformat probe score.
   ///
   /// mpv type: Integer.
-  static const demuxerLavfProbescore = MpvOption<int>('demuxer-lavf-probescore', MpvOptionType.integer, min: 1, max: 100);
+  static const demuxerLavfProbescore = MpvOption<int>(
+    'demuxer-lavf-probescore',
+    MpvOptionType.integer,
+    min: 1,
+    max: 100,
+  );
+
   /// Maximum amount of data to probe during the detection phase.
   ///
   /// mpv type: Integer.
-  static const demuxerLavfProbesize = MpvOption<int>('demuxer-lavf-probesize', MpvOptionType.integer, min: 32, max: 2147483647);
+  static const demuxerLavfProbesize = MpvOption<int>(
+    'demuxer-lavf-probesize',
+    MpvOptionType.integer,
+    min: 32,
+    max: 2147483647,
+  );
+
   /// Propagate FFmpeg-level options to recursively opened connections (default: yes).
   ///
   /// mpv type: Flag.
-  static const demuxerLavfPropagateOpts = MpvOption<bool>('demuxer-lavf-propagate-opts', MpvOptionType.flag);
+  static const demuxerLavfPropagateOpts = MpvOption<bool>(
+    'demuxer-lavf-propagate-opts',
+    MpvOptionType.flag,
+  );
+
   /// This controls how much past data the demuxer is allowed to preserve.
   ///
   /// mpv type: ByteSize.
-  static const demuxerMaxBackBytes = MpvOption<int>('demuxer-max-back-bytes', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const demuxerMaxBackBytes = MpvOption<int>(
+    'demuxer-max-back-bytes',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// This controls how much the demuxer is allowed to buffer ahead.
   ///
   /// mpv type: ByteSize.
-  static const demuxerMaxBytes = MpvOption<int>('demuxer-max-bytes', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const demuxerMaxBytes = MpvOption<int>(
+    'demuxer-max-bytes',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Enable compatibility mode for files that do not fully comply with the Matroska specification.
   ///
   /// mpv type: Flag.
-  static const demuxerMkvCropCompat = MpvOption<bool>('demuxer-mkv-crop-compat', MpvOptionType.flag);
+  static const demuxerMkvCropCompat = MpvOption<bool>(
+    'demuxer-mkv-crop-compat',
+    MpvOptionType.flag,
+  );
+
   /// Check the start time of Matroska files (default: yes).
   ///
   /// mpv type: Flag.
-  static const demuxerMkvProbeStartTime = MpvOption<bool>('demuxer-mkv-probe-start-time', MpvOptionType.flag);
+  static const demuxerMkvProbeStartTime = MpvOption<bool>(
+    'demuxer-mkv-probe-start-time',
+    MpvOptionType.flag,
+  );
+
   /// When opening the file, seek to the end of it, and check what timestamp the last video packet has, and report that as file duration.
   ///
   /// mpv type: Choice; choices: no, yes, full.
-  static const demuxerMkvProbeVideoDuration = MpvOption<String>('demuxer-mkv-probe-video-duration', MpvOptionType.choice, choices: ['no', 'yes', 'full']);
+  static const demuxerMkvProbeVideoDuration = MpvOption<String>(
+    'demuxer-mkv-probe-video-duration',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'full'],
+  );
+
   /// Try harder to show embedded soft subtitles when seeking somewhere.
   ///
   /// mpv type: Choice; choices: no, yes, index.
-  static const demuxerMkvSubtitlePreroll = MpvOption<String>('demuxer-mkv-subtitle-preroll', MpvOptionType.choice, choices: ['no', 'yes', 'index']);
+  static const demuxerMkvSubtitlePreroll = MpvOption<String>(
+    'demuxer-mkv-subtitle-preroll',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'index'],
+  );
+
   /// See --demuxer-mkv-subtitle-preroll.
   ///
   /// mpv type: Double.
-  static const demuxerMkvSubtitlePrerollSecs = MpvOption<double>('demuxer-mkv-subtitle-preroll-secs', MpvOptionType.real, min: 0);
+  static const demuxerMkvSubtitlePrerollSecs = MpvOption<double>(
+    'demuxer-mkv-subtitle-preroll-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// See --demuxer-mkv-subtitle-preroll.
   ///
   /// mpv type: Double.
-  static const demuxerMkvSubtitlePrerollSecsIndex = MpvOption<double>('demuxer-mkv-subtitle-preroll-secs-index', MpvOptionType.real, min: 0);
+  static const demuxerMkvSubtitlePrerollSecsIndex = MpvOption<double>(
+    'demuxer-mkv-subtitle-preroll-secs-index',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Number of channels (or channel layout) if --demuxer=rawaudio is used (default: stereo).
   ///
   /// mpv type: Audio channels or channel map.
-  static const demuxerRawaudioChannels = MpvOption<String>('demuxer-rawaudio-channels', MpvOptionType.string);
+  static const demuxerRawaudioChannels = MpvOption<String>(
+    'demuxer-rawaudio-channels',
+    MpvOptionType.string,
+  );
+
   /// Sample format for --demuxer=rawaudio (default: s16le).
   ///
   /// mpv type: Choice; choices: u8, s8, u16le, u16be, s16le, s16be, u24le, u24be, s24le, s24be, u32le, u32be, s32le, s32be, floatle, floatbe, doublele, doublebe, u16, s16, u24, s24, u32, s32, float, double.
-  static const demuxerRawaudioFormat = MpvOption<String>('demuxer-rawaudio-format', MpvOptionType.choice, choices: ['u8', 's8', 'u16le', 'u16be', 's16le', 's16be', 'u24le', 'u24be', 's24le', 's24be', 'u32le', 'u32be', 's32le', 's32be', 'floatle', 'floatbe', 'doublele', 'doublebe', 'u16', 's16', 'u24', 's24', 'u32', 's32', 'float', 'double']);
+  static const demuxerRawaudioFormat = MpvOption<String>(
+    'demuxer-rawaudio-format',
+    MpvOptionType.choice,
+    choices: [
+      'u8',
+      's8',
+      'u16le',
+      'u16be',
+      's16le',
+      's16be',
+      'u24le',
+      'u24be',
+      's24le',
+      's24be',
+      'u32le',
+      'u32be',
+      's32le',
+      's32be',
+      'floatle',
+      'floatbe',
+      'doublele',
+      'doublebe',
+      'u16',
+      's16',
+      'u24',
+      's24',
+      'u32',
+      's32',
+      'float',
+      'double',
+    ],
+  );
+
   /// Sample rate for --demuxer=rawaudio (default: 44 kHz).
   ///
   /// mpv type: Integer.
-  static const demuxerRawaudioRate = MpvOption<int>('demuxer-rawaudio-rate', MpvOptionType.integer, min: 1000, max: 384000);
+  static const demuxerRawaudioRate = MpvOption<int>(
+    'demuxer-rawaudio-rate',
+    MpvOptionType.integer,
+    min: 1000,
+    max: 384000,
+  );
+
   /// Set the video codec instead of selecting the rawvideo codec when using --demuxer=rawvideo.
   ///
   /// mpv type: String.
-  static const demuxerRawvideoCodec = MpvOption<String>('demuxer-rawvideo-codec', MpvOptionType.string);
+  static const demuxerRawvideoCodec = MpvOption<String>(
+    'demuxer-rawvideo-codec',
+    MpvOptionType.string,
+  );
+
   /// Color space (fourcc) in hex or string for --demuxer=rawvideo (default: YV12).
   ///
   /// mpv type: FourCC.
-  static const demuxerRawvideoFormat = MpvOption<String>('demuxer-rawvideo-format', MpvOptionType.string);
+  static const demuxerRawvideoFormat = MpvOption<String>(
+    'demuxer-rawvideo-format',
+    MpvOptionType.string,
+  );
+
   /// Rate in frames per second for --demuxer=rawvideo (default: 25.0).
   ///
   /// mpv type: Float.
-  static const demuxerRawvideoFps = MpvOption<double>('demuxer-rawvideo-fps', MpvOptionType.real, min: 0.001, max: 1000);
+  static const demuxerRawvideoFps = MpvOption<double>(
+    'demuxer-rawvideo-fps',
+    MpvOptionType.real,
+    min: 0.001,
+    max: 1000,
+  );
+
   ///
   /// mpv type: Integer.
-  static const demuxerRawvideoH = MpvOption<int>('demuxer-rawvideo-h', MpvOptionType.integer, min: 1, max: 8192);
+  static const demuxerRawvideoH = MpvOption<int>(
+    'demuxer-rawvideo-h',
+    MpvOptionType.integer,
+    min: 1,
+    max: 8192,
+  );
+
   /// Color space by internal video format for --demuxer=rawvideo.
   ///
   /// mpv type: Image format.
-  static const demuxerRawvideoMpFormat = MpvOption<String>('demuxer-rawvideo-mp-format', MpvOptionType.string);
+  static const demuxerRawvideoMpFormat = MpvOption<String>(
+    'demuxer-rawvideo-mp-format',
+    MpvOptionType.string,
+  );
+
   /// Frame size in bytes when using --demuxer=rawvideo.
   ///
   /// mpv type: Integer.
-  static const demuxerRawvideoSize = MpvOption<int>('demuxer-rawvideo-size', MpvOptionType.integer, min: 1, max: 268435456);
+  static const demuxerRawvideoSize = MpvOption<int>(
+    'demuxer-rawvideo-size',
+    MpvOptionType.integer,
+    min: 1,
+    max: 268435456,
+  );
+
   /// Image dimension in pixels for --demuxer=rawvideo.
   ///
   /// mpv type: Integer.
-  static const demuxerRawvideoW = MpvOption<int>('demuxer-rawvideo-w', MpvOptionType.integer, min: 1, max: 8192);
+  static const demuxerRawvideoW = MpvOption<int>(
+    'demuxer-rawvideo-w',
+    MpvOptionType.integer,
+    min: 1,
+    max: 8192,
+  );
+
   /// If --demuxer-thread is enabled, this controls how much the demuxer should buffer ahead in seconds (default: 1).
   ///
   /// mpv type: Double.
-  static const demuxerReadaheadSecs = MpvOption<double>('demuxer-readahead-secs', MpvOptionType.real, min: 0);
+  static const demuxerReadaheadSecs = MpvOption<double>(
+    'demuxer-readahead-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   ///
   /// mpv type: Integer.
-  static const demuxerSbrProbesize = MpvOption<int>('demuxer-sbr-probesize', MpvOptionType.integer, min: 32, max: 2147483647);
+  static const demuxerSbrProbesize = MpvOption<int>(
+    'demuxer-sbr-probesize',
+    MpvOptionType.integer,
+    min: 32,
+    max: 2147483647,
+  );
+
   /// Debugging option to control whether seeking can use the demuxer cache (default: auto).
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const demuxerSeekableCache = MpvOption<String>('demuxer-seekable-cache', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const demuxerSeekableCache = MpvOption<String>(
+    'demuxer-seekable-cache',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// Number of seconds the player should wait to shutdown the demuxer (default: 0.1).
   ///
   /// mpv type: Double.
-  static const demuxerTerminationTimeout = MpvOption<double>('demuxer-termination-timeout', MpvOptionType.real);
+  static const demuxerTerminationTimeout = MpvOption<double>(
+    'demuxer-termination-timeout',
+    MpvOptionType.real,
+  );
+
   /// Run the demuxer in a separate thread, and let it prefetch a certain amount of packets (default: yes).
   ///
   /// mpv type: Flag.
-  static const demuxerThread = MpvOption<bool>('demuxer-thread', MpvOptionType.flag);
+  static const demuxerThread = MpvOption<bool>(
+    'demuxer-thread',
+    MpvOptionType.flag,
+  );
+
   /// Media file types to filter when opening directory.
   ///
   /// mpv type: String list.
-  static const directoryFilterTypes = MpvOption<String>('directory-filter-types', MpvOptionType.string);
+  static const directoryFilterTypes = MpvOption<String>(
+    'directory-filter-types',
+    MpvOptionType.string,
+  );
+
   /// When opening a directory, open subdirectories lazily, recursively or not at all.
   ///
   /// mpv type: Choice; choices: auto, lazy, recursive, ignore.
-  static const directoryMode = MpvOption<String>('directory-mode', MpvOptionType.choice, choices: ['auto', 'lazy', 'recursive', 'ignore']);
+  static const directoryMode = MpvOption<String>(
+    'directory-mode',
+    MpvOptionType.choice,
+    choices: ['auto', 'lazy', 'recursive', 'ignore'],
+  );
+
   /// Set the display FPS used with the --video-sync=display-* modes.
   ///
   /// mpv type: Double.
-  static const displayFpsOverride = MpvOption<double>('display-fps-override', MpvOptionType.real, min: 0);
+  static const displayFpsOverride = MpvOption<double>(
+    'display-fps-override',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Set the list of tags that should be displayed on the terminal and stats.
   ///
   /// mpv type: String list.
-  static const displayTags = MpvOption<String>('display-tags', MpvOptionType.string);
+  static const displayTags = MpvOption<String>(
+    'display-tags',
+    MpvOptionType.string,
+  );
+
   /// Select dithering algorithm (default: fruit).
   ///
   /// mpv type: Choice; choices: fruit, ordered, error-diffusion, no.
-  static const dither = MpvOption<String>('dither', MpvOptionType.choice, choices: ['fruit', 'ordered', 'error-diffusion', 'no']);
+  static const dither = MpvOption<String>(
+    'dither',
+    MpvOptionType.choice,
+    choices: ['fruit', 'ordered', 'error-diffusion', 'no'],
+  );
+
   /// Set dither target depth to N.
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const ditherDepth = MpvOption<String>('dither-depth', MpvOptionType.choice, choices: ['no', 'auto'], min: -1, max: 16);
+  static const ditherDepth = MpvOption<String>(
+    'dither-depth',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: -1,
+    max: 16,
+  );
+
   /// Set the size of the dither matrix (default: 6).
   ///
   /// mpv type: Integer.
-  static const ditherSizeFruit = MpvOption<int>('dither-size-fruit', MpvOptionType.integer, min: 2, max: 8);
+  static const ditherSizeFruit = MpvOption<int>(
+    'dither-size-fruit',
+    MpvOptionType.integer,
+    min: 2,
+    max: 8,
+  );
+
   /// Controls the default behavior of drag and drop on platforms that support this.
   ///
   /// mpv type: Choice; choices: no, auto, replace, append, insert-next.
-  static const dragAndDrop = MpvOption<String>('drag-and-drop', MpvOptionType.choice, choices: ['no', 'auto', 'replace', 'append', 'insert-next']);
+  static const dragAndDrop = MpvOption<String>(
+    'drag-and-drop',
+    MpvOptionType.choice,
+    choices: ['no', 'auto', 'replace', 'append', 'insert-next'],
+  );
+
   /// Like --scale, but apply these filters on downscaling instead.
   ///
   /// mpv type: Choice; choices: , bilinear, bicubic_fast, oversample, spline16, spline36, spline64, sinc, lanczos, ginseng, bicubic, hermite, catmull_rom, mitchell, robidoux, robidouxsharp, box, nearest, triangle, gaussian, jinc, ewa_lanczos, ewa_hanning, ewa_ginseng, ewa_lanczossharp, ewa_lanczos4sharpest, ewa_lanczossoft, haasnsoft, ewa_robidoux, ewa_robidouxsharp, bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx.
-  static const dscale = MpvOption<String>('dscale', MpvOptionType.choice, choices: ['', 'bilinear', 'bicubic_fast', 'oversample', 'spline16', 'spline36', 'spline64', 'sinc', 'lanczos', 'ginseng', 'bicubic', 'hermite', 'catmull_rom', 'mitchell', 'robidoux', 'robidouxsharp', 'box', 'nearest', 'triangle', 'gaussian', 'jinc', 'ewa_lanczos', 'ewa_hanning', 'ewa_ginseng', 'ewa_lanczossharp', 'ewa_lanczos4sharpest', 'ewa_lanczossoft', 'haasnsoft', 'ewa_robidoux', 'ewa_robidouxsharp', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx']);
+  static const dscale = MpvOption<String>(
+    'dscale',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bilinear',
+      'bicubic_fast',
+      'oversample',
+      'spline16',
+      'spline36',
+      'spline64',
+      'sinc',
+      'lanczos',
+      'ginseng',
+      'bicubic',
+      'hermite',
+      'catmull_rom',
+      'mitchell',
+      'robidoux',
+      'robidouxsharp',
+      'box',
+      'nearest',
+      'triangle',
+      'gaussian',
+      'jinc',
+      'ewa_lanczos',
+      'ewa_hanning',
+      'ewa_ginseng',
+      'ewa_lanczossharp',
+      'ewa_lanczos4sharpest',
+      'ewa_lanczossoft',
+      'haasnsoft',
+      'ewa_robidoux',
+      'ewa_robidouxsharp',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleAntiring = MpvOption<double>('dscale-antiring', MpvOptionType.real, min: 0, max: 1);
+  static const dscaleAntiring = MpvOption<double>(
+    'dscale-antiring',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleBlur = MpvOption<double>('dscale-blur', MpvOptionType.real);
+  static const dscaleBlur = MpvOption<double>(
+    'dscale-blur',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleClamp = MpvOption<double>('dscale-clamp', MpvOptionType.real, min: 0, max: 1);
+  static const dscaleClamp = MpvOption<double>(
+    'dscale-clamp',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleParam1 = MpvOption<double>('dscale-param1', MpvOptionType.real);
+  static const dscaleParam1 = MpvOption<double>(
+    'dscale-param1',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleParam2 = MpvOption<double>('dscale-param2', MpvOptionType.real);
+  static const dscaleParam2 = MpvOption<double>(
+    'dscale-param2',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleRadius = MpvOption<double>('dscale-radius', MpvOptionType.real, min: 0.5, max: 16);
+  static const dscaleRadius = MpvOption<double>(
+    'dscale-radius',
+    MpvOptionType.real,
+    min: 0.5,
+    max: 16,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleTaper = MpvOption<double>('dscale-taper', MpvOptionType.real, min: 0, max: 1);
+  static const dscaleTaper = MpvOption<double>(
+    'dscale-taper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Choice; choices: , bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx, jinc.
-  static const dscaleWindow = MpvOption<String>('dscale-window', MpvOptionType.choice, choices: ['', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx', 'jinc']);
+  static const dscaleWindow = MpvOption<String>(
+    'dscale-window',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+      'jinc',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleWparam = MpvOption<double>('dscale-wparam', MpvOptionType.real);
+  static const dscaleWparam = MpvOption<double>(
+    'dscale-wparam',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const dscaleWtaper = MpvOption<double>('dscale-wtaper', MpvOptionType.real, min: 0, max: 1);
+  static const dscaleWtaper = MpvOption<double>(
+    'dscale-wtaper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Write certain statistics to the given file.
   ///
   /// mpv type: String.
-  static const dumpStats = MpvOption<String>('dump-stats', MpvOptionType.string);
+  static const dumpStats = MpvOption<String>(
+    'dump-stats',
+    MpvOptionType.string,
+  );
+
   /// Some DVDs contain scenes that can be viewed from multiple angles.
   ///
   /// mpv type: Integer.
-  static const dvdAngle = MpvOption<int>('dvd-angle', MpvOptionType.integer, min: 1, max: 99);
+  static const dvdAngle = MpvOption<int>(
+    'dvd-angle',
+    MpvOptionType.integer,
+    min: 1,
+    max: 99,
+  );
+
   /// Specify the DVD device or .iso filename.
   ///
   /// mpv type: String.
-  static const dvdDevice = MpvOption<String>('dvd-device', MpvOptionType.string);
+  static const dvdDevice = MpvOption<String>(
+    'dvd-device',
+    MpvOptionType.string,
+  );
+
   /// Try to limit DVD speed (default: 0, no change).
   ///
   /// mpv type: Integer.
   static const dvdSpeed = MpvOption<int>('dvd-speed', MpvOptionType.integer);
+
   /// (Matroska files only) Specify the edition (set of chapters) to use, where 0 is the first.
   ///
   /// mpv type: Choice; choices: auto.
-  static const edition = MpvOption<String>('edition', MpvOptionType.choice, choices: ['auto'], min: 0, max: 8190);
+  static const edition = MpvOption<String>(
+    'edition',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// (EGL only) Select EGLConfig with specific EGL_CONFIG_ID.
   ///
   /// mpv type: Integer.
-  static const eglConfigId = MpvOption<int>('egl-config-id', MpvOptionType.integer);
+  static const eglConfigId = MpvOption<int>(
+    'egl-config-id',
+    MpvOptionType.integer,
+  );
+
   /// (EGL only) Select a specific EGL output format to utilize for OpenGL rendering.
   ///
   /// mpv type: Choice; choices: auto, rgb8, rgba8, rgb10, rgb10_a2, rgb16, rgba16, rgb16f, rgba16f, rgb32f, rgba32f.
-  static const eglOutputFormat = MpvOption<String>('egl-output-format', MpvOptionType.choice, choices: ['auto', 'rgb8', 'rgba8', 'rgb10', 'rgb10_a2', 'rgb16', 'rgba16', 'rgb16f', 'rgba16f', 'rgb32f', 'rgba32f']);
+  static const eglOutputFormat = MpvOption<String>(
+    'egl-output-format',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'rgb8',
+      'rgba8',
+      'rgb10',
+      'rgb10_a2',
+      'rgb16',
+      'rgba16',
+      'rgb16f',
+      'rgba16f',
+      'rgb32f',
+      'rgba32f',
+    ],
+  );
+
   /// Use fonts embedded in Matroska container files and ASS scripts (default: yes).
   ///
   /// mpv type: Flag.
-  static const embeddedfonts = MpvOption<bool>('embeddedfonts', MpvOptionType.flag);
+  static const embeddedfonts = MpvOption<bool>(
+    'embeddedfonts',
+    MpvOptionType.flag,
+  );
+
   /// Stop at given time.
   ///
   /// mpv type: Relative time or percent position.
   static const end = MpvOption<String>('end', MpvOptionType.string);
+
   /// The error diffusion kernel to use when --dither=error-diffusion is set.
   ///
   /// mpv type: String.
-  static const errorDiffusion = MpvOption<String>('error-diffusion', MpvOptionType.string);
+  static const errorDiffusion = MpvOption<String>(
+    'error-diffusion',
+    MpvOptionType.string,
+  );
+
   /// Load a file and add all of its tracks.
   ///
   /// mpv type: String list.
-  static const externalFiles = MpvOption<String>('external-files', MpvOptionType.string);
+  static const externalFiles = MpvOption<String>(
+    'external-files',
+    MpvOptionType.string,
+  );
+
   /// Selects the internal format of textures used for FBOs.
   ///
   /// mpv type: String.
-  static const fboFormat = MpvOption<String>('fbo-format', MpvOptionType.string);
+  static const fboFormat = MpvOption<String>(
+    'fbo-format',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Flag.
-  static const flattenEditions = MpvOption<bool>('flatten-editions', MpvOptionType.flag);
+  static const flattenEditions = MpvOption<bool>(
+    'flatten-editions',
+    MpvOptionType.flag,
+  );
+
   /// (macOS only) Focus the video window and make it the front most window on specific events (default: open).
   ///
   /// mpv type: Choice; choices: never, open, all.
-  static const focusOn = MpvOption<String>('focus-on', MpvOptionType.choice, choices: ['never', 'open', 'all']);
+  static const focusOn = MpvOption<String>(
+    'focus-on',
+    MpvOptionType.choice,
+    choices: ['never', 'open', 'all'],
+  );
+
   /// Force the contents of the media-title property to this value.
   ///
   /// mpv type: String.
-  static const forceMediaTitle = MpvOption<String>('force-media-title', MpvOptionType.string);
+  static const forceMediaTitle = MpvOption<String>(
+    'force-media-title',
+    MpvOptionType.string,
+  );
+
   /// Forces mpv to always render frames regardless of the visibility of the window.
   ///
   /// mpv type: Flag.
-  static const forceRender = MpvOption<bool>('force-render', MpvOptionType.flag);
+  static const forceRender = MpvOption<bool>(
+    'force-render',
+    MpvOptionType.flag,
+  );
+
   /// Change how some video outputs render the OSD and text subtitles.
   ///
   /// mpv type: Flag.
-  static const forceRgbaOsdRendering = MpvOption<bool>('force-rgba-osd-rendering', MpvOptionType.flag);
+  static const forceRgbaOsdRendering = MpvOption<bool>(
+    'force-rgba-osd-rendering',
+    MpvOptionType.flag,
+  );
+
   /// If the player thinks that the media is not seekable (e.g.
   ///
   /// mpv type: Flag.
-  static const forceSeekable = MpvOption<bool>('force-seekable', MpvOptionType.flag);
+  static const forceSeekable = MpvOption<bool>(
+    'force-seekable',
+    MpvOptionType.flag,
+  );
+
   /// Create a video output window even if there is no video.
   ///
   /// mpv type: Choice; choices: no, yes, immediate.
-  static const forceWindow = MpvOption<String>('force-window', MpvOptionType.choice, choices: ['no', 'yes', 'immediate']);
+  static const forceWindow = MpvOption<String>(
+    'force-window',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'immediate'],
+  );
+
   /// Forcefully move mpv's video output window to default location whenever there is a change in video parameters, video stream or file.
   ///
   /// mpv type: Flag.
-  static const forceWindowPosition = MpvOption<bool>('force-window-position', MpvOptionType.flag);
+  static const forceWindowPosition = MpvOption<bool>(
+    'force-window-position',
+    MpvOptionType.flag,
+  );
+
   /// Skip displaying some frames to maintain A/V sync on slow systems, or playing high framerate video on video outputs that have an upper framerate limit.
   ///
   /// mpv type: Choice; choices: no, vo, decoder, decoder+vo.
-  static const framedrop = MpvOption<String>('framedrop', MpvOptionType.choice, choices: ['no', 'vo', 'decoder', 'decoder+vo']);
+  static const framedrop = MpvOption<String>(
+    'framedrop',
+    MpvOptionType.choice,
+    choices: ['no', 'vo', 'decoder', 'decoder+vo'],
+  );
+
   /// Play/convert only first `<number>` video frames, then quit.
   ///
   /// mpv type: Choice; choices: all.
-  static const frames = MpvOption<String>('frames', MpvOptionType.choice, choices: ['all'], min: 0, max: 2147483647);
+  static const frames = MpvOption<String>(
+    'frames',
+    MpvOptionType.choice,
+    choices: ['all'],
+    min: 0,
+    max: 2147483647,
+  );
+
   ///
   /// mpv type: Flag.
   static const fs = MpvOption<bool>('fs', MpvOptionType.flag);
+
   /// In multi-monitor configurations (i.e.
   ///
   /// mpv type: Choice; choices: all, current.
-  static const fsScreen = MpvOption<String>('fs-screen', MpvOptionType.choice, choices: ['all', 'current'], min: 0, max: 32);
+  static const fsScreen = MpvOption<String>(
+    'fs-screen',
+    MpvOptionType.choice,
+    choices: ['all', 'current'],
+    min: 0,
+    max: 32,
+  );
+
   /// In multi-monitor configurations, this option tells mpv which screen to go fullscreen to based on the screen name from the video backend.
   ///
   /// mpv type: String.
-  static const fsScreenName = MpvOption<String>('fs-screen-name', MpvOptionType.string);
+  static const fsScreenName = MpvOption<String>(
+    'fs-screen-name',
+    MpvOptionType.string,
+  );
+
   /// Fullscreen playback.
   ///
   /// mpv type: Flag.
   static const fullscreen = MpvOption<bool>('fullscreen', MpvOptionType.flag);
+
   /// Adjust the gamma of the video signal (default: 0).
   ///
   /// mpv type: Float.
-  static const gamma = MpvOption<double>('gamma', MpvOptionType.real, min: -100, max: 100);
+  static const gamma = MpvOption<double>(
+    'gamma',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Automatically corrects the gamma value depending on ambient lighting conditions (adding a gamma boost for bright rooms).
   ///
   /// mpv type: Flag.
   static const gammaAuto = MpvOption<bool>('gamma-auto', MpvOptionType.flag);
+
   /// Set an additional raw gamma factor (default: 1.0).
   ///
   /// mpv type: Float.
-  static const gammaFactor = MpvOption<double>('gamma-factor', MpvOptionType.real, min: 0.1, max: 2);
+  static const gammaFactor = MpvOption<double>(
+    'gamma-factor',
+    MpvOptionType.real,
+    min: 0.1,
+    max: 2,
+  );
+
   /// Specifies the algorithm used for reducing the gamut of images for the target display, after any tone mapping is done.
   ///
   /// mpv type: Choice; choices: auto, clip, perceptual, relative, saturation, absolute, desaturate, darken, warn, linear.
-  static const gamutMappingMode = MpvOption<String>('gamut-mapping-mode', MpvOptionType.choice, choices: ['auto', 'clip', 'perceptual', 'relative', 'saturation', 'absolute', 'desaturate', 'darken', 'warn', 'linear']);
+  static const gamutMappingMode = MpvOption<String>(
+    'gamut-mapping-mode',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'clip',
+      'perceptual',
+      'relative',
+      'saturation',
+      'absolute',
+      'desaturate',
+      'darken',
+      'warn',
+      'linear',
+    ],
+  );
+
   /// Try to play consecutive audio files with no silence or disruption at the point of file change.
   ///
   /// mpv type: Choice; choices: no, yes, weak.
-  static const gaplessAudio = MpvOption<String>('gapless-audio', MpvOptionType.choice, choices: ['no', 'yes', 'weak']);
+  static const gaplessAudio = MpvOption<String>(
+    'gapless-audio',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'weak'],
+  );
+
   /// Adjust the initial window position or size.
   ///
   /// mpv type: Window geometry.
   static const geometry = MpvOption<String>('geometry', MpvOptionType.string);
+
   /// Specifies the options to use for tunable shader parameters.
   ///
   /// mpv type: Key/value list.
-  static const glslShaderOpts = MpvOption<String>('glsl-shader-opts', MpvOptionType.string);
+  static const glslShaderOpts = MpvOption<String>(
+    'glsl-shader-opts',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String list.
-  static const glslShaders = MpvOption<String>('glsl-shaders', MpvOptionType.string);
+  static const glslShaders = MpvOption<String>(
+    'glsl-shaders',
+    MpvOptionType.string,
+  );
+
   /// Specify a priority list of accepted graphics APIs.
   ///
   /// mpv type: Object settings list; choices: auto, d3d11, vulkan, opengl.
-  static const gpuApi = MpvOption<String>('gpu-api', MpvOptionType.string, choices: ['auto', 'd3d11', 'vulkan', 'opengl']);
+  static const gpuApi = MpvOption<String>(
+    'gpu-api',
+    MpvOptionType.string,
+    choices: ['auto', 'd3d11', 'vulkan', 'opengl'],
+  );
+
   /// Specify a priority list of the GPU contexts to be used.
   ///
   /// mpv type: Object settings list; choices: auto, d3d11, winvk, angle, win, dxinterop.
-  static const gpuContext = MpvOption<String>('gpu-context', MpvOptionType.string, choices: ['auto', 'd3d11', 'winvk', 'angle', 'win', 'dxinterop']);
+  static const gpuContext = MpvOption<String>(
+    'gpu-context',
+    MpvOptionType.string,
+    choices: ['auto', 'd3d11', 'winvk', 'angle', 'win', 'dxinterop'],
+  );
+
   /// Enables GPU debugging.
   ///
   /// mpv type: Flag.
   static const gpuDebug = MpvOption<bool>('gpu-debug', MpvOptionType.flag);
+
   /// This mode is extremely restricted, and will disable most extended features.
   ///
   /// mpv type: Choice; choices: auto, yes, no.
-  static const gpuDumbMode = MpvOption<String>('gpu-dumb-mode', MpvOptionType.choice, choices: ['auto', 'yes', 'no']);
+  static const gpuDumbMode = MpvOption<String>(
+    'gpu-dumb-mode',
+    MpvOptionType.choice,
+    choices: ['auto', 'yes', 'no'],
+  );
+
   /// This option is for troubleshooting hwdec interop issues.
   ///
   /// mpv type: String.
-  static const gpuHwdecInterop = MpvOption<String>('gpu-hwdec-interop', MpvOptionType.string);
+  static const gpuHwdecInterop = MpvOption<String>(
+    'gpu-hwdec-interop',
+    MpvOptionType.string,
+  );
+
   /// Store and load compiled GLSL shaders in the cache directory (Default: yes).
   ///
   /// mpv type: Flag.
-  static const gpuShaderCache = MpvOption<bool>('gpu-shader-cache', MpvOptionType.flag);
+  static const gpuShaderCache = MpvOption<bool>(
+    'gpu-shader-cache',
+    MpvOptionType.flag,
+  );
+
   /// The directory where gpu shader cache is stored.
   ///
   /// mpv type: String.
-  static const gpuShaderCacheDir = MpvOption<String>('gpu-shader-cache-dir', MpvOptionType.string);
+  static const gpuShaderCacheDir = MpvOption<String>(
+    'gpu-shader-cache-dir',
+    MpvOptionType.string,
+  );
+
   /// Continue even if a software renderer is detected.
   ///
   /// mpv type: Flag.
   static const gpuSw = MpvOption<bool>('gpu-sw', MpvOptionType.flag);
+
   /// Enlarge the video source textures by this many pixels.
   ///
   /// mpv type: Integer.
-  static const gpuTexPadX = MpvOption<int>('gpu-tex-pad-x', MpvOptionType.integer, min: 0, max: 4096);
+  static const gpuTexPadX = MpvOption<int>(
+    'gpu-tex-pad-x',
+    MpvOptionType.integer,
+    min: 0,
+    max: 4096,
+  );
+
   ///
   /// mpv type: Integer.
-  static const gpuTexPadY = MpvOption<int>('gpu-tex-pad-y', MpvOptionType.integer, min: 0, max: 4096);
+  static const gpuTexPadY = MpvOption<int>(
+    'gpu-tex-pad-y',
+    MpvOptionType.integer,
+    min: 0,
+    max: 4096,
+  );
+
   ///
   /// mpv type: String.
   static const h = MpvOption<String>('h', MpvOptionType.string);
+
   /// Compute the HDR peak and frame average brightness per-frame instead of relying on tagged metadata.
   ///
   /// mpv type: Choice; choices: auto, yes, no.
-  static const hdrComputePeak = MpvOption<String>('hdr-compute-peak', MpvOptionType.choice, choices: ['auto', 'yes', 'no']);
+  static const hdrComputePeak = MpvOption<String>(
+    'hdr-compute-peak',
+    MpvOptionType.choice,
+    choices: ['auto', 'yes', 'no'],
+  );
+
   /// Enables the HDR contrast recovery algorithm, which is to designed to enhance contrast of HDR video after tone mapping.
   ///
   /// mpv type: Float.
-  static const hdrContrastRecovery = MpvOption<double>('hdr-contrast-recovery', MpvOptionType.real, min: 0, max: 2);
+  static const hdrContrastRecovery = MpvOption<double>(
+    'hdr-contrast-recovery',
+    MpvOptionType.real,
+    min: 0,
+    max: 2,
+  );
+
   ///
   /// mpv type: Float.
-  static const hdrContrastSmoothness = MpvOption<double>('hdr-contrast-smoothness', MpvOptionType.real, min: 1, max: 100);
+  static const hdrContrastSmoothness = MpvOption<double>(
+    'hdr-contrast-smoothness',
+    MpvOptionType.real,
+    min: 1,
+    max: 100,
+  );
+
   /// The decay rate used for the HDR peak detection algorithm (default: 20.0).
   ///
   /// mpv type: Float.
-  static const hdrPeakDecayRate = MpvOption<double>('hdr-peak-decay-rate', MpvOptionType.real, min: 0, max: 1000);
+  static const hdrPeakDecayRate = MpvOption<double>(
+    'hdr-peak-decay-rate',
+    MpvOptionType.real,
+    min: 0,
+    max: 1000,
+  );
+
   /// Which percentile of the input image brightness histogram to consider as the true peak of the scene.
   ///
   /// mpv type: Float.
-  static const hdrPeakPercentile = MpvOption<double>('hdr-peak-percentile', MpvOptionType.real, min: 0, max: 100);
+  static const hdrPeakPercentile = MpvOption<double>(
+    'hdr-peak-percentile',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Specifies the assumed peak brightness of the mastering display for SDR content, in cd/m² (nits).
   ///
   /// mpv type: Choice; choices: auto.
-  static const hdrReferenceWhite = MpvOption<String>('hdr-reference-white', MpvOptionType.choice, choices: ['auto'], min: 10, max: 10000);
+  static const hdrReferenceWhite = MpvOption<String>(
+    'hdr-reference-white',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 10,
+    max: 10000,
+  );
+
   ///
   /// mpv type: Float.
-  static const hdrSceneThresholdHigh = MpvOption<double>('hdr-scene-threshold-high', MpvOptionType.real, min: 0, max: 20);
+  static const hdrSceneThresholdHigh = MpvOption<double>(
+    'hdr-scene-threshold-high',
+    MpvOptionType.real,
+    min: 0,
+    max: 20,
+  );
+
   /// The lower and upper thresholds (in dB) for a brightness difference to be considered a scene change (default: 1.0 low, 3.0 high).
   ///
   /// mpv type: Float.
-  static const hdrSceneThresholdLow = MpvOption<double>('hdr-scene-threshold-low', MpvOptionType.real, min: 0, max: 20);
+  static const hdrSceneThresholdLow = MpvOption<double>(
+    'hdr-scene-threshold-low',
+    MpvOptionType.real,
+    min: 0,
+    max: 20,
+  );
+
   /// Show short summary of options.
   ///
   /// mpv type: String.
   static const help = MpvOption<String>('help', MpvOptionType.string);
+
   /// Scale the window size according to the backing DPI scale factor from the OS (default: no).
   ///
   /// mpv type: Flag.
-  static const hidpiWindowScale = MpvOption<bool>('hidpi-window-scale', MpvOptionType.flag);
+  static const hidpiWindowScale = MpvOption<bool>(
+    'hidpi-window-scale',
+    MpvOptionType.flag,
+  );
+
   /// If HLS streams are played, this option controls what streams are selected by default.
   ///
   /// mpv type: Choice; choices: no, min, max.
-  static const hlsBitrate = MpvOption<String>('hls-bitrate', MpvOptionType.choice, choices: ['no', 'min', 'max'], min: 0, max: 2147483647);
+  static const hlsBitrate = MpvOption<String>(
+    'hls-bitrate',
+    MpvOptionType.choice,
+    choices: ['no', 'min', 'max'],
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Select when to use precise seeks that are not limited to keyframes.
   ///
   /// mpv type: Choice; choices: no, absolute, yes, always, default.
-  static const hrSeek = MpvOption<String>('hr-seek', MpvOptionType.choice, choices: ['no', 'absolute', 'yes', 'always', 'default']);
+  static const hrSeek = MpvOption<String>(
+    'hr-seek',
+    MpvOptionType.choice,
+    choices: ['no', 'absolute', 'yes', 'always', 'default'],
+  );
+
   /// This option exists to work around failures to do precise seeks (as in --hr-seek) caused by bugs or limitations in the demuxers for some file formats.
   ///
   /// mpv type: Float.
-  static const hrSeekDemuxerOffset = MpvOption<double>('hr-seek-demuxer-offset', MpvOptionType.real);
+  static const hrSeekDemuxerOffset = MpvOption<double>(
+    'hr-seek-demuxer-offset',
+    MpvOptionType.real,
+  );
+
   /// Allow the video decoder to drop frames during seek, if these frames are before the seek target.
   ///
   /// mpv type: Flag.
-  static const hrSeekFramedrop = MpvOption<bool>('hr-seek-framedrop', MpvOptionType.flag);
+  static const hrSeekFramedrop = MpvOption<bool>(
+    'hr-seek-framedrop',
+    MpvOptionType.flag,
+  );
+
   /// Set custom HTTP fields when accessing HTTP stream.
   ///
   /// mpv type: String list.
-  static const httpHeaderFields = MpvOption<String>('http-header-fields', MpvOptionType.string);
+  static const httpHeaderFields = MpvOption<String>(
+    'http-header-fields',
+    MpvOptionType.string,
+  );
+
   /// URL of the HTTP/HTTPS proxy.
   ///
   /// mpv type: String.
-  static const httpProxy = MpvOption<String>('http-proxy', MpvOptionType.string);
+  static const httpProxy = MpvOption<String>(
+    'http-proxy',
+    MpvOptionType.string,
+  );
+
   /// Adjust the hue of the video signal (default: 0).
   ///
   /// mpv type: Float.
-  static const hue = MpvOption<double>('hue', MpvOptionType.real, min: -100, max: 100);
+  static const hue = MpvOption<double>(
+    'hue',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Specify the hardware video decoding API that should be used if possible.
   ///
   /// mpv type: String list.
   static const hwdec = MpvOption<String>('hwdec', MpvOptionType.string);
+
   /// Allow hardware decoding for a given list of codecs only.
   ///
   /// mpv type: String.
-  static const hwdecCodecs = MpvOption<String>('hwdec-codecs', MpvOptionType.string);
+  static const hwdecCodecs = MpvOption<String>(
+    'hwdec-codecs',
+    MpvOptionType.string,
+  );
+
   /// Number of GPU frames hardware decoding should preallocate (default: see --list-options output).
   ///
   /// mpv type: Integer.
-  static const hwdecExtraFrames = MpvOption<int>('hwdec-extra-frames', MpvOptionType.integer, min: 0, max: 256);
+  static const hwdecExtraFrames = MpvOption<int>(
+    'hwdec-extra-frames',
+    MpvOptionType.integer,
+    min: 0,
+    max: 256,
+  );
+
   /// Set the internal pixel format used by hardware decoding via --hwdec (default no).
   ///
   /// mpv type: Image format.
-  static const hwdecImageFormat = MpvOption<String>('hwdec-image-format', MpvOptionType.string);
+  static const hwdecImageFormat = MpvOption<String>(
+    'hwdec-image-format',
+    MpvOptionType.string,
+  );
+
   /// Fallback to software decoding if the hardware-accelerated decoder fails (default: 3).
   ///
   /// mpv type: Choice; choices: no, yes.
-  static const hwdecSoftwareFallback = MpvOption<String>('hwdec-software-fallback', MpvOptionType.choice, choices: ['no', 'yes'], min: 1, max: 2147483647);
+  static const hwdecSoftwareFallback = MpvOption<String>(
+    'hwdec-software-fallback',
+    MpvOptionType.choice,
+    choices: ['no', 'yes'],
+    min: 1,
+    max: 2147483647,
+  );
+
   /// Number of threads used for hardware decoding (default: 4).
   ///
   /// mpv type: Integer.
-  static const hwdecThreads = MpvOption<int>('hwdec-threads', MpvOptionType.integer, min: 0);
+  static const hwdecThreads = MpvOption<int>(
+    'hwdec-threads',
+    MpvOptionType.integer,
+    min: 0,
+  );
+
   /// Size of the 3D LUT generated from the ICC profile in each dimension.
   ///
   /// mpv type: String.
-  static const icc3dlutSize = MpvOption<String>('icc-3dlut-size', MpvOptionType.string);
+  static const icc3dlutSize = MpvOption<String>(
+    'icc-3dlut-size',
+    MpvOptionType.string,
+  );
+
   /// Store and load 3DLUTs created from the ICC profile on disk in the cache directory (Default: yes).
   ///
   /// mpv type: Flag.
   static const iccCache = MpvOption<bool>('icc-cache', MpvOptionType.flag);
+
   /// The directory where icc cache is stored.
   ///
   /// mpv type: String.
-  static const iccCacheDir = MpvOption<String>('icc-cache-dir', MpvOptionType.string);
+  static const iccCacheDir = MpvOption<String>(
+    'icc-cache-dir',
+    MpvOptionType.string,
+  );
+
   /// Override the target device's detected contrast ratio by a specific value.
   ///
   /// mpv type: Choice; choices: no, inf.
-  static const iccForceContrast = MpvOption<String>('icc-force-contrast', MpvOptionType.choice, choices: ['no', 'inf'], min: 0, max: 1000000);
+  static const iccForceContrast = MpvOption<String>(
+    'icc-force-contrast',
+    MpvOptionType.choice,
+    choices: ['no', 'inf'],
+    min: 0,
+    max: 1000000,
+  );
+
   /// Specifies the ICC intent used for the color transformation (when using --icc-profile).
   ///
   /// mpv type: Integer.
   static const iccIntent = MpvOption<int>('icc-intent', MpvOptionType.integer);
+
   /// Load an ICC profile and use it to transform video RGB to screen output.
   ///
   /// mpv type: String.
-  static const iccProfile = MpvOption<String>('icc-profile', MpvOptionType.string);
+  static const iccProfile = MpvOption<String>(
+    'icc-profile',
+    MpvOptionType.string,
+  );
+
   /// Automatically select the ICC display profile currently specified by the display settings of the operating system.
   ///
   /// mpv type: Flag.
-  static const iccProfileAuto = MpvOption<bool>('icc-profile-auto', MpvOptionType.flag);
+  static const iccProfileAuto = MpvOption<bool>(
+    'icc-profile-auto',
+    MpvOptionType.flag,
+  );
+
   /// Use ICC profile luminance value.
   ///
   /// mpv type: Flag.
   static const iccUseLuma = MpvOption<bool>('icc-use-luma', MpvOptionType.flag);
+
   /// Makes mpv wait idly instead of quitting when there is no file to play.
   ///
   /// mpv type: Choice; choices: no, once, yes.
-  static const idle = MpvOption<String>('idle', MpvOptionType.choice, choices: ['no', 'once', 'yes']);
+  static const idle = MpvOption<String>(
+    'idle',
+    MpvOptionType.choice,
+    choices: ['no', 'once', 'yes'],
+  );
+
   /// Ignore path (i.e.
   ///
   /// mpv type: Flag.
-  static const ignorePathInWatchLaterConfig = MpvOption<bool>('ignore-path-in-watch-later-config', MpvOptionType.flag);
+  static const ignorePathInWatchLaterConfig = MpvOption<bool>(
+    'ignore-path-in-watch-later-config',
+    MpvOptionType.flag,
+  );
+
   /// If the current file is an image, play the image for the given amount of seconds (default: 5).
   ///
   /// mpv type: Double.
-  static const imageDisplayDuration = MpvOption<double>('image-display-duration', MpvOptionType.real, min: 0, max: double.maxFinite);
+  static const imageDisplayDuration = MpvOption<double>(
+    'image-display-duration',
+    MpvOptionType.real,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Image file extensions to try to match when using --cover-art-auto, --autocreate-playlist or --directory-filter-types.
   ///
   /// mpv type: String list.
-  static const imageExts = MpvOption<String>('image-exts', MpvOptionType.string);
+  static const imageExts = MpvOption<String>(
+    'image-exts',
+    MpvOptionType.string,
+  );
+
   /// Specifies a custom LUT file (in Adobe .cube format) to apply to the colors during image decoding.
   ///
   /// mpv type: String.
   static const imageLut = MpvOption<String>('image-lut', MpvOptionType.string);
+
   /// Controls the interpretation of color values fed to and from the LUT specified as --image-lut.
   ///
   /// mpv type: Choice; choices: auto, native, normalized, conversion.
-  static const imageLutType = MpvOption<String>('image-lut-type', MpvOptionType.choice, choices: ['auto', 'native', 'normalized', 'conversion']);
+  static const imageLutType = MpvOption<String>(
+    'image-lut-type',
+    MpvOptionType.choice,
+    choices: ['auto', 'native', 'normalized', 'conversion'],
+  );
+
   /// Controls the image subtitle diffuse white level in cd/m² (nits) for HDR output (default: sdr).
   ///
   /// mpv type: Choice; choices: sdr, video, video-static, video-dynamic.
-  static const imageSubsHdrPeak = MpvOption<String>('image-subs-hdr-peak', MpvOptionType.choice, choices: ['sdr', 'video', 'video-static', 'video-dynamic'], min: 10, max: 10000);
+  static const imageSubsHdrPeak = MpvOption<String>(
+    'image-subs-hdr-peak',
+    MpvOptionType.choice,
+    choices: ['sdr', 'video', 'video-static', 'video-dynamic'],
+    min: 10,
+    max: 10000,
+  );
+
   /// Override the image subtitle resolution with the video resolution (default: no).
   ///
   /// mpv type: Flag.
-  static const imageSubsVideoResolution = MpvOption<bool>('image-subs-video-resolution', MpvOptionType.flag);
+  static const imageSubsVideoResolution = MpvOption<bool>(
+    'image-subs-video-resolution',
+    MpvOptionType.flag,
+  );
+
   /// Specify configuration file to be parsed after the default ones.
   ///
   /// mpv type: String.
   static const include = MpvOption<String>('include', MpvOptionType.string);
+
   /// Controls how to seek in files.
   ///
   /// mpv type: Choice; choices: default, recreate.
-  static const index = MpvOption<String>('index', MpvOptionType.choice, choices: ['default', 'recreate']);
+  static const index = MpvOption<String>(
+    'index',
+    MpvOptionType.choice,
+    choices: ['default', 'recreate'],
+  );
+
   /// When starting a video file or after events such as seeking, mpv will by default modify the audio stream to make it start from the same timestamp as video, by either inserting silence at the start o...
   ///
   /// mpv type: Flag.
-  static const initialAudioSync = MpvOption<bool>('initial-audio-sync', MpvOptionType.flag);
+  static const initialAudioSync = MpvOption<bool>(
+    'initial-audio-sync',
+    MpvOptionType.flag,
+  );
+
   /// Delay in milliseconds before we start to autorepeat a key (default: 200).
   ///
   /// mpv type: Integer.
-  static const inputArDelay = MpvOption<int>('input-ar-delay', MpvOptionType.integer);
+  static const inputArDelay = MpvOption<int>(
+    'input-ar-delay',
+    MpvOptionType.integer,
+  );
+
   /// Number of key presses to generate per second on autorepeat (default: 40).
   ///
   /// mpv type: Integer.
-  static const inputArRate = MpvOption<int>('input-ar-rate', MpvOptionType.integer);
+  static const inputArRate = MpvOption<int>(
+    'input-ar-rate',
+    MpvOptionType.integer,
+  );
+
   /// Enable loading of built-in key bindings during start-up (default: yes).
   ///
   /// mpv type: Flag.
-  static const inputBuiltinBindings = MpvOption<bool>('input-builtin-bindings', MpvOptionType.flag);
+  static const inputBuiltinBindings = MpvOption<bool>(
+    'input-builtin-bindings',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const inputBuiltinDragAndDrop = MpvOption<bool>('input-builtin-drag-and-drop', MpvOptionType.flag);
+  static const inputBuiltinDragAndDrop = MpvOption<bool>(
+    'input-builtin-drag-and-drop',
+    MpvOptionType.flag,
+  );
+
   /// Enable the built-in window-dragging behavior (default: yes).
   ///
   /// mpv type: Flag.
-  static const inputBuiltinDragging = MpvOption<bool>('input-builtin-dragging', MpvOptionType.flag);
+  static const inputBuiltinDragging = MpvOption<bool>(
+    'input-builtin-dragging',
+    MpvOptionType.flag,
+  );
+
   /// Prints all commands that can be bound to keys.
   ///
   /// mpv type: Print.
-  static const inputCmdlist = MpvOption<String>('input-cmdlist', MpvOptionType.string);
+  static const inputCmdlist = MpvOption<String>(
+    'input-cmdlist',
+    MpvOptionType.string,
+  );
+
   /// Define a list of commands for mpv to run.
   ///
   /// mpv type: String list.
-  static const inputCommands = MpvOption<String>('input-commands', MpvOptionType.string);
+  static const inputCommands = MpvOption<String>(
+    'input-commands',
+    MpvOptionType.string,
+  );
+
   /// Specify input configuration file other than the default location in the mpv configuration directory (usually ~/.config/mpv/input.conf).
   ///
   /// mpv type: String.
-  static const inputConf = MpvOption<String>('input-conf', MpvOptionType.string);
+  static const inputConf = MpvOption<String>(
+    'input-conf',
+    MpvOptionType.string,
+  );
+
   /// Permit mpv to receive pointer events reported by the video output driver.
   ///
   /// mpv type: Flag.
-  static const inputCursor = MpvOption<bool>('input-cursor', MpvOptionType.flag);
+  static const inputCursor = MpvOption<bool>(
+    'input-cursor',
+    MpvOptionType.flag,
+  );
+
   /// Tell the backend windowing system to allow pointer events to passthrough the mpv window.
   ///
   /// mpv type: Flag.
-  static const inputCursorPassthrough = MpvOption<bool>('input-cursor-passthrough', MpvOptionType.flag);
+  static const inputCursorPassthrough = MpvOption<bool>(
+    'input-cursor-passthrough',
+    MpvOptionType.flag,
+  );
+
   /// Enable default-level ("weak") key bindings (default: yes).
   ///
   /// mpv type: Flag.
-  static const inputDefaultBindings = MpvOption<bool>('input-default-bindings', MpvOptionType.flag);
+  static const inputDefaultBindings = MpvOption<bool>(
+    'input-default-bindings',
+    MpvOptionType.flag,
+  );
+
   /// Time in milliseconds to recognize two consecutive button presses as a double-click (default: 300).
   ///
   /// mpv type: Integer.
-  static const inputDoubleclickTime = MpvOption<int>('input-doubleclick-time', MpvOptionType.integer, min: 0, max: 1000);
+  static const inputDoubleclickTime = MpvOption<int>(
+    'input-doubleclick-time',
+    MpvOptionType.integer,
+    min: 0,
+    max: 1000,
+  );
+
   /// Begin the built-in window dragging when the mouse moves outside a deadzone of N pixels while the mouse button is being held down (default: 3).
   ///
   /// mpv type: Integer.
-  static const inputDraggingDeadzone = MpvOption<int>('input-dragging-deadzone', MpvOptionType.integer);
+  static const inputDraggingDeadzone = MpvOption<int>(
+    'input-dragging-deadzone',
+    MpvOptionType.integer,
+  );
+
   /// Enable/disable SDL2 Gamepad support.
   ///
   /// mpv type: Flag.
-  static const inputGamepad = MpvOption<bool>('input-gamepad', MpvOptionType.flag);
+  static const inputGamepad = MpvOption<bool>(
+    'input-gamepad',
+    MpvOptionType.flag,
+  );
+
   /// Enable keyboard input via an active input method (IME) connected to the VO.
   ///
   /// mpv type: Flag.
   static const inputIme = MpvOption<bool>('input-ime', MpvOptionType.flag);
+
   /// Connect a single IPC client to the given FD.
   ///
   /// mpv type: String.
-  static const inputIpcClient = MpvOption<String>('input-ipc-client', MpvOptionType.string);
+  static const inputIpcClient = MpvOption<String>(
+    'input-ipc-client',
+    MpvOptionType.string,
+  );
+
   /// Enable the IPC support and create the listening socket at the given path.
   ///
   /// mpv type: String.
-  static const inputIpcServer = MpvOption<String>('input-ipc-server', MpvOptionType.string);
+  static const inputIpcServer = MpvOption<String>(
+    'input-ipc-server',
+    MpvOptionType.string,
+  );
+
   /// Specify the size of the FIFO that buffers key events (default: 7).
   ///
   /// mpv type: Integer.
-  static const inputKeyFifoSize = MpvOption<int>('input-key-fifo-size', MpvOptionType.integer, min: 2, max: 65000);
+  static const inputKeyFifoSize = MpvOption<int>(
+    'input-key-fifo-size',
+    MpvOptionType.integer,
+    min: 2,
+    max: 65000,
+  );
+
   /// Prints all keys that can be bound to commands.
   ///
   /// mpv type: Print.
-  static const inputKeylist = MpvOption<String>('input-keylist', MpvOptionType.string);
+  static const inputKeylist = MpvOption<String>(
+    'input-keylist',
+    MpvOptionType.string,
+  );
+
   /// On systems where mpv can choose between receiving media keys or letting the system handle them - this option controls whether mpv should receive them.
   ///
   /// mpv type: Flag.
-  static const inputMediaKeys = MpvOption<bool>('input-media-keys', MpvOptionType.flag);
+  static const inputMediaKeys = MpvOption<bool>(
+    'input-media-keys',
+    MpvOptionType.flag,
+  );
+
   /// Preprocess WHEEL_* events so that while scrolling on the horizontal or vertical direction, the events aren't generated for another direction even when the two directions are scrolled together (defa...
   ///
   /// mpv type: Flag.
-  static const inputPreprocessWheel = MpvOption<bool>('input-preprocess-wheel', MpvOptionType.flag);
+  static const inputPreprocessWheel = MpvOption<bool>(
+    'input-preprocess-wheel',
+    MpvOptionType.flag,
+  );
+
   /// (macOS and Windows only) Use the right Alt key as Alt Gr to produce special characters.
   ///
   /// mpv type: Flag.
-  static const inputRightAltGr = MpvOption<bool>('input-right-alt-gr', MpvOptionType.flag);
+  static const inputRightAltGr = MpvOption<bool>(
+    'input-right-alt-gr',
+    MpvOptionType.flag,
+  );
+
   /// Emulate mouse move and button presses for tablet events (default: yes).
   ///
   /// mpv type: Flag.
-  static const inputTabletEmulateMouse = MpvOption<bool>('input-tablet-emulate-mouse', MpvOptionType.flag);
+  static const inputTabletEmulateMouse = MpvOption<bool>(
+    'input-tablet-emulate-mouse',
+    MpvOptionType.flag,
+  );
+
   /// --input-terminal=no prevents the player from reading key events from standard input.
   ///
   /// mpv type: Flag.
-  static const inputTerminal = MpvOption<bool>('input-terminal', MpvOptionType.flag);
+  static const inputTerminal = MpvOption<bool>(
+    'input-terminal',
+    MpvOptionType.flag,
+  );
+
   /// Input test mode.
   ///
   /// mpv type: Flag.
   static const inputTest = MpvOption<bool>('input-test', MpvOptionType.flag);
+
   /// When multi-touch support is enabled (either required by the platform, or enabled by --native-touch), emulate mouse move and button presses for the touch events (default: yes).
   ///
   /// mpv type: Flag.
-  static const inputTouchEmulateMouse = MpvOption<bool>('input-touch-emulate-mouse', MpvOptionType.flag);
+  static const inputTouchEmulateMouse = MpvOption<bool>(
+    'input-touch-emulate-mouse',
+    MpvOptionType.flag,
+  );
+
   /// Disable all keyboard input on for VOs which can't participate in proper keyboard input dispatching.
   ///
   /// mpv type: Flag.
-  static const inputVoKeyboard = MpvOption<bool>('input-vo-keyboard', MpvOptionType.flag);
+  static const inputVoKeyboard = MpvOption<bool>(
+    'input-vo-keyboard',
+    MpvOptionType.flag,
+  );
+
   /// Reduce stuttering caused by mismatches in the video fps and display refresh rate (also known as judder).
   ///
   /// mpv type: Flag.
-  static const interpolation = MpvOption<bool>('interpolation', MpvOptionType.flag);
+  static const interpolation = MpvOption<bool>(
+    'interpolation',
+    MpvOptionType.flag,
+  );
+
   /// Preserve the previous frames' interpolated results even when renderer parameters are changed - with the exception of options related to cropping and video placement, which always invalidate the cache.
   ///
   /// mpv type: Flag.
-  static const interpolationPreserve = MpvOption<bool>('interpolation-preserve', MpvOptionType.flag);
+  static const interpolationPreserve = MpvOption<bool>(
+    'interpolation-preserve',
+    MpvOptionType.flag,
+  );
+
   /// Threshold below which frame ratio interpolation gets disabled (default: 0.01).
   ///
   /// mpv type: Float.
-  static const interpolationThreshold = MpvOption<double>('interpolation-threshold', MpvOptionType.real);
+  static const interpolationThreshold = MpvOption<double>(
+    'interpolation-threshold',
+    MpvOptionType.real,
+  );
+
   /// If set, allows inverse tone mapping (expanding dynamic range).
   ///
   /// mpv type: Flag.
-  static const inverseToneMapping = MpvOption<bool>('inverse-tone-mapping', MpvOptionType.flag);
+  static const inverseToneMapping = MpvOption<bool>(
+    'inverse-tone-mapping',
+    MpvOptionType.flag,
+  );
+
   /// Enable memory reporting for javascript scripts in the stats overlay.
   ///
   /// mpv type: Flag.
-  static const jsMemoryReport = MpvOption<bool>('js-memory-report', MpvOptionType.flag);
+  static const jsMemoryReport = MpvOption<bool>(
+    'js-memory-report',
+    MpvOptionType.flag,
+  );
+
   /// Do not terminate when playing or seeking beyond the end of the file, and there is no next file to be played (and --loop is not used).
   ///
   /// mpv type: Choice; choices: no, yes, always.
-  static const keepOpen = MpvOption<String>('keep-open', MpvOptionType.choice, choices: ['no', 'yes', 'always']);
+  static const keepOpen = MpvOption<String>(
+    'keep-open',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'always'],
+  );
+
   /// If set to no, instead of pausing when --keep-open is active, just stop at end of file and continue playing forward when you seek backwards until end where it stops again.
   ///
   /// mpv type: Flag.
-  static const keepOpenPause = MpvOption<bool>('keep-open-pause', MpvOptionType.flag);
+  static const keepOpenPause = MpvOption<bool>(
+    'keep-open-pause',
+    MpvOptionType.flag,
+  );
+
   /// --keepaspect=no will always stretch the video to window size, and will disable the window manager hints that force the window aspect ratio.
   ///
   /// mpv type: Flag.
   static const keepaspect = MpvOption<bool>('keepaspect', MpvOptionType.flag);
+
   /// --keepaspect-window=yes (the default) will lock the window size to the video aspect.
   ///
   /// mpv type: Flag.
-  static const keepaspectWindow = MpvOption<bool>('keepaspect-window', MpvOptionType.flag);
+  static const keepaspectWindow = MpvOption<bool>(
+    'keepaspect-window',
+    MpvOptionType.flag,
+  );
+
   /// Set a "complex" libavfilter filter, which means a single filter graph can take input from multiple source audio and video tracks.
   ///
   /// mpv type: String.
-  static const lavfiComplex = MpvOption<String>('lavfi-complex', MpvOptionType.string);
+  static const lavfiComplex = MpvOption<String>(
+    'lavfi-complex',
+    MpvOptionType.string,
+  );
+
   /// Stop after a given time relative to the start time.
   ///
   /// mpv type: Relative time or percent position.
   static const length = MpvOption<String>('length', MpvOptionType.string);
+
   /// Passes extra raw option to the libplacebo rendering backend (used by --vo=gpu-next).
   ///
   /// mpv type: Key/value list.
-  static const libplaceboOpts = MpvOption<String>('libplacebo-opts', MpvOptionType.string);
+  static const libplaceboOpts = MpvOption<String>(
+    'libplacebo-opts',
+    MpvOptionType.string,
+  );
+
   /// Scale in linear light when downscaling.
   ///
   /// mpv type: Flag.
-  static const linearDownscaling = MpvOption<bool>('linear-downscaling', MpvOptionType.flag);
+  static const linearDownscaling = MpvOption<bool>(
+    'linear-downscaling',
+    MpvOptionType.flag,
+  );
+
   /// Scale in linear light when upscaling.
   ///
   /// mpv type: Flag.
-  static const linearUpscaling = MpvOption<bool>('linear-upscaling', MpvOptionType.flag);
+  static const linearUpscaling = MpvOption<bool>(
+    'linear-upscaling',
+    MpvOptionType.flag,
+  );
+
   /// Prints all available options.
   ///
   /// mpv type: Flag.
-  static const listOptions = MpvOption<bool>('list-options', MpvOptionType.flag);
+  static const listOptions = MpvOption<bool>(
+    'list-options',
+    MpvOptionType.flag,
+  );
+
   /// Print a list of the available properties.
   ///
   /// mpv type: Flag.
-  static const listProperties = MpvOption<bool>('list-properties', MpvOptionType.flag);
+  static const listProperties = MpvOption<bool>(
+    'list-properties',
+    MpvOptionType.flag,
+  );
+
   /// Print a list of the supported protocols.
   ///
   /// mpv type: Print.
-  static const listProtocols = MpvOption<String>('list-protocols', MpvOptionType.string);
+  static const listProtocols = MpvOption<String>(
+    'list-protocols',
+    MpvOptionType.string,
+  );
+
   /// Enable the builtin script that does auto profiles (default: auto).
   ///
   /// mpv type: Choice; choices: no, yes, auto.
-  static const loadAutoProfiles = MpvOption<String>('load-auto-profiles', MpvOptionType.choice, choices: ['no', 'yes', 'auto']);
+  static const loadAutoProfiles = MpvOption<String>(
+    'load-auto-profiles',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'auto'],
+  );
+
   /// Enable the built-in script to enter commands in the console (default: yes).
   ///
   /// mpv type: Flag.
-  static const loadCommands = MpvOption<bool>('load-commands', MpvOptionType.flag);
+  static const loadCommands = MpvOption<bool>(
+    'load-commands',
+    MpvOptionType.flag,
+  );
+
   /// Enable the built-in script to handle textual input (default: yes).
   ///
   /// mpv type: Flag.
-  static const loadConsole = MpvOption<bool>('load-console', MpvOptionType.flag);
+  static const loadConsole = MpvOption<bool>(
+    'load-console',
+    MpvOptionType.flag,
+  );
+
   /// Enable the builtin script that implements a context menu.
   ///
   /// mpv type: Flag.
-  static const loadContextMenu = MpvOption<bool>('load-context-menu', MpvOptionType.flag);
+  static const loadContextMenu = MpvOption<bool>(
+    'load-context-menu',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const loadOsdConsole = MpvOption<bool>('load-osd-console', MpvOptionType.flag);
+  static const loadOsdConsole = MpvOption<bool>(
+    'load-osd-console',
+    MpvOptionType.flag,
+  );
+
   /// Enable the builtin script that provides various keybindings to pan videos and images (default: yes).
   ///
   /// mpv type: Flag.
-  static const loadPositioning = MpvOption<bool>('load-positioning', MpvOptionType.flag);
+  static const loadPositioning = MpvOption<bool>(
+    'load-positioning',
+    MpvOptionType.flag,
+  );
+
   /// If set to no, don't auto-load scripts from the scripts configuration subdirectory (usually ~/.config/mpv/scripts/).
   ///
   /// mpv type: Flag.
-  static const loadScripts = MpvOption<bool>('load-scripts', MpvOptionType.flag);
+  static const loadScripts = MpvOption<bool>(
+    'load-scripts',
+    MpvOptionType.flag,
+  );
+
   /// Enable the builtin script that lets you select from lists of items (default: yes).
   ///
   /// mpv type: Flag.
   static const loadSelect = MpvOption<bool>('load-select', MpvOptionType.flag);
+
   /// Enable the builtin script that shows useful playback information on a key binding (default: yes).
   ///
   /// mpv type: Flag.
-  static const loadStatsOverlay = MpvOption<bool>('load-stats-overlay', MpvOptionType.flag);
+  static const loadStatsOverlay = MpvOption<bool>(
+    'load-stats-overlay',
+    MpvOptionType.flag,
+  );
+
   /// Load URLs from playlists which are considered unsafe (default: no).
   ///
   /// mpv type: Flag.
-  static const loadUnsafePlaylists = MpvOption<bool>('load-unsafe-playlists', MpvOptionType.flag);
+  static const loadUnsafePlaylists = MpvOption<bool>(
+    'load-unsafe-playlists',
+    MpvOptionType.flag,
+  );
+
   /// Opens the given path for writing, and print log messages to it.
   ///
   /// mpv type: String.
   static const logFile = MpvOption<String>('log-file', MpvOptionType.string);
+
   ///
   /// mpv type: Choice; choices: no, inf, yes.
-  static const loop = MpvOption<String>('loop', MpvOptionType.choice, choices: ['no', 'inf', 'yes'], min: 0, max: 10000);
+  static const loop = MpvOption<String>(
+    'loop',
+    MpvOptionType.choice,
+    choices: ['no', 'inf', 'yes'],
+    min: 0,
+    max: 10000,
+  );
+
   /// Loop a single file N times.
   ///
   /// mpv type: Choice; choices: no, inf, yes.
-  static const loopFile = MpvOption<String>('loop-file', MpvOptionType.choice, choices: ['no', 'inf', 'yes'], min: 0, max: 10000);
+  static const loopFile = MpvOption<String>(
+    'loop-file',
+    MpvOptionType.choice,
+    choices: ['no', 'inf', 'yes'],
+    min: 0,
+    max: 10000,
+  );
+
   /// Loops playback N times.
   ///
   /// mpv type: Choice; choices: no, inf, yes, force.
-  static const loopPlaylist = MpvOption<String>('loop-playlist', MpvOptionType.choice, choices: ['no', 'inf', 'yes', 'force'], min: 1, max: 10000);
+  static const loopPlaylist = MpvOption<String>(
+    'loop-playlist',
+    MpvOptionType.choice,
+    choices: ['no', 'inf', 'yes', 'force'],
+    min: 1,
+    max: 10000,
+  );
+
   /// Specifies a custom LUT (in Adobe .cube format) to apply to the colors as part of color conversion.
   ///
   /// mpv type: String.
   static const lut = MpvOption<String>('lut', MpvOptionType.string);
+
   /// Controls the interpretation of color values fed to and from the LUT specified as --lut.
   ///
   /// mpv type: Choice; choices: auto, native, normalized, conversion.
-  static const lutType = MpvOption<String>('lut-type', MpvOptionType.choice, choices: ['auto', 'native', 'normalized', 'conversion']);
+  static const lutType = MpvOption<String>(
+    'lut-type',
+    MpvOptionType.choice,
+    choices: ['auto', 'native', 'normalized', 'conversion'],
+  );
+
   /// Maximum A-V sync correction per frame (in seconds)
   ///
   /// mpv type: Float.
-  static const mc = MpvOption<double>('mc', MpvOptionType.real, min: 0, max: 100);
+  static const mc = MpvOption<double>(
+    'mc',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// (Windows only) Enable integration of media control interface SystemMediaTransportControls.
   ///
   /// mpv type: Flag.
-  static const mediaControls = MpvOption<bool>('media-controls', MpvOptionType.flag);
+  static const mediaControls = MpvOption<bool>(
+    'media-controls',
+    MpvOptionType.flag,
+  );
+
   /// Pretend that all files passed to mpv are concatenated into a single, big file.
   ///
   /// mpv type: Flag.
   static const mergeFiles = MpvOption<bool>('merge-files', MpvOptionType.flag);
+
   /// Codepage for various input metadata (default: auto).
   ///
   /// mpv type: String.
-  static const metadataCodepage = MpvOption<String>('metadata-codepage', MpvOptionType.string);
+  static const metadataCodepage = MpvOption<String>(
+    'metadata-codepage',
+    MpvOptionType.string,
+  );
+
   /// Framerate used when decoding from multiple PNG or JPEG files with mf:// (default: 1).
   ///
   /// mpv type: Double.
   static const mfFps = MpvOption<double>('mf-fps', MpvOptionType.real);
+
   /// Input file type for mf:// (available: jpeg, png, tga, sgi).
   ///
   /// mpv type: String.
   static const mfType = MpvOption<String>('mf-type', MpvOptionType.string);
+
   /// Set the aspect ratio of your monitor or TV screen.
   ///
   /// mpv type: Float.
-  static const monitoraspect = MpvOption<double>('monitoraspect', MpvOptionType.real, min: 0, max: 9);
+  static const monitoraspect = MpvOption<double>(
+    'monitoraspect',
+    MpvOptionType.real,
+    min: 0,
+    max: 9,
+  );
+
   /// Set the aspect of a single pixel of your monitor or TV screen (default: 1).
   ///
   /// mpv type: Float.
-  static const monitorpixelaspect = MpvOption<double>('monitorpixelaspect', MpvOptionType.real, min: 0.03125, max: 32);
+  static const monitorpixelaspect = MpvOption<double>(
+    'monitorpixelaspect',
+    MpvOptionType.real,
+    min: 0.03125,
+    max: 32,
+  );
+
   /// Enable colorful console output on terminals (default: yes).
   ///
   /// mpv type: Flag.
   static const msgColor = MpvOption<bool>('msg-color', MpvOptionType.flag);
+
   /// Control verbosity directly for each module.
   ///
   /// mpv type: Output verbosity levels.
   static const msgLevel = MpvOption<String>('msg-level', MpvOptionType.string);
+
   /// Prepend module name to each console message.
   ///
   /// mpv type: Flag.
   static const msgModule = MpvOption<bool>('msg-module', MpvOptionType.flag);
+
   /// Prepend timing information to each console message.
   ///
   /// mpv type: Flag.
   static const msgTime = MpvOption<bool>('msg-time', MpvOptionType.flag);
+
   /// Set startup audio mute status (default: no).
   ///
   /// mpv type: Flag.
   static const mute = MpvOption<bool>('mute', MpvOptionType.flag);
+
   /// (macOS only) Uses the native fullscreen mechanism of the OS (default: yes).
   ///
   /// mpv type: Flag.
   static const nativeFs = MpvOption<bool>('native-fs', MpvOptionType.flag);
+
   /// Use system settings for keyrepeat delay and rate, instead of --input-ar-delay and --input-ar-rate (default: no).
   ///
   /// mpv type: Flag.
-  static const nativeKeyrepeat = MpvOption<bool>('native-keyrepeat', MpvOptionType.flag);
+  static const nativeKeyrepeat = MpvOption<bool>(
+    'native-keyrepeat',
+    MpvOptionType.flag,
+  );
+
   /// (Windows only) For platforms which send emulated mouse inputs for touch-unaware clients, such as Windows, use system native touch events, instead of receiving them as emulated mouse events (default...
   ///
   /// mpv type: Flag.
-  static const nativeTouch = MpvOption<bool>('native-touch', MpvOptionType.flag);
+  static const nativeTouch = MpvOption<bool>(
+    'native-touch',
+    MpvOptionType.flag,
+  );
+
   /// Specify the network timeout in seconds (default: 60 seconds).
   ///
   /// mpv type: Double.
-  static const networkTimeout = MpvOption<double>('network-timeout', MpvOptionType.real, min: 0);
+  static const networkTimeout = MpvOption<double>(
+    'network-timeout',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   ///
   /// mpv type: String.
   static const o = MpvOption<String>('o', MpvOptionType.string);
+
   ///
   /// mpv type: String.
   static const oac = MpvOption<String>('oac', MpvOptionType.string);
+
   ///
   /// mpv type: Key/value list.
   static const oacopts = MpvOption<String>('oacopts', MpvOptionType.string);
+
   ///
   /// mpv type: Flag.
-  static const ocopyMetadata = MpvOption<bool>('ocopy-metadata', MpvOptionType.flag);
+  static const ocopyMetadata = MpvOption<bool>(
+    'ocopy-metadata',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: String.
   static const of = MpvOption<String>('of', MpvOptionType.string);
+
   ///
   /// mpv type: Key/value list.
   static const ofopts = MpvOption<String>('ofopts', MpvOptionType.string);
+
   /// (X11 and macOS only) Show the video window on all virtual desktops.
   ///
   /// mpv type: Flag.
-  static const onAllWorkspaces = MpvOption<bool>('on-all-workspaces', MpvOptionType.flag);
+  static const onAllWorkspaces = MpvOption<bool>(
+    'on-all-workspaces',
+    MpvOptionType.flag,
+  );
+
   /// Makes the player window stay on top of other windows.
   ///
   /// mpv type: Flag.
   static const ontop = MpvOption<bool>('ontop', MpvOptionType.flag);
+
   /// (macOS only) Sets the level of an on-top window (default: window).
   ///
   /// mpv type: Choice; choices: window, system, desktop.
-  static const ontopLevel = MpvOption<String>('ontop-level', MpvOptionType.choice, choices: ['window', 'system', 'desktop'], min: 0, max: 2147483647);
+  static const ontopLevel = MpvOption<String>(
+    'ontop-level',
+    MpvOptionType.choice,
+    choices: ['window', 'system', 'desktop'],
+    min: 0,
+    max: 2147483647,
+  );
+
   ///
   /// mpv type: Flag.
-  static const openalDirectChannels = MpvOption<bool>('openal-direct-channels', MpvOptionType.flag);
+  static const openalDirectChannels = MpvOption<bool>(
+    'openal-direct-channels',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const openalNumBuffers = MpvOption<int>('openal-num-buffers', MpvOptionType.integer, min: 2, max: 128);
+  static const openalNumBuffers = MpvOption<int>(
+    'openal-num-buffers',
+    MpvOptionType.integer,
+    min: 2,
+    max: 128,
+  );
+
   ///
   /// mpv type: Integer.
-  static const openalNumSamples = MpvOption<int>('openal-num-samples', MpvOptionType.integer, min: 256, max: 32768);
+  static const openalNumSamples = MpvOption<int>(
+    'openal-num-samples',
+    MpvOptionType.integer,
+    min: 256,
+    max: 32768,
+  );
+
   ///
   /// mpv type: Integer.
-  static const openglCheckPatternA = MpvOption<int>('opengl-check-pattern-a', MpvOptionType.integer);
+  static const openglCheckPatternA = MpvOption<int>(
+    'opengl-check-pattern-a',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const openglCheckPatternB = MpvOption<int>('opengl-check-pattern-b', MpvOptionType.integer);
+  static const openglCheckPatternB = MpvOption<int>(
+    'opengl-check-pattern-b',
+    MpvOptionType.integer,
+  );
+
   /// (Windows only) Calls DwmFlush after swapping buffers on Windows (default: auto).
   ///
   /// mpv type: Choice; choices: no, auto, windowed, yes.
-  static const openglDwmflush = MpvOption<String>('opengl-dwmflush', MpvOptionType.choice, choices: ['no', 'auto', 'windowed', 'yes']);
+  static const openglDwmflush = MpvOption<String>(
+    'opengl-dwmflush',
+    MpvOptionType.choice,
+    choices: ['no', 'auto', 'windowed', 'yes'],
+  );
+
   /// Call glFlush() after rendering a frame and before attempting to display it (default: auto).
   ///
   /// mpv type: Choice; choices: no, yes, auto.
-  static const openglEarlyFlush = MpvOption<String>('opengl-early-flush', MpvOptionType.choice, choices: ['no', 'yes', 'auto']);
+  static const openglEarlyFlush = MpvOption<String>(
+    'opengl-early-flush',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'auto'],
+  );
+
   /// Controls which type of OpenGL context will be accepted:
   ///
   /// mpv type: Choice; choices: auto, yes, no.
-  static const openglEs = MpvOption<String>('opengl-es', MpvOptionType.choice, choices: ['auto', 'yes', 'no']);
+  static const openglEs = MpvOption<String>(
+    'opengl-es',
+    MpvOptionType.choice,
+    choices: ['auto', 'yes', 'no'],
+  );
+
   /// Call glFinish() before swapping buffers (default: disabled).
   ///
   /// mpv type: Flag.
-  static const openglGlfinish = MpvOption<bool>('opengl-glfinish', MpvOptionType.flag);
+  static const openglGlfinish = MpvOption<bool>(
+    'opengl-glfinish',
+    MpvOptionType.flag,
+  );
+
   /// Enable use of PBOs.
   ///
   /// mpv type: Flag.
   static const openglPbo = MpvOption<bool>('opengl-pbo', MpvOptionType.flag);
+
   /// Force use of rectangle textures (default: no).
   ///
   /// mpv type: Flag.
-  static const openglRectangleTextures = MpvOption<bool>('opengl-rectangle-textures', MpvOptionType.flag);
+  static const openglRectangleTextures = MpvOption<bool>(
+    'opengl-rectangle-textures',
+    MpvOptionType.flag,
+  );
+
   /// Interval in displayed frames between two buffer swaps.
   ///
   /// mpv type: Integer.
-  static const openglSwapinterval = MpvOption<int>('opengl-swapinterval', MpvOptionType.integer);
+  static const openglSwapinterval = MpvOption<int>(
+    'opengl-swapinterval',
+    MpvOptionType.integer,
+  );
+
   /// Call glXWaitVideoSyncSGI after each buffer swap (default: disabled).
   ///
   /// mpv type: Flag.
-  static const openglWaitvsync = MpvOption<bool>('opengl-waitvsync', MpvOptionType.flag);
+  static const openglWaitvsync = MpvOption<bool>(
+    'opengl-waitvsync',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
   static const orawts = MpvOption<bool>('orawts', MpvOptionType.flag);
+
   /// Enable support for Matroska ordered chapters.
   ///
   /// mpv type: Flag.
-  static const orderedChapters = MpvOption<bool>('ordered-chapters', MpvOptionType.flag);
+  static const orderedChapters = MpvOption<bool>(
+    'ordered-chapters',
+    MpvOptionType.flag,
+  );
+
   /// Loads the given file as playlist, and tries to use the files contained in it as reference files when opening a Matroska file that uses ordered chapters.
   ///
   /// mpv type: String.
-  static const orderedChaptersFiles = MpvOption<String>('ordered-chapters-files', MpvOptionType.string);
+  static const orderedChaptersFiles = MpvOption<String>(
+    'ordered-chapters-files',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String list.
-  static const oremoveMetadata = MpvOption<String>('oremove-metadata', MpvOptionType.string);
+  static const oremoveMetadata = MpvOption<String>(
+    'oremove-metadata',
+    MpvOptionType.string,
+  );
+
   /// Whether to load the on-screen-controller (default: yes).
   ///
   /// mpv type: Flag.
   static const osc = MpvOption<bool>('osc', MpvOptionType.flag);
+
   /// Control to which corner of the screen OSD should be aligned to (default: left).
   ///
   /// mpv type: Choice; choices: left, center, right.
-  static const osdAlignX = MpvOption<String>('osd-align-x', MpvOptionType.choice, choices: ['left', 'center', 'right']);
+  static const osdAlignX = MpvOption<String>(
+    'osd-align-x',
+    MpvOptionType.choice,
+    choices: ['left', 'center', 'right'],
+  );
+
   /// Vertical position (default: top).
   ///
   /// mpv type: Choice; choices: top, center, bottom.
-  static const osdAlignY = MpvOption<String>('osd-align-y', MpvOptionType.choice, choices: ['top', 'center', 'bottom']);
+  static const osdAlignY = MpvOption<String>(
+    'osd-align-y',
+    MpvOptionType.choice,
+    choices: ['top', 'center', 'bottom'],
+  );
+
   /// See --sub-color.
   ///
   /// mpv type: Color.
-  static const osdBackColor = MpvOption<String>('osd-back-color', MpvOptionType.string);
+  static const osdBackColor = MpvOption<String>(
+    'osd-back-color',
+    MpvOptionType.string,
+  );
+
   /// Enable display of the OSD bar (default: yes).
   ///
   /// mpv type: Flag.
   static const osdBar = MpvOption<bool>('osd-bar', MpvOptionType.flag);
+
   /// Position of the OSD bar.
   ///
   /// mpv type: Float.
-  static const osdBarAlignX = MpvOption<double>('osd-bar-align-x', MpvOptionType.real, min: -1, max: 1);
+  static const osdBarAlignX = MpvOption<double>(
+    'osd-bar-align-x',
+    MpvOptionType.real,
+    min: -1,
+    max: 1,
+  );
+
   /// Position of the OSD bar.
   ///
   /// mpv type: Float.
-  static const osdBarAlignY = MpvOption<double>('osd-bar-align-y', MpvOptionType.real, min: -1, max: 1);
+  static const osdBarAlignY = MpvOption<double>(
+    'osd-bar-align-y',
+    MpvOptionType.real,
+    min: -1,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const osdBarBorderSize = MpvOption<double>('osd-bar-border-size', MpvOptionType.real, min: 0, max: 1000);
+  static const osdBarBorderSize = MpvOption<double>(
+    'osd-bar-border-size',
+    MpvOptionType.real,
+    min: 0,
+    max: 1000,
+  );
+
   /// Height of the OSD bar, in percentage of the screen height (default: 3.125).
   ///
   /// mpv type: Float.
-  static const osdBarH = MpvOption<double>('osd-bar-h', MpvOptionType.real, min: 0.1, max: 50);
+  static const osdBarH = MpvOption<double>(
+    'osd-bar-h',
+    MpvOptionType.real,
+    min: 0.1,
+    max: 50,
+  );
+
   /// Minimum OSD bar marker size.
   ///
   /// mpv type: Float.
-  static const osdBarMarkerMinSize = MpvOption<double>('osd-bar-marker-min-size', MpvOptionType.real, min: 0, max: 1000);
+  static const osdBarMarkerMinSize = MpvOption<double>(
+    'osd-bar-marker-min-size',
+    MpvOptionType.real,
+    min: 0,
+    max: 1000,
+  );
+
   /// Factor for the OSD bar marker size relative to the OSD bar outline size.
   ///
   /// mpv type: Float.
-  static const osdBarMarkerScale = MpvOption<double>('osd-bar-marker-scale', MpvOptionType.real, min: 0, max: 100);
+  static const osdBarMarkerScale = MpvOption<double>(
+    'osd-bar-marker-scale',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Set the OSD bar marker style.
   ///
   /// mpv type: Choice; choices: none, triangle, line.
-  static const osdBarMarkerStyle = MpvOption<String>('osd-bar-marker-style', MpvOptionType.choice, choices: ['none', 'triangle', 'line']);
+  static const osdBarMarkerStyle = MpvOption<String>(
+    'osd-bar-marker-style',
+    MpvOptionType.choice,
+    choices: ['none', 'triangle', 'line'],
+  );
+
   /// Size of the outline of the OSD bar in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const osdBarOutlineSize = MpvOption<double>('osd-bar-outline-size', MpvOptionType.real, min: 0, max: 1000);
+  static const osdBarOutlineSize = MpvOption<double>(
+    'osd-bar-outline-size',
+    MpvOptionType.real,
+    min: 0,
+    max: 1000,
+  );
+
   /// Width of the OSD bar, in percentage of the screen width (default: 75).
   ///
   /// mpv type: Float.
-  static const osdBarW = MpvOption<double>('osd-bar-w', MpvOptionType.real, min: 1, max: 100);
+  static const osdBarW = MpvOption<double>(
+    'osd-bar-w',
+    MpvOptionType.real,
+    min: 1,
+    max: 100,
+  );
+
   /// Set the maximum bitmap cache size in libass cache for the OSD.
   ///
   /// mpv type: Integer.
-  static const osdBitmapMaxSize = MpvOption<int>('osd-bitmap-max-size', MpvOptionType.integer);
+  static const osdBitmapMaxSize = MpvOption<int>(
+    'osd-bitmap-max-size',
+    MpvOptionType.integer,
+  );
+
   /// Gaussian blur factor applied to the OSD font border.
   ///
   /// mpv type: Float.
-  static const osdBlur = MpvOption<double>('osd-blur', MpvOptionType.real, min: 0, max: 20);
+  static const osdBlur = MpvOption<double>(
+    'osd-blur',
+    MpvOptionType.real,
+    min: 0,
+    max: 20,
+  );
+
   /// Format text on bold.
   ///
   /// mpv type: Flag.
   static const osdBold = MpvOption<bool>('osd-bold', MpvOptionType.flag);
+
   ///
   /// mpv type: Color.
-  static const osdBorderColor = MpvOption<String>('osd-border-color', MpvOptionType.string);
+  static const osdBorderColor = MpvOption<String>(
+    'osd-border-color',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Float.
-  static const osdBorderSize = MpvOption<double>('osd-border-size', MpvOptionType.real);
+  static const osdBorderSize = MpvOption<double>(
+    'osd-border-size',
+    MpvOptionType.real,
+  );
+
   /// See --sub-border-style.
   ///
   /// mpv type: Choice; choices: outline-and-shadow, opaque-box, background-box.
-  static const osdBorderStyle = MpvOption<String>('osd-border-style', MpvOptionType.choice, choices: ['outline-and-shadow', 'opaque-box', 'background-box']);
+  static const osdBorderStyle = MpvOption<String>(
+    'osd-border-style',
+    MpvOptionType.choice,
+    choices: ['outline-and-shadow', 'opaque-box', 'background-box'],
+  );
+
   /// Specify the color used for OSD.
   ///
   /// mpv type: Color.
   static const osdColor = MpvOption<String>('osd-color', MpvOptionType.string);
+
   /// Set the duration of the OSD messages in ms (default: 1000).
   ///
   /// mpv type: Integer.
-  static const osdDuration = MpvOption<int>('osd-duration', MpvOptionType.integer, min: 0, max: 3600000);
+  static const osdDuration = MpvOption<int>(
+    'osd-duration',
+    MpvOptionType.integer,
+    min: 0,
+    max: 3600000,
+  );
+
   /// Specify font to use for OSD.
   ///
   /// mpv type: String.
   static const osdFont = MpvOption<String>('osd-font', MpvOptionType.string);
+
   /// See --sub-font-provider for details and accepted values.
   ///
   /// mpv type: Choice; choices: auto, none, fontconfig.
-  static const osdFontProvider = MpvOption<String>('osd-font-provider', MpvOptionType.choice, choices: ['auto', 'none', 'fontconfig']);
+  static const osdFontProvider = MpvOption<String>(
+    'osd-font-provider',
+    MpvOptionType.choice,
+    choices: ['auto', 'none', 'fontconfig'],
+  );
+
   /// Specify the OSD font size.
   ///
   /// mpv type: Float.
-  static const osdFontSize = MpvOption<double>('osd-font-size', MpvOptionType.real, min: 1, max: 9000);
+  static const osdFontSize = MpvOption<double>(
+    'osd-font-size',
+    MpvOptionType.real,
+    min: 1,
+    max: 9000,
+  );
+
   /// See --sub-fonts-dir for details.
   ///
   /// mpv type: String.
-  static const osdFontsDir = MpvOption<String>('osd-fonts-dir', MpvOptionType.string);
+  static const osdFontsDir = MpvOption<String>(
+    'osd-fonts-dir',
+    MpvOptionType.string,
+  );
+
   /// Show OSD times with fractions of seconds (in millisecond precision).
   ///
   /// mpv type: Flag.
-  static const osdFractions = MpvOption<bool>('osd-fractions', MpvOptionType.flag);
+  static const osdFractions = MpvOption<bool>(
+    'osd-fractions',
+    MpvOptionType.flag,
+  );
+
   /// Set the maximum number of cached glyphs in libass cache for the OSD.
   ///
   /// mpv type: Integer.
-  static const osdGlyphLimit = MpvOption<int>('osd-glyph-limit', MpvOptionType.integer);
+  static const osdGlyphLimit = MpvOption<int>(
+    'osd-glyph-limit',
+    MpvOptionType.integer,
+  );
+
   /// Format text on italic.
   ///
   /// mpv type: Flag.
   static const osdItalic = MpvOption<bool>('osd-italic', MpvOptionType.flag);
+
   ///
   /// mpv type: Choice; choices: auto, left, center, right.
-  static const osdJustify = MpvOption<String>('osd-justify', MpvOptionType.choice, choices: ['auto', 'left', 'center', 'right']);
+  static const osdJustify = MpvOption<String>(
+    'osd-justify',
+    MpvOptionType.choice,
+    choices: ['auto', 'left', 'center', 'right'],
+  );
+
   /// Specifies which mode the OSD should start in.
   ///
   /// mpv type: Choice; choices: 0, 1, 2, 3.
-  static const osdLevel = MpvOption<String>('osd-level', MpvOptionType.choice, choices: ['0', '1', '2', '3']);
+  static const osdLevel = MpvOption<String>(
+    'osd-level',
+    MpvOptionType.choice,
+    choices: ['0', '1', '2', '3'],
+  );
+
   /// Left and right screen margin for the OSD in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Integer.
-  static const osdMarginX = MpvOption<int>('osd-margin-x', MpvOptionType.integer, min: 0, max: 2147483647);
+  static const osdMarginX = MpvOption<int>(
+    'osd-margin-x',
+    MpvOptionType.integer,
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Top and bottom screen margin for the OSD in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Integer.
-  static const osdMarginY = MpvOption<int>('osd-margin-y', MpvOptionType.integer, min: 0, max: 2147483647);
+  static const osdMarginY = MpvOption<int>(
+    'osd-margin-y',
+    MpvOptionType.integer,
+    min: 0,
+    max: 2147483647,
+  );
+
   ///
   /// mpv type: Integer.
-  static const osdMarginYOffset = MpvOption<int>('osd-margin-y-offset', MpvOptionType.integer);
+  static const osdMarginYOffset = MpvOption<int>(
+    'osd-margin-y-offset',
+    MpvOptionType.integer,
+  );
+
   /// Show this string as message on OSD with OSD level 1 (visible by default).
   ///
   /// mpv type: String.
   static const osdMsg1 = MpvOption<String>('osd-msg1', MpvOptionType.string);
+
   /// Similar to --osd-msg1, but for OSD level 2.
   ///
   /// mpv type: String.
   static const osdMsg2 = MpvOption<String>('osd-msg2', MpvOptionType.string);
+
   /// Similar to --osd-msg1, but for OSD level 3.
   ///
   /// mpv type: String.
   static const osdMsg3 = MpvOption<String>('osd-msg3', MpvOptionType.string);
+
   /// Set what is displayed on the OSD during seeks.
   ///
   /// mpv type: Choice; choices: no, bar, msg, msg-bar.
-  static const osdOnSeek = MpvOption<String>('osd-on-seek', MpvOptionType.choice, choices: ['no', 'bar', 'msg', 'msg-bar']);
+  static const osdOnSeek = MpvOption<String>(
+    'osd-on-seek',
+    MpvOptionType.choice,
+    choices: ['no', 'bar', 'msg', 'msg-bar'],
+  );
+
   /// See --sub-color.
   ///
   /// mpv type: Color.
-  static const osdOutlineColor = MpvOption<String>('osd-outline-color', MpvOptionType.string);
+  static const osdOutlineColor = MpvOption<String>(
+    'osd-outline-color',
+    MpvOptionType.string,
+  );
+
   /// Size of the OSD font outline in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const osdOutlineSize = MpvOption<double>('osd-outline-size', MpvOptionType.real);
+  static const osdOutlineSize = MpvOption<double>(
+    'osd-outline-size',
+    MpvOptionType.real,
+  );
+
   /// Show a message on OSD when playback starts.
   ///
   /// mpv type: String.
-  static const osdPlayingMsg = MpvOption<String>('osd-playing-msg', MpvOptionType.string);
+  static const osdPlayingMsg = MpvOption<String>(
+    'osd-playing-msg',
+    MpvOptionType.string,
+  );
+
   /// Set the duration of osd-playing-msg in ms.
   ///
   /// mpv type: Integer.
-  static const osdPlayingMsgDuration = MpvOption<int>('osd-playing-msg-duration', MpvOptionType.integer, min: 0, max: 3600000);
+  static const osdPlayingMsgDuration = MpvOption<int>(
+    'osd-playing-msg-duration',
+    MpvOptionType.integer,
+    min: 0,
+    max: 3600000,
+  );
+
   /// Whether to display the media title, filename, or both.
   ///
   /// mpv type: Choice; choices: title, filename, both.
-  static const osdPlaylistEntry = MpvOption<String>('osd-playlist-entry', MpvOptionType.choice, choices: ['title', 'filename', 'both']);
+  static const osdPlaylistEntry = MpvOption<String>(
+    'osd-playlist-entry',
+    MpvOptionType.choice,
+    choices: ['title', 'filename', 'both'],
+  );
+
   /// Set the delay for automatic pruning of events from memory in libass.
   ///
   /// mpv type: Double.
-  static const osdPruneDelay = MpvOption<double>('osd-prune-delay', MpvOptionType.real, min: -1, max: 10000);
+  static const osdPruneDelay = MpvOption<double>(
+    'osd-prune-delay',
+    MpvOptionType.real,
+    min: -1,
+    max: 10000,
+  );
+
   /// OSD font size multiplier, multiplied with --osd-font-size value.
   ///
   /// mpv type: Float.
-  static const osdScale = MpvOption<double>('osd-scale', MpvOptionType.real, min: 0, max: 100);
+  static const osdScale = MpvOption<double>(
+    'osd-scale',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Whether to scale the OSD with the window size (default: yes).
   ///
   /// mpv type: Flag.
-  static const osdScaleByWindow = MpvOption<bool>('osd-scale-by-window', MpvOptionType.flag);
+  static const osdScaleByWindow = MpvOption<bool>(
+    'osd-scale-by-window',
+    MpvOptionType.flag,
+  );
+
   /// The color of the selected item in lists.
   ///
   /// mpv type: Color.
-  static const osdSelectedColor = MpvOption<String>('osd-selected-color', MpvOptionType.string);
+  static const osdSelectedColor = MpvOption<String>(
+    'osd-selected-color',
+    MpvOptionType.string,
+  );
+
   /// The outline color of the selected item in lists.
   ///
   /// mpv type: Color.
-  static const osdSelectedOutlineColor = MpvOption<String>('osd-selected-outline-color', MpvOptionType.string);
+  static const osdSelectedOutlineColor = MpvOption<String>(
+    'osd-selected-outline-color',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Color.
-  static const osdShadowColor = MpvOption<String>('osd-shadow-color', MpvOptionType.string);
+  static const osdShadowColor = MpvOption<String>(
+    'osd-shadow-color',
+    MpvOptionType.string,
+  );
+
   /// Displacement of the OSD shadow in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const osdShadowOffset = MpvOption<double>('osd-shadow-offset', MpvOptionType.real);
+  static const osdShadowOffset = MpvOption<double>(
+    'osd-shadow-offset',
+    MpvOptionType.real,
+  );
+
   /// Set the text layout engine used by libass for the OSD.
   ///
   /// mpv type: Choice; choices: simple, complex.
-  static const osdShaper = MpvOption<String>('osd-shaper', MpvOptionType.choice, choices: ['simple', 'complex']);
+  static const osdShaper = MpvOption<String>(
+    'osd-shaper',
+    MpvOptionType.choice,
+    choices: ['simple', 'complex'],
+  );
+
   /// Horizontal OSD/sub font spacing in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const osdSpacing = MpvOption<double>('osd-spacing', MpvOptionType.real, min: -10, max: 10);
+  static const osdSpacing = MpvOption<double>(
+    'osd-spacing',
+    MpvOptionType.real,
+    min: -10,
+    max: 10,
+  );
+
   /// Show a custom string during playback instead of the standard status text.
   ///
   /// mpv type: String.
-  static const osdStatusMsg = MpvOption<String>('osd-status-msg', MpvOptionType.string);
+  static const osdStatusMsg = MpvOption<String>(
+    'osd-status-msg',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Key/value list.
-  static const osetMetadata = MpvOption<String>('oset-metadata', MpvOptionType.string);
+  static const osetMetadata = MpvOption<String>(
+    'oset-metadata',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String.
   static const ovc = MpvOption<String>('ovc', MpvOptionType.string);
+
   ///
   /// mpv type: Key/value list.
   static const ovcopts = MpvOption<String>('ovcopts', MpvOptionType.string);
+
   ///
   /// mpv type: Double.
-  static const overrideDisplayFps = MpvOption<double>('override-display-fps', MpvOptionType.real, min: 0);
+  static const overrideDisplayFps = MpvOption<double>(
+    'override-display-fps',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Enables pan-and-scan functionality (cropping the sides of e.g.
   ///
   /// mpv type: Float.
-  static const panscan = MpvOption<double>('panscan', MpvOptionType.real, min: 0, max: 1);
+  static const panscan = MpvOption<double>(
+    'panscan',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Start the player in paused state.
   ///
   /// mpv type: Flag.
   static const pause = MpvOption<bool>('pause', MpvOptionType.flag);
+
   /// Raise or lower the audio's pitch by the factor given as parameter.
   ///
   /// mpv type: Double.
-  static const pitch = MpvOption<double>('pitch', MpvOptionType.real, min: 0.01, max: 100);
+  static const pitch = MpvOption<double>(
+    'pitch',
+    MpvOptionType.real,
+    min: 0.01,
+    max: 100,
+  );
+
   ///
   /// mpv type: Choice; choices: forward, +, backward, -.
-  static const playDir = MpvOption<String>('play-dir', MpvOptionType.choice, choices: ['forward', '+', 'backward', '-']);
+  static const playDir = MpvOption<String>(
+    'play-dir',
+    MpvOptionType.choice,
+    choices: ['forward', '+', 'backward', '-'],
+  );
+
   /// Control the playback direction (default: forward).
   ///
   /// mpv type: Choice; choices: forward, +, backward, -.
-  static const playDirection = MpvOption<String>('play-direction', MpvOptionType.choice, choices: ['forward', '+', 'backward', '-']);
+  static const playDirection = MpvOption<String>(
+    'play-direction',
+    MpvOptionType.choice,
+    choices: ['forward', '+', 'backward', '-'],
+  );
+
   /// For enabling "pseudo GUI mode", which means that the defaults for some options are changed.
   ///
   /// mpv type: Choice; choices: cplayer, pseudo-gui.
-  static const playerOperationMode = MpvOption<String>('player-operation-mode', MpvOptionType.choice, choices: ['cplayer', 'pseudo-gui']);
+  static const playerOperationMode = MpvOption<String>(
+    'player-operation-mode',
+    MpvOptionType.choice,
+    choices: ['cplayer', 'pseudo-gui'],
+  );
+
   /// Play files according to a playlist file.
   ///
   /// mpv type: String.
   static const playlist = MpvOption<String>('playlist', MpvOptionType.string);
+
   /// Playlist file extensions to try to match when using --autocreate-playlist or --directory-filter-types.
   ///
   /// mpv type: String list.
-  static const playlistExts = MpvOption<String>('playlist-exts', MpvOptionType.string);
+  static const playlistExts = MpvOption<String>(
+    'playlist-exts',
+    MpvOptionType.string,
+  );
+
   /// Set which file on the internal playlist to start playback with.
   ///
   /// mpv type: Choice; choices: auto, no.
-  static const playlistStart = MpvOption<String>('playlist-start', MpvOptionType.choice, choices: ['auto', 'no'], min: 0, max: 2147483647);
+  static const playlistStart = MpvOption<String>(
+    'playlist-start',
+    MpvOptionType.choice,
+    choices: ['auto', 'no'],
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Prefetch next playlist entry while playback of the current entry is ending (default: no).
   ///
   /// mpv type: Flag.
-  static const prefetchPlaylist = MpvOption<bool>('prefetch-playlist', MpvOptionType.flag);
+  static const prefetchPlaylist = MpvOption<bool>(
+    'prefetch-playlist',
+    MpvOptionType.flag,
+  );
+
   /// (Windows only) Set process priority for mpv according to the predefined priorities available under Windows.
   ///
   /// mpv type: Choice; choices: no, realtime, high, abovenormal, normal, belownormal, idle.
-  static const priority = MpvOption<String>('priority', MpvOptionType.choice, choices: ['no', 'realtime', 'high', 'abovenormal', 'normal', 'belownormal', 'idle']);
+  static const priority = MpvOption<String>(
+    'priority',
+    MpvOptionType.choice,
+    choices: [
+      'no',
+      'realtime',
+      'high',
+      'abovenormal',
+      'normal',
+      'belownormal',
+      'idle',
+    ],
+  );
+
   /// Use the given profile(s), --profile=help displays a list of the defined profiles.
   ///
   /// mpv type: String list.
   static const profile = MpvOption<String>('profile', MpvOptionType.string);
+
   /// Make console output less verbose; in particular, prevents the status line (i.e.
   ///
   /// mpv type: Flag.
   static const quiet = MpvOption<bool>('quiet', MpvOptionType.flag);
+
   /// When opening multi-volume rar files, open all volumes to create a full list of contained files (default: no).
   ///
   /// mpv type: Flag.
-  static const rarListAllVolumes = MpvOption<bool>('rar-list-all-volumes', MpvOptionType.flag);
+  static const rarListAllVolumes = MpvOption<bool>(
+    'rar-list-all-volumes',
+    MpvOptionType.flag,
+  );
+
   /// Display even less output and status messages than with --quiet.
   ///
   /// mpv type: Flag.
-  static const reallyQuiet = MpvOption<bool>('really-quiet', MpvOptionType.flag);
+  static const reallyQuiet = MpvOption<bool>(
+    'really-quiet',
+    MpvOptionType.flag,
+  );
+
   /// Whether to move the file start time to 00:00:00 (default: yes).
   ///
   /// mpv type: Flag.
-  static const rebaseStartTime = MpvOption<bool>('rebase-start-time', MpvOptionType.flag);
+  static const rebaseStartTime = MpvOption<bool>(
+    'rebase-start-time',
+    MpvOptionType.flag,
+  );
+
   /// Specify a referrer path or URL for HTTP requests.
   ///
   /// mpv type: String.
   static const referrer = MpvOption<String>('referrer', MpvOptionType.string);
+
   /// (Windows only) (available also as mpv-register helper)
   ///
   /// mpv type: Flag.
   static const register = MpvOption<bool>('register', MpvOptionType.flag);
+
   /// (Windows only)
   ///
   /// mpv type: String.
-  static const registerRpath = MpvOption<String>('register-rpath', MpvOptionType.string);
+  static const registerRpath = MpvOption<String>(
+    'register-rpath',
+    MpvOptionType.string,
+  );
+
   /// Adjust volume gain according to replaygain values stored in the file metadata.
   ///
   /// mpv type: Choice; choices: no, track, album.
-  static const replaygain = MpvOption<String>('replaygain', MpvOptionType.choice, choices: ['no', 'track', 'album']);
+  static const replaygain = MpvOption<String>(
+    'replaygain',
+    MpvOptionType.choice,
+    choices: ['no', 'track', 'album'],
+  );
+
   /// Allow the volume gain to clip (default: no).
   ///
   /// mpv type: Flag.
-  static const replaygainClip = MpvOption<bool>('replaygain-clip', MpvOptionType.flag);
+  static const replaygainClip = MpvOption<bool>(
+    'replaygain-clip',
+    MpvOptionType.flag,
+  );
+
   /// Gain in dB to apply if the file has no replay gain tags.
   ///
   /// mpv type: Float.
-  static const replaygainFallback = MpvOption<double>('replaygain-fallback', MpvOptionType.real, min: -200, max: 60);
+  static const replaygainFallback = MpvOption<double>(
+    'replaygain-fallback',
+    MpvOptionType.real,
+    min: -200,
+    max: 60,
+  );
+
   /// Pre-amplification gain in dB to apply to the selected replaygain gain (default: 0).
   ///
   /// mpv type: Float.
-  static const replaygainPreamp = MpvOption<double>('replaygain-preamp', MpvOptionType.real, min: -150, max: 150);
+  static const replaygainPreamp = MpvOption<double>(
+    'replaygain-preamp',
+    MpvOptionType.real,
+    min: -150,
+    max: 150,
+  );
+
   /// Normally, mpv will try to keep all settings when playing the next file on the playlist, even if they were changed by the user during playback.
   ///
   /// mpv type: String list.
-  static const resetOnNextFile = MpvOption<String>('reset-on-next-file', MpvOptionType.string);
+  static const resetOnNextFile = MpvOption<String>(
+    'reset-on-next-file',
+    MpvOptionType.string,
+  );
+
   /// Restore playback position from the watch_later configuration subdirectory, usually ~/.config/mpv/watch_later/ (default: yes).
   ///
   /// mpv type: Flag.
-  static const resumePlayback = MpvOption<bool>('resume-playback', MpvOptionType.flag);
+  static const resumePlayback = MpvOption<bool>(
+    'resume-playback',
+    MpvOptionType.flag,
+  );
+
   /// Only restore the playback position from the watch_later configuration subdirectory (usually ~/.config/mpv/watch_later/) if the file's modification time is the same as at the time of saving.
   ///
   /// mpv type: Flag.
-  static const resumePlaybackCheckMtime = MpvOption<bool>('resume-playback-check-mtime', MpvOptionType.flag);
+  static const resumePlaybackCheckMtime = MpvOption<bool>(
+    'resume-playback-check-mtime',
+    MpvOptionType.flag,
+  );
+
   /// Select RTSP transport method (default: tcp).
   ///
   /// mpv type: Choice; choices: lavf, udp, tcp, http, udp_multicast.
-  static const rtspTransport = MpvOption<String>('rtsp-transport', MpvOptionType.choice, choices: ['lavf', 'udp', 'tcp', 'http', 'udp_multicast']);
+  static const rtspTransport = MpvOption<String>(
+    'rtsp-transport',
+    MpvOptionType.choice,
+    choices: ['lavf', 'udp', 'tcp', 'http', 'udp_multicast'],
+  );
+
   /// Adjust the saturation of the video signal (default: 0).
   ///
   /// mpv type: Float.
-  static const saturation = MpvOption<double>('saturation', MpvOptionType.real, min: -100, max: 100);
+  static const saturation = MpvOption<double>(
+    'saturation',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Always save the current playback position on quit, and also when the loadfile command is used to replace the current playlist.
   ///
   /// mpv type: Flag.
-  static const savePositionOnQuit = MpvOption<bool>('save-position-on-quit', MpvOptionType.flag);
+  static const savePositionOnQuit = MpvOption<bool>(
+    'save-position-on-quit',
+    MpvOptionType.flag,
+  );
+
   /// Whether to save which files are played.
   ///
   /// mpv type: Flag.
-  static const saveWatchHistory = MpvOption<bool>('save-watch-history', MpvOptionType.flag);
+  static const saveWatchHistory = MpvOption<bool>(
+    'save-watch-history',
+    MpvOptionType.flag,
+  );
+
   /// The filter function to use when upscaling video.
   ///
   /// mpv type: Choice; choices: bilinear, bicubic_fast, oversample, spline16, spline36, spline64, sinc, lanczos, ginseng, bicubic, hermite, catmull_rom, mitchell, robidoux, robidouxsharp, box, nearest, triangle, gaussian, jinc, ewa_lanczos, ewa_hanning, ewa_ginseng, ewa_lanczossharp, ewa_lanczos4sharpest, ewa_lanczossoft, haasnsoft, ewa_robidoux, ewa_robidouxsharp, bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx.
-  static const scale = MpvOption<String>('scale', MpvOptionType.choice, choices: ['bilinear', 'bicubic_fast', 'oversample', 'spline16', 'spline36', 'spline64', 'sinc', 'lanczos', 'ginseng', 'bicubic', 'hermite', 'catmull_rom', 'mitchell', 'robidoux', 'robidouxsharp', 'box', 'nearest', 'triangle', 'gaussian', 'jinc', 'ewa_lanczos', 'ewa_hanning', 'ewa_ginseng', 'ewa_lanczossharp', 'ewa_lanczos4sharpest', 'ewa_lanczossoft', 'haasnsoft', 'ewa_robidoux', 'ewa_robidouxsharp', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx']);
+  static const scale = MpvOption<String>(
+    'scale',
+    MpvOptionType.choice,
+    choices: [
+      'bilinear',
+      'bicubic_fast',
+      'oversample',
+      'spline16',
+      'spline36',
+      'spline64',
+      'sinc',
+      'lanczos',
+      'ginseng',
+      'bicubic',
+      'hermite',
+      'catmull_rom',
+      'mitchell',
+      'robidoux',
+      'robidouxsharp',
+      'box',
+      'nearest',
+      'triangle',
+      'gaussian',
+      'jinc',
+      'ewa_lanczos',
+      'ewa_hanning',
+      'ewa_ginseng',
+      'ewa_lanczossharp',
+      'ewa_lanczos4sharpest',
+      'ewa_lanczossoft',
+      'haasnsoft',
+      'ewa_robidoux',
+      'ewa_robidouxsharp',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+    ],
+  );
+
   /// Set the antiringing strength.
   ///
   /// mpv type: Float.
-  static const scaleAntiring = MpvOption<double>('scale-antiring', MpvOptionType.real, min: 0, max: 1);
+  static const scaleAntiring = MpvOption<double>(
+    'scale-antiring',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Kernel scaling factor (also known as a blur factor).
   ///
   /// mpv type: Float.
   static const scaleBlur = MpvOption<double>('scale-blur', MpvOptionType.real);
+
   /// Specifies a weight bias to multiply into negative coefficients.
   ///
   /// mpv type: Float.
-  static const scaleClamp = MpvOption<double>('scale-clamp', MpvOptionType.real, min: 0, max: 1);
+  static const scaleClamp = MpvOption<double>(
+    'scale-clamp',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Set filter parameters.
   ///
   /// mpv type: Float.
-  static const scaleParam1 = MpvOption<double>('scale-param1', MpvOptionType.real);
+  static const scaleParam1 = MpvOption<double>(
+    'scale-param1',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const scaleParam2 = MpvOption<double>('scale-param2', MpvOptionType.real);
+  static const scaleParam2 = MpvOption<double>(
+    'scale-param2',
+    MpvOptionType.real,
+  );
+
   /// Set radius for tunable filters, must be a float number between 0.5 and 16.0.
   ///
   /// mpv type: Float.
-  static const scaleRadius = MpvOption<double>('scale-radius', MpvOptionType.real, min: 0.5, max: 16);
+  static const scaleRadius = MpvOption<double>(
+    'scale-radius',
+    MpvOptionType.real,
+    min: 0.5,
+    max: 16,
+  );
+
   /// Kernel/window taper factor.
   ///
   /// mpv type: Float.
-  static const scaleTaper = MpvOption<double>('scale-taper', MpvOptionType.real, min: 0, max: 1);
+  static const scaleTaper = MpvOption<double>(
+    'scale-taper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// (Advanced users only) Choose a custom windowing function for the kernel.
   ///
   /// mpv type: Choice; choices: , bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx, jinc.
-  static const scaleWindow = MpvOption<String>('scale-window', MpvOptionType.choice, choices: ['', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx', 'jinc']);
+  static const scaleWindow = MpvOption<String>(
+    'scale-window',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+      'jinc',
+    ],
+  );
+
   /// (Advanced users only) Configure the parameter for the window function given by --scale-window etc.
   ///
   /// mpv type: Float.
-  static const scaleWparam = MpvOption<double>('scale-wparam', MpvOptionType.real);
+  static const scaleWparam = MpvOption<double>(
+    'scale-wparam',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const scaleWtaper = MpvOption<double>('scale-wtaper', MpvOptionType.real, min: 0, max: 1);
+  static const scaleWtaper = MpvOption<double>(
+    'scale-wtaper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Disable the scaler if the video image is not resized.
   ///
   /// mpv type: Flag.
-  static const scalerResizesOnly = MpvOption<bool>('scaler-resizes-only', MpvOptionType.flag);
+  static const scalerResizesOnly = MpvOption<bool>(
+    'scaler-resizes-only',
+    MpvOptionType.flag,
+  );
+
   /// In multi-monitor configurations (i.e.
   ///
   /// mpv type: Choice; choices: default.
-  static const screen = MpvOption<String>('screen', MpvOptionType.choice, choices: ['default'], min: 0, max: 32);
+  static const screen = MpvOption<String>(
+    'screen',
+    MpvOptionType.choice,
+    choices: ['default'],
+    min: 0,
+    max: 32,
+  );
+
   /// In multi-monitor configurations, this option tells mpv which screen to display the video on based on the screen name from the video backend.
   ///
   /// mpv type: String.
-  static const screenName = MpvOption<String>('screen-name', MpvOptionType.string);
+  static const screenName = MpvOption<String>(
+    'screen-name',
+    MpvOptionType.string,
+  );
+
   /// Specify the AV1 encoder to be used by libavcodec for encoding avif screenshots.
   ///
   /// mpv type: String.
-  static const screenshotAvifEncoder = MpvOption<String>('screenshot-avif-encoder', MpvOptionType.string);
+  static const screenshotAvifEncoder = MpvOption<String>(
+    'screenshot-avif-encoder',
+    MpvOptionType.string,
+  );
+
   /// Specifies libavcodec options for selected encoder.
   ///
   /// mpv type: Key/value list.
-  static const screenshotAvifOpts = MpvOption<String>('screenshot-avif-opts', MpvOptionType.string);
+  static const screenshotAvifOpts = MpvOption<String>(
+    'screenshot-avif-opts',
+    MpvOptionType.string,
+  );
+
   /// Specify the pixel format for the libavcodec encoder.
   ///
   /// mpv type: String.
-  static const screenshotAvifPixfmt = MpvOption<String>('screenshot-avif-pixfmt', MpvOptionType.string);
+  static const screenshotAvifPixfmt = MpvOption<String>(
+    'screenshot-avif-pixfmt',
+    MpvOptionType.string,
+  );
+
   /// Store screenshots in this directory.
   ///
   /// mpv type: String.
-  static const screenshotDir = MpvOption<String>('screenshot-dir', MpvOptionType.string);
+  static const screenshotDir = MpvOption<String>(
+    'screenshot-dir',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String.
-  static const screenshotDirectory = MpvOption<String>('screenshot-directory', MpvOptionType.string);
+  static const screenshotDirectory = MpvOption<String>(
+    'screenshot-directory',
+    MpvOptionType.string,
+  );
+
   /// Set the image file type used for saving screenshots.
   ///
   /// mpv type: Choice; choices: jpg, jpeg, png, webp, jxl, avif.
-  static const screenshotFormat = MpvOption<String>('screenshot-format', MpvOptionType.choice, choices: ['jpg', 'jpeg', 'png', 'webp', 'jxl', 'avif']);
+  static const screenshotFormat = MpvOption<String>(
+    'screenshot-format',
+    MpvOptionType.choice,
+    choices: ['jpg', 'jpeg', 'png', 'webp', 'jxl', 'avif'],
+  );
+
   /// If possible, write screenshots with a bit depth similar to the source video (default: yes).
   ///
   /// mpv type: Flag.
-  static const screenshotHighBitDepth = MpvOption<bool>('screenshot-high-bit-depth', MpvOptionType.flag);
+  static const screenshotHighBitDepth = MpvOption<bool>(
+    'screenshot-high-bit-depth',
+    MpvOptionType.flag,
+  );
+
   /// Set the JPEG quality level.
   ///
   /// mpv type: Integer.
-  static const screenshotJpegQuality = MpvOption<int>('screenshot-jpeg-quality', MpvOptionType.integer, min: 0, max: 100);
+  static const screenshotJpegQuality = MpvOption<int>(
+    'screenshot-jpeg-quality',
+    MpvOptionType.integer,
+    min: 0,
+    max: 100,
+  );
+
   /// Write JPEG files with the same chroma subsampling as the video (default: yes).
   ///
   /// mpv type: Flag.
-  static const screenshotJpegSourceChroma = MpvOption<bool>('screenshot-jpeg-source-chroma', MpvOptionType.flag);
+  static const screenshotJpegSourceChroma = MpvOption<bool>(
+    'screenshot-jpeg-source-chroma',
+    MpvOptionType.flag,
+  );
+
   /// Set the JPEG XL Butteraugli distance.
   ///
   /// mpv type: Double.
-  static const screenshotJxlDistance = MpvOption<double>('screenshot-jxl-distance', MpvOptionType.real, min: 0, max: 15);
+  static const screenshotJxlDistance = MpvOption<double>(
+    'screenshot-jxl-distance',
+    MpvOptionType.real,
+    min: 0,
+    max: 15,
+  );
+
   /// Set the JPEG XL compression effort.
   ///
   /// mpv type: Integer.
-  static const screenshotJxlEffort = MpvOption<int>('screenshot-jxl-effort', MpvOptionType.integer, min: 1, max: 9);
+  static const screenshotJxlEffort = MpvOption<int>(
+    'screenshot-jxl-effort',
+    MpvOptionType.integer,
+    min: 1,
+    max: 9,
+  );
+
   /// Set the PNG compression level.
   ///
   /// mpv type: Integer.
-  static const screenshotPngCompression = MpvOption<int>('screenshot-png-compression', MpvOptionType.integer, min: 0, max: 9);
+  static const screenshotPngCompression = MpvOption<int>(
+    'screenshot-png-compression',
+    MpvOptionType.integer,
+    min: 0,
+    max: 9,
+  );
+
   /// Set the filter applied prior to PNG compression.
   ///
   /// mpv type: Integer.
-  static const screenshotPngFilter = MpvOption<int>('screenshot-png-filter', MpvOptionType.integer, min: 0, max: 5);
+  static const screenshotPngFilter = MpvOption<int>(
+    'screenshot-png-filter',
+    MpvOptionType.integer,
+    min: 0,
+    max: 5,
+  );
+
   /// Whether to use software rendering for screenshots (default: no).
   ///
   /// mpv type: Flag.
-  static const screenshotSw = MpvOption<bool>('screenshot-sw', MpvOptionType.flag);
+  static const screenshotSw = MpvOption<bool>(
+    'screenshot-sw',
+    MpvOptionType.flag,
+  );
+
   /// Tag screenshots with the appropriate colorspace (default: yes).
   ///
   /// mpv type: Flag.
-  static const screenshotTagColorspace = MpvOption<bool>('screenshot-tag-colorspace', MpvOptionType.flag);
+  static const screenshotTagColorspace = MpvOption<bool>(
+    'screenshot-tag-colorspace',
+    MpvOptionType.flag,
+  );
+
   /// Specify the filename template used to save screenshots.
   ///
   /// mpv type: String.
-  static const screenshotTemplate = MpvOption<String>('screenshot-template', MpvOptionType.string);
+  static const screenshotTemplate = MpvOption<String>(
+    'screenshot-template',
+    MpvOptionType.string,
+  );
+
   /// Set the WebP compression level.
   ///
   /// mpv type: Integer.
-  static const screenshotWebpCompression = MpvOption<int>('screenshot-webp-compression', MpvOptionType.integer, min: 0, max: 6);
+  static const screenshotWebpCompression = MpvOption<int>(
+    'screenshot-webp-compression',
+    MpvOptionType.integer,
+    min: 0,
+    max: 6,
+  );
+
   /// Write lossless WebP files.
   ///
   /// mpv type: Flag.
-  static const screenshotWebpLossless = MpvOption<bool>('screenshot-webp-lossless', MpvOptionType.flag);
+  static const screenshotWebpLossless = MpvOption<bool>(
+    'screenshot-webp-lossless',
+    MpvOptionType.flag,
+  );
+
   /// Set the WebP quality level.
   ///
   /// mpv type: Integer.
-  static const screenshotWebpQuality = MpvOption<int>('screenshot-webp-quality', MpvOptionType.integer, min: 0, max: 100);
+  static const screenshotWebpQuality = MpvOption<int>(
+    'screenshot-webp-quality',
+    MpvOptionType.integer,
+    min: 0,
+    max: 100,
+  );
+
   ///
   /// mpv type: Key/value list.
-  static const scriptOpts = MpvOption<String>('script-opts', MpvOptionType.string);
+  static const scriptOpts = MpvOption<String>(
+    'script-opts',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String list.
   static const scripts = MpvOption<String>('scripts', MpvOptionType.string);
+
   /// SDR transfer functions are often ambiguous or mismatched.
   ///
   /// mpv type: Choice; choices: auto, yes, no.
-  static const sdrAdjustGamma = MpvOption<String>('sdr-adjust-gamma', MpvOptionType.choice, choices: ['auto', 'yes', 'no']);
+  static const sdrAdjustGamma = MpvOption<String>(
+    'sdr-adjust-gamma',
+    MpvOptionType.choice,
+    choices: ['auto', 'yes', 'no'],
+  );
+
   /// Select a secondary subtitle stream.
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const secondarySid = MpvOption<String>('secondary-sid', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const secondarySid = MpvOption<String>(
+    'secondary-sid',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// Control whether user secondary substyle overrides should be applied.
   ///
   /// mpv type: Choice; choices: no, yes, scale, force, strip.
-  static const secondarySubAssOverride = MpvOption<String>('secondary-sub-ass-override', MpvOptionType.choice, choices: ['no', 'yes', 'scale', 'force', 'strip']);
+  static const secondarySubAssOverride = MpvOption<String>(
+    'secondary-sub-ass-override',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'scale', 'force', 'strip'],
+  );
+
   /// Delays secondary subtitles by `<sec>` seconds.
   ///
   /// mpv type: Float.
-  static const secondarySubDelay = MpvOption<double>('secondary-sub-delay', MpvOptionType.real);
+  static const secondarySubDelay = MpvOption<double>(
+    'secondary-sub-delay',
+    MpvOptionType.real,
+  );
+
   /// Specify the position of secondary subtitles on the screen.
   ///
   /// mpv type: Float.
-  static const secondarySubPos = MpvOption<double>('secondary-sub-pos', MpvOptionType.real, min: 0, max: 150);
+  static const secondarySubPos = MpvOption<double>(
+    'secondary-sub-pos',
+    MpvOptionType.real,
+    min: 0,
+    max: 150,
+  );
+
   /// Can be used to disable display of secondary subtitles, but still select and decode them.
   ///
   /// mpv type: Flag.
-  static const secondarySubVisibility = MpvOption<bool>('secondary-sub-visibility', MpvOptionType.flag);
+  static const secondarySubVisibility = MpvOption<bool>(
+    'secondary-sub-visibility',
+    MpvOptionType.flag,
+  );
+
   /// If set to a value other than 0, enable an unsharp masking filter.
   ///
   /// mpv type: Float.
   static const sharpen = MpvOption<double>('sharpen', MpvOptionType.real);
+
   ///
   /// mpv type: Flag.
-  static const showDependentTracks = MpvOption<bool>('show-dependent-tracks', MpvOptionType.flag);
+  static const showDependentTracks = MpvOption<bool>(
+    'show-dependent-tracks',
+    MpvOptionType.flag,
+  );
+
   /// (Windows and X11 only) Show mpv in the taskbar (default: yes).
   ///
   /// mpv type: Flag.
-  static const showInTaskbar = MpvOption<bool>('show-in-taskbar', MpvOptionType.flag);
+  static const showInTaskbar = MpvOption<bool>(
+    'show-in-taskbar',
+    MpvOptionType.flag,
+  );
+
   /// Show the description and content of a profile.
   ///
   /// mpv type: String.
-  static const showProfile = MpvOption<String>('show-profile', MpvOptionType.string);
+  static const showProfile = MpvOption<String>(
+    'show-profile',
+    MpvOptionType.string,
+  );
+
   /// Play files in random order.
   ///
   /// mpv type: Flag.
   static const shuffle = MpvOption<bool>('shuffle', MpvOptionType.flag);
+
   /// Display the subtitle stream specified by `<ID>`.
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const sid = MpvOption<String>('sid', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const sid = MpvOption<String>(
+    'sid',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// The center of the sigmoid curve used for --sigmoid-upscaling, must be a float between 0.0 and 1.0.
   ///
   /// mpv type: Float.
-  static const sigmoidCenter = MpvOption<double>('sigmoid-center', MpvOptionType.real, min: 0, max: 1);
+  static const sigmoidCenter = MpvOption<double>(
+    'sigmoid-center',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// The slope of the sigmoid curve used for --sigmoid-upscaling, must be a float between 1.0 and 20.0.
   ///
   /// mpv type: Float.
-  static const sigmoidSlope = MpvOption<double>('sigmoid-slope', MpvOptionType.real, min: 1, max: 20);
+  static const sigmoidSlope = MpvOption<double>(
+    'sigmoid-slope',
+    MpvOptionType.real,
+    min: 1,
+    max: 20,
+  );
+
   /// When upscaling, use a sigmoidal color transform to avoid emphasizing ringing artifacts.
   ///
   /// mpv type: Flag.
-  static const sigmoidUpscaling = MpvOption<bool>('sigmoid-upscaling', MpvOptionType.flag);
+  static const sigmoidUpscaling = MpvOption<bool>(
+    'sigmoid-upscaling',
+    MpvOptionType.flag,
+  );
+
   /// Analogous to --alang, for subtitle tracks.
   ///
   /// mpv type: String list.
   static const slang = MpvOption<String>('slang', MpvOptionType.string);
+
   /// (Windows only) Snap the player window to screen edges.
   ///
   /// mpv type: Flag.
   static const snapWindow = MpvOption<bool>('snap-window', MpvOptionType.flag);
+
   /// Slow down or speed up playback by the factor given as parameter.
   ///
   /// mpv type: Double.
-  static const speed = MpvOption<double>('speed', MpvOptionType.real, min: 0.01, max: 100);
+  static const speed = MpvOption<double>(
+    'speed',
+    MpvOptionType.real,
+    min: 0.01,
+    max: 100,
+  );
+
   /// Controls which compiler is used to translate GLSL to SPIR-V.
   ///
   /// mpv type: Choice; choices: auto, shaderc.
-  static const spirvCompiler = MpvOption<String>('spirv-compiler', MpvOptionType.choice, choices: ['auto', 'shaderc']);
+  static const spirvCompiler = MpvOption<String>(
+    'spirv-compiler',
+    MpvOptionType.choice,
+    choices: ['auto', 'shaderc'],
+  );
+
   /// Skip `<sec>` seconds after every frame.
   ///
   /// mpv type: Double.
   static const sstep = MpvOption<double>('sstep', MpvOptionType.real, min: 0);
+
   /// Seek to given time position.
   ///
   /// mpv type: Relative time or percent position.
   static const start = MpvOption<String>('start', MpvOptionType.string);
+
   /// Stop playback if either audio or video fails to initialize (default: no).
   ///
   /// mpv type: Flag.
-  static const stopPlaybackOnInitFailure = MpvOption<bool>('stop-playback-on-init-failure', MpvOptionType.flag);
+  static const stopPlaybackOnInitFailure = MpvOption<bool>(
+    'stop-playback-on-init-failure',
+    MpvOptionType.flag,
+  );
+
   /// Turns off the screensaver (or screen blanker and similar mechanisms) at startup and turns it on again on exit (default: yes).
   ///
   /// mpv type: Choice; choices: no, yes, always.
-  static const stopScreensaver = MpvOption<String>('stop-screensaver', MpvOptionType.choice, choices: ['no', 'yes', 'always']);
+  static const stopScreensaver = MpvOption<String>(
+    'stop-screensaver',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'always'],
+  );
+
   /// Size of the low level stream byte buffer (default: 128KB).
   ///
   /// mpv type: ByteSize.
-  static const streamBufferSize = MpvOption<int>('stream-buffer-size', MpvOptionType.integer, min: 4096, max: 536870912);
+  static const streamBufferSize = MpvOption<int>(
+    'stream-buffer-size',
+    MpvOptionType.integer,
+    min: 4096,
+    max: 536870912,
+  );
+
   /// Instead of playing a file, read its byte stream and write it to the given destination file.
   ///
   /// mpv type: String.
-  static const streamDump = MpvOption<String>('stream-dump', MpvOptionType.string);
+  static const streamDump = MpvOption<String>(
+    'stream-dump',
+    MpvOptionType.string,
+  );
+
   /// Set AVOptions on streams opened with libavformat.
   ///
   /// mpv type: Key/value list.
-  static const streamLavfO = MpvOption<String>('stream-lavf-o', MpvOptionType.string);
+  static const streamLavfO = MpvOption<String>(
+    'stream-lavf-o',
+    MpvOptionType.string,
+  );
+
   /// Write received/read data from the demuxer to the given output file.
   ///
   /// mpv type: String.
-  static const streamRecord = MpvOption<String>('stream-record', MpvOptionType.string);
+  static const streamRecord = MpvOption<String>(
+    'stream-record',
+    MpvOptionType.string,
+  );
+
   /// Stretch DVD subtitles when playing anamorphic videos for better looking fonts on badly mastered DVDs.
   ///
   /// mpv type: Flag.
-  static const stretchDvdSubs = MpvOption<bool>('stretch-dvd-subs', MpvOptionType.flag);
+  static const stretchDvdSubs = MpvOption<bool>(
+    'stretch-dvd-subs',
+    MpvOptionType.flag,
+  );
+
   /// Stretch DVD and other image subtitles to the screen, ignoring the video margins.
   ///
   /// mpv type: Flag.
-  static const stretchImageSubsToScreen = MpvOption<bool>('stretch-image-subs-to-screen', MpvOptionType.flag);
+  static const stretchImageSubsToScreen = MpvOption<bool>(
+    'stretch-image-subs-to-screen',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const sub = MpvOption<String>('sub', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const sub = MpvOption<String>(
+    'sub',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// Control to which corner of the screen text subtitles should be aligned to (default: center).
   ///
   /// mpv type: Choice; choices: left, center, right.
-  static const subAlignX = MpvOption<String>('sub-align-x', MpvOptionType.choice, choices: ['left', 'center', 'right']);
+  static const subAlignX = MpvOption<String>(
+    'sub-align-x',
+    MpvOptionType.choice,
+    choices: ['left', 'center', 'right'],
+  );
+
   /// Vertical position (default: bottom).
   ///
   /// mpv type: Choice; choices: top, center, bottom.
-  static const subAlignY = MpvOption<String>('sub-align-y', MpvOptionType.choice, choices: ['top', 'center', 'bottom']);
+  static const subAlignY = MpvOption<String>(
+    'sub-align-y',
+    MpvOptionType.choice,
+    choices: ['top', 'center', 'bottom'],
+  );
+
   /// Render ASS subtitles natively (default: yes).
   ///
   /// mpv type: Flag.
   static const subAss = MpvOption<bool>('sub-ass', MpvOptionType.flag);
+
   /// Enables placing toptitles and subtitles in black borders when they are available, if the subtitles are in the ASS format.
   ///
   /// mpv type: Flag.
-  static const subAssForceMargins = MpvOption<bool>('sub-ass-force-margins', MpvOptionType.flag);
+  static const subAssForceMargins = MpvOption<bool>(
+    'sub-ass-force-margins',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: String list.
-  static const subAssForceStyle = MpvOption<String>('sub-ass-force-style', MpvOptionType.string);
+  static const subAssForceStyle = MpvOption<String>(
+    'sub-ass-force-style',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Choice; choices: none, light, normal, native.
-  static const subAssHinting = MpvOption<String>('sub-ass-hinting', MpvOptionType.choice, choices: ['none', 'light', 'normal', 'native']);
+  static const subAssHinting = MpvOption<String>(
+    'sub-ass-hinting',
+    MpvOptionType.choice,
+    choices: ['none', 'light', 'normal', 'native'],
+  );
+
   /// Applies justification as defined by --sub-justify on ASS subtitles if --sub-ass-override is not set to no.
   ///
   /// mpv type: Flag.
-  static const subAssJustify = MpvOption<bool>('sub-ass-justify', MpvOptionType.flag);
+  static const subAssJustify = MpvOption<bool>(
+    'sub-ass-justify',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Float.
-  static const subAssLineSpacing = MpvOption<double>('sub-ass-line-spacing', MpvOptionType.real, min: -1000, max: 1000);
+  static const subAssLineSpacing = MpvOption<double>(
+    'sub-ass-line-spacing',
+    MpvOptionType.real,
+    min: -1000,
+    max: 1000,
+  );
+
   /// Control whether user style overrides should be applied.
   ///
   /// mpv type: Choice; choices: no, yes, scale, force, strip.
-  static const subAssOverride = MpvOption<String>('sub-ass-override', MpvOptionType.choice, choices: ['no', 'yes', 'scale', 'force', 'strip']);
+  static const subAssOverride = MpvOption<String>(
+    'sub-ass-override',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'scale', 'force', 'strip'],
+  );
+
   /// Set the delay for automatic pruning of events from memory in libass.
   ///
   /// mpv type: Double.
-  static const subAssPruneDelay = MpvOption<double>('sub-ass-prune-delay', MpvOptionType.real, min: -1, max: 10000);
+  static const subAssPruneDelay = MpvOption<double>(
+    'sub-ass-prune-delay',
+    MpvOptionType.real,
+    min: -1,
+    max: 10000,
+  );
+
   /// Like --sub-scale-with-window, but affects subtitles in ASS format only.
   ///
   /// mpv type: Flag.
-  static const subAssScaleWithWindow = MpvOption<bool>('sub-ass-scale-with-window', MpvOptionType.flag);
+  static const subAssScaleWithWindow = MpvOption<bool>(
+    'sub-ass-scale-with-window',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Choice; choices: simple, complex.
-  static const subAssShaper = MpvOption<String>('sub-ass-shaper', MpvOptionType.choice, choices: ['simple', 'complex']);
+  static const subAssShaper = MpvOption<String>(
+    'sub-ass-shaper',
+    MpvOptionType.choice,
+    choices: ['simple', 'complex'],
+  );
+
   /// Override some style or script info parameters.
   ///
   /// mpv type: String list.
-  static const subAssStyleOverrides = MpvOption<String>('sub-ass-style-overrides', MpvOptionType.string);
+  static const subAssStyleOverrides = MpvOption<String>(
+    'sub-ass-style-overrides',
+    MpvOptionType.string,
+  );
+
   /// Load all SSA/ASS styles found in the specified file and use them for rendering text subtitles.
   ///
   /// mpv type: String.
-  static const subAssStyles = MpvOption<String>('sub-ass-styles', MpvOptionType.string);
+  static const subAssStyles = MpvOption<String>(
+    'sub-ass-styles',
+    MpvOptionType.string,
+  );
+
   /// Controls which information about the video stream is passed to libass.
   ///
   /// mpv type: Choice; choices: none, aspect-ratio, all.
-  static const subAssUseVideoData = MpvOption<String>('sub-ass-use-video-data', MpvOptionType.choice, choices: ['none', 'aspect-ratio', 'all']);
+  static const subAssUseVideoData = MpvOption<String>(
+    'sub-ass-use-video-data',
+    MpvOptionType.choice,
+    choices: ['none', 'aspect-ratio', 'all'],
+  );
+
   /// Allows passing any arbitrary aspect ratio to libass instead of the video’s actual aspect ratio.
   ///
   /// mpv type: Aspect.
-  static const subAssVideoAspectOverride = MpvOption<double>('sub-ass-video-aspect-override', MpvOptionType.real, min: 0, max: 10);
+  static const subAssVideoAspectOverride = MpvOption<double>(
+    'sub-ass-video-aspect-override',
+    MpvOptionType.real,
+    min: 0,
+    max: 10,
+  );
+
   /// Mangle colors like (xy-)vsfilter do (default: basic).
   ///
   /// mpv type: Choice; choices: no, basic, full, force-601.
-  static const subAssVsfilterColorCompat = MpvOption<String>('sub-ass-vsfilter-color-compat', MpvOptionType.choice, choices: ['no', 'basic', 'full', 'force-601']);
+  static const subAssVsfilterColorCompat = MpvOption<String>(
+    'sub-ass-vsfilter-color-compat',
+    MpvOptionType.choice,
+    choices: ['no', 'basic', 'full', 'force-601'],
+  );
+
   /// Load additional subtitle files matching the video filename.
   ///
   /// mpv type: Choice; choices: no, exact, fuzzy, all.
-  static const subAuto = MpvOption<String>('sub-auto', MpvOptionType.choice, choices: ['no', 'exact', 'fuzzy', 'all']);
+  static const subAuto = MpvOption<String>(
+    'sub-auto',
+    MpvOptionType.choice,
+    choices: ['no', 'exact', 'fuzzy', 'all'],
+  );
+
   /// Subtitle extensions to try and match when using --sub-auto.
   ///
   /// mpv type: String list.
-  static const subAutoExts = MpvOption<String>('sub-auto-exts', MpvOptionType.string);
+  static const subAutoExts = MpvOption<String>(
+    'sub-auto-exts',
+    MpvOptionType.string,
+  );
+
   /// See --sub-color.
   ///
   /// mpv type: Color.
-  static const subBackColor = MpvOption<String>('sub-back-color', MpvOptionType.string);
+  static const subBackColor = MpvOption<String>(
+    'sub-back-color',
+    MpvOptionType.string,
+  );
+
   /// Set the maximum bitmap cache size in libass cache for the subtitle track.
   ///
   /// mpv type: Integer.
-  static const subBitmapMaxSize = MpvOption<int>('sub-bitmap-max-size', MpvOptionType.integer);
+  static const subBitmapMaxSize = MpvOption<int>(
+    'sub-bitmap-max-size',
+    MpvOptionType.integer,
+  );
+
   /// Gaussian blur factor applied to the sub font border.
   ///
   /// mpv type: Float.
-  static const subBlur = MpvOption<double>('sub-blur', MpvOptionType.real, min: 0, max: 20);
+  static const subBlur = MpvOption<double>(
+    'sub-blur',
+    MpvOptionType.real,
+    min: 0,
+    max: 20,
+  );
+
   /// Format text on bold.
   ///
   /// mpv type: Flag.
   static const subBold = MpvOption<bool>('sub-bold', MpvOptionType.flag);
+
   ///
   /// mpv type: Color.
-  static const subBorderColor = MpvOption<String>('sub-border-color', MpvOptionType.string);
+  static const subBorderColor = MpvOption<String>(
+    'sub-border-color',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Float.
-  static const subBorderSize = MpvOption<double>('sub-border-size', MpvOptionType.real);
+  static const subBorderSize = MpvOption<double>(
+    'sub-border-size',
+    MpvOptionType.real,
+  );
+
   /// The style of the border.
   ///
   /// mpv type: Choice; choices: outline-and-shadow, opaque-box, background-box.
-  static const subBorderStyle = MpvOption<String>('sub-border-style', MpvOptionType.choice, choices: ['outline-and-shadow', 'opaque-box', 'background-box']);
+  static const subBorderStyle = MpvOption<String>(
+    'sub-border-style',
+    MpvOptionType.choice,
+    choices: ['outline-and-shadow', 'opaque-box', 'background-box'],
+  );
+
   /// (Obscure, rarely useful.) Can be used to play broken mkv files with duplicate ReadOrder fields.
   ///
   /// mpv type: Flag.
-  static const subClearOnSeek = MpvOption<bool>('sub-clear-on-seek', MpvOptionType.flag);
+  static const subClearOnSeek = MpvOption<bool>(
+    'sub-clear-on-seek',
+    MpvOptionType.flag,
+  );
+
   /// You can use this option to specify the subtitle codepage.
   ///
   /// mpv type: String.
-  static const subCodepage = MpvOption<String>('sub-codepage', MpvOptionType.string);
+  static const subCodepage = MpvOption<String>(
+    'sub-codepage',
+    MpvOptionType.string,
+  );
+
   /// Specify the color used for unstyled text subtitles.
   ///
   /// mpv type: Color.
   static const subColor = MpvOption<String>('sub-color', MpvOptionType.string);
+
   /// For every video stream, create a closed captions track (default: no).
   ///
   /// mpv type: Flag.
-  static const subCreateCcTrack = MpvOption<bool>('sub-create-cc-track', MpvOptionType.flag);
+  static const subCreateCcTrack = MpvOption<bool>(
+    'sub-create-cc-track',
+    MpvOptionType.flag,
+  );
+
   /// Delays primary subtitles by `<sec>` seconds.
   ///
   /// mpv type: Float.
   static const subDelay = MpvOption<double>('sub-delay', MpvOptionType.real);
+
   /// Force subtitle demuxer type for --sub-file.
   ///
   /// mpv type: String.
-  static const subDemuxer = MpvOption<String>('sub-demuxer', MpvOptionType.string);
+  static const subDemuxer = MpvOption<String>(
+    'sub-demuxer',
+    MpvOptionType.string,
+  );
+
   /// Specify extra directories to search for subtitles matching the video.
   ///
   /// mpv type: String list.
-  static const subFilePaths = MpvOption<String>('sub-file-paths', MpvOptionType.string);
+  static const subFilePaths = MpvOption<String>(
+    'sub-file-paths',
+    MpvOptionType.string,
+  );
+
   /// Add a subtitle file to the list of external subtitles.
   ///
   /// mpv type: String list.
   static const subFiles = MpvOption<String>('sub-files', MpvOptionType.string);
+
   ///
   /// mpv type: String list.
-  static const subFilterJsre = MpvOption<String>('sub-filter-jsre', MpvOptionType.string);
+  static const subFilterJsre = MpvOption<String>(
+    'sub-filter-jsre',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String list.
-  static const subFilterRegex = MpvOption<String>('sub-filter-regex', MpvOptionType.string);
+  static const subFilterRegex = MpvOption<String>(
+    'sub-filter-regex',
+    MpvOptionType.string,
+  );
+
   /// Whether to enable regex filtering (default: yes).
   ///
   /// mpv type: Flag.
-  static const subFilterRegexEnable = MpvOption<bool>('sub-filter-regex-enable', MpvOptionType.flag);
+  static const subFilterRegexEnable = MpvOption<bool>(
+    'sub-filter-regex-enable',
+    MpvOptionType.flag,
+  );
+
   /// Whether to first convert the ASS "Text" field to plain-text (default: no).
   ///
   /// mpv type: Flag.
-  static const subFilterRegexPlain = MpvOption<bool>('sub-filter-regex-plain', MpvOptionType.flag);
+  static const subFilterRegexPlain = MpvOption<bool>(
+    'sub-filter-regex-plain',
+    MpvOptionType.flag,
+  );
+
   /// Log dropped lines with warning log level, instead of verbose (default: no).
   ///
   /// mpv type: Flag.
-  static const subFilterRegexWarn = MpvOption<bool>('sub-filter-regex-warn', MpvOptionType.flag);
+  static const subFilterRegexWarn = MpvOption<bool>(
+    'sub-filter-regex-warn',
+    MpvOptionType.flag,
+  );
+
   /// Applies filter removing subtitle additions for the deaf or hard-of-hearing (SDH).
   ///
   /// mpv type: Flag.
-  static const subFilterSdh = MpvOption<bool>('sub-filter-sdh', MpvOptionType.flag);
+  static const subFilterSdh = MpvOption<bool>(
+    'sub-filter-sdh',
+    MpvOptionType.flag,
+  );
+
   /// Specify pairs of characters that --sub-filter-sdh will use to potentially remove text.
   ///
   /// mpv type: String list.
-  static const subFilterSdhEnclosures = MpvOption<String>('sub-filter-sdh-enclosures', MpvOptionType.string);
+  static const subFilterSdhEnclosures = MpvOption<String>(
+    'sub-filter-sdh-enclosures',
+    MpvOptionType.string,
+  );
+
   /// Do harder SDH filtering (if enabled by --sub-filter-sdh).
   ///
   /// mpv type: Flag.
-  static const subFilterSdhHarder = MpvOption<bool>('sub-filter-sdh-harder', MpvOptionType.flag);
+  static const subFilterSdhHarder = MpvOption<bool>(
+    'sub-filter-sdh-harder',
+    MpvOptionType.flag,
+  );
+
   /// Adjust subtitle timing is to remove minor gaps or overlaps between subtitles.
   ///
   /// mpv type: Flag.
-  static const subFixTiming = MpvOption<bool>('sub-fix-timing', MpvOptionType.flag);
+  static const subFixTiming = MpvOption<bool>(
+    'sub-fix-timing',
+    MpvOptionType.flag,
+  );
+
   /// Set the minimum duration in milliseconds for subtitle events to be considered for timing fixes (default: 400).
   ///
   /// mpv type: Integer.
-  static const subFixTimingKeep = MpvOption<int>('sub-fix-timing-keep', MpvOptionType.integer);
+  static const subFixTimingKeep = MpvOption<int>(
+    'sub-fix-timing-keep',
+    MpvOptionType.integer,
+  );
+
   /// Set the threshold in milliseconds for fixing subtitle timing (default: 210).
   ///
   /// mpv type: Integer.
-  static const subFixTimingThreshold = MpvOption<int>('sub-fix-timing-threshold', MpvOptionType.integer);
+  static const subFixTimingThreshold = MpvOption<int>(
+    'sub-fix-timing-threshold',
+    MpvOptionType.integer,
+  );
+
   /// Specify font to use for subtitles that do not themselves specify a particular font.
   ///
   /// mpv type: String.
   static const subFont = MpvOption<String>('sub-font', MpvOptionType.string);
+
   /// Which libass font provider backend to use (default: auto).
   ///
   /// mpv type: Choice; choices: auto, none, fontconfig.
-  static const subFontProvider = MpvOption<String>('sub-font-provider', MpvOptionType.choice, choices: ['auto', 'none', 'fontconfig']);
+  static const subFontProvider = MpvOption<String>(
+    'sub-font-provider',
+    MpvOptionType.choice,
+    choices: ['auto', 'none', 'fontconfig'],
+  );
+
   /// Specify the sub font size.
   ///
   /// mpv type: Float.
-  static const subFontSize = MpvOption<double>('sub-font-size', MpvOptionType.real, min: 1, max: 9000);
+  static const subFontSize = MpvOption<double>(
+    'sub-font-size',
+    MpvOptionType.real,
+    min: 1,
+    max: 9000,
+  );
+
   /// Font files in this directory are used by mpv/libass for subtitles.
   ///
   /// mpv type: String.
-  static const subFontsDir = MpvOption<String>('sub-fonts-dir', MpvOptionType.string);
+  static const subFontsDir = MpvOption<String>(
+    'sub-fonts-dir',
+    MpvOptionType.string,
+  );
+
   /// Enabling this displays only forced events within subtitle streams.
   ///
   /// mpv type: Flag.
-  static const subForcedEventsOnly = MpvOption<bool>('sub-forced-events-only', MpvOptionType.flag);
+  static const subForcedEventsOnly = MpvOption<bool>(
+    'sub-forced-events-only',
+    MpvOptionType.flag,
+  );
+
   /// Specify the framerate of the subtitle file (default: video fps).
   ///
   /// mpv type: Float.
   static const subFps = MpvOption<double>('sub-fps', MpvOptionType.real);
+
   /// Apply Gaussian blur to image subtitles (default: 0).
   ///
   /// mpv type: Float.
-  static const subGauss = MpvOption<double>('sub-gauss', MpvOptionType.real, min: 0, max: 3);
+  static const subGauss = MpvOption<double>(
+    'sub-gauss',
+    MpvOptionType.real,
+    min: 0,
+    max: 3,
+  );
+
   /// Set the maximum number of cached glyphs in libass cache for the subtitle track.
   ///
   /// mpv type: Integer.
-  static const subGlyphLimit = MpvOption<int>('sub-glyph-limit', MpvOptionType.integer);
+  static const subGlyphLimit = MpvOption<int>(
+    'sub-glyph-limit',
+    MpvOptionType.integer,
+  );
+
   /// Convert image subtitles to grayscale.
   ///
   /// mpv type: Flag.
   static const subGray = MpvOption<bool>('sub-gray', MpvOptionType.flag);
+
   /// Controls the text subtitle and OSD diffuse white level in cd/m² (nits) for HDR output (default: sdr).
   ///
   /// mpv type: Choice; choices: sdr.
-  static const subHdrPeak = MpvOption<String>('sub-hdr-peak', MpvOptionType.choice, choices: ['sdr'], min: 10, max: 10000);
+  static const subHdrPeak = MpvOption<String>(
+    'sub-hdr-peak',
+    MpvOptionType.choice,
+    choices: ['sdr'],
+    min: 10,
+    max: 10000,
+  );
+
   /// Set font hinting type.
   ///
   /// mpv type: Choice; choices: none, light, normal, native.
-  static const subHinting = MpvOption<String>('sub-hinting', MpvOptionType.choice, choices: ['none', 'light', 'normal', 'native']);
+  static const subHinting = MpvOption<String>(
+    'sub-hinting',
+    MpvOptionType.choice,
+    choices: ['none', 'light', 'normal', 'native'],
+  );
+
   /// Format text on italic.
   ///
   /// mpv type: Flag.
   static const subItalic = MpvOption<bool>('sub-italic', MpvOptionType.flag);
+
   /// Control how multi line subs are justified irrespective of where they are aligned (default: auto which justifies as defined by --sub-align-x).
   ///
   /// mpv type: Choice; choices: auto, left, center, right.
-  static const subJustify = MpvOption<String>('sub-justify', MpvOptionType.choice, choices: ['auto', 'left', 'center', 'right']);
+  static const subJustify = MpvOption<String>(
+    'sub-justify',
+    MpvOptionType.choice,
+    choices: ['auto', 'left', 'center', 'right'],
+  );
+
   /// Pass AVOptions to libavcodec decoder.
   ///
   /// mpv type: Key/value list.
   static const subLavcO = MpvOption<String>('sub-lavc-o', MpvOptionType.string);
+
   /// Set line spacing value for SSA/ASS renderer.
   ///
   /// mpv type: Float.
-  static const subLineSpacing = MpvOption<double>('sub-line-spacing', MpvOptionType.real, min: -1000, max: 1000);
+  static const subLineSpacing = MpvOption<double>(
+    'sub-line-spacing',
+    MpvOptionType.real,
+    min: -1000,
+    max: 1000,
+  );
+
   /// Left and right screen margin for the subs in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Integer.
-  static const subMarginX = MpvOption<int>('sub-margin-x', MpvOptionType.integer, min: 0, max: 2147483647);
+  static const subMarginX = MpvOption<int>(
+    'sub-margin-x',
+    MpvOptionType.integer,
+    min: 0,
+    max: 2147483647,
+  );
+
   /// Top and bottom screen margin for the subs in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Integer.
-  static const subMarginY = MpvOption<int>('sub-margin-y', MpvOptionType.integer, min: 0, max: 2147483647);
+  static const subMarginY = MpvOption<int>(
+    'sub-margin-y',
+    MpvOptionType.integer,
+    min: 0,
+    max: 2147483647,
+  );
+
   ///
   /// mpv type: Integer.
-  static const subMarginYOffset = MpvOption<int>('sub-margin-y-offset', MpvOptionType.integer);
+  static const subMarginYOffset = MpvOption<int>(
+    'sub-margin-y-offset',
+    MpvOptionType.integer,
+  );
+
   /// See --sub-color.
   ///
   /// mpv type: Color.
-  static const subOutlineColor = MpvOption<String>('sub-outline-color', MpvOptionType.string);
+  static const subOutlineColor = MpvOption<String>(
+    'sub-outline-color',
+    MpvOptionType.string,
+  );
+
   /// Size of the sub font outline in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const subOutlineSize = MpvOption<double>('sub-outline-size', MpvOptionType.real);
+  static const subOutlineSize = MpvOption<double>(
+    'sub-outline-size',
+    MpvOptionType.real,
+  );
+
   /// After the last frame of video, if this option is enabled, subtitles will continue to update based on audio timestamps.
   ///
   /// mpv type: Flag.
-  static const subPastVideoEnd = MpvOption<bool>('sub-past-video-end', MpvOptionType.flag);
+  static const subPastVideoEnd = MpvOption<bool>(
+    'sub-past-video-end',
+    MpvOptionType.flag,
+  );
+
   /// Specify the position of subtitles on the screen.
   ///
   /// mpv type: Float.
-  static const subPos = MpvOption<double>('sub-pos', MpvOptionType.real, min: 0, max: 150);
+  static const subPos = MpvOption<double>(
+    'sub-pos',
+    MpvOptionType.real,
+    min: 0,
+    max: 150,
+  );
+
   /// Factor for the text subtitle font size (default: 1).
   ///
   /// mpv type: Float.
-  static const subScale = MpvOption<double>('sub-scale', MpvOptionType.real, min: 0, max: 100);
+  static const subScale = MpvOption<double>(
+    'sub-scale',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Whether to scale subtitles with the window size (default: yes).
   ///
   /// mpv type: Flag.
-  static const subScaleByWindow = MpvOption<bool>('sub-scale-by-window', MpvOptionType.flag);
+  static const subScaleByWindow = MpvOption<bool>(
+    'sub-scale-by-window',
+    MpvOptionType.flag,
+  );
+
   /// When set to yes, also apply --sub-scale to typesetting (or "signs").
   ///
   /// mpv type: Flag.
-  static const subScaleSigns = MpvOption<bool>('sub-scale-signs', MpvOptionType.flag);
+  static const subScaleSigns = MpvOption<bool>(
+    'sub-scale-signs',
+    MpvOptionType.flag,
+  );
+
   /// Make the subtitle font size relative to the window (default: yes).
   ///
   /// mpv type: Flag.
-  static const subScaleWithWindow = MpvOption<bool>('sub-scale-with-window', MpvOptionType.flag);
+  static const subScaleWithWindow = MpvOption<bool>(
+    'sub-scale-with-window',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Color.
-  static const subShadowColor = MpvOption<String>('sub-shadow-color', MpvOptionType.string);
+  static const subShadowColor = MpvOption<String>(
+    'sub-shadow-color',
+    MpvOptionType.string,
+  );
+
   /// Displacement of the sub text shadow in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const subShadowOffset = MpvOption<double>('sub-shadow-offset', MpvOptionType.real);
+  static const subShadowOffset = MpvOption<double>(
+    'sub-shadow-offset',
+    MpvOptionType.real,
+  );
+
   /// Set the text layout engine used by libass.
   ///
   /// mpv type: Choice; choices: simple, complex.
-  static const subShaper = MpvOption<String>('sub-shaper', MpvOptionType.choice, choices: ['simple', 'complex']);
+  static const subShaper = MpvOption<String>(
+    'sub-shaper',
+    MpvOptionType.choice,
+    choices: ['simple', 'complex'],
+  );
+
   /// Horizontal sub font spacing in scaled pixels (see --sub-font-size for details).
   ///
   /// mpv type: Float.
-  static const subSpacing = MpvOption<double>('sub-spacing', MpvOptionType.real, min: -10, max: 10);
+  static const subSpacing = MpvOption<double>(
+    'sub-spacing',
+    MpvOptionType.real,
+    min: -10,
+    max: 10,
+  );
+
   /// Multiply the subtitle event timestamps with the given value.
   ///
   /// mpv type: Float.
   static const subSpeed = MpvOption<double>('sub-speed', MpvOptionType.real);
+
   /// Stretch a subtitle duration so it ends when the next one starts.
   ///
   /// mpv type: Flag.
-  static const subStretchDurations = MpvOption<bool>('sub-stretch-durations', MpvOptionType.flag);
+  static const subStretchDurations = MpvOption<bool>(
+    'sub-stretch-durations',
+    MpvOptionType.flag,
+  );
+
   /// Enables placing toptitles and subtitles in black borders when they are available, if the subtitles are in a plain text format (or ASS if --sub-ass-override is set high enough).
   ///
   /// mpv type: Flag.
-  static const subUseMargins = MpvOption<bool>('sub-use-margins', MpvOptionType.flag);
+  static const subUseMargins = MpvOption<bool>(
+    'sub-use-margins',
+    MpvOptionType.flag,
+  );
+
   /// Can be used to disable display of subtitles, but still select and decode them.
   ///
   /// mpv type: Flag.
-  static const subVisibility = MpvOption<bool>('sub-visibility', MpvOptionType.flag);
+  static const subVisibility = MpvOption<bool>(
+    'sub-visibility',
+    MpvOptionType.flag,
+  );
+
   /// Set implicit bidi detection to ltr instead of auto to match ASS' default.
   ///
   /// mpv type: Flag.
-  static const subVsfilterBidiCompat = MpvOption<bool>('sub-vsfilter-bidi-compat', MpvOptionType.flag);
+  static const subVsfilterBidiCompat = MpvOption<bool>(
+    'sub-vsfilter-bidi-compat',
+    MpvOptionType.flag,
+  );
+
   /// When autoselecting a subtitle track, if no tracks match your preferred languages, select a full track even if it doesn't match your preferred subtitle language (default: default).
   ///
   /// mpv type: Choice; choices: no, default, yes.
-  static const subsFallback = MpvOption<String>('subs-fallback', MpvOptionType.choice, choices: ['no', 'default', 'yes']);
+  static const subsFallback = MpvOption<String>(
+    'subs-fallback',
+    MpvOptionType.choice,
+    choices: ['no', 'default', 'yes'],
+  );
+
   /// When autoselecting a subtitle track, the default value of `yes` will prefer using a forced subtitle track if the subtitle language matches the audio language and matches your list of preferred lang...
   ///
   /// mpv type: Choice; choices: no, yes, always.
-  static const subsFallbackForced = MpvOption<String>('subs-fallback-forced', MpvOptionType.choice, choices: ['no', 'yes', 'always']);
+  static const subsFallbackForced = MpvOption<String>(
+    'subs-fallback-forced',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'always'],
+  );
+
   /// When autoselecting a subtitle track, select the track that matches the language of your OS if the audio stream is in a different language if suitable (default track or a forced track under the righ...
   ///
   /// mpv type: Flag.
-  static const subsMatchOsLanguage = MpvOption<bool>('subs-match-os-language', MpvOptionType.flag);
+  static const subsMatchOsLanguage = MpvOption<bool>(
+    'subs-match-os-language',
+    MpvOptionType.flag,
+  );
+
   /// When autoselecting a subtitle track, select it even if the selected audio stream matches you preferred subtitle language (default: yes).
   ///
   /// mpv type: Choice; choices: no, forced, yes.
-  static const subsWithMatchingAudio = MpvOption<String>('subs-with-matching-audio', MpvOptionType.choice, choices: ['no', 'forced', 'yes']);
+  static const subsWithMatchingAudio = MpvOption<String>(
+    'subs-with-matching-audio',
+    MpvOptionType.choice,
+    choices: ['no', 'forced', 'yes'],
+  );
+
   /// Allow up to N in-flight frames.
   ///
   /// mpv type: Integer.
-  static const swapchainDepth = MpvOption<int>('swapchain-depth', MpvOptionType.integer, min: 1, max: 8);
+  static const swapchainDepth = MpvOption<int>(
+    'swapchain-depth',
+    MpvOptionType.integer,
+    min: 1,
+    max: 8,
+  );
+
   /// Allow using zimg (if the component using the internal swscale wrapper explicitly allows so) (default: yes).
   ///
   /// mpv type: Flag.
-  static const swsAllowZimg = MpvOption<bool>('sws-allow-zimg', MpvOptionType.flag);
+  static const swsAllowZimg = MpvOption<bool>(
+    'sws-allow-zimg',
+    MpvOptionType.flag,
+  );
+
   /// Unknown functionality (default: no).
   ///
   /// mpv type: Flag.
-  static const swsBitexact = MpvOption<bool>('sws-bitexact', MpvOptionType.flag);
+  static const swsBitexact = MpvOption<bool>(
+    'sws-bitexact',
+    MpvOptionType.flag,
+  );
+
   /// Software scaler Gaussian blur filter (chroma).
   ///
   /// mpv type: Float.
-  static const swsCgb = MpvOption<double>('sws-cgb', MpvOptionType.real, min: 0, max: 100);
+  static const swsCgb = MpvOption<double>(
+    'sws-cgb',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Software scaler chroma horizontal shifting.
   ///
   /// mpv type: Integer.
-  static const swsChs = MpvOption<int>('sws-chs', MpvOptionType.integer, min: -100, max: 100);
+  static const swsChs = MpvOption<int>(
+    'sws-chs',
+    MpvOptionType.integer,
+    min: -100,
+    max: 100,
+  );
+
   /// Software scaler sharpen filter (chroma).
   ///
   /// mpv type: Float.
-  static const swsCs = MpvOption<double>('sws-cs', MpvOptionType.real, min: -100, max: 100);
+  static const swsCs = MpvOption<double>(
+    'sws-cs',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Software scaler chroma vertical shifting.
   ///
   /// mpv type: Integer.
-  static const swsCvs = MpvOption<int>('sws-cvs', MpvOptionType.integer, min: -100, max: 100);
+  static const swsCvs = MpvOption<int>(
+    'sws-cvs',
+    MpvOptionType.integer,
+    min: -100,
+    max: 100,
+  );
+
   /// Allow optimizations that help with performance, but reduce quality (default: no).
   ///
   /// mpv type: Flag.
   static const swsFast = MpvOption<bool>('sws-fast', MpvOptionType.flag);
+
   /// Software scaler Gaussian blur filter (luma).
   ///
   /// mpv type: Float.
-  static const swsLgb = MpvOption<double>('sws-lgb', MpvOptionType.real, min: 0, max: 100);
+  static const swsLgb = MpvOption<double>(
+    'sws-lgb',
+    MpvOptionType.real,
+    min: 0,
+    max: 100,
+  );
+
   /// Software scaler sharpen filter (luma).
   ///
   /// mpv type: Float.
-  static const swsLs = MpvOption<double>('sws-ls', MpvOptionType.real, min: -100, max: 100);
+  static const swsLs = MpvOption<double>(
+    'sws-ls',
+    MpvOptionType.real,
+    min: -100,
+    max: 100,
+  );
+
   /// Specify the software scaler algorithm to be used with --vf=scale.
   ///
   /// mpv type: Choice; choices: fast-bilinear, bilinear, bicubic, x, point, area, bicublin, gauss, sinc, lanczos, spline.
-  static const swsScaler = MpvOption<String>('sws-scaler', MpvOptionType.choice, choices: ['fast-bilinear', 'bilinear', 'bicubic', 'x', 'point', 'area', 'bicublin', 'gauss', 'sinc', 'lanczos', 'spline']);
+  static const swsScaler = MpvOption<String>(
+    'sws-scaler',
+    MpvOptionType.choice,
+    choices: [
+      'fast-bilinear',
+      'bilinear',
+      'bicubic',
+      'x',
+      'point',
+      'area',
+      'bicublin',
+      'gauss',
+      'sinc',
+      'lanczos',
+      'spline',
+    ],
+  );
+
   /// When enabled, output colorspace metadata will be set on the swapchain depending on the GPU context and platform this may affect compositor/display.
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const targetColorspaceHint = MpvOption<String>('target-colorspace-hint', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const targetColorspaceHint = MpvOption<String>(
+    'target-colorspace-hint',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// Select which metadata to use for the --target-colorspace-hint.
   ///
   /// mpv type: Choice; choices: target, source, source-dynamic.
-  static const targetColorspaceHintMode = MpvOption<String>('target-colorspace-hint-mode', MpvOptionType.choice, choices: ['target', 'source', 'source-dynamic']);
+  static const targetColorspaceHintMode = MpvOption<String>(
+    'target-colorspace-hint-mode',
+    MpvOptionType.choice,
+    choices: ['target', 'source', 'source-dynamic'],
+  );
+
   /// When enabled (default), the configured swapchain colorspace (with the hint) will be respected.
   ///
   /// mpv type: Flag.
-  static const targetColorspaceHintStrict = MpvOption<bool>('target-colorspace-hint-strict', MpvOptionType.flag);
+  static const targetColorspaceHintStrict = MpvOption<bool>(
+    'target-colorspace-hint-strict',
+    MpvOptionType.flag,
+  );
+
   /// Specifies the measured contrast of the output display.
   ///
   /// mpv type: Choice; choices: auto, inf.
-  static const targetContrast = MpvOption<String>('target-contrast', MpvOptionType.choice, choices: ['auto', 'inf'], min: 10, max: 10000000);
+  static const targetContrast = MpvOption<String>(
+    'target-contrast',
+    MpvOptionType.choice,
+    choices: ['auto', 'inf'],
+    min: 10,
+    max: 10000000,
+  );
+
   /// Constrains the gamut of the display.
   ///
   /// mpv type: String.
-  static const targetGamut = MpvOption<String>('target-gamut', MpvOptionType.string);
+  static const targetGamut = MpvOption<String>(
+    'target-gamut',
+    MpvOptionType.string,
+  );
+
   /// Specifies a custom LUT file (in Adobe .cube format) to apply to the colors before display on-screen.
   ///
   /// mpv type: String.
-  static const targetLut = MpvOption<String>('target-lut', MpvOptionType.string);
+  static const targetLut = MpvOption<String>(
+    'target-lut',
+    MpvOptionType.string,
+  );
+
   /// Specifies the measured peak brightness of the output display, in cd/m^2 (AKA nits).
   ///
   /// mpv type: Choice; choices: auto.
-  static const targetPeak = MpvOption<String>('target-peak', MpvOptionType.choice, choices: ['auto'], min: 10, max: 10000);
+  static const targetPeak = MpvOption<String>(
+    'target-peak',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 10,
+    max: 10000,
+  );
+
   /// Specifies the primaries of the display.
   ///
   /// mpv type: Choice; choices: auto, bt.601-525, bt.601-625, bt.709, bt.2020, bt.470m, apple, adobe, prophoto, cie1931, dci-p3, display-p3, v-gamut, s-gamut, ebu3213, film-c, aces-ap0, aces-ap1.
-  static const targetPrim = MpvOption<String>('target-prim', MpvOptionType.choice, choices: ['auto', 'bt.601-525', 'bt.601-625', 'bt.709', 'bt.2020', 'bt.470m', 'apple', 'adobe', 'prophoto', 'cie1931', 'dci-p3', 'display-p3', 'v-gamut', 's-gamut', 'ebu3213', 'film-c', 'aces-ap0', 'aces-ap1']);
+  static const targetPrim = MpvOption<String>(
+    'target-prim',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'bt.601-525',
+      'bt.601-625',
+      'bt.709',
+      'bt.2020',
+      'bt.470m',
+      'apple',
+      'adobe',
+      'prophoto',
+      'cie1931',
+      'dci-p3',
+      'display-p3',
+      'v-gamut',
+      's-gamut',
+      'ebu3213',
+      'film-c',
+      'aces-ap0',
+      'aces-ap1',
+    ],
+  );
+
   /// Specifies the transfer characteristics (gamma) of the display.
   ///
   /// mpv type: Choice; choices: auto, bt.1886, srgb, linear, gamma1.8, gamma2.0, gamma2.2, gamma2.4, gamma2.6, gamma2.8, prophoto, pq, hlg, v-log, s-log1, s-log2, st428, scrgb.
-  static const targetTrc = MpvOption<String>('target-trc', MpvOptionType.choice, choices: ['auto', 'bt.1886', 'srgb', 'linear', 'gamma1.8', 'gamma2.0', 'gamma2.2', 'gamma2.4', 'gamma2.6', 'gamma2.8', 'prophoto', 'pq', 'hlg', 'v-log', 's-log1', 's-log2', 'st428', 'scrgb']);
+  static const targetTrc = MpvOption<String>(
+    'target-trc',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'bt.1886',
+      'srgb',
+      'linear',
+      'gamma1.8',
+      'gamma2.0',
+      'gamma2.2',
+      'gamma2.4',
+      'gamma2.6',
+      'gamma2.8',
+      'prophoto',
+      'pq',
+      'hlg',
+      'v-log',
+      's-log1',
+      's-log2',
+      'st428',
+      'scrgb',
+    ],
+  );
+
   /// (Windows only) Enable/disable playback progress rendering in taskbar (Windows 7 and above).
   ///
   /// mpv type: Flag.
-  static const taskbarProgress = MpvOption<bool>('taskbar-progress', MpvOptionType.flag);
+  static const taskbarProgress = MpvOption<bool>(
+    'taskbar-progress',
+    MpvOptionType.flag,
+  );
+
   /// Select a teletext page number to decode.
   ///
   /// mpv type: Integer.
-  static const teletextPage = MpvOption<int>('teletext-page', MpvOptionType.integer, min: -1, max: 999);
+  static const teletextPage = MpvOption<int>(
+    'teletext-page',
+    MpvOptionType.integer,
+    min: -1,
+    max: 999,
+  );
+
   /// Enable temporal dithering.
   ///
   /// mpv type: Flag.
-  static const temporalDither = MpvOption<bool>('temporal-dither', MpvOptionType.flag);
+  static const temporalDither = MpvOption<bool>(
+    'temporal-dither',
+    MpvOptionType.flag,
+  );
+
   /// Determines how often the dithering pattern is updated when --temporal-dither is in use.
   ///
   /// mpv type: Integer.
-  static const temporalDitherPeriod = MpvOption<int>('temporal-dither-period', MpvOptionType.integer, min: 1, max: 128);
+  static const temporalDitherPeriod = MpvOption<int>(
+    'temporal-dither-period',
+    MpvOptionType.integer,
+    min: 1,
+    max: 128,
+  );
+
   /// Control whether OSD messages are shown on the console when no video output is available (default: auto).
   ///
   /// mpv type: Choice; choices: force, auto, no.
-  static const termOsd = MpvOption<String>('term-osd', MpvOptionType.choice, choices: ['force', 'auto', 'no']);
+  static const termOsd = MpvOption<String>(
+    'term-osd',
+    MpvOptionType.choice,
+    choices: ['force', 'auto', 'no'],
+  );
+
   /// Enable printing a progress bar under the status line on the terminal.
   ///
   /// mpv type: Flag.
   static const termOsdBar = MpvOption<bool>('term-osd-bar', MpvOptionType.flag);
+
   /// Customize the --term-osd-bar feature.
   ///
   /// mpv type: String.
-  static const termOsdBarChars = MpvOption<String>('term-osd-bar-chars', MpvOptionType.string);
+  static const termOsdBarChars = MpvOption<String>(
+    'term-osd-bar-chars',
+    MpvOptionType.string,
+  );
+
   /// Print out a string after starting playback.
   ///
   /// mpv type: String.
-  static const termPlayingMsg = MpvOption<String>('term-playing-msg', MpvOptionType.string);
+  static const termPlayingMsg = MpvOption<String>(
+    'term-playing-msg',
+    MpvOptionType.string,
+  );
+
   /// Print out a custom string during playback instead of the standard status line.
   ///
   /// mpv type: String.
-  static const termStatusMsg = MpvOption<String>('term-status-msg', MpvOptionType.string);
+  static const termStatusMsg = MpvOption<String>(
+    'term-status-msg',
+    MpvOptionType.string,
+  );
+
   /// Set the terminal title.
   ///
   /// mpv type: String.
-  static const termTitle = MpvOption<String>('term-title', MpvOptionType.string);
+  static const termTitle = MpvOption<String>(
+    'term-title',
+    MpvOptionType.string,
+  );
+
   /// --terminal=no disables any use of the terminal and stdin/stdout/stderr.
   ///
   /// mpv type: Flag.
   static const terminal = MpvOption<bool>('terminal', MpvOptionType.flag);
+
   /// Set the window title.
   ///
   /// mpv type: String.
   static const title = MpvOption<String>('title', MpvOptionType.string);
+
   /// (Windows and X11 only) Play video with the window title bar.
   ///
   /// mpv type: Flag.
   static const titleBar = MpvOption<bool>('title-bar', MpvOptionType.flag);
+
   /// Certificate authority database file for use with TLS.
   ///
   /// mpv type: String.
-  static const tlsCaFile = MpvOption<String>('tls-ca-file', MpvOptionType.string);
+  static const tlsCaFile = MpvOption<String>(
+    'tls-ca-file',
+    MpvOptionType.string,
+  );
+
   /// A file containing a certificate to use in the handshake with the peer.
   ///
   /// mpv type: String.
-  static const tlsCertFile = MpvOption<String>('tls-cert-file', MpvOptionType.string);
+  static const tlsCertFile = MpvOption<String>(
+    'tls-cert-file',
+    MpvOptionType.string,
+  );
+
   /// A file containing the private key for the certificate.
   ///
   /// mpv type: String.
-  static const tlsKeyFile = MpvOption<String>('tls-key-file', MpvOptionType.string);
+  static const tlsKeyFile = MpvOption<String>(
+    'tls-key-file',
+    MpvOptionType.string,
+  );
+
   /// Verify peer certificates when using TLS (e.g.
   ///
   /// mpv type: Flag.
   static const tlsVerify = MpvOption<bool>('tls-verify', MpvOptionType.flag);
+
   /// Specifies the algorithm used for tone-mapping images onto the target display.
   ///
   /// mpv type: Choice; choices: auto, clip, mobius, reinhard, hable, gamma, linear, spline, bt.2390, bt.2446a, st2094-40, st2094-10.
-  static const toneMapping = MpvOption<String>('tone-mapping', MpvOptionType.choice, choices: ['auto', 'clip', 'mobius', 'reinhard', 'hable', 'gamma', 'linear', 'spline', 'bt.2390', 'bt.2446a', 'st2094-40', 'st2094-10']);
+  static const toneMapping = MpvOption<String>(
+    'tone-mapping',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'clip',
+      'mobius',
+      'reinhard',
+      'hable',
+      'gamma',
+      'linear',
+      'spline',
+      'bt.2390',
+      'bt.2446a',
+      'st2094-40',
+      'st2094-10',
+    ],
+  );
+
   /// Upper limit for how much the tone mapping algorithm is allowed to boost the average brightness by over-exposing the image.
   ///
   /// mpv type: Float.
-  static const toneMappingMaxBoost = MpvOption<double>('tone-mapping-max-boost', MpvOptionType.real, min: 1, max: 10);
+  static const toneMappingMaxBoost = MpvOption<double>(
+    'tone-mapping-max-boost',
+    MpvOptionType.real,
+    min: 1,
+    max: 10,
+  );
+
   /// Set tone mapping parameters.
   ///
   /// mpv type: Float.
-  static const toneMappingParam = MpvOption<double>('tone-mapping-param', MpvOptionType.real);
+  static const toneMappingParam = MpvOption<double>(
+    'tone-mapping-param',
+    MpvOptionType.real,
+  );
+
   /// Display a (PQ-PQ) graph of the active tone-mapping LUT.
   ///
   /// mpv type: Flag.
-  static const toneMappingVisualize = MpvOption<bool>('tone-mapping-visualize', MpvOptionType.flag);
+  static const toneMappingVisualize = MpvOption<bool>(
+    'tone-mapping-visualize',
+    MpvOptionType.flag,
+  );
+
   /// Enable the default track auto-selection (default: yes).
   ///
   /// mpv type: Flag.
-  static const trackAutoSelection = MpvOption<bool>('track-auto-selection', MpvOptionType.flag);
+  static const trackAutoSelection = MpvOption<bool>(
+    'track-auto-selection',
+    MpvOptionType.flag,
+  );
+
   /// When enabled, sRGB is (de)linearized using a pure power 2.2 curve instead of the standard sRGB piecewise transfer function.
   ///
   /// mpv type: Choice; choices: no, input, output, both, auto.
-  static const treatSrgbAsPower22 = MpvOption<String>('treat-srgb-as-power22', MpvOptionType.choice, choices: ['no', 'input', 'output', 'both', 'auto']);
+  static const treatSrgbAsPower22 = MpvOption<String>(
+    'treat-srgb-as-power22',
+    MpvOptionType.choice,
+    choices: ['no', 'input', 'output', 'both', 'auto'],
+  );
+
   /// The filter used for interpolating the temporal axis (frames).
   ///
   /// mpv type: Choice; choices: oversample, linear, spline16, spline36, spline64, sinc, lanczos, ginseng, bicubic, hermite, catmull_rom, mitchell, robidoux, robidouxsharp, box, nearest, triangle, gaussian, bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx, jinc.
-  static const tscale = MpvOption<String>('tscale', MpvOptionType.choice, choices: ['oversample', 'linear', 'spline16', 'spline36', 'spline64', 'sinc', 'lanczos', 'ginseng', 'bicubic', 'hermite', 'catmull_rom', 'mitchell', 'robidoux', 'robidouxsharp', 'box', 'nearest', 'triangle', 'gaussian', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx', 'jinc']);
+  static const tscale = MpvOption<String>(
+    'tscale',
+    MpvOptionType.choice,
+    choices: [
+      'oversample',
+      'linear',
+      'spline16',
+      'spline36',
+      'spline64',
+      'sinc',
+      'lanczos',
+      'ginseng',
+      'bicubic',
+      'hermite',
+      'catmull_rom',
+      'mitchell',
+      'robidoux',
+      'robidouxsharp',
+      'box',
+      'nearest',
+      'triangle',
+      'gaussian',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+      'jinc',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleAntiring = MpvOption<double>('tscale-antiring', MpvOptionType.real, min: 0, max: 1);
+  static const tscaleAntiring = MpvOption<double>(
+    'tscale-antiring',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleBlur = MpvOption<double>('tscale-blur', MpvOptionType.real);
+  static const tscaleBlur = MpvOption<double>(
+    'tscale-blur',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleClamp = MpvOption<double>('tscale-clamp', MpvOptionType.real, min: 0, max: 1);
+  static const tscaleClamp = MpvOption<double>(
+    'tscale-clamp',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleParam1 = MpvOption<double>('tscale-param1', MpvOptionType.real);
+  static const tscaleParam1 = MpvOption<double>(
+    'tscale-param1',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleParam2 = MpvOption<double>('tscale-param2', MpvOptionType.real);
+  static const tscaleParam2 = MpvOption<double>(
+    'tscale-param2',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleRadius = MpvOption<double>('tscale-radius', MpvOptionType.real, min: 0.5, max: 16);
+  static const tscaleRadius = MpvOption<double>(
+    'tscale-radius',
+    MpvOptionType.real,
+    min: 0.5,
+    max: 16,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleTaper = MpvOption<double>('tscale-taper', MpvOptionType.real, min: 0, max: 1);
+  static const tscaleTaper = MpvOption<double>(
+    'tscale-taper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Choice; choices: , bartlett, cosine, hanning, tukey, hamming, quadric, welch, kaiser, blackman, sphinx, jinc.
-  static const tscaleWindow = MpvOption<String>('tscale-window', MpvOptionType.choice, choices: ['', 'bartlett', 'cosine', 'hanning', 'tukey', 'hamming', 'quadric', 'welch', 'kaiser', 'blackman', 'sphinx', 'jinc']);
+  static const tscaleWindow = MpvOption<String>(
+    'tscale-window',
+    MpvOptionType.choice,
+    choices: [
+      '',
+      'bartlett',
+      'cosine',
+      'hanning',
+      'tukey',
+      'hamming',
+      'quadric',
+      'welch',
+      'kaiser',
+      'blackman',
+      'sphinx',
+      'jinc',
+    ],
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleWparam = MpvOption<double>('tscale-wparam', MpvOptionType.real);
+  static const tscaleWparam = MpvOption<double>(
+    'tscale-wparam',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Float.
-  static const tscaleWtaper = MpvOption<double>('tscale-wtaper', MpvOptionType.real, min: 0, max: 1);
+  static const tscaleWtaper = MpvOption<double>(
+    'tscale-wtaper',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// (Windows only) (available also as mpv-unregister helper)
   ///
   /// mpv type: Flag.
   static const unregister = MpvOption<bool>('unregister', MpvOptionType.flag);
+
   /// Do not sleep when outputting video frames.
   ///
   /// mpv type: Flag.
   static const untimed = MpvOption<bool>('untimed', MpvOptionType.flag);
+
   /// Load the embedded ICC profile contained in media files such as PNG images.
   ///
   /// mpv type: Flag.
-  static const useEmbeddedIccProfile = MpvOption<bool>('use-embedded-icc-profile', MpvOptionType.flag);
+  static const useEmbeddedIccProfile = MpvOption<bool>(
+    'use-embedded-icc-profile',
+    MpvOptionType.flag,
+  );
+
   /// Look for a file-specific configuration file in the same directory as the file that is being played.
   ///
   /// mpv type: Flag.
-  static const useFiledirConf = MpvOption<bool>('use-filedir-conf', MpvOptionType.flag);
+  static const useFiledirConf = MpvOption<bool>(
+    'use-filedir-conf',
+    MpvOptionType.flag,
+  );
+
   /// Use `<string>` as user agent for HTTP streaming.
   ///
   /// mpv type: String.
-  static const userAgent = MpvOption<String>('user-agent', MpvOptionType.string);
+  static const userAgent = MpvOption<String>(
+    'user-agent',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Flag.
   static const v = MpvOption<bool>('v', MpvOptionType.flag);
+
   /// Choose the DRM device for vaapi-copy.
   ///
   /// mpv type: String.
-  static const vaapiDevice = MpvOption<String>('vaapi-device', MpvOptionType.string);
+  static const vaapiDevice = MpvOption<String>(
+    'vaapi-device',
+    MpvOptionType.string,
+  );
+
   /// Specify a priority list of video decoders to be used, according to their family and name.
   ///
   /// mpv type: String.
   static const vd = MpvOption<String>('vd', MpvOptionType.string);
+
   /// Certain video codecs support cropping, meaning that only a sub-rectangle of the decoded frame is intended for display.
   ///
   /// mpv type: Flag.
-  static const vdApplyCropping = MpvOption<bool>('vd-apply-cropping', MpvOptionType.flag);
+  static const vdApplyCropping = MpvOption<bool>(
+    'vd-apply-cropping',
+    MpvOptionType.flag,
+  );
+
   /// Assume the video was encoded by an old, buggy x264 version (default: no).
   ///
   /// mpv type: Flag.
-  static const vdLavcAssumeOldX264 = MpvOption<bool>('vd-lavc-assume-old-x264', MpvOptionType.flag);
+  static const vdLavcAssumeOldX264 = MpvOption<bool>(
+    'vd-lavc-assume-old-x264',
+    MpvOptionType.flag,
+  );
+
   /// Only use bit-exact algorithms in all decoding steps (for codec testing).
   ///
   /// mpv type: Flag.
-  static const vdLavcBitexact = MpvOption<bool>('vd-lavc-bitexact', MpvOptionType.flag);
+  static const vdLavcBitexact = MpvOption<bool>(
+    'vd-lavc-bitexact',
+    MpvOptionType.flag,
+  );
+
   /// Check hardware decoder profile (default: yes).
   ///
   /// mpv type: Flag.
-  static const vdLavcCheckHwProfile = MpvOption<bool>('vd-lavc-check-hw-profile', MpvOptionType.flag);
+  static const vdLavcCheckHwProfile = MpvOption<bool>(
+    'vd-lavc-check-hw-profile',
+    MpvOptionType.flag,
+  );
+
   /// Enable direct rendering (default: auto).
   ///
   /// mpv type: Choice; choices: auto, no, yes.
-  static const vdLavcDr = MpvOption<String>('vd-lavc-dr', MpvOptionType.choice, choices: ['auto', 'no', 'yes']);
+  static const vdLavcDr = MpvOption<String>(
+    'vd-lavc-dr',
+    MpvOptionType.choice,
+    choices: ['auto', 'no', 'yes'],
+  );
+
   /// Enable optimizations which do not comply with the format specification and potentially cause problems, like simpler dequantization, simpler motion compensation, assuming use of the default quantiza...
   ///
   /// mpv type: Flag.
   static const vdLavcFast = MpvOption<bool>('vd-lavc-fast', MpvOptionType.flag);
+
   /// Enables film grain application on the GPU.
   ///
   /// mpv type: Choice; choices: auto, cpu, gpu.
-  static const vdLavcFilmGrain = MpvOption<String>('vd-lavc-film-grain', MpvOptionType.choice, choices: ['auto', 'cpu', 'gpu']);
+  static const vdLavcFilmGrain = MpvOption<String>(
+    'vd-lavc-film-grain',
+    MpvOptionType.choice,
+    choices: ['auto', 'cpu', 'gpu'],
+  );
+
   /// Set framedropping mode used with --framedrop (see skiploopfilter for available skip values).
   ///
   /// mpv type: Choice; choices: none, default, nonref, bidir, nonkey, all.
-  static const vdLavcFramedrop = MpvOption<String>('vd-lavc-framedrop', MpvOptionType.choice, choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all']);
+  static const vdLavcFramedrop = MpvOption<String>(
+    'vd-lavc-framedrop',
+    MpvOptionType.choice,
+    choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all'],
+  );
+
   /// Pass AVOptions to libavcodec decoder.
   ///
   /// mpv type: Key/value list.
   static const vdLavcO = MpvOption<String>('vd-lavc-o', MpvOptionType.string);
+
   /// Show even broken/corrupt frames (default: no).
   ///
   /// mpv type: Flag.
-  static const vdLavcShowAll = MpvOption<bool>('vd-lavc-show-all', MpvOptionType.flag);
+  static const vdLavcShowAll = MpvOption<bool>(
+    'vd-lavc-show-all',
+    MpvOptionType.flag,
+  );
+
   /// Skips decoding of frames completely.
   ///
   /// mpv type: Choice; choices: none, default, nonref, bidir, nonkey, all.
-  static const vdLavcSkipframe = MpvOption<String>('vd-lavc-skipframe', MpvOptionType.choice, choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all']);
+  static const vdLavcSkipframe = MpvOption<String>(
+    'vd-lavc-skipframe',
+    MpvOptionType.choice,
+    choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all'],
+  );
+
   /// Skips the IDCT step.
   ///
   /// mpv type: Choice; choices: none, default, nonref, bidir, nonkey, all.
-  static const vdLavcSkipidct = MpvOption<String>('vd-lavc-skipidct', MpvOptionType.choice, choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all']);
+  static const vdLavcSkipidct = MpvOption<String>(
+    'vd-lavc-skipidct',
+    MpvOptionType.choice,
+    choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all'],
+  );
+
   /// Skips the loop filter (AKA deblocking) during decoding.
   ///
   /// mpv type: Choice; choices: none, default, nonref, bidir, nonkey, all.
-  static const vdLavcSkiploopfilter = MpvOption<String>('vd-lavc-skiploopfilter', MpvOptionType.choice, choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all']);
+  static const vdLavcSkiploopfilter = MpvOption<String>(
+    'vd-lavc-skiploopfilter',
+    MpvOptionType.choice,
+    choices: ['none', 'default', 'nonref', 'bidir', 'nonkey', 'all'],
+  );
+
   ///
   /// mpv type: Choice; choices: no, yes.
-  static const vdLavcSoftwareFallback = MpvOption<String>('vd-lavc-software-fallback', MpvOptionType.choice, choices: ['no', 'yes'], min: 1, max: 2147483647);
+  static const vdLavcSoftwareFallback = MpvOption<String>(
+    'vd-lavc-software-fallback',
+    MpvOptionType.choice,
+    choices: ['no', 'yes'],
+    min: 1,
+    max: 2147483647,
+  );
+
   /// Number of threads to use for decoding.
   ///
   /// mpv type: Integer.
-  static const vdLavcThreads = MpvOption<int>('vd-lavc-threads', MpvOptionType.integer, min: 0);
+  static const vdLavcThreads = MpvOption<int>(
+    'vd-lavc-threads',
+    MpvOptionType.integer,
+    min: 0,
+  );
+
   /// Enable running the video/audio decoder on a separate thread (default: no).
   ///
   /// mpv type: Flag.
-  static const vdQueueEnable = MpvOption<bool>('vd-queue-enable', MpvOptionType.flag);
+  static const vdQueueEnable = MpvOption<bool>(
+    'vd-queue-enable',
+    MpvOptionType.flag,
+  );
+
   /// Maximum approximate allowed size of the queue.
   ///
   /// mpv type: ByteSize.
-  static const vdQueueMaxBytes = MpvOption<int>('vd-queue-max-bytes', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const vdQueueMaxBytes = MpvOption<int>(
+    'vd-queue-max-bytes',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Maximum number of frames (video) or samples (audio) of the queue.
   ///
   /// mpv type: Integer64.
-  static const vdQueueMaxSamples = MpvOption<int>('vd-queue-max-samples', MpvOptionType.integer, min: 0);
+  static const vdQueueMaxSamples = MpvOption<int>(
+    'vd-queue-max-samples',
+    MpvOptionType.integer,
+    min: 0,
+  );
+
   /// Maximum number of seconds of media in the queue.
   ///
   /// mpv type: Double.
-  static const vdQueueMaxSecs = MpvOption<double>('vd-queue-max-secs', MpvOptionType.real, min: 0);
+  static const vdQueueMaxSecs = MpvOption<double>(
+    'vd-queue-max-secs',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   ///
   /// mpv type: Print.
   static const version = MpvOption<String>('version', MpvOptionType.string);
+
   /// Specify a list of video filters to apply to the video stream.
   ///
   /// mpv type: Object settings list; choices: format, lavfi, lavfi-bridge, sub, fingerprint, vapoursynth, vavpp, d3d11vpp, amf_frc, gpu, astreamselect, addroi, alphaextract, amplify, ass, atadenoise, avgblur, backgroundkey, bbox, bench, bilateral, bilateral_cuda, bitplanenoise, blackdetect, blackframe, blockdetect, blurdetect, bm3d, boxblur, bwdif, bwdif_cuda, cas, ccrepack, chromahold, chromakey, chromakey_cuda, chromanr, chromashift, ciescope, codecview, colorbalance, colorchannelmixer, colorcontrast, colorcorrect, colordetect, colorize, colorkey, colorhold, colorlevels, colormatrix, colorspace, colorspace_cuda, colortemperature, convolution, copy, cover_rect, crop, cropdetect, cue, curves, datascope, dblur, dctdnoiz, deband, deblock, decimate, dedot, deflate, deflicker, deinterlace_qsv, deinterlace_d3d12, deinterlace_vaapi, dejudder, delogo, denoise_vaapi, deshake, despill, detelecine, dilation, doubleweave, drawbox, drawgraph, drawgrid, drawtext, edgedetect, elbg, entropy, epx, eq, erosion, estdif, exposure, extractplanes, fade, fftdnoiz, fftfilt, field, fieldhint, fieldmatch, fieldorder, fillborders, find_rect, floodfill, format, fps, framerate, framestep, freezedetect, fspp, fsync, gblur, geq, gradfun, graphmonitor, grayworld, greyedge, guided, hflip, histeq, histogram, hqdn3d, hqx, hstack, hsvhold, hsvkey, hue, huesaturation, hwdownload, hwmap, hwupload, hwupload_cuda, iccdetect, iccgen, idet, il, inflate, interlace, interleave, kerndeint, kirsch, lagfun, latency, lenscorrection, libplacebo, limitdiff, limiter, loop, lumakey, lut, lut1d, lut3d, lutrgb, lutyuv, maskfun, mcdeint, median, mergeplanes, mestimate, mestimate_d3d12, metadata, minterpolate, mix, monochrome, mpdecimate, negate, nlmeans, nnedi, noformat, noise, normalize, null, oscilloscope, owdenoise, pad, pad_cuda, palettegen, perms, perspective, phase, photosensitivity, pixdesctest, pixelize, pixscope, pp7, premultiply, premultiply_dynamic, prewitt, procamp_vaapi, pseudocolor, pullup, qp, random, readeia608, readvitc, realtime, removegrain, removelogo, repeatfields, reverse, rgbashift, roberts, rotate, sab, scale, vpp_amf, sr_amf, frc_amf, scale_cuda, scale_d3d11, scale_d3d12, scale_qsv, scale_vaapi, scdet, scharr, scroll, segment, select, selectivecolor, sendcmd, separatefields, setdar, setfield, setparams, setpts, setrange, setsar, settb, sharpness_vaapi, shear, showinfo, showpalette, shuffleframes, shufflepixels, shuffleplanes, sidedata, signalstats, signature, siti, smartblur, sobel, split, spp, stereo3d, streamselect, subtitles, super2xsai, swaprect, swapuv, tblend, telecine, thistogram, thumbnail, thumbnail_cuda, tile, tiltandshift, tinterlace, tlut2, tmedian, tmidequalizer, tmix, tonemap, tonemap_vaapi, tpad, transpose, transpose_cuda, transpose_vaapi, trim, unpremultiply, unsharp, untile, uspp, v360, vaguedenoiser, vectorscope, vflip, vfrdet, vibrance, vignette, vmafmotion, vpp_qsv, vstack, w3fdif, waveform, weave, xbr, xmedian, xstack, yadif, yadif_cuda, yaepblur, zoompan, zscale, hstack_vaapi, vstack_vaapi, xstack_vaapi, hstack_qsv, vstack_qsv, xstack_qsv, pad_vaapi, drawbox_vaapi, concat.
-  static const vf = MpvOption<String>('vf', MpvOptionType.string, choices: ['format', 'lavfi', 'lavfi-bridge', 'sub', 'fingerprint', 'vapoursynth', 'vavpp', 'd3d11vpp', 'amf_frc', 'gpu', 'astreamselect', 'addroi', 'alphaextract', 'amplify', 'ass', 'atadenoise', 'avgblur', 'backgroundkey', 'bbox', 'bench', 'bilateral', 'bilateral_cuda', 'bitplanenoise', 'blackdetect', 'blackframe', 'blockdetect', 'blurdetect', 'bm3d', 'boxblur', 'bwdif', 'bwdif_cuda', 'cas', 'ccrepack', 'chromahold', 'chromakey', 'chromakey_cuda', 'chromanr', 'chromashift', 'ciescope', 'codecview', 'colorbalance', 'colorchannelmixer', 'colorcontrast', 'colorcorrect', 'colordetect', 'colorize', 'colorkey', 'colorhold', 'colorlevels', 'colormatrix', 'colorspace', 'colorspace_cuda', 'colortemperature', 'convolution', 'copy', 'cover_rect', 'crop', 'cropdetect', 'cue', 'curves', 'datascope', 'dblur', 'dctdnoiz', 'deband', 'deblock', 'decimate', 'dedot', 'deflate', 'deflicker', 'deinterlace_qsv', 'deinterlace_d3d12', 'deinterlace_vaapi', 'dejudder', 'delogo', 'denoise_vaapi', 'deshake', 'despill', 'detelecine', 'dilation', 'doubleweave', 'drawbox', 'drawgraph', 'drawgrid', 'drawtext', 'edgedetect', 'elbg', 'entropy', 'epx', 'eq', 'erosion', 'estdif', 'exposure', 'extractplanes', 'fade', 'fftdnoiz', 'fftfilt', 'field', 'fieldhint', 'fieldmatch', 'fieldorder', 'fillborders', 'find_rect', 'floodfill', 'format', 'fps', 'framerate', 'framestep', 'freezedetect', 'fspp', 'fsync', 'gblur', 'geq', 'gradfun', 'graphmonitor', 'grayworld', 'greyedge', 'guided', 'hflip', 'histeq', 'histogram', 'hqdn3d', 'hqx', 'hstack', 'hsvhold', 'hsvkey', 'hue', 'huesaturation', 'hwdownload', 'hwmap', 'hwupload', 'hwupload_cuda', 'iccdetect', 'iccgen', 'idet', 'il', 'inflate', 'interlace', 'interleave', 'kerndeint', 'kirsch', 'lagfun', 'latency', 'lenscorrection', 'libplacebo', 'limitdiff', 'limiter', 'loop', 'lumakey', 'lut', 'lut1d', 'lut3d', 'lutrgb', 'lutyuv', 'maskfun', 'mcdeint', 'median', 'mergeplanes', 'mestimate', 'mestimate_d3d12', 'metadata', 'minterpolate', 'mix', 'monochrome', 'mpdecimate', 'negate', 'nlmeans', 'nnedi', 'noformat', 'noise', 'normalize', 'null', 'oscilloscope', 'owdenoise', 'pad', 'pad_cuda', 'palettegen', 'perms', 'perspective', 'phase', 'photosensitivity', 'pixdesctest', 'pixelize', 'pixscope', 'pp7', 'premultiply', 'premultiply_dynamic', 'prewitt', 'procamp_vaapi', 'pseudocolor', 'pullup', 'qp', 'random', 'readeia608', 'readvitc', 'realtime', 'removegrain', 'removelogo', 'repeatfields', 'reverse', 'rgbashift', 'roberts', 'rotate', 'sab', 'scale', 'vpp_amf', 'sr_amf', 'frc_amf', 'scale_cuda', 'scale_d3d11', 'scale_d3d12', 'scale_qsv', 'scale_vaapi', 'scdet', 'scharr', 'scroll', 'segment', 'select', 'selectivecolor', 'sendcmd', 'separatefields', 'setdar', 'setfield', 'setparams', 'setpts', 'setrange', 'setsar', 'settb', 'sharpness_vaapi', 'shear', 'showinfo', 'showpalette', 'shuffleframes', 'shufflepixels', 'shuffleplanes', 'sidedata', 'signalstats', 'signature', 'siti', 'smartblur', 'sobel', 'split', 'spp', 'stereo3d', 'streamselect', 'subtitles', 'super2xsai', 'swaprect', 'swapuv', 'tblend', 'telecine', 'thistogram', 'thumbnail', 'thumbnail_cuda', 'tile', 'tiltandshift', 'tinterlace', 'tlut2', 'tmedian', 'tmidequalizer', 'tmix', 'tonemap', 'tonemap_vaapi', 'tpad', 'transpose', 'transpose_cuda', 'transpose_vaapi', 'trim', 'unpremultiply', 'unsharp', 'untile', 'uspp', 'v360', 'vaguedenoiser', 'vectorscope', 'vflip', 'vfrdet', 'vibrance', 'vignette', 'vmafmotion', 'vpp_qsv', 'vstack', 'w3fdif', 'waveform', 'weave', 'xbr', 'xmedian', 'xstack', 'yadif', 'yadif_cuda', 'yaepblur', 'zoompan', 'zscale', 'hstack_vaapi', 'vstack_vaapi', 'xstack_vaapi', 'hstack_qsv', 'vstack_qsv', 'xstack_qsv', 'pad_vaapi', 'drawbox_vaapi', 'concat']);
+  static const vf = MpvOption<String>(
+    'vf',
+    MpvOptionType.string,
+    choices: [
+      'format',
+      'lavfi',
+      'lavfi-bridge',
+      'sub',
+      'fingerprint',
+      'vapoursynth',
+      'vavpp',
+      'd3d11vpp',
+      'amf_frc',
+      'gpu',
+      'astreamselect',
+      'addroi',
+      'alphaextract',
+      'amplify',
+      'ass',
+      'atadenoise',
+      'avgblur',
+      'backgroundkey',
+      'bbox',
+      'bench',
+      'bilateral',
+      'bilateral_cuda',
+      'bitplanenoise',
+      'blackdetect',
+      'blackframe',
+      'blockdetect',
+      'blurdetect',
+      'bm3d',
+      'boxblur',
+      'bwdif',
+      'bwdif_cuda',
+      'cas',
+      'ccrepack',
+      'chromahold',
+      'chromakey',
+      'chromakey_cuda',
+      'chromanr',
+      'chromashift',
+      'ciescope',
+      'codecview',
+      'colorbalance',
+      'colorchannelmixer',
+      'colorcontrast',
+      'colorcorrect',
+      'colordetect',
+      'colorize',
+      'colorkey',
+      'colorhold',
+      'colorlevels',
+      'colormatrix',
+      'colorspace',
+      'colorspace_cuda',
+      'colortemperature',
+      'convolution',
+      'copy',
+      'cover_rect',
+      'crop',
+      'cropdetect',
+      'cue',
+      'curves',
+      'datascope',
+      'dblur',
+      'dctdnoiz',
+      'deband',
+      'deblock',
+      'decimate',
+      'dedot',
+      'deflate',
+      'deflicker',
+      'deinterlace_qsv',
+      'deinterlace_d3d12',
+      'deinterlace_vaapi',
+      'dejudder',
+      'delogo',
+      'denoise_vaapi',
+      'deshake',
+      'despill',
+      'detelecine',
+      'dilation',
+      'doubleweave',
+      'drawbox',
+      'drawgraph',
+      'drawgrid',
+      'drawtext',
+      'edgedetect',
+      'elbg',
+      'entropy',
+      'epx',
+      'eq',
+      'erosion',
+      'estdif',
+      'exposure',
+      'extractplanes',
+      'fade',
+      'fftdnoiz',
+      'fftfilt',
+      'field',
+      'fieldhint',
+      'fieldmatch',
+      'fieldorder',
+      'fillborders',
+      'find_rect',
+      'floodfill',
+      'format',
+      'fps',
+      'framerate',
+      'framestep',
+      'freezedetect',
+      'fspp',
+      'fsync',
+      'gblur',
+      'geq',
+      'gradfun',
+      'graphmonitor',
+      'grayworld',
+      'greyedge',
+      'guided',
+      'hflip',
+      'histeq',
+      'histogram',
+      'hqdn3d',
+      'hqx',
+      'hstack',
+      'hsvhold',
+      'hsvkey',
+      'hue',
+      'huesaturation',
+      'hwdownload',
+      'hwmap',
+      'hwupload',
+      'hwupload_cuda',
+      'iccdetect',
+      'iccgen',
+      'idet',
+      'il',
+      'inflate',
+      'interlace',
+      'interleave',
+      'kerndeint',
+      'kirsch',
+      'lagfun',
+      'latency',
+      'lenscorrection',
+      'libplacebo',
+      'limitdiff',
+      'limiter',
+      'loop',
+      'lumakey',
+      'lut',
+      'lut1d',
+      'lut3d',
+      'lutrgb',
+      'lutyuv',
+      'maskfun',
+      'mcdeint',
+      'median',
+      'mergeplanes',
+      'mestimate',
+      'mestimate_d3d12',
+      'metadata',
+      'minterpolate',
+      'mix',
+      'monochrome',
+      'mpdecimate',
+      'negate',
+      'nlmeans',
+      'nnedi',
+      'noformat',
+      'noise',
+      'normalize',
+      'null',
+      'oscilloscope',
+      'owdenoise',
+      'pad',
+      'pad_cuda',
+      'palettegen',
+      'perms',
+      'perspective',
+      'phase',
+      'photosensitivity',
+      'pixdesctest',
+      'pixelize',
+      'pixscope',
+      'pp7',
+      'premultiply',
+      'premultiply_dynamic',
+      'prewitt',
+      'procamp_vaapi',
+      'pseudocolor',
+      'pullup',
+      'qp',
+      'random',
+      'readeia608',
+      'readvitc',
+      'realtime',
+      'removegrain',
+      'removelogo',
+      'repeatfields',
+      'reverse',
+      'rgbashift',
+      'roberts',
+      'rotate',
+      'sab',
+      'scale',
+      'vpp_amf',
+      'sr_amf',
+      'frc_amf',
+      'scale_cuda',
+      'scale_d3d11',
+      'scale_d3d12',
+      'scale_qsv',
+      'scale_vaapi',
+      'scdet',
+      'scharr',
+      'scroll',
+      'segment',
+      'select',
+      'selectivecolor',
+      'sendcmd',
+      'separatefields',
+      'setdar',
+      'setfield',
+      'setparams',
+      'setpts',
+      'setrange',
+      'setsar',
+      'settb',
+      'sharpness_vaapi',
+      'shear',
+      'showinfo',
+      'showpalette',
+      'shuffleframes',
+      'shufflepixels',
+      'shuffleplanes',
+      'sidedata',
+      'signalstats',
+      'signature',
+      'siti',
+      'smartblur',
+      'sobel',
+      'split',
+      'spp',
+      'stereo3d',
+      'streamselect',
+      'subtitles',
+      'super2xsai',
+      'swaprect',
+      'swapuv',
+      'tblend',
+      'telecine',
+      'thistogram',
+      'thumbnail',
+      'thumbnail_cuda',
+      'tile',
+      'tiltandshift',
+      'tinterlace',
+      'tlut2',
+      'tmedian',
+      'tmidequalizer',
+      'tmix',
+      'tonemap',
+      'tonemap_vaapi',
+      'tpad',
+      'transpose',
+      'transpose_cuda',
+      'transpose_vaapi',
+      'trim',
+      'unpremultiply',
+      'unsharp',
+      'untile',
+      'uspp',
+      'v360',
+      'vaguedenoiser',
+      'vectorscope',
+      'vflip',
+      'vfrdet',
+      'vibrance',
+      'vignette',
+      'vmafmotion',
+      'vpp_qsv',
+      'vstack',
+      'w3fdif',
+      'waveform',
+      'weave',
+      'xbr',
+      'xmedian',
+      'xstack',
+      'yadif',
+      'yadif_cuda',
+      'yaepblur',
+      'zoompan',
+      'zscale',
+      'hstack_vaapi',
+      'vstack_vaapi',
+      'xstack_vaapi',
+      'hstack_qsv',
+      'vstack_qsv',
+      'xstack_qsv',
+      'pad_vaapi',
+      'drawbox_vaapi',
+      'concat',
+    ],
+  );
+
   /// Select video channel.
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const vid = MpvOption<String>('vid', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const vid = MpvOption<String>(
+    'vid',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   ///
   /// mpv type: Choice; choices: no, auto.
-  static const video = MpvOption<String>('video', MpvOptionType.choice, choices: ['no', 'auto'], min: 0, max: 8190);
+  static const video = MpvOption<String>(
+    'video',
+    MpvOptionType.choice,
+    choices: ['no', 'auto'],
+    min: 0,
+    max: 8190,
+  );
+
   /// When the video is bigger than the window, these move the displayed rectangle to show different parts of the video.
   ///
   /// mpv type: Float.
-  static const videoAlignX = MpvOption<double>('video-align-x', MpvOptionType.real, min: -1, max: 1);
+  static const videoAlignX = MpvOption<double>(
+    'video-align-x',
+    MpvOptionType.real,
+    min: -1,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const videoAlignY = MpvOption<double>('video-align-y', MpvOptionType.real, min: -1, max: 1);
+  static const videoAlignY = MpvOption<double>(
+    'video-align-y',
+    MpvOptionType.real,
+    min: -1,
+    max: 1,
+  );
+
   /// This sets the default video aspect determination method (if the aspect is _not_ overridden by the user with --video-aspect-override or others).
   ///
   /// mpv type: Choice; choices: bitstream, container, ignore.
-  static const videoAspectMethod = MpvOption<String>('video-aspect-method', MpvOptionType.choice, choices: ['bitstream', 'container', 'ignore']);
+  static const videoAspectMethod = MpvOption<String>(
+    'video-aspect-method',
+    MpvOptionType.choice,
+    choices: ['bitstream', 'container', 'ignore'],
+  );
+
   /// Override video aspect ratio, in case aspect information is incorrect or missing in the file being played.
   ///
   /// mpv type: Aspect.
-  static const videoAspectOverride = MpvOption<double>('video-aspect-override', MpvOptionType.real, min: -2, max: 10);
+  static const videoAspectOverride = MpvOption<double>(
+    'video-aspect-override',
+    MpvOptionType.real,
+    min: -2,
+    max: 10,
+  );
+
   /// Number of keyframe ranges to decode at once when backward decoding (default: 1 for video, 10 for audio).
   ///
   /// mpv type: Integer.
-  static const videoBackwardBatch = MpvOption<int>('video-backward-batch', MpvOptionType.integer, min: 0, max: 1024);
+  static const videoBackwardBatch = MpvOption<int>(
+    'video-backward-batch',
+    MpvOptionType.integer,
+    min: 0,
+    max: 1024,
+  );
+
   /// Number of overlapping keyframe ranges to use for backward decoding (default: auto) ("keyframe" to be understood as in the mpv/ffmpeg specific meaning).
   ///
   /// mpv type: Choice; choices: auto.
-  static const videoBackwardOverlap = MpvOption<String>('video-backward-overlap', MpvOptionType.choice, choices: ['auto'], min: 0, max: 1024);
+  static const videoBackwardOverlap = MpvOption<String>(
+    'video-backward-overlap',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 0,
+    max: 1024,
+  );
+
   /// Crop the video by starting at the x, y offset for w, h pixels.
   ///
   /// mpv type: Video rect.
-  static const videoCrop = MpvOption<String>('video-crop', MpvOptionType.string);
+  static const videoCrop = MpvOption<String>(
+    'video-crop',
+    MpvOptionType.string,
+  );
+
   /// Video file extensions to try to match when using --autocreate-playlist or --directory-filter-types.
   ///
   /// mpv type: String list.
-  static const videoExts = MpvOption<String>('video-exts', MpvOptionType.string);
+  static const videoExts = MpvOption<String>(
+    'video-exts',
+    MpvOptionType.string,
+  );
+
   /// Enable some things which tend to reduce video latency by 1 or 2 frames (default: no).
   ///
   /// mpv type: Flag.
-  static const videoLatencyHacks = MpvOption<bool>('video-latency-hacks', MpvOptionType.flag);
+  static const videoLatencyHacks = MpvOption<bool>(
+    'video-latency-hacks',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Float.
-  static const videoMarginRatioBottom = MpvOption<double>('video-margin-ratio-bottom', MpvOptionType.real, min: 0, max: 1);
+  static const videoMarginRatioBottom = MpvOption<double>(
+    'video-margin-ratio-bottom',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Set extra video margins on each border (default: 0).
   ///
   /// mpv type: Float.
-  static const videoMarginRatioLeft = MpvOption<double>('video-margin-ratio-left', MpvOptionType.real, min: 0, max: 1);
+  static const videoMarginRatioLeft = MpvOption<double>(
+    'video-margin-ratio-left',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const videoMarginRatioRight = MpvOption<double>('video-margin-ratio-right', MpvOptionType.real, min: 0, max: 1);
+  static const videoMarginRatioRight = MpvOption<double>(
+    'video-margin-ratio-right',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   ///
   /// mpv type: Float.
-  static const videoMarginRatioTop = MpvOption<double>('video-margin-ratio-top', MpvOptionType.real, min: 0, max: 1);
+  static const videoMarginRatioTop = MpvOption<double>(
+    'video-margin-ratio-top',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Enabled OSD rendering on the video window (default: yes).
   ///
   /// mpv type: Flag.
   static const videoOsd = MpvOption<bool>('video-osd', MpvOptionType.flag);
+
   /// RGB color levels used with YUV to RGB conversion.
   ///
   /// mpv type: Choice; choices: auto, limited, full.
-  static const videoOutputLevels = MpvOption<String>('video-output-levels', MpvOptionType.choice, choices: ['auto', 'limited', 'full']);
+  static const videoOutputLevels = MpvOption<String>(
+    'video-output-levels',
+    MpvOptionType.choice,
+    choices: ['auto', 'limited', 'full'],
+  );
+
   /// Moves the displayed video rectangle by the given value in the X or Y direction.
   ///
   /// mpv type: Float.
   static const videoPanX = MpvOption<double>('video-pan-x', MpvOptionType.real);
+
   ///
   /// mpv type: Float.
   static const videoPanY = MpvOption<double>('video-pan-y', MpvOptionType.real);
+
   /// Whether to behave as if --video-align-x and --video-align-y were 0 when the video becomes smaller than the window in the respective direction
   ///
   /// mpv type: Flag.
-  static const videoRecenter = MpvOption<bool>('video-recenter', MpvOptionType.flag);
+  static const videoRecenter = MpvOption<bool>(
+    'video-recenter',
+    MpvOptionType.flag,
+  );
+
   /// For backward decoding.
   ///
   /// mpv type: ByteSize.
-  static const videoReversalBuffer = MpvOption<int>('video-reversal-buffer', MpvOptionType.integer, min: 0, max: double.maxFinite);
+  static const videoReversalBuffer = MpvOption<int>(
+    'video-reversal-buffer',
+    MpvOptionType.integer,
+    min: 0,
+    max: double.maxFinite,
+  );
+
   /// Rotate the video clockwise, in degrees.
   ///
   /// mpv type: Choice; choices: no.
-  static const videoRotate = MpvOption<String>('video-rotate', MpvOptionType.choice, choices: ['no'], min: 0, max: 359);
+  static const videoRotate = MpvOption<String>(
+    'video-rotate',
+    MpvOptionType.choice,
+    choices: ['no'],
+    min: 0,
+    max: 359,
+  );
+
   /// Multiply the video display size with the given value (default: 1.0).
   ///
   /// mpv type: Float.
-  static const videoScaleX = MpvOption<double>('video-scale-x', MpvOptionType.real, min: 0, max: 10000);
+  static const videoScaleX = MpvOption<double>(
+    'video-scale-x',
+    MpvOptionType.real,
+    min: 0,
+    max: 10000,
+  );
+
   ///
   /// mpv type: Float.
-  static const videoScaleY = MpvOption<double>('video-scale-y', MpvOptionType.real, min: 0, max: 10000);
+  static const videoScaleY = MpvOption<double>(
+    'video-scale-y',
+    MpvOptionType.real,
+    min: 0,
+    max: 10000,
+  );
+
   /// How the player synchronizes audio and video.
   ///
   /// mpv type: Choice; choices: audio, display-resample, display-resample-vdrop, display-resample-desync, display-tempo, display-adrop, display-vdrop, display-desync, desync.
-  static const videoSync = MpvOption<String>('video-sync', MpvOptionType.choice, choices: ['audio', 'display-resample', 'display-resample-vdrop', 'display-resample-desync', 'display-tempo', 'display-adrop', 'display-vdrop', 'display-desync', 'desync']);
+  static const videoSync = MpvOption<String>(
+    'video-sync',
+    MpvOptionType.choice,
+    choices: [
+      'audio',
+      'display-resample',
+      'display-resample-vdrop',
+      'display-resample-desync',
+      'display-tempo',
+      'display-adrop',
+      'display-vdrop',
+      'display-desync',
+      'desync',
+    ],
+  );
+
   /// Maximum *additional* speed difference in percent that is applied to audio with --video-sync=display-...
   ///
   /// mpv type: Double.
-  static const videoSyncMaxAudioChange = MpvOption<double>('video-sync-max-audio-change', MpvOptionType.real, min: 0, max: 1);
+  static const videoSyncMaxAudioChange = MpvOption<double>(
+    'video-sync-max-audio-change',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Maximum multiple for which to try to fit the video's FPS to the display's FPS (default: 5).
   ///
   /// mpv type: Integer.
-  static const videoSyncMaxFactor = MpvOption<int>('video-sync-max-factor', MpvOptionType.integer, min: 1, max: 10);
+  static const videoSyncMaxFactor = MpvOption<int>(
+    'video-sync-max-factor',
+    MpvOptionType.integer,
+    min: 1,
+    max: 10,
+  );
+
   /// Maximum speed difference in percent that is applied to video with --video-sync=display-...
   ///
   /// mpv type: Double.
-  static const videoSyncMaxVideoChange = MpvOption<double>('video-sync-max-video-change', MpvOptionType.real, min: 0);
+  static const videoSyncMaxVideoChange = MpvOption<double>(
+    'video-sync-max-video-change',
+    MpvOptionType.real,
+    min: 0,
+  );
+
   /// Control how long before video display target time the frame should be rendered (default: 0.050).
   ///
   /// mpv type: Double.
-  static const videoTimingOffset = MpvOption<double>('video-timing-offset', MpvOptionType.real, min: 0, max: 1);
+  static const videoTimingOffset = MpvOption<double>(
+    'video-timing-offset',
+    MpvOptionType.real,
+    min: 0,
+    max: 1,
+  );
+
   /// Disable scaling of the video.
   ///
   /// mpv type: Choice; choices: no, yes, downscale-big.
-  static const videoUnscaled = MpvOption<String>('video-unscaled', MpvOptionType.choice, choices: ['no', 'yes', 'downscale-big']);
+  static const videoUnscaled = MpvOption<String>(
+    'video-unscaled',
+    MpvOptionType.choice,
+    choices: ['no', 'yes', 'downscale-big'],
+  );
+
   /// Adjust the video display scale factor by the given value.
   ///
   /// mpv type: Float.
-  static const videoZoom = MpvOption<double>('video-zoom', MpvOptionType.real, min: -20, max: 20);
+  static const videoZoom = MpvOption<double>(
+    'video-zoom',
+    MpvOptionType.real,
+    min: -20,
+    max: 20,
+  );
+
   /// Analogous to --alang and --slang, for video tracks.
   ///
   /// mpv type: String list.
   static const vlang = MpvOption<String>('vlang', MpvOptionType.string);
+
   /// Specify the video output backend to be used.
   ///
   /// mpv type: Object settings list; choices: gpu-next, gpu, direct3d, libmpv, null, image, tct, sixel, kitty, lavc.
-  static const vo = MpvOption<String>('vo', MpvOptionType.string, choices: ['gpu-next', 'gpu', 'direct3d', 'libmpv', 'null', 'image', 'tct', 'sixel', 'kitty', 'lavc']);
+  static const vo = MpvOption<String>(
+    'vo',
+    MpvOptionType.string,
+    choices: [
+      'gpu-next',
+      'gpu',
+      'direct3d',
+      'libmpv',
+      'null',
+      'image',
+      'tct',
+      'sixel',
+      'kitty',
+      'lavc',
+    ],
+  );
+
   ///
   /// mpv type: Flag.
-  static const voDirect3dDisableTextureAlign = MpvOption<bool>('vo-direct3d-disable-texture-align', MpvOptionType.flag);
+  static const voDirect3dDisableTextureAlign = MpvOption<bool>(
+    'vo-direct3d-disable-texture-align',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voDirect3dExactBackbuffer = MpvOption<bool>('vo-direct3d-exact-backbuffer', MpvOptionType.flag);
+  static const voDirect3dExactBackbuffer = MpvOption<bool>(
+    'vo-direct3d-exact-backbuffer',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voDirect3dForcePowerOf2 = MpvOption<bool>('vo-direct3d-force-power-of-2', MpvOptionType.flag);
+  static const voDirect3dForcePowerOf2 = MpvOption<bool>(
+    'vo-direct3d-force-power-of-2',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voDirect3dSwapDiscard = MpvOption<bool>('vo-direct3d-swap-discard', MpvOptionType.flag);
+  static const voDirect3dSwapDiscard = MpvOption<bool>(
+    'vo-direct3d-swap-discard',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Choice; choices: default, managed, default-pool, default-pool-shadow, scratch.
-  static const voDirect3dTextureMemory = MpvOption<String>('vo-direct3d-texture-memory', MpvOptionType.choice, choices: ['default', 'managed', 'default-pool', 'default-pool-shadow', 'scratch']);
+  static const voDirect3dTextureMemory = MpvOption<String>(
+    'vo-direct3d-texture-memory',
+    MpvOptionType.choice,
+    choices: [
+      'default',
+      'managed',
+      'default-pool',
+      'default-pool-shadow',
+      'scratch',
+    ],
+  );
+
   ///
   /// mpv type: String.
-  static const voImageAvifEncoder = MpvOption<String>('vo-image-avif-encoder', MpvOptionType.string);
+  static const voImageAvifEncoder = MpvOption<String>(
+    'vo-image-avif-encoder',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Key/value list.
-  static const voImageAvifOpts = MpvOption<String>('vo-image-avif-opts', MpvOptionType.string);
+  static const voImageAvifOpts = MpvOption<String>(
+    'vo-image-avif-opts',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String.
-  static const voImageAvifPixfmt = MpvOption<String>('vo-image-avif-pixfmt', MpvOptionType.string);
+  static const voImageAvifPixfmt = MpvOption<String>(
+    'vo-image-avif-pixfmt',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Choice; choices: jpg, jpeg, png, webp, jxl, avif.
-  static const voImageFormat = MpvOption<String>('vo-image-format', MpvOptionType.choice, choices: ['jpg', 'jpeg', 'png', 'webp', 'jxl', 'avif']);
+  static const voImageFormat = MpvOption<String>(
+    'vo-image-format',
+    MpvOptionType.choice,
+    choices: ['jpg', 'jpeg', 'png', 'webp', 'jxl', 'avif'],
+  );
+
   ///
   /// mpv type: Flag.
-  static const voImageHighBitDepth = MpvOption<bool>('vo-image-high-bit-depth', MpvOptionType.flag);
+  static const voImageHighBitDepth = MpvOption<bool>(
+    'vo-image-high-bit-depth',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImageJpegQuality = MpvOption<int>('vo-image-jpeg-quality', MpvOptionType.integer, min: 0, max: 100);
+  static const voImageJpegQuality = MpvOption<int>(
+    'vo-image-jpeg-quality',
+    MpvOptionType.integer,
+    min: 0,
+    max: 100,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voImageJpegSourceChroma = MpvOption<bool>('vo-image-jpeg-source-chroma', MpvOptionType.flag);
+  static const voImageJpegSourceChroma = MpvOption<bool>(
+    'vo-image-jpeg-source-chroma',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Double.
-  static const voImageJxlDistance = MpvOption<double>('vo-image-jxl-distance', MpvOptionType.real, min: 0, max: 15);
+  static const voImageJxlDistance = MpvOption<double>(
+    'vo-image-jxl-distance',
+    MpvOptionType.real,
+    min: 0,
+    max: 15,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImageJxlEffort = MpvOption<int>('vo-image-jxl-effort', MpvOptionType.integer, min: 1, max: 9);
+  static const voImageJxlEffort = MpvOption<int>(
+    'vo-image-jxl-effort',
+    MpvOptionType.integer,
+    min: 1,
+    max: 9,
+  );
+
   ///
   /// mpv type: String.
-  static const voImageOutdir = MpvOption<String>('vo-image-outdir', MpvOptionType.string);
+  static const voImageOutdir = MpvOption<String>(
+    'vo-image-outdir',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImagePngCompression = MpvOption<int>('vo-image-png-compression', MpvOptionType.integer, min: 0, max: 9);
+  static const voImagePngCompression = MpvOption<int>(
+    'vo-image-png-compression',
+    MpvOptionType.integer,
+    min: 0,
+    max: 9,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImagePngFilter = MpvOption<int>('vo-image-png-filter', MpvOptionType.integer, min: 0, max: 5);
+  static const voImagePngFilter = MpvOption<int>(
+    'vo-image-png-filter',
+    MpvOptionType.integer,
+    min: 0,
+    max: 5,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voImageTagColorspace = MpvOption<bool>('vo-image-tag-colorspace', MpvOptionType.flag);
+  static const voImageTagColorspace = MpvOption<bool>(
+    'vo-image-tag-colorspace',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImageWebpCompression = MpvOption<int>('vo-image-webp-compression', MpvOptionType.integer, min: 0, max: 6);
+  static const voImageWebpCompression = MpvOption<int>(
+    'vo-image-webp-compression',
+    MpvOptionType.integer,
+    min: 0,
+    max: 6,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voImageWebpLossless = MpvOption<bool>('vo-image-webp-lossless', MpvOptionType.flag);
+  static const voImageWebpLossless = MpvOption<bool>(
+    'vo-image-webp-lossless',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voImageWebpQuality = MpvOption<int>('vo-image-webp-quality', MpvOptionType.integer, min: 0, max: 100);
+  static const voImageWebpQuality = MpvOption<int>(
+    'vo-image-webp-quality',
+    MpvOptionType.integer,
+    min: 0,
+    max: 100,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voKittyAltScreen = MpvOption<bool>('vo-kitty-alt-screen', MpvOptionType.flag);
+  static const voKittyAltScreen = MpvOption<bool>(
+    'vo-kitty-alt-screen',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voKittyAutoMultiplexerPassthrough = MpvOption<bool>('vo-kitty-auto-multiplexer-passthrough', MpvOptionType.flag);
+  static const voKittyAutoMultiplexerPassthrough = MpvOption<bool>(
+    'vo-kitty-auto-multiplexer-passthrough',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyCols = MpvOption<int>('vo-kitty-cols', MpvOptionType.integer);
+  static const voKittyCols = MpvOption<int>(
+    'vo-kitty-cols',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voKittyConfigClear = MpvOption<bool>('vo-kitty-config-clear', MpvOptionType.flag);
+  static const voKittyConfigClear = MpvOption<bool>(
+    'vo-kitty-config-clear',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyHeight = MpvOption<int>('vo-kitty-height', MpvOptionType.integer);
+  static const voKittyHeight = MpvOption<int>(
+    'vo-kitty-height',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyLeft = MpvOption<int>('vo-kitty-left', MpvOptionType.integer);
+  static const voKittyLeft = MpvOption<int>(
+    'vo-kitty-left',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyRows = MpvOption<int>('vo-kitty-rows', MpvOptionType.integer);
+  static const voKittyRows = MpvOption<int>(
+    'vo-kitty-rows',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyTop = MpvOption<int>('vo-kitty-top', MpvOptionType.integer);
+  static const voKittyTop = MpvOption<int>(
+    'vo-kitty-top',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voKittyUseShm = MpvOption<bool>('vo-kitty-use-shm', MpvOptionType.flag);
+  static const voKittyUseShm = MpvOption<bool>(
+    'vo-kitty-use-shm',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voKittyWidth = MpvOption<int>('vo-kitty-width', MpvOptionType.integer);
+  static const voKittyWidth = MpvOption<int>(
+    'vo-kitty-width',
+    MpvOptionType.integer,
+  );
+
   /// (Windows only) Set the MMCSS profile for the video renderer thread (default: Playback).
   ///
   /// mpv type: String.
-  static const voMmcssProfile = MpvOption<String>('vo-mmcss-profile', MpvOptionType.string);
+  static const voMmcssProfile = MpvOption<String>(
+    'vo-mmcss-profile',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: Double.
-  static const voNullFps = MpvOption<double>('vo-null-fps', MpvOptionType.real, min: 0, max: 10000);
+  static const voNullFps = MpvOption<double>(
+    'vo-null-fps',
+    MpvOptionType.real,
+    min: 0,
+    max: 10000,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voSixelAltScreen = MpvOption<bool>('vo-sixel-alt-screen', MpvOptionType.flag);
+  static const voSixelAltScreen = MpvOption<bool>(
+    'vo-sixel-alt-screen',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voSixelBuffered = MpvOption<bool>('vo-sixel-buffered', MpvOptionType.flag);
+  static const voSixelBuffered = MpvOption<bool>(
+    'vo-sixel-buffered',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelCols = MpvOption<int>('vo-sixel-cols', MpvOptionType.integer);
+  static const voSixelCols = MpvOption<int>(
+    'vo-sixel-cols',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Flag.
-  static const voSixelConfigClear = MpvOption<bool>('vo-sixel-config-clear', MpvOptionType.flag);
+  static const voSixelConfigClear = MpvOption<bool>(
+    'vo-sixel-config-clear',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Choice; choices: auto, none, atkinson, fs, jajuni, stucki, burkes, arithmetic, xor.
-  static const voSixelDither = MpvOption<String>('vo-sixel-dither', MpvOptionType.choice, choices: ['auto', 'none', 'atkinson', 'fs', 'jajuni', 'stucki', 'burkes', 'arithmetic', 'xor']);
+  static const voSixelDither = MpvOption<String>(
+    'vo-sixel-dither',
+    MpvOptionType.choice,
+    choices: [
+      'auto',
+      'none',
+      'atkinson',
+      'fs',
+      'jajuni',
+      'stucki',
+      'burkes',
+      'arithmetic',
+      'xor',
+    ],
+  );
+
   ///
   /// mpv type: Flag.
-  static const voSixelFixedpalette = MpvOption<bool>('vo-sixel-fixedpalette', MpvOptionType.flag);
+  static const voSixelFixedpalette = MpvOption<bool>(
+    'vo-sixel-fixedpalette',
+    MpvOptionType.flag,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelHeight = MpvOption<int>('vo-sixel-height', MpvOptionType.integer);
+  static const voSixelHeight = MpvOption<int>(
+    'vo-sixel-height',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelLeft = MpvOption<int>('vo-sixel-left', MpvOptionType.integer);
+  static const voSixelLeft = MpvOption<int>(
+    'vo-sixel-left',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelPadX = MpvOption<int>('vo-sixel-pad-x', MpvOptionType.integer);
+  static const voSixelPadX = MpvOption<int>(
+    'vo-sixel-pad-x',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelPadY = MpvOption<int>('vo-sixel-pad-y', MpvOptionType.integer);
+  static const voSixelPadY = MpvOption<int>(
+    'vo-sixel-pad-y',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelReqcolors = MpvOption<int>('vo-sixel-reqcolors', MpvOptionType.integer);
+  static const voSixelReqcolors = MpvOption<int>(
+    'vo-sixel-reqcolors',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelRows = MpvOption<int>('vo-sixel-rows', MpvOptionType.integer);
+  static const voSixelRows = MpvOption<int>(
+    'vo-sixel-rows',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelThreshold = MpvOption<int>('vo-sixel-threshold', MpvOptionType.integer);
+  static const voSixelThreshold = MpvOption<int>(
+    'vo-sixel-threshold',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelTop = MpvOption<int>('vo-sixel-top', MpvOptionType.integer);
+  static const voSixelTop = MpvOption<int>(
+    'vo-sixel-top',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voSixelWidth = MpvOption<int>('vo-sixel-width', MpvOptionType.integer);
+  static const voSixelWidth = MpvOption<int>(
+    'vo-sixel-width',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Flag.
   static const voTct256 = MpvOption<bool>('vo-tct-256', MpvOptionType.flag);
+
   ///
   /// mpv type: Choice; choices: plain, half-blocks.
-  static const voTctAlgo = MpvOption<String>('vo-tct-algo', MpvOptionType.choice, choices: ['plain', 'half-blocks']);
+  static const voTctAlgo = MpvOption<String>(
+    'vo-tct-algo',
+    MpvOptionType.choice,
+    choices: ['plain', 'half-blocks'],
+  );
+
   ///
   /// mpv type: Choice; choices: pixel, line, frame.
-  static const voTctBuffering = MpvOption<String>('vo-tct-buffering', MpvOptionType.choice, choices: ['pixel', 'line', 'frame']);
+  static const voTctBuffering = MpvOption<String>(
+    'vo-tct-buffering',
+    MpvOptionType.choice,
+    choices: ['pixel', 'line', 'frame'],
+  );
+
   ///
   /// mpv type: Integer.
-  static const voTctHeight = MpvOption<int>('vo-tct-height', MpvOptionType.integer);
+  static const voTctHeight = MpvOption<int>(
+    'vo-tct-height',
+    MpvOptionType.integer,
+  );
+
   ///
   /// mpv type: Integer.
-  static const voTctWidth = MpvOption<int>('vo-tct-width', MpvOptionType.integer);
+  static const voTctWidth = MpvOption<int>(
+    'vo-tct-width',
+    MpvOptionType.integer,
+  );
+
   /// Set the startup volume.
   ///
   /// mpv type: Float.
-  static const volume = MpvOption<double>('volume', MpvOptionType.real, min: -1, max: 1000);
+  static const volume = MpvOption<double>(
+    'volume',
+    MpvOptionType.real,
+    min: -1,
+    max: 1000,
+  );
+
   /// Set the volume gain in dB.
   ///
   /// mpv type: Float.
-  static const volumeGain = MpvOption<double>('volume-gain', MpvOptionType.real, min: -150, max: 150);
+  static const volumeGain = MpvOption<double>(
+    'volume-gain',
+    MpvOptionType.real,
+    min: -150,
+    max: 150,
+  );
+
   /// Set the volume gain range in dB (default: -96 dB min, 12 dB max).
   ///
   /// mpv type: Float.
-  static const volumeGainMax = MpvOption<double>('volume-gain-max', MpvOptionType.real, min: 0, max: 150);
+  static const volumeGainMax = MpvOption<double>(
+    'volume-gain-max',
+    MpvOptionType.real,
+    min: 0,
+    max: 150,
+  );
+
   ///
   /// mpv type: Float.
-  static const volumeGainMin = MpvOption<double>('volume-gain-min', MpvOptionType.real, min: -150, max: 0);
+  static const volumeGainMin = MpvOption<double>(
+    'volume-gain-min',
+    MpvOptionType.real,
+    min: -150,
+    max: 0,
+  );
+
   /// Set the maximum amplification level in percent (default: 130).
   ///
   /// mpv type: Float.
-  static const volumeMax = MpvOption<double>('volume-max', MpvOptionType.real, min: 100, max: 1000);
+  static const volumeMax = MpvOption<double>(
+    'volume-max',
+    MpvOptionType.real,
+    min: 100,
+    max: 1000,
+  );
+
   /// Enables the use of async compute queues on supported vulkan devices.
   ///
   /// mpv type: Flag.
-  static const vulkanAsyncCompute = MpvOption<bool>('vulkan-async-compute', MpvOptionType.flag);
+  static const vulkanAsyncCompute = MpvOption<bool>(
+    'vulkan-async-compute',
+    MpvOptionType.flag,
+  );
+
   /// Enables the use of async transfer queues on supported vulkan devices.
   ///
   /// mpv type: Flag.
-  static const vulkanAsyncTransfer = MpvOption<bool>('vulkan-async-transfer', MpvOptionType.flag);
+  static const vulkanAsyncTransfer = MpvOption<bool>(
+    'vulkan-async-transfer',
+    MpvOptionType.flag,
+  );
+
   /// The name or UUID of the Vulkan device to use for rendering and presentation.
   ///
   /// mpv type: String.
-  static const vulkanDevice = MpvOption<String>('vulkan-device', MpvOptionType.string);
+  static const vulkanDevice = MpvOption<String>(
+    'vulkan-device',
+    MpvOptionType.string,
+  );
+
   /// Controls the number of VkQueues used for rendering (limited by how many your device supports).
   ///
   /// mpv type: Integer.
-  static const vulkanQueueCount = MpvOption<int>('vulkan-queue-count', MpvOptionType.integer, min: 1, max: 8);
+  static const vulkanQueueCount = MpvOption<int>(
+    'vulkan-queue-count',
+    MpvOptionType.integer,
+    min: 1,
+    max: 8,
+  );
+
   /// Controls the presentation mode of the vulkan swapchain.
   ///
   /// mpv type: Choice; choices: auto, fifo, fifo-relaxed, mailbox, immediate.
-  static const vulkanSwapMode = MpvOption<String>('vulkan-swap-mode', MpvOptionType.choice, choices: ['auto', 'fifo', 'fifo-relaxed', 'mailbox', 'immediate']);
+  static const vulkanSwapMode = MpvOption<String>(
+    'vulkan-swap-mode',
+    MpvOptionType.choice,
+    choices: ['auto', 'fifo', 'fifo-relaxed', 'mailbox', 'immediate'],
+  );
+
   ///
   /// mpv type: Choice; choices: default, min.
-  static const wasapiExclusiveBuffer = MpvOption<String>('wasapi-exclusive-buffer', MpvOptionType.choice, choices: ['default', 'min'], min: 1, max: 2000000);
+  static const wasapiExclusiveBuffer = MpvOption<String>(
+    'wasapi-exclusive-buffer',
+    MpvOptionType.choice,
+    choices: ['default', 'min'],
+    min: 1,
+    max: 2000000,
+  );
+
   /// The path in which to store the watch history.
   ///
   /// mpv type: String.
-  static const watchHistoryPath = MpvOption<String>('watch-history-path', MpvOptionType.string);
+  static const watchHistoryPath = MpvOption<String>(
+    'watch-history-path',
+    MpvOptionType.string,
+  );
+
   /// The directory in which to store the "watch later" temporary files.
   ///
   /// mpv type: String.
-  static const watchLaterDir = MpvOption<String>('watch-later-dir', MpvOptionType.string);
+  static const watchLaterDir = MpvOption<String>(
+    'watch-later-dir',
+    MpvOptionType.string,
+  );
+
   ///
   /// mpv type: String.
-  static const watchLaterDirectory = MpvOption<String>('watch-later-directory', MpvOptionType.string);
+  static const watchLaterDirectory = MpvOption<String>(
+    'watch-later-directory',
+    MpvOptionType.string,
+  );
+
   /// The options that are saved in "watch later" files if they have been changed since when mpv started.
   ///
   /// mpv type: String list.
-  static const watchLaterOptions = MpvOption<String>('watch-later-options', MpvOptionType.string);
+  static const watchLaterOptions = MpvOption<String>(
+    'watch-later-options',
+    MpvOptionType.string,
+  );
+
   /// Set the client app id for Wayland-based video output methods (default: mpv).
   ///
   /// mpv type: String.
-  static const waylandAppId = MpvOption<String>('wayland-app-id', MpvOptionType.string);
+  static const waylandAppId = MpvOption<String>(
+    'wayland-app-id',
+    MpvOptionType.string,
+  );
+
   /// This tells mpv to attach to an existing window.
   ///
   /// mpv type: Integer64.
   static const wid = MpvOption<int>('wid', MpvOptionType.integer);
+
   /// (Windows only) Controls the window affinity behavior of mpv.
   ///
   /// mpv type: Choice; choices: default, excludefromcapture, monitor.
-  static const windowAffinity = MpvOption<String>('window-affinity', MpvOptionType.choice, choices: ['default', 'excludefromcapture', 'monitor']);
+  static const windowAffinity = MpvOption<String>(
+    'window-affinity',
+    MpvOptionType.choice,
+    choices: ['default', 'excludefromcapture', 'monitor'],
+  );
+
   /// (Windows only) Set the preference for window corner rounding.
   ///
   /// mpv type: Choice; choices: default, donotround, round, roundsmall.
-  static const windowCorners = MpvOption<String>('window-corners', MpvOptionType.choice, choices: ['default', 'donotround', 'round', 'roundsmall']);
+  static const windowCorners = MpvOption<String>(
+    'window-corners',
+    MpvOptionType.choice,
+    choices: ['default', 'donotround', 'round', 'roundsmall'],
+  );
+
   /// Move the window when clicking on it and moving the mouse pointer (default: yes).
   ///
   /// mpv type: Flag.
-  static const windowDragging = MpvOption<bool>('window-dragging', MpvOptionType.flag);
+  static const windowDragging = MpvOption<bool>(
+    'window-dragging',
+    MpvOptionType.flag,
+  );
+
   /// Whether the video window is maximized or not.
   ///
   /// mpv type: Flag.
-  static const windowMaximized = MpvOption<bool>('window-maximized', MpvOptionType.flag);
+  static const windowMaximized = MpvOption<bool>(
+    'window-maximized',
+    MpvOptionType.flag,
+  );
+
   /// Whether the video window is minimized or not.
   ///
   /// mpv type: Flag.
-  static const windowMinimized = MpvOption<bool>('window-minimized', MpvOptionType.flag);
+  static const windowMinimized = MpvOption<bool>(
+    'window-minimized',
+    MpvOptionType.flag,
+  );
+
   /// Resize the video window to a multiple (or fraction) of the video size.
   ///
   /// mpv type: Double.
-  static const windowScale = MpvOption<double>('window-scale', MpvOptionType.real, min: 0.001, max: 100);
+  static const windowScale = MpvOption<double>(
+    'window-scale',
+    MpvOptionType.real,
+    min: 0.001,
+    max: 100,
+  );
+
   /// Prepend the watch later config files with the name of the file they refer to.
   ///
   /// mpv type: Flag.
-  static const writeFilenameInWatchLaterConfig = MpvOption<bool>('write-filename-in-watch-later-config', MpvOptionType.flag);
+  static const writeFilenameInWatchLaterConfig = MpvOption<bool>(
+    'write-filename-in-watch-later-config',
+    MpvOptionType.flag,
+  );
+
   /// Set the window instance name for X11-based video output methods.
   ///
   /// mpv type: String.
   static const x11Name = MpvOption<String>('x11-name', MpvOptionType.string);
+
   /// Enable the youtube-dl hook-script.
   ///
   /// mpv type: Flag.
   static const ytdl = MpvOption<bool>('ytdl', MpvOptionType.flag);
+
   /// Format selection string that is directly passed to youtube-dl.
   ///
   /// mpv type: String.
-  static const ytdlFormat = MpvOption<String>('ytdl-format', MpvOptionType.string);
+  static const ytdlFormat = MpvOption<String>(
+    'ytdl-format',
+    MpvOptionType.string,
+  );
+
   /// Pass arbitrary options to youtube-dl.
   ///
   /// mpv type: Key/value list.
-  static const ytdlRawOptions = MpvOption<String>('ytdl-raw-options', MpvOptionType.string);
+  static const ytdlRawOptions = MpvOption<String>(
+    'ytdl-raw-options',
+    MpvOptionType.string,
+  );
+
   /// Dithering (default: random).
   ///
   /// mpv type: Choice; choices: no, ordered, random, error-diffusion.
-  static const zimgDither = MpvOption<String>('zimg-dither', MpvOptionType.choice, choices: ['no', 'ordered', 'random', 'error-diffusion']);
+  static const zimgDither = MpvOption<String>(
+    'zimg-dither',
+    MpvOptionType.choice,
+    choices: ['no', 'ordered', 'random', 'error-diffusion'],
+  );
+
   /// Allow optimizations that help with performance, but reduce quality (default: yes).
   ///
   /// mpv type: Flag.
   static const zimgFast = MpvOption<bool>('zimg-fast', MpvOptionType.flag);
+
   /// Zimg luma scaler to use (default: lanczos).
   ///
   /// mpv type: Choice; choices: point, bilinear, bicubic, spline16, spline36, lanczos.
-  static const zimgScaler = MpvOption<String>('zimg-scaler', MpvOptionType.choice, choices: ['point', 'bilinear', 'bicubic', 'spline16', 'spline36', 'lanczos']);
+  static const zimgScaler = MpvOption<String>(
+    'zimg-scaler',
+    MpvOptionType.choice,
+    choices: [
+      'point',
+      'bilinear',
+      'bicubic',
+      'spline16',
+      'spline36',
+      'lanczos',
+    ],
+  );
+
   /// Same as --zimg-scaler, for for chroma interpolation (default: bilinear).
   ///
   /// mpv type: Choice; choices: point, bilinear, bicubic, spline16, spline36, lanczos.
-  static const zimgScalerChroma = MpvOption<String>('zimg-scaler-chroma', MpvOptionType.choice, choices: ['point', 'bilinear', 'bicubic', 'spline16', 'spline36', 'lanczos']);
+  static const zimgScalerChroma = MpvOption<String>(
+    'zimg-scaler-chroma',
+    MpvOptionType.choice,
+    choices: [
+      'point',
+      'bilinear',
+      'bicubic',
+      'spline16',
+      'spline36',
+      'lanczos',
+    ],
+  );
+
   /// Same as --zimg-scaler-param-a / --zimg-scaler-param-b, for chroma.
   ///
   /// mpv type: Double.
-  static const zimgScalerChromaParamA = MpvOption<double>('zimg-scaler-chroma-param-a', MpvOptionType.real);
+  static const zimgScalerChromaParamA = MpvOption<double>(
+    'zimg-scaler-chroma-param-a',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Double.
-  static const zimgScalerChromaParamB = MpvOption<double>('zimg-scaler-chroma-param-b', MpvOptionType.real);
+  static const zimgScalerChromaParamB = MpvOption<double>(
+    'zimg-scaler-chroma-param-b',
+    MpvOptionType.real,
+  );
+
   /// Set scaler parameters.
   ///
   /// mpv type: Double.
-  static const zimgScalerParamA = MpvOption<double>('zimg-scaler-param-a', MpvOptionType.real);
+  static const zimgScalerParamA = MpvOption<double>(
+    'zimg-scaler-param-a',
+    MpvOptionType.real,
+  );
+
   ///
   /// mpv type: Double.
-  static const zimgScalerParamB = MpvOption<double>('zimg-scaler-param-b', MpvOptionType.real);
+  static const zimgScalerParamB = MpvOption<double>(
+    'zimg-scaler-param-b',
+    MpvOptionType.real,
+  );
+
   /// Set the maximum number of threads to use for scaling (default: auto).
   ///
   /// mpv type: Choice; choices: auto.
-  static const zimgThreads = MpvOption<String>('zimg-threads', MpvOptionType.choice, choices: ['auto'], min: 1, max: 64);
+  static const zimgThreads = MpvOption<String>(
+    'zimg-threads',
+    MpvOptionType.choice,
+    choices: ['auto'],
+    min: 1,
+    max: 64,
+  );
 }
