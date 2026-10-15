@@ -5,6 +5,10 @@
   `bufferedPosition`, `setLoopMode` / `loopMode` (`MpvLoopMode`),
   `setReplayGain`, `MpvTrack.isAlbumArt`. See
   `docs/MIGRATING_FROM_MEDIA_KIT.md`.
+- Known issue: reading `audioDevices` on a machine without any audio
+  output device (e.g. headless CI VMs) crashes inside mpv's CoreAudio /
+  WASAPI device enumeration. Device listing is lazy, so playback never
+  triggers it; machines with an audio device are unaffected.
 - `Mpv`: bindings for the full libmpv 0.41 client API (client API 2.5):
   commands (sync, async, abortable), properties via `mpv_node`, property
   observers as streams, typed events, hooks, log messages, sub-clients.

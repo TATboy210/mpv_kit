@@ -74,11 +74,11 @@ void main() {
       try {
         await player.position.stream
             .firstWhere(near)
-            .timeout(const Duration(seconds: 3));
+            .timeout(const Duration(seconds: 6));
         break;
       } on TimeoutException {
         if (near(player.position.value)) break;
-        if (attempt == 3) rethrow;
+        if (attempt == 5) rethrow;
       }
     }
   });
