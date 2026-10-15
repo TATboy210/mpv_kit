@@ -32,6 +32,7 @@ class MpvVideo extends StatefulWidget {
 
 class _MpvVideoState extends State<MpvVideo> {
   Timer? _debounce;
+  (int, int)? _requested;
 
   @override
   void dispose() {
@@ -51,7 +52,15 @@ class _MpvVideoState extends State<MpvVideo> {
 
   void _requestSize(Size logical, double dpr) {
     final w = (logical.width * dpr).round(), h = (logical.height * dpr).round();
+    if (_requested == (w, h)) return;
+    final first = _requested == null;
+    _requested = (w, h);
     _debounce?.cancel();
+    if (first) {
+      // Nothing is on screen yet: render the first frame without waiting.
+      unawaited(widget.controller.setSize(w, h));
+      return;
+    }
     _debounce = Timer(widget.resizeDebounce, () {
       unawaited(widget.controller.setSize(w, h));
     });
@@ -60,6 +69,9 @@ class _MpvVideoState extends State<MpvVideo> {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Follows the window across monitors (refresh rate per display).
+    final hz = View.maybeOf(context)?.display.refreshRate;
+    if (hz != null) widget.controller.syncDisplayRefreshRate(hz);
     return StreamBuilder<MpvVideoParams?>(
       stream: widget.controller.player.videoParams.stream,
       initialData: widget.controller.player.videoParams.value,

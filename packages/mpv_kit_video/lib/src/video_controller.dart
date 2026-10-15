@@ -178,7 +178,10 @@ final class MpvVideoController {
     );
     _live[controller.textureId] = controller;
     player.addDisposeHook(controller.dispose);
-    _applyDisplayRate(player);
+    final displays = PlatformDispatcher.instance.displays;
+    controller.syncDisplayRefreshRate(
+      displays.isEmpty ? 0 : displays.first.refreshRate,
+    );
     debugPrint(
       'mpv_kit_video: ${controller.backend.name} '
       '(${controller.reason})',
@@ -202,19 +205,6 @@ final class MpvVideoController {
         ),
       );
     });
-  }
-
-  /// The render API has no vsync source, so mpv would only estimate the
-  /// refresh rate from swap timing. Tell it the display's real rate, which
-  /// `video-sync=display-*` and interpolation depend on. Leaves an explicit
-  /// user setting alone.
-  static void _applyDisplayRate(Player player) {
-    final displays = PlatformDispatcher.instance.displays;
-    final hz = displays.isEmpty ? 0.0 : displays.first.refreshRate;
-    if (hz <= 0) return;
-    final current = player.mpv.tryGetProperty('display-fps-override');
-    if (current is num && current > 0) return;
-    player.mpv.setProperty('display-fps-override', hz);
   }
 
   /// Compiling the renderer's shaders on first use costs a few frames at
@@ -268,6 +258,9 @@ final class MpvVideoController {
   final String reason;
 
   final _events = StreamController<MpvVideoEvent>.broadcast();
+
+  /// `display-fps-override` value this controller set, null if none.
+  double? _autoDisplayFps;
   var _disposed = false;
   (int, int)? _size;
 
@@ -282,6 +275,23 @@ final class MpvVideoController {
   void _onEvent(MpvVideoEvent e) {
     if (e.kind == MpvVideoEventKind.deviceLost) _broken = true;
     if (!_events.isClosed) _events.add(e);
+  }
+
+  /// Tells mpv the refresh rate of the display showing the video.
+  ///
+  /// The render API has no vsync source, so mpv would only estimate the
+  /// rate from swap timing; `video-sync=display-*` and interpolation depend
+  /// on it. [MpvVideo] calls this with its view's display whenever that
+  /// changes (e.g. the window moved to a 144 Hz monitor). An explicit user
+  /// setting of `display-fps-override` is left alone. Non-positive rates
+  /// are ignored.
+  void syncDisplayRefreshRate(double hz) {
+    if (_disposed || hz <= 0 || hz == _autoDisplayFps) return;
+    final current = player.mpv.tryGetProperty('display-fps-override');
+    final userSet = current is num && current > 0 && current != _autoDisplayFps;
+    if (userSet) return;
+    player.mpv.setProperty('display-fps-override', hz);
+    _autoDisplayFps = hz;
   }
 
   /// Sets the render resolution in physical pixels (usually the widget size
