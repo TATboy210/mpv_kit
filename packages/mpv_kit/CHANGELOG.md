@@ -1,5 +1,10 @@
 ## 0.1.0-dev.1
 
+- Music and audio state for drop-in replacement of media_kit: `metadata`
+  (tags, ICY titles), `audioParams`, `audioDevices` / `setAudioDevice`,
+  `bufferedPosition`, `setLoopMode` / `loopMode` (`MpvLoopMode`),
+  `setReplayGain`, `MpvTrack.isAlbumArt`. See
+  `docs/MIGRATING_FROM_MEDIA_KIT.md`.
 - `Mpv`: bindings for the full libmpv 0.41 client API (client API 2.5):
   commands (sync, async, abortable), properties via `mpv_node`, property
   observers as streams, typed events, hooks, log messages, sub-clients.
