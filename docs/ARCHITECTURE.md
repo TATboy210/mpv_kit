@@ -98,10 +98,19 @@ taking it, and no platform reports when it is done. So:
 
 * `front` is the last completed frame, `in_use` the frame the compositor
   currently holds;
-* an image the compositor gives back is **quarantined** for a fixed number
-  of further acquisitions (currently 2) before it may be rendered into
-  again — a bound on the compositor's frame latency;
-* ring size = front + in use + quarantine + one free image (currently 5).
+* an image the compositor gives back is **quarantined** for
+  `Interop::CompositorLatency()` further acquisitions before it may be
+  rendered into again — a bound on the compositor's frame latency. Windows
+  uses 4 (ring of 7): decompiling `flutter_windows.dll` showed that
+  `ExternalTextureD3d` binds the shared texture through ANGLE and calls the
+  release callback immediately, without a fence or keyed mutex, so only the
+  DXGI frame queue (3) plus the frame being composed bound ANGLE's reads.
+  Other platforms use 2 (ring of 5);
+* ring size = front + in use + quarantine + one free image;
+* on reallocation (resize) the previous ring is retired, not freed: its last
+  frame stays on screen until the first frame at the new size exists, then
+  it is released once it has left the quarantine window. Without this the
+  texture shows nothing (black) while the layout settles.
 
 The renderer therefore never writes into an image that may still be read,
 without any cross-API fence. Rendering into a slot additionally waits on a
