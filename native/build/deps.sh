@@ -175,8 +175,17 @@ fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.
 # by libplacebo itself (libdovi is optional).
 # libplacebo finds glslang with find_library, which searches only the
 # -Dvulkan-sdk directory and not for every library: point both at PREFIX.
-sed -i.orig "s|find_library('glslang', required: required, static: static)|find_library('glslang', required: required, static: static, dirs: vulkan_lib_dirs)|" \
+sed -i.orig \
+  -e "s|find_library('glslang', required: required, static: static)|find_library('glslang', required: required, static: static, dirs: vulkan_lib_dirs)|" \
+  -e "s|find_library('glslang-default-resource-limits', required: false)|find_library('glslang-default-resource-limits', required: false, static: true, dirs: [get_option('vulkan-sdk') / 'lib'])|" \
   "$work/src/libplacebo/src/glsl/meson.build"
+# The source archive has no git submodules; fast_float (header-only) is
+# required where the C++ library lacks floating-point from_chars (macOS).
+fetch fast_float https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.2.tar.gz \
+  71bb9e865b888df01351558db5a39586d13ea97ada162156b3a07784d8c1b26b
+rm -rf "$work/src/libplacebo/3rdparty/fast_float"
+cp -r "$work/src/fast_float" "$work/src/libplacebo/3rdparty/fast_float"
+license fast_float LICENSE-MIT
 meson_build libplacebo -Dprefer_static=true -Dvulkan-sdk="$nprefix" \
   -Dc_args="-I$nprefix/include" -Dcpp_args="-I$nprefix/include" \
   -Dvulkan=enabled -Dvk-proc-addr=enabled \
