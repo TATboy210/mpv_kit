@@ -3,7 +3,7 @@ description: >-
   Prebuilt LGPL libmpv (mpv 0.41 with the mpv_kit Vulkan render patch,
   FFmpeg 8.1) for mpv_kit, delivered through a Dart build hook with sha256
   verification. Windows, Linux and macOS on x64 and arm64.
-version: 0.1.0-dev.2
+version: 0.1.0-dev.3
 repository: https://github.com/TATboy210/mpv_kit
 issue_tracker: https://github.com/TATboy210/mpv_kit/issues
 topics: [mpv, video, ffi, native-assets]

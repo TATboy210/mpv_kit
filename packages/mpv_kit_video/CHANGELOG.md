@@ -1,3 +1,9 @@
+## 0.1.0-dev.3
+
+- Requires mpv_kit / mpv_kit_libs 0.1.0-dev.3: zero-copy Vulkan rendering
+  works with the bundled libmpv on Windows (dev.1/dev.2 always used the
+  software fallback there).
+
 ## 0.1.0-dev.2
 
 - Requires mpv_kit / mpv_kit_libs 0.1.0-dev.2: macOS apps build again

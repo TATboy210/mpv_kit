@@ -1,3 +1,12 @@
+## 0.1.0-dev.3
+
+- Windows: the bundled libmpv now includes the Vulkan render API. The
+  0.1.0-dev.1/dev.2 Windows builds were configured without it (mpv's
+  Vulkan header check failed against MSYS2's include directory and meson
+  disabled the feature silently), so mpv_kit_video always fell back to
+  software rendering there. The build now uses the pinned Vulkan headers
+  and fails if libmpv is configured without Vulkan or libplacebo.
+
 ## 0.1.0-dev.2
 
 - macOS: apps using the bundles build again. The 0.1.0-dev.1 dylibs (the

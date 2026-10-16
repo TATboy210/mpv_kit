@@ -1,3 +1,7 @@
+## 0.1.0-dev.3
+
+- No API changes; released together with mpv_kit_libs 0.1.0-dev.3.
+
 ## 0.1.0-dev.2
 
 - Fixed: reading `audioDevices` no longer crashes on machines without an

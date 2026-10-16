@@ -4,7 +4,7 @@ Flutter / Dart bindings for **libmpv 0.41.0** with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.0-dev.2`). APIs may change.
+> Status: early development (`0.1.0-dev.3`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -26,7 +26,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.0-dev.2
+  mpv_kit_video: ^0.1.0-dev.3
 ```
 
 ```dart
