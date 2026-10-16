@@ -48,6 +48,8 @@ case "$(uname -s)" in
     # CI runners) would raise the minimum macOS version of the bundle.
     platform_args+=(--enable-videotoolbox --disable-lzma --disable-xlib
       --disable-libxcb --disable-sdl2)
+    # Header room for install-name rewrites (package.sh, native assets).
+    platform_args+=(--extra-ldflags=-Wl,-headerpad_max_install_names)
     ;;
   Linux)
     # Distros ship libssl; OpenSSL 3 is compatible with an LGPL build.

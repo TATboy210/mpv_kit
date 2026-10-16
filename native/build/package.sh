@@ -89,6 +89,18 @@ case "$(uname -s)" in
     # MoltenVK (libmpv links it directly, see deps.sh) is part of the
     # closure; the Flutter plugin loads the same copy.
     [ -f "$out/lib/libMoltenVK.dylib" ] || { echo "libMoltenVK.dylib missing from bundle" >&2; exit 1; }
+    # Flutter/dart native-assets packaging rewrites every install name to
+    # an absolute or framework path; without header room that fails with
+    # "larger updated load commands do not fit".
+    for f in "$out"/lib/*.dylib; do
+      cmds=$(otool -h "$f" | awk 'NR==4{print $7}')
+      first=$(otool -l "$f" | awk '$1=="offset" && $2>0{print $2}' | sort -n | head -1)
+      pad=$((first - 32 - cmds))
+      if [ "$pad" -lt 1024 ]; then
+        echo "$(basename "$f"): only $pad bytes of Mach-O header padding" >&2
+        exit 1
+      fi
+    done
     # install_name_tool invalidates signatures; arm64 refuses unsigned code.
     codesign --force --sign - "$out"/lib/*.dylib
     ;;

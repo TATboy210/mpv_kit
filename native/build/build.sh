@@ -32,6 +32,8 @@ case "$(uname -s)" in
     ;;
   Darwin)
     export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-12.0}
+    # Header room for install-name rewrites (package.sh, native assets).
+    export LDFLAGS="${LDFLAGS:+$LDFLAGS }-Wl,-headerpad_max_install_names"
     mpv_args+=(-Dswift-build=disabled -Dcocoa=disabled -Dcoreaudio=enabled
       -Dvideotoolbox-pl=enabled -Dx11=disabled)
     ;;

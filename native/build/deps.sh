@@ -38,6 +38,9 @@ cmake_extra=()
 if [ "$os" = macos ]; then
   export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-12.0}
   cmake_extra+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
+  # Room for install_name_tool: package.sh and native-assets packaging
+  # (which uses absolute build paths) rewrite every install name.
+  export LDFLAGS="${LDFLAGS:+$LDFLAGS }-Wl,-headerpad_max_install_names"
 fi
 
 sha256() {
@@ -144,8 +147,23 @@ case "$os" in
     fetch moltenvk \
       https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar \
       f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e
-    cp "$work/src/moltenvk/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib" "$prefix/lib/"
-    install_name_tool -id "$prefix/lib/libMoltenVK.dylib" "$prefix/lib/libMoltenVK.dylib"
+    # Relinked from the release's static library instead of copying its
+    # dylib: that one has only ~56 bytes of header padding, so Flutter's /
+    # dart's native-assets packaging cannot rewrite its install name
+    # ("larger updated load commands do not fit"). Linking it ourselves
+    # adds the padding, keeps only the target architecture (the release
+    # dylib is universal) and exports only the Vulkan API.
+    mvk_a=$(find "$work/src/moltenvk/MoltenVK/static" -path '*macos*' -name 'libMoltenVK.a' | head -1)
+    [ -n "$mvk_a" ] || { echo "moltenvk: static library not found" >&2; exit 1; }
+    printf '_vk*\n' > "$work/moltenvk.exports"
+    clang++ -dynamiclib -arch "$(uname -m)" -mmacosx-version-min="$MACOSX_DEPLOYMENT_TARGET" \
+      -o "$prefix/lib/libMoltenVK.dylib" -install_name "$prefix/lib/libMoltenVK.dylib" \
+      -Wl,-all_load "$mvk_a" -Wl,-exported_symbols_list,"$work/moltenvk.exports" \
+      -Wl,-headerpad_max_install_names -Wl,-dead_strip \
+      -framework Metal -framework IOSurface -framework IOKit -framework QuartzCore \
+      -framework CoreGraphics -framework AppKit -framework Foundation \
+      -framework CoreFoundation -lobjc -lc++
+    strip -x "$prefix/lib/libMoltenVK.dylib"
     cat > "$prefix/lib/pkgconfig/vulkan.pc" <<EOF
 prefix=$prefix
 includedir=\${prefix}/include
