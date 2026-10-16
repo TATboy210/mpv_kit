@@ -3,6 +3,8 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:mpv_kit/mpv_kit.dart';
 import 'package:test/test.dart';
@@ -13,8 +15,43 @@ Future<T> _until<T>(MpvState<T> s, bool Function(T) ok) => ok(s.value)
     ? Future.value(s.value)
     : s.stream.firstWhere(ok).timeout(const Duration(seconds: 10));
 
+/// Writes [seconds] of silent 8 kHz mono 16-bit PCM as a WAV file.
+///
+/// Seek tests need a source with exact, index-free seeking: lavfi sources
+/// are not seekable in mpv's demuxer cache (`seekable-ranges` stays empty)
+/// and their low-level seeks land on arbitrary frames, which made a lavfi
+/// seek test pass only when it caught a transient position.
+File _writeSilentWav(String path, {int seconds = 3}) {
+  const rate = 8000, bytesPerSample = 2;
+  final dataBytes = seconds * rate * bytesPerSample;
+  final b = ByteData(44 + dataBytes);
+  void tag(int offset, String s) {
+    for (var i = 0; i < 4; i++) {
+      b.setUint8(offset + i, s.codeUnitAt(i));
+    }
+  }
+
+  tag(0, 'RIFF');
+  b.setUint32(4, 36 + dataBytes, Endian.little);
+  tag(8, 'WAVE');
+  tag(12, 'fmt ');
+  b.setUint32(16, 16, Endian.little); // fmt chunk size
+  b.setUint16(20, 1, Endian.little); // PCM
+  b.setUint16(22, 1, Endian.little); // mono
+  b.setUint32(24, rate, Endian.little);
+  b.setUint32(28, rate * bytesPerSample, Endian.little); // byte rate
+  b.setUint16(32, bytesPerSample, Endian.little); // block align
+  b.setUint16(34, 16, Endian.little); // bits per sample
+  tag(36, 'data');
+  b.setUint32(40, dataBytes, Endian.little);
+  return File(path)..writeAsBytesSync(b.buffer.asUint8List());
+}
+
 void main() {
   late Player player;
+  late Directory tmp;
+  setUpAll(() => tmp = Directory.systemTemp.createTempSync('mpv_kit_test'));
+  tearDownAll(() => tmp.deleteSync(recursive: true));
   setUp(() => player = Player(options: const {'vo': 'null', 'ao': 'null'}));
   tearDown(() => player.dispose());
 
@@ -61,25 +98,17 @@ void main() {
   });
 
   test('seek moves position', () async {
-    await player.open(_lavfi, play: false);
-    // Wait for the first decoded frame: a seek issued while playback is
-    // still initialising can be superseded by mpv's own start-up seek.
-    await _until(player.videoParams, (v) => v != null);
-    // On slow runners mpv can still be finishing its start-up seek, which
-    // may supersede ours; reissuing an absolute seek is idempotent.
-    bool near(Duration p) => (p.inMilliseconds - 1000).abs() < 100;
-    for (var attempt = 0; ; attempt++) {
-      await player.seek(const Duration(milliseconds: 1000), exact: true);
-      if (near(player.position.value)) break;
-      try {
-        await player.position.stream
-            .firstWhere(near)
-            .timeout(const Duration(seconds: 6));
-        break;
-      } on TimeoutException {
-        if (near(player.position.value)) break;
-        if (attempt == 5) rethrow;
-      }
+    final wav = _writeSilentWav('${tmp.path}${Platform.pathSeparator}seek.wav');
+    await player.open(wav.path, play: false);
+    await _until(player.duration, (d) => d > Duration.zero);
+    // Exact seeks in PCM are sample-accurate; every target, in any order.
+    for (final ms in const [1000, 300, 2500]) {
+      await player.seek(Duration(milliseconds: ms), exact: true);
+      final pos = await _until(
+        player.position,
+        (p) => (p.inMilliseconds - ms).abs() < 50,
+      );
+      expect(pos.inMilliseconds, closeTo(ms, 50));
     }
   });
 
