@@ -10,6 +10,7 @@ Base: mpv 0.41.0. Checked against mpv master on 2026-10-15.
 | 0004 gpu-next render backend | This is step (1) the maintainers asked for. | First PR to propose. |
 | 0005 active renderer via get_info | Tiny API addition; depends on 0004. | Part of the series. |
 | 0006 asynchronous stream bridge | mpv-specific glue for hosts that cannot answer stream_cb synchronously (Dart). Upstream's view so far is that stream_cb is enough. | Keep downstream. |
+| 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
 
 **Decision (2026-10-15):** the patches are maintained downstream only; no
 upstream submission is planned. The table stays as the record of how each

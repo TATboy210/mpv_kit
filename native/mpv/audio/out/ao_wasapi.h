@@ -100,7 +100,19 @@ typedef struct wasapi_state {
     struct ao_convert_fmt convert_format;
 
     change_notify change;
+
+    // COM lifetime (mpv_kit). init/hotplug_init run on the core thread or a
+    // client thread, but libmpv destroys on the client thread after the core
+    // thread has exited. The MTA usage cookie keeps the MTA (and in-process
+    // servers such as mmdevapi) alive until this ao has released its
+    // objects, independent of any thread; CoUninitialize is only called on
+    // the thread whose CoInitializeEx succeeded.
+    CO_MTA_USAGE_COOKIE mta_cookie;
+    DWORD com_thread;
 } wasapi_state;
+
+void wasapi_com_init(struct ao *ao);
+void wasapi_com_uninit(struct ao *ao);
 
 char *mp_PKEY_to_str_buf(char *buf, size_t buf_size, const PROPERTYKEY *pkey);
 #define mp_PKEY_to_str(pkey) mp_PKEY_to_str_buf((char[42]){0}, 42, (pkey))

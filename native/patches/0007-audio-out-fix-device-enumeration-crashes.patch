@@ -1,0 +1,147 @@
+diff --git a/audio/out/ao_wasapi.c b/audio/out/ao_wasapi.c
+index 7ad1e64..29f3c48 100644
+--- a/audio/out/ao_wasapi.c
++++ b/audio/out/ao_wasapi.c
+@@ -295,17 +295,39 @@ static void uninit(struct ao *ao)
+ 
+     talloc_free(state->deviceID);
+ 
+-    CoUninitialize();
++    wasapi_com_uninit(ao);
+     MP_DBG(ao, "Uninit wasapi done\n");
+ }
+ 
++void wasapi_com_init(struct ao *ao)
++{
++    struct wasapi_state *state = ao->priv;
++    if (FAILED(CoIncrementMTAUsage(&state->mta_cookie)))
++        state->mta_cookie = NULL;
++    // Fails with RPC_E_CHANGED_MODE on an STA thread (e.g. a GUI thread
++    // reading audio-device-list); that thread's apartment is not ours to
++    // uninitialize.
++    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
++    state->com_thread = SUCCEEDED(hr) ? GetCurrentThreadId() : 0;
++}
++
++void wasapi_com_uninit(struct ao *ao)
++{
++    struct wasapi_state *state = ao->priv;
++    if (state->com_thread && state->com_thread == GetCurrentThreadId())
++        CoUninitialize();
++    state->com_thread = 0;
++    if (state->mta_cookie)
++        CoDecrementMTAUsage(state->mta_cookie);
++    state->mta_cookie = NULL;
++}
++
+ static int init(struct ao *ao)
+ {
+     MP_DBG(ao, "Init wasapi\n");
+-    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+-
+     struct wasapi_state *state = ao->priv;
+     state->log = ao->log;
++    wasapi_com_init(ao);
+ 
+     state->opt_exclusive |= ao->init_flags & AO_INIT_EXCLUSIVE;
+ 
+@@ -503,7 +525,7 @@ static void hotplug_uninit(struct ao *ao)
+ {
+     MP_DBG(ao, "Hotplug uninit\n");
+     wasapi_change_uninit(ao);
+-    CoUninitialize();
++    wasapi_com_uninit(ao);
+ }
+ 
+ static int hotplug_init(struct ao *ao)
+@@ -511,7 +533,7 @@ static int hotplug_init(struct ao *ao)
+     MP_DBG(ao, "Hotplug init\n");
+     struct wasapi_state *state = ao->priv;
+     state->log = ao->log;
+-    CoInitializeEx(NULL, COINIT_MULTITHREADED);
++    wasapi_com_init(ao);
+     HRESULT hr = wasapi_change_init(ao, true);
+     EXIT_ON_ERROR(hr);
+ 
+diff --git a/audio/out/ao_wasapi.h b/audio/out/ao_wasapi.h
+index cbd4a3f..8e1081d 100644
+--- a/audio/out/ao_wasapi.h
++++ b/audio/out/ao_wasapi.h
+@@ -100,8 +100,20 @@ typedef struct wasapi_state {
+     struct ao_convert_fmt convert_format;
+ 
+     change_notify change;
++
++    // COM lifetime (mpv_kit). init/hotplug_init run on the core thread or a
++    // client thread, but libmpv destroys on the client thread after the core
++    // thread has exited. The MTA usage cookie keeps the MTA (and in-process
++    // servers such as mmdevapi) alive until this ao has released its
++    // objects, independent of any thread; CoUninitialize is only called on
++    // the thread whose CoInitializeEx succeeded.
++    CO_MTA_USAGE_COOKIE mta_cookie;
++    DWORD com_thread;
+ } wasapi_state;
+ 
++void wasapi_com_init(struct ao *ao);
++void wasapi_com_uninit(struct ao *ao);
++
+ char *mp_PKEY_to_str_buf(char *buf, size_t buf_size, const PROPERTYKEY *pkey);
+ #define mp_PKEY_to_str(pkey) mp_PKEY_to_str_buf((char[42]){0}, 42, (pkey))
+ 
+diff --git a/audio/out/ao_wasapi_changenotify.c b/audio/out/ao_wasapi_changenotify.c
+index 6785f5d..50b57f9 100644
+--- a/audio/out/ao_wasapi_changenotify.c
++++ b/audio/out/ao_wasapi_changenotify.c
+@@ -248,4 +248,6 @@ void wasapi_change_uninit(struct ao *ao)
+     }
+ 
+     SAFE_RELEASE(change->pEnumerator);
++    // mpv_kit: the error paths of init and hotplug_init call this twice.
++    change->client.lpVtbl = NULL;
+ }
+diff --git a/meson.build b/meson.build
+index 175125b..b0af124 100644
+--- a/meson.build
++++ b/meson.build
+@@ -816,8 +816,12 @@ if features['audiounit']
+     sources += files('audio/out/ao_audiounit.m')
+ endif
+ 
+-avfoundation = dependency('appleframeworks', modules: ['CoreMedia', 'AVFoundation'],
+-                          required: get_option('avfoundation'))
++# mpv_kit: Foundation and libobjc are used directly by ao_avfoundation.m
++# (NSNotificationCenter, objc_msgSend). Upstream only gets them through
++# cocoa; with cocoa disabled and b_lundef=false they became dynamic lookups
++# that resolve to NULL in hosts that have not loaded them.
++avfoundation = dependency('appleframeworks', modules: ['CoreMedia', 'AVFoundation',
++                          'Foundation'], required: get_option('avfoundation'))
+ features += {'avfoundation': avfoundation.found()}
+ if features['avfoundation']
+     dependencies += avfoundation
+@@ -837,6 +841,16 @@ endif
+ if features['audiounit'] or features['coreaudio'] or features['avfoundation']
+     sources += files('audio/out/ao_coreaudio_chmap.c',
+                      'audio/out/ao_coreaudio_utils.c')
++    # mpv_kit: ao_coreaudio_utils.c and ao_avfoundation.m call
++    # cfstr_get_cstr()/cfstr_from_cstr() from utils-mac.c, which upstream
++    # builds only together with cocoa. Without it libmpv called through a
++    # NULL import as soon as an audio device UID was read.
++    if not features['cocoa']
++        sources += files('osdep/utils-mac.c')
++    endif
++endif
++if features['avfoundation']
++    dependencies += cc.find_library('objc')
+ endif
+ 
+ if features['avfoundation']
+@@ -1521,6 +1535,9 @@ if features['videotoolbox-gl']
+ endif
+ if features['videotoolbox-pl']
+     dependencies += corevideo
++    # mpv_kit: hwdec_vt_pl.m calls MTLCreateSystemDefaultDevice(); upstream
++    # relies on cocoa pulling in Metal.
++    dependencies += dependency('appleframeworks', modules: ['Metal'])
+     sources += files('video/out/hwdec/hwdec_vt_pl.m')
+ endif
+ 

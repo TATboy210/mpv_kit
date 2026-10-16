@@ -47,10 +47,13 @@ bash "$here/ffmpeg.sh" "$prefix" ${ffmpeg_args[@]+"${ffmpeg_args[@]}"}
 
 # Everything optional is explicit, so a dependency that happens to be on
 # the build host cannot change what ships.
+# b_lundef=true: mpv defaults to allowing undefined symbols (on macOS
+# -undefined dynamic_lookup), which turned a missing utils-mac.c into a
+# NULL function pointer at run time instead of a link error.
 build=${MPV_BUILDDIR:-$PWD/.mpv-build}
 rm -rf "$build"
 meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
-  --buildtype=release -Db_ndebug=false --wrap-mode=nodownload \
+  --buildtype=release -Db_ndebug=false -Db_lundef=true --wrap-mode=nodownload \
   -Dlibmpv=true -Dcplayer=false -Dtests=false -Dgpl=false \
   -Dvulkan=enabled -Dlcms2=enabled -Duchardet=enabled \
   -Diconv=enabled -Dzlib=enabled \
