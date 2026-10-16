@@ -42,6 +42,12 @@ case "$(uname -s)" in
     # D3D11 renderer (and with it shaderc + spirv-cross) is not used.
     mpv_args+=(-Dwasapi=enabled -Dd3d-hwaccel=enabled -Dd3d11=disabled
       -Ddirect3d=disabled)
+    # MSYS2's vulkan.pc (vulkan-loader) points at its own include dir, which
+    # has no Vulkan headers; mpv's VK_VERSION_1_3 header check then fails and
+    # meson silently turns Vulkan off despite -Dvulkan=enabled (0.1.0-dev.1/2
+    # shipped without the Vulkan render API). Use the pinned headers from
+    # deps.sh instead.
+    export CFLAGS="${CFLAGS:+$CFLAGS }-I$(cygpath -m "$prefix")/include"
     ;;
 esac
 
@@ -67,6 +73,16 @@ meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
   -Dcaca=disabled -Dlibavdevice=enabled -Dshaderc=disabled \
   -Dspirv-cross=disabled \
   ${mpv_args[@]+"${mpv_args[@]}"}
+# -Dvulkan=enabled only makes the dependency lookup mandatory; mpv's
+# extra header check can still disable the feature without an error.
+# mpv_kit renders exclusively through the Vulkan render API, so a build
+# without it is a broken build.
+for feature in VULKAN LIBPLACEBO; do
+  grep -q "^#define HAVE_$feature 1" "$build/config.h" || {
+    echo "error: mpv configured without $feature; see $build/meson-logs/meson-log.txt" >&2
+    exit 1
+  }
+done
 meson compile -C "$build"
 meson install -C "$build" --strip
 grep -E "HAVE_(VULKAN|LIBPLACEBO|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|D3D_HWACCEL|VIDEOTOOLBOX_PL) " \
