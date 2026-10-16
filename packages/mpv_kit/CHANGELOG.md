@@ -1,3 +1,9 @@
+## Unreleased
+
+- Fixed: reading `audioDevices` no longer crashes on machines without an
+  audio output device (fixed in libmpv, see mpv_kit_libs). The device
+  tests now run on every CI target.
+
 ## 0.1.0-dev.1
 
 - Music and audio state for drop-in replacement of media_kit: `metadata`

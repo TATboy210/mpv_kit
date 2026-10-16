@@ -17,7 +17,7 @@ env:
   MESON_ARGS: >-
     -Dlibmpv=true -Dcplayer=false -Dgpl=false
     -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
-    -Drubberband=disabled -Dtests=false --buildtype=release
+    -Drubberband=disabled -Dtests=false --buildtype=release -Db_lundef=true
 
 jobs:
   linux:
@@ -66,7 +66,7 @@ jobs:
           dart pub get
           dart pub global activate coverage
           cd packages/mpv_kit && dart analyze --fatal-infos
-          dart pub global run coverage:test_with_coverage -- -x devices
+          dart pub global run coverage:test_with_coverage
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
@@ -146,7 +146,7 @@ jobs:
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
           dart pub get
-          cd packages/mpv_kit && dart analyze --fatal-infos && dart test -x devices
+          cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
 
   windows:
@@ -244,7 +244,7 @@ jobs:
           dart pub get
           cd packages/mpv_kit
           dart analyze --fatal-infos
-          dart test -x devices
+          dart test
           cd ../mpv_kit_libs
           dart analyze --fatal-infos
           dart test

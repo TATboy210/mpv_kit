@@ -1,3 +1,14 @@
+## Unreleased
+
+- libmpv patch 0007 fixes two crashes when listing audio devices
+  (`audio-device-list`):
+  - macOS: CoreAudio device enumeration called a NULL import;
+    `cfstr_get_cstr`, Foundation, libobjc and Metal are now really linked.
+  - Windows: disposing a player after enumeration released WASAPI
+    objects whose COM apartment had already ended.
+  libmpv is now linked with `b_lundef=true`, so a missing symbol fails the
+  build instead of crashing at run time.
+
 ## 0.1.0-dev.1
 
 - Bundles are built from pinned sources (native/build/deps.sh, build.sh)

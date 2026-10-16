@@ -93,10 +93,8 @@ jobs:
           [ -d prefix ] && mv prefix prefix.hidden
           dart pub get
           cd packages/mpv_kit
-          dart test -x format -x devices
+          dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
-          # Runners have no audio endpoint; enumeration there is diagnostic.
-          dart test -r expanded test/audio_devices_test.dart || echo "::warning::audio device enumeration failed on this runner"
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -171,10 +169,8 @@ jobs:
           [ -d prefix ] && mv prefix prefix.hidden
           dart pub get
           cd packages/mpv_kit
-          dart test -x format -x devices
+          dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
-          # Runners have no audio endpoint; enumeration there is diagnostic.
-          dart test -r expanded test/audio_devices_test.dart || echo "::warning::audio device enumeration failed on this runner"
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}
@@ -243,12 +239,8 @@ jobs:
           $dart = Split-Path (Get-Command dart).Source
           $env:PATH = "${{ github.workspace }}\dist\libmpv-${{ matrix.target }}\lib;C:\Windows\system32;C:\Windows;$dart"
           cd packages/mpv_kit
-          dart test -x format -x devices
+          dart test -x format
           dart test -j 1 -r expanded test/format_matrix_test.dart
-          # Runners have no audio endpoint; enumeration there is diagnostic.
-          dart test -r expanded test/audio_devices_test.dart
-          if ($LASTEXITCODE -ne 0) { Write-Output "::warning::audio device enumeration failed on this runner" }
-          $global:LASTEXITCODE = 0
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-${{ matrix.target }}

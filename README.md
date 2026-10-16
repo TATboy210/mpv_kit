@@ -210,6 +210,7 @@ unchanged.
 | 0004 | gpu-next (libplacebo's renderer) as a Vulkan render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER` |
 | 0005 | Report the active Vulkan renderer through `mpv_render_context_get_info` |
 | 0006 | Asynchronous stream bridge (`<mpv/stream_bridge.h>`): custom protocols answered asynchronously, used by `Mpv.registerStreamProtocol` |
+| 0007 | Audio device enumeration fixes: link the macOS helpers/frameworks the CoreAudio and AVFoundation outputs use without cocoa; keep WASAPI's COM objects valid when libmpv is destroyed on the client thread |
 
 ## CI workflows
 
