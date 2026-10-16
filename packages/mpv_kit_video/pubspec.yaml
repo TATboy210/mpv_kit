@@ -3,7 +3,7 @@ description: >-
   Flutter video output for mpv_kit: zero-copy Vulkan rendering into Flutter
   textures (D3D11 shared textures on Windows, GL memory objects on Linux,
   IOSurface on macOS) with a software fallback.
-version: 0.1.0-dev.1
+version: 0.1.0-dev.2
 repository: https://github.com/TATboy210/mpv_kit
 issue_tracker: https://github.com/TATboy210/mpv_kit/issues
 topics: [mpv, video, vulkan, player]
@@ -17,10 +17,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  mpv_kit: ^0.1.0-dev.1
+  mpv_kit: ^0.1.0-dev.2
   # Bundles the matching libmpv build into the app. Emits nothing while no
   # release is pinned; MPV_KIT_LIBMPV_PATH / a system libmpv apply then.
-  mpv_kit_libs: ^0.1.0-dev.1
+  mpv_kit_libs: ^0.1.0-dev.2
 
 dev_dependencies:
   flutter_test:

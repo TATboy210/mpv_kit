@@ -1,3 +1,9 @@
+## 0.1.0-dev.2
+
+- Requires mpv_kit / mpv_kit_libs 0.1.0-dev.2: macOS apps build again
+  (the 0.1.0-dev.1 libraries could not be repackaged by Flutter) and listing
+  audio devices no longer crashes on machines without audio output.
+
 ## 0.1.0-dev.1
 
 - `MpvVideoController` / `MpvVideo`: mpv's Vulkan render backend with

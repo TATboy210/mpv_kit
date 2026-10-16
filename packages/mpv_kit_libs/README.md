@@ -7,8 +7,8 @@ and arm64.
 
 ```yaml
 dependencies:
-  mpv_kit: ^0.1.0-dev.1
-  mpv_kit_libs: ^0.1.0-dev.1
+  mpv_kit: ^0.1.0-dev.2
+  mpv_kit_libs: ^0.1.0-dev.2
 ```
 
 The package's build hook downloads the release bundle for the target

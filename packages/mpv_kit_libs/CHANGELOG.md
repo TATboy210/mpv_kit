@@ -1,5 +1,11 @@
-## Unreleased
+## 0.1.0-dev.2
 
+- macOS: apps using the bundles build again. The 0.1.0-dev.1 dylibs (the
+  official MoltenVK dylib and FFmpeg) had too little Mach-O header space
+  for Flutter's install-name rewrite ("larger updated load commands do not
+  fit"). All dylibs now link with `-headerpad_max_install_names`; MoltenVK
+  is relinked from its static library for one architecture
+  (arm64 10.9 MB → 3.8 MB).
 - libmpv patch 0007 fixes two crashes when listing audio devices
   (`audio-device-list`):
   - macOS: CoreAudio device enumeration called a NULL import;

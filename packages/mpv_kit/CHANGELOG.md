@@ -1,4 +1,4 @@
-## Unreleased
+## 0.1.0-dev.2
 
 - Fixed: reading `audioDevices` no longer crashes on machines without an
   audio output device (fixed in libmpv, see mpv_kit_libs). The device
