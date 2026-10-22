@@ -462,7 +462,11 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   if (backend_ == Backend::kVulkan) {
     SharedImage& img = vulkan_->ring()[back];
     // Previous use of this image must be finished before we write to it.
+    const auto wait_prev_begin = std::chrono::steady_clock::now();
     const VkResult prev = vulkan_->WaitImage(back);
+    probe_wait_prev_ms_ +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - wait_prev_begin)
+            .count();
     if (prev != VK_SUCCESS) {
       SkipFrame();
       *error = prev == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
@@ -495,7 +499,26 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     if (err >= 0) img.initialized = true;
     if (err >= 0) {
       // The compositor reads without GPU sync, so complete the frame first.
+      const auto wait_done_begin = std::chrono::steady_clock::now();
       const VkResult done = vulkan_->WaitImage(back);
+      const double wait_done_ms = std::chrono::duration<double, std::milli>(
+                                      std::chrono::steady_clock::now() - wait_done_begin)
+                                      .count();
+      probe_wait_done_ms_ += wait_done_ms;
+      probe_wait_done_max_ms_ = std::max(probe_wait_done_max_ms_, wait_done_ms);
+      // One aggregated line per probe window: avg waits per frame plus the
+      // worst single post-render wait, to size the serialisation tax.
+      if (++probe_frames_ >= kProbeWindow) {
+        log_("mpv_kit: render waits avg/over " + std::to_string(probe_frames_) +
+             " frames: prev=" +
+             std::to_string(probe_wait_prev_ms_ / probe_frames_) + "ms done=" +
+             std::to_string(probe_wait_done_ms_ / probe_frames_) + "ms max_done=" +
+             std::to_string(probe_wait_done_max_ms_) + "ms");
+        probe_frames_ = 0;
+        probe_wait_prev_ms_ = 0;
+        probe_wait_done_ms_ = 0;
+        probe_wait_done_max_ms_ = 0;
+      }
       if (done != VK_SUCCESS) {
         api_.render_context_report_swap(render_ctx_);  // frame consumed
         *error = done == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";

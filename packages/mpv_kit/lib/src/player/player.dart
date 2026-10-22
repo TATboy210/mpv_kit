@@ -46,8 +46,13 @@ final class MpvState<T> {
 final class Player {
   /// 创建播放器。[options] 在 `mpv_initialize` 前生效（如 `hwdec`、`vo`）。
   ///
-  /// Defaults: `vo=libmpv` (rendered by mpv_kit_video), `hwdec=auto-safe`,
+  /// Defaults: `vo=libmpv` (rendered by mpv_kit_video), `hwdec=vulkan,auto-safe`,
   /// `keep-open=yes` (stay on the last frame at EOF), `idle=yes`.
+  ///
+  /// `hwdec` 首选 `vulkan`（Vulkan Video 零拷贝解码，4K 60fps 无每帧
+  /// GPU→CPU 拷贝）；驱动不支持 Vulkan Video 时按逗号列表自动落到
+  /// `auto-safe` 的保守列表（其 copy 变体有每帧 ~12MB 的系统内存往返，
+  /// 4K 下约 700MB/s，仅在无零拷贝路径可用时作为回退）。
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
@@ -56,7 +61,7 @@ final class Player {
       libraryPath: libraryPath,
       options: {
         'vo': 'libmpv',
-        'hwdec': 'auto-safe',
+        'hwdec': 'vulkan,auto-safe',
         'keep-open': 'yes',
         'idle': 'yes',
         'terminal': 'no',
