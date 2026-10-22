@@ -64,7 +64,7 @@ jobs:
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: render_vk smoke test (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
           LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           vulkaninfo --summary || true
@@ -74,6 +74,8 @@ jobs:
       - name: Dart tests (mpv_kit, mpv_kit_libs)
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
+          # libmpv.so dlopens the deps.sh-built libplacebo/dav1d at load time.
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
@@ -93,18 +95,30 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv (debug, ASan + UBSan)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
           meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib
           meson compile -C out
           meson install -C out
       - name: Native tests under sanitizers (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |
