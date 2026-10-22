@@ -123,8 +123,13 @@ static int vulkan_init(struct ra_hwdec *hw)
     device_hwctx->device_features = *vk->vulkan->features;
     device_hwctx->enabled_inst_extensions = vk->vkinst->extensions;
     device_hwctx->nb_enabled_inst_extensions = vk->vkinst->num_extensions;
-    device_hwctx->enabled_dev_extensions = vk->vulkan->extensions;
-    device_hwctx->nb_enabled_dev_extensions = vk->vulkan->num_extensions;
+    if (vk->imported_extensions) {
+        device_hwctx->enabled_dev_extensions = vk->imported_extensions;
+        device_hwctx->nb_enabled_dev_extensions = vk->num_imported_extensions;
+    } else {
+        device_hwctx->enabled_dev_extensions = vk->vulkan->extensions;
+        device_hwctx->nb_enabled_dev_extensions = vk->vulkan->num_extensions;
+    }
 
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 32, 100) && PL_API_VER >= 365
     // libplacebo uses the same flags for all queues, so grab them from the

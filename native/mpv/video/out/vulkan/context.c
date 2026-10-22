@@ -152,13 +152,33 @@ struct priv {
 
 static const struct ra_swapchain_fns vulkan_swapchain;
 
+// Marker swapchain for devices imported through the libmpv render API. It is
+// never presented from; it only lets ra_vk_ctx_get() find the mpvk_ctx.
+static const struct ra_swapchain_fns vulkan_external_swapchain = {0};
+
 struct mpvk_ctx *ra_vk_ctx_get(struct ra_ctx *ctx)
 {
-    if (!ctx->swapchain || ctx->swapchain->fns != &vulkan_swapchain)
+    if (!ctx->swapchain || (ctx->swapchain->fns != &vulkan_swapchain &&
+                            ctx->swapchain->fns != &vulkan_external_swapchain))
         return NULL;
 
     struct priv *p = ctx->swapchain->priv;
     return p->vk;
+}
+
+void ra_vk_ctx_init_external(struct ra_ctx *ctx, struct mpvk_ctx *vk)
+{
+    struct ra_swapchain *sw = talloc_zero(NULL, struct ra_swapchain);
+    sw->ctx = ctx;
+    sw->fns = &vulkan_external_swapchain;
+    struct priv *p = sw->priv = talloc_zero(sw, struct priv);
+    p->vk = vk;
+    ctx->swapchain = sw;
+}
+
+void ra_vk_ctx_uninit_external(struct ra_ctx *ctx)
+{
+    TA_FREEP(&ctx->swapchain);
 }
 
 void ra_vk_ctx_uninit(struct ra_ctx *ctx)

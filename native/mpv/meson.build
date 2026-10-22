@@ -169,6 +169,7 @@ sources = files(
     ## Player
     'player/audio.c',
     'player/client.c',
+    'player/stream_bridge.c',
     'player/command.c',
     'player/configfiles.c',
     'player/discnav.c',
@@ -854,8 +855,12 @@ if features['audiounit']
     sources += files('audio/out/ao_audiounit.m')
 endif
 
-avfoundation = dependency('appleframeworks', modules: ['CoreMedia', 'AVFoundation'],
-                          required: get_option('avfoundation'))
+# mpv_kit: Foundation and libobjc are used directly by ao_avfoundation.m
+# (NSNotificationCenter, objc_msgSend). Upstream only gets them through
+# cocoa; with cocoa disabled and b_lundef=false they became dynamic lookups
+# that resolve to NULL in hosts that have not loaded them.
+avfoundation = dependency('appleframeworks', modules: ['CoreMedia', 'AVFoundation',
+                          'Foundation'], required: get_option('avfoundation'))
 features += {'avfoundation': avfoundation.found()}
 if features['avfoundation']
     dependencies += avfoundation
@@ -875,6 +880,16 @@ endif
 if features['audiounit'] or features['coreaudio'] or features['avfoundation']
     sources += files('audio/out/ao_coreaudio_chmap.c',
                      'audio/out/ao_coreaudio_utils.c')
+    # mpv_kit: ao_coreaudio_utils.c and ao_avfoundation.m call
+    # cfstr_get_cstr()/cfstr_from_cstr() from utils-mac.c, which upstream
+    # builds only together with cocoa. Without it libmpv called through a
+    # NULL import as soon as an audio device UID was read.
+    if not features['cocoa']
+        sources += files('osdep/utils-mac.c')
+    endif
+endif
+if features['avfoundation']
+    dependencies += cc.find_library('objc')
 endif
 
 if features['avfoundation']
@@ -1349,6 +1364,7 @@ if features['vulkan']
     dependencies += vulkan
     sources += files('video/out/hwdec/hwdec_vulkan.c',
                      'video/out/vulkan/context.c',
+                     'video/out/vulkan/libmpv_vk.c',
                      'video/out/vulkan/utils.c',
                      'video/filter/vf_gpu_vulkan.c')
 endif
@@ -1565,6 +1581,9 @@ if features['videotoolbox-gl']
 endif
 if features['videotoolbox-pl']
     dependencies += corevideo
+    # mpv_kit: hwdec_vt_pl.m calls MTLCreateSystemDefaultDevice(); upstream
+    # relies on cocoa pulling in Metal.
+    dependencies += dependency('appleframeworks', modules: ['Metal'])
     sources += files('video/out/hwdec/hwdec_vt_pl.m')
 endif
 
@@ -1845,7 +1864,11 @@ if get_option('libmpv')
                  description: 'mpv media player client library')
 
     headers = ['include/mpv/client.h', 'include/mpv/render.h',
-               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h']
+               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h',
+               'include/mpv/stream_bridge.h']
+    if features['vulkan']
+        headers += 'include/mpv/render_vk.h'
+    endif
     install_headers(headers, subdir: 'mpv')
 
     # Allow projects to build with libmpv by cloning into ./subprojects/mpv

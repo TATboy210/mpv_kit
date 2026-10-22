@@ -248,4 +248,6 @@ void wasapi_change_uninit(struct ao *ao)
     }
 
     SAFE_RELEASE(change->pEnumerator);
+    // mpv_kit: the error paths of init and hotplug_init call this twice.
+    change->client.lpVtbl = NULL;
 }
