@@ -17,7 +17,9 @@ env:
   MESON_ARGS: >-
     -Dlibmpv=true -Dcplayer=false -Dgpl=false
     -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
-    -Drubberband=disabled -Dtests=false --buildtype=release -Db_lundef=true
+    -Drubberband=disabled -Dtests=false
+    -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled
+    --buildtype=release -Db_lundef=true
 
 jobs:
   linux:
