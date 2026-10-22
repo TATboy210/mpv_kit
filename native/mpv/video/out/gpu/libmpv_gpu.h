@@ -38,4 +38,3 @@ struct libmpv_gpu_context_fns {
 };
 
 extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
-extern const struct libmpv_gpu_context_fns libmpv_gpu_context_vk;

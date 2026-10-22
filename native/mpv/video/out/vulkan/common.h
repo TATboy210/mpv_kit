@@ -36,9 +36,4 @@ struct mpvk_ctx {
     pl_gpu gpu; // points to vulkan->gpu for convenience
     pl_swapchain swapchain;
     VkSurfaceKHR surface;
-    // Device extensions of an imported (host-created) device. libplacebo
-    // only fills pl_vulkan.extensions for devices it creates itself, but
-    // FFmpeg's Vulkan hwcontext needs the real list (e.g. video decode).
-    const char **imported_extensions;
-    int num_imported_extensions;
 };

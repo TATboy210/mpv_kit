@@ -295,39 +295,17 @@ static void uninit(struct ao *ao)
 
     talloc_free(state->deviceID);
 
-    wasapi_com_uninit(ao);
+    CoUninitialize();
     MP_DBG(ao, "Uninit wasapi done\n");
-}
-
-void wasapi_com_init(struct ao *ao)
-{
-    struct wasapi_state *state = ao->priv;
-    if (FAILED(CoIncrementMTAUsage(&state->mta_cookie)))
-        state->mta_cookie = NULL;
-    // Fails with RPC_E_CHANGED_MODE on an STA thread (e.g. a GUI thread
-    // reading audio-device-list); that thread's apartment is not ours to
-    // uninitialize.
-    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-    state->com_thread = SUCCEEDED(hr) ? GetCurrentThreadId() : 0;
-}
-
-void wasapi_com_uninit(struct ao *ao)
-{
-    struct wasapi_state *state = ao->priv;
-    if (state->com_thread && state->com_thread == GetCurrentThreadId())
-        CoUninitialize();
-    state->com_thread = 0;
-    if (state->mta_cookie)
-        CoDecrementMTAUsage(state->mta_cookie);
-    state->mta_cookie = NULL;
 }
 
 static int init(struct ao *ao)
 {
     MP_DBG(ao, "Init wasapi\n");
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
     struct wasapi_state *state = ao->priv;
     state->log = ao->log;
-    wasapi_com_init(ao);
 
     state->opt_exclusive |= ao->init_flags & AO_INIT_EXCLUSIVE;
 
@@ -525,7 +503,7 @@ static void hotplug_uninit(struct ao *ao)
 {
     MP_DBG(ao, "Hotplug uninit\n");
     wasapi_change_uninit(ao);
-    wasapi_com_uninit(ao);
+    CoUninitialize();
 }
 
 static int hotplug_init(struct ao *ao)
@@ -533,7 +511,7 @@ static int hotplug_init(struct ao *ao)
     MP_DBG(ao, "Hotplug init\n");
     struct wasapi_state *state = ao->priv;
     state->log = ao->log;
-    wasapi_com_init(ao);
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
     HRESULT hr = wasapi_change_init(ao, true);
     EXIT_ON_ERROR(hr);
 
