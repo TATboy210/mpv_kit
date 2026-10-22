@@ -3273,8 +3273,8 @@ static void libmpv_perfdata(struct render_backend *ctx,
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
-    copy_frame_info_to_mp(&p->perf_fresh, &out->fresh);
-    copy_frame_info_to_mp(&p->perf_redraw, &out->redraw);
+    copy_frame_info_to_mp(&p->perf_fresh, &out->fresh, &p->hwdec.perf, &p->sw_upload_perf);
+    copy_frame_info_to_mp(&p->perf_redraw, &out->redraw, NULL, NULL);
 }
 
 static void libmpv_destroy(struct render_backend *ctx)

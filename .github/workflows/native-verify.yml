@@ -34,13 +34,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gcc \
+            meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils \
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
-            libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
           meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
           meson compile -C out
@@ -53,7 +65,7 @@ jobs:
       - name: render_vk smoke test (lavapipe)
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           vulkaninfo --summary || true
           meson setup tests-out native/tests
