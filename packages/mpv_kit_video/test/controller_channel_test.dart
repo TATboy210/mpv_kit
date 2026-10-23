@@ -67,7 +67,9 @@ void main() {
     expect(c.textureId, 7);
     expect(c.backend, MpvVideoBackend.vulkan);
     expect(c.reason, 'vulkan (x)');
-    final args = calls.single.arguments as Map;
+    // create 加上初始的 getDisplayRefreshRate 探测,按方法名过滤。
+    final args =
+        calls.firstWhere((c) => c.method == 'create').arguments as Map;
     expect(args['renderer'], 'gpu');
     expect((args['symbols'] as List).length, 9);
     expect((args['symbols'] as List).every((s) => s is int && s != 0), isTrue);

@@ -53,6 +53,23 @@ final class Player {
   /// GPU→CPU 拷贝）；驱动不支持 Vulkan Video 时按逗号列表自动落到
   /// `auto-safe` 的保守列表（其 copy 变体有每帧 ~12MB 的系统内存往返，
   /// 4K 下约 700MB/s，仅在无零拷贝路径可用时作为回退）。
+  ///
+  /// 其余默认项面向 4K/8K 满帧播放（各项含义见行内注释），全部可被
+  /// [options] 覆盖：
+  /// - `video-sync=display-desync`：按显示节拍调度帧（render API 无
+  ///   swapchain，靠 MpvVideoController 的 display-fps-override 提供节拍）。
+  ///   不用 `display-resample` 是因为 Flutter raster 的推送节拍抖动比
+  ///   音频时钟大，重采样音频反而引入音调波动；音频自行跟时钟即可。
+  /// - `video-timing-offset=0.02`：audio 同步模式的兜底保障——默认
+  ///   0.05 会让 render API 客户端被限到 ~20fps（mpv 文档明说）。
+  /// - 缓存组：100Mbps（≈12.5MB/s）4K 源默认 150MB 缓冲只有 12 秒，
+  ///   放大到 400MB/100MB 回看；`hysteresis-bytes` 治高码率的读停-读停
+  ///   抖动；`stream-buffer-size` 从 128KB 提到 4M 减少 IO 粒度。
+  /// - `hwdec-extra-frames=6`：auto 恒等于 6（不开插帧时），显式固定
+  ///   免受 req_frames 推导影响，4K HEVC/AV1 池稳定。
+  /// - `dither=no` / `hdr-compute-peak=no`：目标固定是 SDR 8bit 纹理，
+  ///   8bit 蓝噪声抖动视觉无损、HDR peak 检测 pass 无意义（HDR→SDR
+  ///   tone-map 仍照做，只是省掉逐帧峰值统计）。
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
@@ -65,6 +82,17 @@ final class Player {
         'keep-open': 'yes',
         'idle': 'yes',
         'terminal': 'no',
+        // --- 4K/8K 满帧参数包（见上方 doc 注释） ---
+        'video-sync': 'display-desync',
+        'video-timing-offset': '0.02',
+        'demuxer-max-bytes': '400MiB',
+        'demuxer-max-back-bytes': '100MiB',
+        'demuxer-hysteresis-bytes': '32MiB',
+        'stream-buffer-size': '4MiB',
+        'hwdec-extra-frames': '6',
+        'dither': 'no',
+        'hdr-compute-peak': 'no',
+        'deband': 'no',
         ...options,
       },
     );
@@ -81,7 +109,19 @@ final class Player {
     _bind('paused-for-cache', buffering, (v) => v == true);
     _bind('cache-buffering-state', bufferingPercent, (v) => nodeInt(v) ?? 0);
     _bind('seeking', seeking, (v) => v == true);
-    _bind('time-pos', position, (v) => secondsToDuration(v) ?? Duration.zero);
+    // `time-pos` 按渲染帧粒度通知（60Hz 片源即 60 事件/秒），每个事件
+    // 都要 node 解码 + broadcast；UI 进度条不需要帧级精度——100ms 节流，
+    // 位移 >250ms（seek/拖动）时直通保持跟手。其余 state 保持即时。
+    var lastPosEmitMs = 0;
+    _subs.add(mpv.observeProperty('time-pos').listen((v) {
+      final d = secondsToDuration(v) ?? Duration.zero;
+      final ms = DateTime.now().millisecondsSinceEpoch;
+      final jumped =
+          (d - position._value).abs() > const Duration(milliseconds: 250);
+      if (!jumped && ms - lastPosEmitMs < 100) return;
+      lastPosEmitMs = ms;
+      position._set(d);
+    }));
     _bind('duration', duration, (v) => secondsToDuration(v) ?? Duration.zero);
     _bind(
       'demuxer-cache-duration',
@@ -146,6 +186,9 @@ final class Player {
       (v) => v is Map<String, Object?> ? MpvAudioParams.fromNode(v) : null,
     );
     _bind('audio-device', audioDevice, (v) => v as String? ?? 'auto');
+    // 两个来源任一变化都要重算告警（新文件装载/硬解建立/失败回退）。
+    _subs.add(videoParams.stream.listen((_) => _updateDecodeWarning()));
+    _subs.add(hwdecCurrent.stream.listen((_) => _updateDecodeWarning()));
     _subs.add(mpv.events.listen(_onEvent));
   }
 
@@ -255,6 +298,13 @@ final class Player {
 
   /// 实际生效的硬解后端（如 `vulkan`、`d3d11va`），软解时为 null/`no`。
   final hwdecCurrent = MpvState<String?>._(null);
+
+  /// 静默软解告警：>1080p 的视频却没走硬件解码时给出一条人话说明，
+  /// 否则 null。Vulkan render context 只能消费 Vulkan hwdec 的帧，
+  /// `auto-safe` 尾巴（d3d11va/vaapi…）与它 interop 不匹配时 mpv 初始化
+  /// hwdec 失败会**静默**回退软解——4K 吃力、8K 无解，默认只在 mpv 日志
+  /// 里可见；这条状态把它变成可观察的。
+  final decodeWarning = MpvState<String?>._(null);
 
   /// Absolute position up to which the demuxer has cached data
   /// (`demuxer-cache-time`); zero when nothing is cached.
@@ -586,6 +636,29 @@ final class Player {
   void _bind<T>(String name, MpvState<T> state, T Function(Object?) parse) {
     _states.add(state);
     _subs.add(mpv.observeProperty(name).listen((v) => state._set(parse(v))));
+  }
+
+  /// 按当前 video-params 与 hwdec-current 重算 [decodeWarning]。
+  ///
+  /// 阈值取 1920×1088（1080p 按 16 对齐后的宏块高度）：软解兜得住的
+  /// 上限；超过且没走硬解（`hwdec-current` 为 null/`no`）才告警。
+  /// 无视频时清空告警（音频-only 文件不算异常）。
+  void _updateDecodeWarning() {
+    final params = videoParams.value;
+    if (params == null ||
+        (params.width ?? 0) * (params.height ?? 0) <= 1920 * 1088) {
+      decodeWarning._set(null);
+      return;
+    }
+    final hz = hwdecCurrent.value;
+    if (hz != null && hz != 'no') {
+      decodeWarning._set(null);
+      return;
+    }
+    decodeWarning._set(
+      '${params.width}×${params.height} 软解播放（hwdec=${hz ?? 'no'}）：'
+      '该驱动未建立 Vulkan Video 硬解，4K 可能掉帧、8K 无法满帧',
+    );
   }
 
   void _onEvent(MpvEventData e) {

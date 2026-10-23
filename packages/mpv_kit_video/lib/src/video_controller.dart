@@ -71,6 +71,12 @@ enum MpvVideoEventKind {
   /// [MpvVideoRenderer.software]).
   deviceLost,
 
+  /// Dart-side warning: rendering fell back to software ([reason] says
+  /// why). Every frame is a full CPU render plus buffer copies — 4K+ is
+  /// not viable on this path. Not produced by the native plugin; emitted
+  /// once at create time when the backend resolved to software.
+  softwareFallback,
+
   /// A kind this version does not know (newer plugin).
   unknown;
 
@@ -178,15 +184,49 @@ final class MpvVideoController {
     );
     _live[controller.textureId] = controller;
     player.addDisposeHook(controller.dispose);
-    final displays = PlatformDispatcher.instance.displays;
-    controller.syncDisplayRefreshRate(
-      displays.isEmpty ? 0 : displays.first.refreshRate,
-    );
+    await controller._syncInitialRefreshRate();
     debugPrint(
       'mpv_kit_video: ${controller.backend.name} '
       '(${controller.reason})',
     );
+    // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
+    // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
+    // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
+    if (controller.backend == MpvVideoBackend.software) {
+      controller._onEvent(
+        MpvVideoEvent(
+          MpvVideoEventKind.softwareFallback,
+          controller.reason.isEmpty
+              ? 'rendering in software'
+              : 'rendering in software: ${controller.reason}',
+        ),
+      );
+    }
     return controller;
+  }
+
+  /// 初次同步显示刷新率。
+  ///
+  /// Windows 上 Flutter 的 `Display.refreshRate` 长期返回 0
+  /// (flutter/flutter #158721),而 0 会被 [syncDisplayRefreshRate] 丢弃
+  /// → `display-fps-override` 从未被设置 → 一切 `video-sync=display-*`
+  /// 模式失效。因此优先问插件原生层(按视频窗口所在显示器取
+  /// `EnumDisplaySettings`),拿不到再退回 Flutter 的 displays 列表。
+  Future<void> _syncInitialRefreshRate() async {
+    double hz = 0;
+    try {
+      final native = await _channel.invokeMethod<double>(
+        'getDisplayRefreshRate',
+      );
+      hz = (native ?? 0).toDouble();
+    } on PlatformException {
+      // Fall through to the Flutter-provided rate.
+    }
+    if (hz <= 0) {
+      final displays = PlatformDispatcher.instance.displays;
+      hz = displays.isEmpty ? 0 : displays.first.refreshRate;
+    }
+    syncDisplayRefreshRate(hz);
   }
 
   static void _installHandler() {
