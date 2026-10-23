@@ -53,6 +53,12 @@ Deferred to a future milestone. Tracked but not in the current roadmap.
 - **FEAT-02**: HDR swapchain 提示与正确的 tone-map 路径
 - **FEAT-03**: 播放列表、字幕与音轨的更高层 API
 
+### Renderer Compatibility
+
+- **GPU-01**: Vulkan 1.2 设备（NVIDIA Maxwell/Pascal 如 GTX 960、AMD GCN 如 Polaris/Vega）可用 gpu-next 渲染，不再因 `apiVersion < 1.3` 门槛直接落到 software
+- **GPU-02**: 设备能力协商可诊断——`PickDevice` 按所需扩展 + timeline semaphore 选择，失败原因包含设备名与缺失项；`vkCreateDevice` 失败时以最小 feature 集重试
+- **GPU-03**: 在旧 GPU 上验证 `gpu-next → gpu(gl_video Vulkan context) → software` 的真实回退链，并记录各档的 `backend`/`reason`
+
 ### Platform
 
 - **PLAT-01**: Android 垂直切片（libmpv 交叉编译 + Flutter 纹理）
