@@ -88,7 +88,7 @@ class _PlayerPageState extends State<PlayerPage> {
         'vsync=${p('video-sync')} dropped=${p('frame-drop-count')} '
         'dec-drop=${p('decoder-frame-drop-count')} '
         'delayed=${p('vo-delayed-frame-count')} '
-        'avdiff=${p('avsync') ?? '-'}';
+        'avdiff=${p('avsync')}';
     debugPrint(line);
     setState(() {
       stats = 'backend ${video?.backend.name} (${video?.reason})\n'
