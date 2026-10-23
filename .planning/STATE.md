@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Player Lifetime & Dispose Safety
-status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-23T16:05:12.054Z"
+status: verifying
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-23T16:17:15.285Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 01 execution started
-state_head: fc7a79593d86684450450143dc3a96ed8ff3ce13
+state_head: 304b83d0571f8143c106e0ed78289762101c1bff
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 
 Phase: 01 (Player Lifetime & Dispose Safety) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-23 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 6 min | 2 tasks | 4 files |
 | Phase 01 P02 | 8 min | 2 tasks | 3 files |
+| Phase 01 P03 | 5 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,10 @@ Recent decisions affecting current work:
 - [Phase 01]: position and decodeWarning register directly in Player._states instead of via _bind (custom parsers, no standard observation path).
 - [Phase 01]: Public-entry liveness gate: _ensureAlive() throws StateError before any bindings.* call and increments _nativeEntries only past the check, so a flat counter proves no FFI after dispose.
 - [Phase 01]: API freeze is pinned by dart:mirrors reflection to the pre-phase Mpv/Player surface plus exactly nativeEntriesForTesting and stateStreamsForTesting.
+- [Phase 01]: No production listener counter was added: synchronous broadcast dispatch already isolates a throwing listener, and the failure-injection tests capture the zone error while proving delivery continues.
+- [Phase 01]: Stream-bridge failure-injection tests skip only when native patch 0006 is absent (explicit capability guard with a reason); a missing libmpv still fails loudly.
+- [Phase 01]: The 1000-cycle RSS soak is isolated by a default-skipped lifecycle tag and runs only via dart test -t lifecycle --run-skipped in its own process.
+- [Phase 01]: _handleOpen's shutdown branch contains a throwing close with catchError, matching shutdown(), because _onRequest invokes it unawaited.
 
 ### Pending Todos
 
@@ -93,6 +98,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T16:05:12.018Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-23T16:17:15.233Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

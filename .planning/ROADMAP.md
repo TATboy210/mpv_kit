@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. dispose 后调用任意 `Mpv` 公共方法抛出 `StateError`，测试同时证明没有进入 native 调用（无 use-after-free）。
   4. 失败注入回归测试进入 CI：抛错的 dispose hook/listener 与异常流源都能稳定复现并通过。
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -42,7 +42,7 @@ Plans:
 - [x] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
+- [x] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
 
 ### Phase 2: Video Controller Lifecycle & Resize Safety
 
@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 2/3 | In Progress | - |
+| 1. Player Lifetime & Dispose Safety | 3/3 | In Progress | - |
 | 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |

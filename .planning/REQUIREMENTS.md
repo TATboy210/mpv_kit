@@ -9,7 +9,7 @@
 
 ### Stability & Lifetime (STAB)
 
-- [ ] **STAB-01**: 反复创建/销毁 `Player` 与 `MpvVideoController` 不泄漏原生资源，`events`/状态流正确关闭
+- [x] **STAB-01**: 反复创建/销毁 `Player` 与 `MpvVideoController` 不泄漏原生资源，`events`/状态流正确关闭
 - [x] **STAB-02**: 任一 dispose hook 抛错时 `Player.dispose()` 仍完成 `mpv` 核心销毁，且可重复调用
 - [x] **STAB-03**: `Mpv` 公共方法在 dispose 后调用抛出明确 `StateError`，不触发 native use-after-free
 - [ ] **STAB-04**: `MpvVideoController.create` 解析失败或后续步骤抛错时回滚纹理、dispose hook 与路由表，重试可成功
@@ -40,7 +40,7 @@
 
 - [ ] **VERIFY-01**: 真实插件 integration test 在 Windows/Linux/macOS CI 跑通（create、渲染一帧、dispose）
 - [ ] **VERIFY-02**: 六目标（x64/arm64 × 三 OS）构建与冒烟全部通过
-- [ ] **VERIFY-03**: 关键失败路径有回归测试（失败注入、抛错监听器/dispose hook、异常流源）
+- [x] **VERIFY-03**: 关键失败路径有回归测试（失败注入、抛错监听器/dispose hook、异常流源）
 - [ ] **VERIFY-04**: 覆盖率门禁覆盖 `mpv_kit_video` 与 `mpv_kit_libs`
 
 ## v2 Requirements
@@ -81,7 +81,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAB-01 | Phase 1 | Pending |
+| STAB-01 | Phase 1 | Complete |
 | STAB-02 | Phase 1 | Complete |
 | STAB-03 | Phase 1 | Complete |
 | STAB-04 | Phase 2 | Pending |
@@ -100,7 +100,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BUILD-04 | Phase 5 | Pending |
 | VERIFY-01 | Phase 6 | Pending |
 | VERIFY-02 | Phase 6 | Pending |
-| VERIFY-03 | Phase 1 | Pending |
+| VERIFY-03 | Phase 1 | Complete |
 | VERIFY-04 | Phase 2 | Pending |
 
 **Coverage:**
