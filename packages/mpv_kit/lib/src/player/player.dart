@@ -50,9 +50,12 @@ final class Player {
   /// `keep-open=yes` (stay on the last frame at EOF), `idle=yes`.
   ///
   /// `hwdec` 首选 `vulkan`（Vulkan Video 零拷贝解码，4K 60fps 无每帧
-  /// GPU→CPU 拷贝）；驱动不支持 Vulkan Video 时按逗号列表自动落到
-  /// `auto-safe` 的保守列表（其 copy 变体有每帧 ~12MB 的系统内存往返，
-  /// 4K 下约 700MB/s，仅在无零拷贝路径可用时作为回退）。
+  /// GPU→CPU 拷贝）。Vulkan Video 是 Turing/RDNA2 起的驱动特性：
+  /// GTX 960 这类老卡上它会失败，此时落到 `d3d11va-copy` —— NVDEC/
+  /// UVD 仍在硬件解码，只是解出的帧拷到系统内存再交给 gpu-next
+  /// （每帧 ~12MB 往返，4K30 下 ~370MB/s，远小于软解的 CPU 开销）。
+  /// 没有这档，interop 不匹配会让 mpv 静默落回纯软解，4K 必卡。
+  /// 最后 `auto-safe` 兜底（无硬解能力时交回 mpv 的保守选择）。
   ///
   /// 其余默认项面向 4K/8K 满帧播放（各项含义见行内注释），全部可被
   /// [options] 覆盖：
@@ -78,7 +81,7 @@ final class Player {
       libraryPath: libraryPath,
       options: {
         'vo': 'libmpv',
-        'hwdec': 'vulkan,auto-safe',
+        'hwdec': 'vulkan,d3d11va-copy,auto-safe',
         'keep-open': 'yes',
         'idle': 'yes',
         'terminal': 'no',

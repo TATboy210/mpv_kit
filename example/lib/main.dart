@@ -35,7 +35,10 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   final player = Player(options: {
     // Vulkan Video decoding where available, else the safe platform default.
-    'hwdec': 'vulkan,auto-safe',
+    'hwdec': 'vulkan,d3d11va-copy,auto-safe',
+    // A/B 对照:display-desync 的发布节拍与渲染桥的异步链路疑似不合拍
+    // (delayed 603 累积),audio 模式作对照基线。
+    'video-sync': Platform.environment['MPV_KIT_VSYNC'] ?? 'display-desync',
     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
     // click a forcibly killed audio stream makes in the speakers).
     'ao': ?Platform.environment['MPV_KIT_EXAMPLE_AO'],
@@ -80,6 +83,13 @@ class _PlayerPageState extends State<PlayerPage> {
   void _stats() {
     final m = player.mpv;
     String p(String name) => '${m.tryGetProperty(name) ?? '-'}';
+    final line = 'hwdec=${p('hwdec-current')} size=${p('width')}x${p('height')} '
+        'fps=${p('container-fps')} display-fps=${p('display-fps')} '
+        'vsync=${p('video-sync')} dropped=${p('frame-drop-count')} '
+        'dec-drop=${p('decoder-frame-drop-count')} '
+        'delayed=${p('vo-delayed-frame-count')} '
+        'avdiff=${p('avsync') ?? '-'}';
+    debugPrint(line);
     setState(() {
       stats = 'backend ${video?.backend.name} (${video?.reason})\n'
           'hwdec ${p('hwdec-current')}  codec ${p('video-codec')}\n'
