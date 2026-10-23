@@ -30,7 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. 任一 dispose hook 抛错时，`Player.dispose()` 仍完成 `mpv_terminate_destroy` 并关闭全部流，且错误可见；再次调用 dispose 无副作用。
   3. dispose 后调用任意 `Mpv` 公共方法抛出 `StateError`，测试同时证明没有进入 native 调用（无 use-after-free）。
   4. 失败注入回归测试进入 CI：抛错的 dispose hook/listener 与异常流源都能稳定复现并通过。
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Exception-safe `Player.dispose`, state/event stream closure, and dispose ordering
+- [ ] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
+- [ ] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
 
 ### Phase 2: Video Controller Lifecycle & Resize Safety
 **Goal**: `MpvVideoController` 的创建是原子的，resize 与 dispose 并发时不崩溃、不残留坏状态。
@@ -93,7 +98,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 0/TBD | Not started | - |
+| 1. Player Lifetime & Dispose Safety | 0/3 | Not started | - |
 | 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
