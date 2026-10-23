@@ -212,6 +212,13 @@ class VideoRenderer {
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
+  // Rendered into but not yet waited on (Vulkan only). Published — i.e.
+  // copied into front_ behind the per-frame GPU-finish wait — at the start
+  // of the next RenderOnce, giving the pipeline depth 2: the GPU renders
+  // frame N while the render thread schedules N+1, instead of sleeping on
+  // the CPU right after each render call. The publish gate is unchanged:
+  // nothing becomes visible before its GPU work completed.
+  int pending_front_ = -1;
   int in_use_ = -1;                     // frame the compositor holds
   int quarantine_[kMaxQuarantine] = {-1, -1, -1, -1};  // newest first
   // After a reallocation the previous generation's last frame stays on
