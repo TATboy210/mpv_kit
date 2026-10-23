@@ -188,6 +188,32 @@ void main() {
         },
       );
     });
+
+    test('dispose closes Mpv.events and observer streams', () async {
+      final eventsDone = Completer<void>();
+      final observerDone = Completer<void>();
+      mpv.events.listen((_) {}, onDone: eventsDone.complete);
+      mpv
+          .observeProperty('volume')
+          .listen((_) {}, onDone: observerDone.complete);
+      mpv.dispose();
+      await eventsDone.future.timeout(const Duration(seconds: 5));
+      await observerDone.future.timeout(const Duration(seconds: 5));
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+      expect(mpv.isDisposed, isTrue);
+    });
+
+    test('observeProperty stream listened after dispose fails without native '
+        'access', () async {
+      final stream = mpv.observeProperty('volume');
+      mpv.dispose();
+      final error = Completer<Object>();
+      stream.listen((_) {}, onError: (Object e) => error.complete(e));
+      expect(
+        await error.future.timeout(const Duration(seconds: 5)),
+        isA<StateError>(),
+      );
+    });
   });
 
   test('raw bindings remain usable for unwrapped calls', () {

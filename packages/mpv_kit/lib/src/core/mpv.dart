@@ -402,20 +402,29 @@ final class Mpv {
     late final StreamController<Object?> controller;
     controller = StreamController<Object?>(
       sync: true,
-      onListen: () => using((a) {
-        final rc = bindings.observeProperty(
-          handle,
-          id,
-          name.toNativeUtf8(allocator: a),
-          MpvFormat.node,
-        );
-        if (rc < 0) {
-          controller.addError(_error(rc, 'observe_property($name)'));
+      onListen: () {
+        // A stream created before dispose but listened to afterwards must not
+        // enter native code: the handle has already been destroyed.
+        if (_disposed) {
+          controller.addError(StateError('Mpv has been disposed'));
           unawaited(controller.close());
-        } else {
-          _observers[id] = controller;
+          return;
         }
-      }),
+        using((a) {
+          final rc = bindings.observeProperty(
+            handle,
+            id,
+            name.toNativeUtf8(allocator: a),
+            MpvFormat.node,
+          );
+          if (rc < 0) {
+            controller.addError(_error(rc, 'observe_property($name)'));
+            unawaited(controller.close());
+          } else {
+            _observers[id] = controller;
+          }
+        });
+      },
       onCancel: () {
         if (_observers.remove(id) != null && !_disposed) {
           bindings.unobserveProperty(handle, id);
@@ -537,7 +546,9 @@ final class Mpv {
   void _dispatch(MpvEventData event) {
     switch (event) {
       case PropertyChangeEvent(:final replyUserdata, :final value):
-        _observers[replyUserdata]?.add(value);
+        // The controller may already be closed by teardown while a late event
+        // is still draining; adding to it would throw into the event loop.
+        _addIfOpen(_observers[replyUserdata], value);
       case GetPropertyReplyEvent(
         :final replyUserdata,
         :final error,
@@ -553,6 +564,14 @@ final class Mpv {
         break;
     }
     if (!_events.isClosed) _events.add(event);
+  }
+
+  /// Adds [value] to [observer] unless teardown already closed it.
+  static void _addIfOpen(
+    StreamController<Object?>? observer,
+    Object? value,
+  ) {
+    if (observer != null && !observer.isClosed) observer.add(value);
   }
 
   void _complete(int id, int err, Object? value, String op) {
