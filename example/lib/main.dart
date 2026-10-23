@@ -36,9 +36,8 @@ class _PlayerPageState extends State<PlayerPage> {
   final player = Player(options: {
     // Vulkan Video decoding where available, else the safe platform default.
     'hwdec': 'vulkan,d3d11va-copy,auto-safe',
-    // A/B 对照:display-desync 的发布节拍与渲染桥的异步链路疑似不合拍
-    // (delayed 603 累积),audio 模式作对照基线。
-    'video-sync': Platform.environment['MPV_KIT_VSYNC'] ?? 'display-desync',
+    // video-sync 用 Player 默认(audio):display-* 的相位调度与渲染桥
+    // 异步发布链不合拍,实测积压 603 帧,见 Player 的 doc 注释。
     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
     // click a forcibly killed audio stream makes in the speakers).
     'ao': ?Platform.environment['MPV_KIT_EXAMPLE_AO'],
