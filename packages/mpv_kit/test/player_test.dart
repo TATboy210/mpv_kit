@@ -233,6 +233,30 @@ void main() {
     await p.dispose(); // idempotent
   });
 
+  test('throwing dispose hook still destroys the core and closes all '
+      'streams', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    // A failing assertion must not leak the native core — and with it the
+    // wakeup listener that keeps the isolate alive — for the rest of the run.
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    final sentinel = StateError('dispose hook exploded');
+    Future<void> hook() async => throw sentinel;
+    final positionDone = Completer<void>();
+    final decodeWarningDone = Completer<void>();
+    p.position.stream.listen((_) {}, onDone: positionDone.complete);
+    p.decodeWarning.stream.listen((_) {}, onDone: decodeWarningDone.complete);
+    p.addDisposeHook(hook);
+    // The hook error is surfaced unchanged...
+    await expectLater(p.dispose(), throwsA(same(sentinel)));
+    // ...but every teardown step still ran.
+    expect(p.mpv.isDisposed, isTrue);
+    await positionDone.future.timeout(const Duration(seconds: 5));
+    await decodeWarningDone.future.timeout(const Duration(seconds: 5));
+    await p.dispose(); // a second dispose is harmless
+  });
+
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));
     expect(mpvOptions.map((e) => e.name), containsAll(['hwdec', 'vo']));
