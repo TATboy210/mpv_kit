@@ -407,6 +407,9 @@ void VideoRenderer::SkipFrame() {
 VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   int w, h, back;
   bool failed_before_render = false;
+  // Old generation's front slot, valid across the realloc below: the one
+  // image whose Vulkan side survives into retirement.
+  int keep_front = -1;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     w = width_;
@@ -415,6 +418,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       // Old images are about to be retired; their last frame stays on
       // screen until a new one exists.
       if (front_ >= 0) {
+        keep_front = front_;
         retired_front_ = Frame{};
         retired_front_.index = -2;  // never equal to a ring index
         retired_front_.width = ring_w_;
@@ -437,10 +441,28 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       // Under the lock: AcquireFront() must never observe a half-built ring.
       std::lock_guard<std::mutex> lock(mutex_);
       if (backend_ == Backend::kVulkan) {
-        if (!vulkan_->AllocateRing(ring_size_, w, h, error)) {
-          ring_w_ = ring_h_ = 0;
-          retired_front_ = Frame{};  // AllocateRing freed everything
-          failed_before_render = true;
+        // The compositor may still sample the front frame: only that ring
+        // slot survives into retirement, the rest is freed at once.
+        SharedImage* keep =
+            keep_front >= 0 ? &vulkan_->ring()[keep_front] : nullptr;
+        if (!vulkan_->AllocateRing(ring_size_, w, h, keep, error)) {
+          // 8K on a small GPU: the full ring may not fit. One retry with
+          // the smallest ring whose quarantine (2) still respects the
+          // documented tearing constraint beats dropping to software.
+          const int fallback_quarantine = 2;
+          const int fallback_ring = fallback_quarantine + 3;
+          if (ring_size_ > fallback_ring &&
+              vulkan_->AllocateRing(fallback_ring, w, h, keep, error)) {
+            ring_size_ = fallback_ring;
+            quarantine_count_ = fallback_quarantine;
+            log_("mpv_kit: shared-image allocation failed at ring " +
+                 std::to_string(ring_size_) + ", retried with a ring of " +
+                 std::to_string(fallback_ring));
+          } else {
+            ring_w_ = ring_h_ = 0;
+            retired_front_ = Frame{};  // AllocateRing freed everything
+            failed_before_render = true;
+          }
         }
       } else {
         sw_retired_ = std::move(sw_buffers_);
