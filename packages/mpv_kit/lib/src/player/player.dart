@@ -7,6 +7,8 @@ library;
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import '../core/errors.dart';
 import '../core/events.dart';
 import '../core/mpv.dart';
@@ -27,7 +29,9 @@ final class MpvState<T> {
   Stream<T> get stream => _controller.stream;
 
   void _set(T v) {
-    if (v == _value) return;
+    // A late `ShutdownEvent` (or a dispose-ordering race) must not add to a
+    // closed controller: that throws into the event loop.
+    if (_controller.isClosed || v == _value) return;
     _value = v;
     _controller.add(v);
   }
@@ -194,6 +198,12 @@ final class Player {
     // 两个来源任一变化都要重算告警（新文件装载/硬解建立/失败回退）。
     _subs.add(videoParams.stream.listen((_) => _updateDecodeWarning()));
     _subs.add(hwdecCurrent.stream.listen((_) => _updateDecodeWarning()));
+    // `position`（自定义节流解析）与 `decodeWarning`（派生状态）不走
+    // `_bind`，但同样必须在 dispose/ShutdownEvent 时被关闭/重置——
+    // 未登记的状态流永远收不到 `done`，是确认的生命周期缺陷。
+    _states
+      ..add(position)
+      ..add(decodeWarning);
     _subs.add(mpv.events.listen(_onEvent));
   }
 
@@ -617,26 +627,61 @@ final class Player {
       _disposeHooks.remove(hook);
 
   /// 释放 mpv 与全部状态流。Idempotent.
+  ///
+  /// 各阶段相互隔离：某个 dispose hook、订阅取消或流关闭抛错时，后续阶段
+  /// 仍然执行，原生核心（`mpv_terminate_destroy`）一定会被销毁。全部阶段
+  /// 跑完后才把收集到的错误抛给调用方：单个错误原样重抛，多个错误合并为
+  /// [StateError]。
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    // Copy: hooks remove themselves while running.
-    for (final hook in List.of(_disposeHooks)) {
-      await hook();
+    final errors = <Object>[];
+    Future<void> stage(Future<void> Function() body) async {
+      try {
+        await body();
+      } on Object catch (error) {
+        errors.add(error);
+      }
     }
+
+    // Copy: hooks may remove themselves while running.
+    final hooks = List.of(_disposeHooks);
     _disposeHooks.clear();
+    for (final hook in hooks) {
+      // A render context hook must still free the context before the core,
+      // so hooks stay first even though they are individually isolated.
+      await stage(hook);
+    }
     for (final s in _subs) {
-      await s.cancel();
+      await stage(s.cancel);
     }
-    mpv.dispose();
-    await _errors.close();
-    await _logs.close();
-    for (final s in _states) {
-      await s._close();
+    await stage(() async {
+      mpv.dispose();
+    });
+    await stage(_errors.close);
+    await stage(_logs.close);
+    // Registered states — including position/decodeWarning — close here, so
+    // every listener receives `done`.
+    for (final state in _states) {
+      await stage(state._close);
     }
+    if (errors.isEmpty) return;
+    if (errors.length == 1) throw errors.single;
+    throw StateError(
+      'Player.dispose() failed in ${errors.length} teardown stages:\n'
+      '${errors.map((error) => '  $error').join('\n')}',
+    );
   }
 
   // --- Internals ---------------------------------------------------------
+
+  /// Every state stream this player owns.
+  ///
+  /// Test seam: proves teardown closes every controller, including the ones
+  /// not created through the standard property-binding path.
+  @visibleForTesting
+  Iterable<Stream<Object?>> get stateStreamsForTesting =>
+      _states.map((state) => state.stream);
 
   void _bind<T>(String name, MpvState<T> state, T Function(Object?) parse) {
     _states.add(state);

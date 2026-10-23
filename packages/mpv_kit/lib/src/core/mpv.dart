@@ -163,14 +163,19 @@ final class Mpv {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    // Order matters: null the wakeup callback while the handle is still alive
+    // (calling it after `mpv_terminate_destroy` would be a use-after-free),
+    // then let mpv threads blocked on Dart stream sources return, then destroy
+    // the core, and only then close the `NativeCallable` — once the core is
+    // gone no native thread can invoke it any more.
     bindings.setWakeupCallback(handle, nullptr, nullptr);
-    _wakeup.close();
     // Unblock mpv threads waiting on Dart stream sources, or destroying the
     // core would wait for them forever (this isolate is busy right here).
     for (final b in _streamBridges) {
       b.shutdown();
     }
     (_owner ? bindings.terminateDestroy : bindings.destroy)(handle);
+    _wakeup.close();
     for (final b in _streamBridges) {
       b.close();
     }
@@ -179,7 +184,10 @@ final class Mpv {
       c.completeError(StateError('mpv handle disposed'));
     }
     _pending.clear();
-    for (final c in _observers.values) {
+    // Closing an observer controller runs its `onCancel`, which removes the
+    // entry from `_observers`; iterate a snapshot so that mutation cannot
+    // corrupt the iteration.
+    for (final c in _observers.values.toList()) {
       unawaited(c.close());
     }
     _observers.clear();
