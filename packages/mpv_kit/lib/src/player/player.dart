@@ -59,10 +59,12 @@ final class Player {
   ///
   /// 其余默认项面向 4K/8K 满帧播放（各项含义见行内注释），全部可被
   /// [options] 覆盖：
-  /// - `video-sync=display-desync`：按显示节拍调度帧（render API 无
-  ///   swapchain，靠 MpvVideoController 的 display-fps-override 提供节拍）。
-  ///   不用 `display-resample` 是因为 Flutter raster 的推送节拍抖动比
-  ///   音频时钟大，重采样音频反而引入音调波动；音频自行跟时钟即可。
+  /// - `video-sync=audio`（mpv 默认，显式固定）：实测对照中 display-*
+  ///   模式与渲染桥的异步发布链不合拍——mpv 按显示相位等 flip，而
+  ///   report_swap 由 Flutter 合成器的节奏驱动，两拍对不齐时帧全部
+  ///   积压（4060 上 20 秒积压 603 帧）。audio 时钟调度没有这个相位
+  ///   约束，同机实测 delayed=0、avdiff 微秒级。display-* 要可用需要
+  ///   渲染桥按 display 相位回报 vsync（未来项）。
   /// - `video-timing-offset=0.02`：audio 同步模式的兜底保障——默认
   ///   0.05 会让 render API 客户端被限到 ~20fps（mpv 文档明说）。
   /// - 缓存组：100Mbps（≈12.5MB/s）4K 源默认 150MB 缓冲只有 12 秒，
@@ -86,7 +88,7 @@ final class Player {
         'idle': 'yes',
         'terminal': 'no',
         // --- 4K/8K 满帧参数包（见上方 doc 注释） ---
-        'video-sync': 'display-desync',
+        'video-sync': 'audio',
         'video-timing-offset': '0.02',
         'demuxer-max-bytes': '400MiB',
         'demuxer-max-back-bytes': '100MiB',
