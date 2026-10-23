@@ -32,14 +32,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. dispose 后调用任意 `Mpv` 公共方法抛出 `StateError`，测试同时证明没有进入 native 调用（无 use-after-free）。
   4. 失败注入回归测试进入 CI：抛错的 dispose hook/listener 与异常流源都能稳定复现并通过。
 
-**Plans:** 3/3 plans executed
+**Plans:** 3/5 executed — 2 gap-closure plans ready to execute
 
 Plans:
 **Wave 1**
 - [x] 01-01-PLAN.md — Exception-safe `Player.dispose`, state/event stream closure, and dispose ordering
+- [ ] 01-04-PLAN.md — Gap closure: dispatch-safe stream close (CR-01), lazy `audioDevices` (IN-03), `_errors.isClosed` guard (IN-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
+- [ ] 01-05-PLAN.md — Gap closure: seek/read proof (WR-03), CI soak isolation (WR-04), analyzer exclusion + review ledger (IN-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
