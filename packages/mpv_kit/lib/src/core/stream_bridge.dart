@@ -226,7 +226,12 @@ final class StreamBridge {
       source = null;
     }
     if (_shutdown) {
-      if (source != null) await Future.sync(source.close);
+      // `_onRequest` runs this method under `unawaited`, so a throwing close
+      // would escape as an unhandled async error after `dispose()` returned.
+      // Contain it exactly like the `shutdown()` sweep.
+      if (source != null) {
+        await Future.sync(source.close).catchError((Object _) {});
+      }
       return;
     }
     if (source == null) {
