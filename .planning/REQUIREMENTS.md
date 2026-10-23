@@ -10,7 +10,7 @@
 ### Stability & Lifetime (STAB)
 
 - [ ] **STAB-01**: 反复创建/销毁 `Player` 与 `MpvVideoController` 不泄漏原生资源，`events`/状态流正确关闭
-- [ ] **STAB-02**: 任一 dispose hook 抛错时 `Player.dispose()` 仍完成 `mpv` 核心销毁，且可重复调用
+- [x] **STAB-02**: 任一 dispose hook 抛错时 `Player.dispose()` 仍完成 `mpv` 核心销毁，且可重复调用
 - [ ] **STAB-03**: `Mpv` 公共方法在 dispose 后调用抛出明确 `StateError`，不触发 native use-after-free
 - [ ] **STAB-04**: `MpvVideoController.create` 解析失败或后续步骤抛错时回滚纹理、dispose hook 与路由表，重试可成功
 - [ ] **STAB-05**: resize 与 dispose 并发时无崩溃、无黑帧、无尺寸状态卡死
@@ -82,7 +82,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | STAB-01 | Phase 1 | Pending |
-| STAB-02 | Phase 1 | Pending |
+| STAB-02 | Phase 1 | Complete |
 | STAB-03 | Phase 1 | Pending |
 | STAB-04 | Phase 2 | Pending |
 | STAB-05 | Phase 2 | Pending |
