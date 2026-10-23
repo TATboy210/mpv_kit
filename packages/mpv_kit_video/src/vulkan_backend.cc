@@ -338,6 +338,28 @@ bool VulkanContext::CreateDevice(std::string* error) {
   return true;
 }
 
+namespace {
+void DestroyAll(VkDevice device, VkSemaphore timeline, VulkanInterop* interop,
+                std::vector<SharedImage>* images) {
+  if (!device || images->empty()) return;
+  for (auto& img : *images) {
+    if (img.ready_value != 0) {
+      VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+      wi.semaphoreCount = 1;
+      wi.pSemaphores = &timeline;
+      wi.pValues = &img.ready_value;
+      // Same 1 s bound as WaitImage(): a stuck GPU must not wedge us.
+      vkWaitSemaphores(device, &wi, 1'000'000'000ull);
+    }
+    // A moved-out slot (image == null) is skipped: only the Vulkan side is
+    // destroyed here — the D3D11 texture the compositor still samples is
+    // kept alive by its own COM reference in the interop layer.
+    if (img.image || img.platform) interop->DestroyImage(device, &img);
+  }
+  images->clear();
+}
+}  // namespace
+
 bool VulkanContext::AllocateRing(int count, int width, int height,
                                  SharedImage* keep_retired, std::string* error) {
   FreeRetired();  // the previous generation's survivor had its quarantine
@@ -360,28 +382,6 @@ bool VulkanContext::AllocateRing(int count, int width, int height,
   }
   return true;
 }
-
-namespace {
-void DestroyAll(VkDevice device, VkSemaphore timeline, VulkanInterop* interop,
-                std::vector<SharedImage>* images) {
-  if (!device || images->empty()) return;
-  for (auto& img : *images) {
-    if (img.ready_value != 0) {
-      VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
-      wi.semaphoreCount = 1;
-      wi.pSemaphores = &timeline;
-      wi.pValues = &img.ready_value;
-      // Same 1 s bound as WaitImage(): a stuck GPU must not wedge us.
-      vkWaitSemaphores(device, &wi, 1'000'000'000ull);
-    }
-    // A moved-out slot (image == null) is skipped: only the Vulkan side is
-    // destroyed here — the D3D11 texture the compositor still samples is
-    // kept alive by its own COM reference in the interop layer.
-    if (img.image || img.platform) interop->DestroyImage(device, &img);
-  }
-  images->clear();
-}
-}  // namespace
 
 void VulkanContext::FreeRing() {
   DestroyAll(device_, timeline_, interop_, &ring_);
