@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Player Lifetime & Dispose Safety
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-23T15:51:26.547Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-10-23T16:05:12.054Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 01 execution started
-state_head: 301f4df08df42298f4ff7cc637c3a1e5e7769092
+state_head: fc7a79593d86684450450143dc3a96ed8ff3ce13
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 01 (Player Lifetime & Dispose Safety) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 01 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 6 min | 2 tasks | 4 files |
+| Phase 01 P02 | 8 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Roadmap]: 失败路径回归测试随 Phase 1/2 落地，真实插件 integration test 与六目标矩阵由 Phase 6 拥有。
 - [Phase 01]: Single dispose error rethrows unchanged (identity preserved); multiple errors aggregate into one StateError after all teardown stages ran.
 - [Phase 01]: position and decodeWarning register directly in Player._states instead of via _bind (custom parsers, no standard observation path).
+- [Phase 01]: Public-entry liveness gate: _ensureAlive() throws StateError before any bindings.* call and increments _nativeEntries only past the check, so a flat counter proves no FFI after dispose.
+- [Phase 01]: API freeze is pinned by dart:mirrors reflection to the pre-phase Mpv/Player surface plus exactly nativeEntriesForTesting and stateStreamsForTesting.
 
 ### Pending Todos
 
@@ -90,6 +93,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T15:51:26.507Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-23T16:05:12.018Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

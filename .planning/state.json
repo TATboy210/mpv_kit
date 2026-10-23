@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Player Lifetime & Dispose Safety",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "2",
@@ -39,5 +39,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 1 of 6 · 0% · executing"
   },
-  "updated_at": "2026-10-23T15:51:12.367Z"
+  "updated_at": "2026-10-23T16:04:57.286Z"
 }
