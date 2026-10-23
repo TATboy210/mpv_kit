@@ -64,7 +64,16 @@ final class Mpv {
         }
       }
       for (final e in options.entries) {
-        mpv.setOptionString(e.key, e.value);
+        try {
+          mpv.setOptionString(e.key, e.value);
+        } on MpvException catch (err) {
+          // The option pack (see Player) carries enhancement options that
+          // newer mpv versions added; an older libmpv — or a build with the
+          // feature compiled out — reports optionNotFound. The feature is
+          // absent, so there is nothing to set: keep the rest and continue
+          // (same contract as secureDefaults above).
+          if (err.error != MpvError.optionNotFound) rethrow;
+        }
       }
       if (initialize) mpv.initialize();
     } on Object {
