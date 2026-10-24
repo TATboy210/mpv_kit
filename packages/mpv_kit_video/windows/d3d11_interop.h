@@ -22,6 +22,9 @@ class D3D11Interop : public Interop, public VulkanInterop {
 
   // Interop
   VulkanInterop* vulkan() override { return device_ ? this : nullptr; }
+  const char* interopReason() const override {
+    return d3d_reason_.empty() ? nullptr : d3d_reason_.c_str();
+  }
   bool SoftwareIsBgra() const override { return false; }  // Flutter wants RGBA
   void FrameReady() override { frame_ready_(); }
   // Flutter (ExternalTextureD3d::CreateOrUpdateTexture, verified by
@@ -51,6 +54,9 @@ class D3D11Interop : public Interop, public VulkanInterop {
 
  private:
   Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  // Why zero-copy sharing is unavailable (probe failure with the HRESULT),
+  // empty when the device came up (OBS-03).
+  std::string d3d_reason_;
   LUID luid_{};
   std::function<void()> frame_ready_;
 };

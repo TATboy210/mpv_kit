@@ -66,6 +66,11 @@ class Interop {
   virtual ~Interop() = default;
   /// Zero-copy Vulkan sharing, or nullptr if this platform/GPU cannot do it.
   virtual VulkanInterop* vulkan() = 0;
+  /// Why [vulkan()] returns nullptr on this platform/GPU (e.g. a failed
+  /// D3D11/Metal device creation), or null when it can share or has nothing
+  /// to add. Surfaced in the software fallback reason so a device failure is
+  /// not reported as a missing platform interop (OBS-03).
+  virtual const char* interopReason() const { return nullptr; }
   /// Software backend pixel order: true = BGRA, false = RGBA.
   virtual bool SoftwareIsBgra() const = 0;
   /// A completed frame is ready; the platform marks its texture dirty.

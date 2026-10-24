@@ -48,10 +48,12 @@ bool VideoRenderer::Start(RendererChoice choice) {
     ok = StartVulkan(choice);
     if (!ok) log_("mpv_kit: Vulkan backend unavailable (" + backend_reason_ +
                   "), falling back to software rendering");
+  } else if (choice == RendererChoice::kSoftware) {
+    backend_reason_ = "software rendering requested";
+  } else if (const char* why = interop_->interopReason()) {
+    backend_reason_ = std::string("platform interop unavailable: ") + why;
   } else {
-    backend_reason_ = choice == RendererChoice::kSoftware
-                          ? "software rendering requested"
-                          : "platform has no Vulkan interop";
+    backend_reason_ = "platform has no Vulkan interop";
   }
   if (!ok) {
     const std::string why = backend_reason_;

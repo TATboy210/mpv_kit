@@ -25,6 +25,9 @@ class MetalInterop : public Interop, public VulkanInterop {
   /// MoltenVK aborts the process (instead of failing) without a Metal
   /// device, so Vulkan is only offered when Metal is present.
   VulkanInterop* vulkan() override { return metal_ok_ ? this : nullptr; }
+  const char* interopReason() const override {
+    return metal_reason_.empty() ? nullptr : metal_reason_.c_str();
+  }
   bool SoftwareIsBgra() const override { return true; }  // kCVPixelFormatType_32BGRA
   void FrameReady() override { frame_ready_(); }
   /// +1 for Flutter: copyPixelBuffer returns an owned reference.
@@ -49,6 +52,9 @@ class MetalInterop : public Interop, public VulkanInterop {
  private:
   std::function<void()> frame_ready_;
   bool metal_ok_ = false;
+  // Why zero-copy sharing is unavailable (probe failure), empty when Metal
+  // came up (OBS-03).
+  std::string metal_reason_;
   uint64_t registry_id_ = 0;  // of MTLCreateSystemDefaultDevice()
 };
 

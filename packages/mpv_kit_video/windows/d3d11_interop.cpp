@@ -1,6 +1,8 @@
 #include "d3d11_interop.h"
 
 #include <cstring>
+#include <cstdio>
+#include <string>
 
 namespace mpv_kit {
 
@@ -17,18 +19,32 @@ constexpr DXGI_FORMAT kDxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
                            std::function<void()> frame_ready)
     : frame_ready_(std::move(frame_ready)) {
-  if (!adapter) return;
+  if (!adapter) {
+    d3d_reason_ = "no DXGI adapter";
+    return;
+  }
   DXGI_ADAPTER_DESC desc{};
-  if (FAILED(adapter->GetDesc(&desc))) return;
+  if (FAILED(adapter->GetDesc(&desc))) {
+    d3d_reason_ = "failed to read the DXGI adapter desc";
+    return;
+  }
   luid_ = desc.AdapterLuid;
   // Our own device on Flutter's adapter, only used to create shareable
   // textures; Flutter opens them on its device via the shared handle.
   const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
                                       D3D_FEATURE_LEVEL_11_0};
-  D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
-                    D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
-                    static_cast<UINT>(std::size(levels)), D3D11_SDK_VERSION,
-                    &device_, nullptr, nullptr);
+  const HRESULT hr =
+      D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+                        D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
+                        static_cast<UINT>(std::size(levels)),
+                        D3D11_SDK_VERSION, &device_, nullptr, nullptr);
+  if (FAILED(hr)) {
+    // Record the actual failure instead of letting the renderer report a
+    // missing platform interop (OBS-03).
+    char code[16];
+    snprintf(code, sizeof(code), "0x%08lX", static_cast<unsigned long>(hr));
+    d3d_reason_ = std::string("d3d11 device creation failed: ") + code;
+  }
 }
 
 std::vector<const char*> D3D11Interop::DeviceExtensions() const {
@@ -68,6 +84,8 @@ bool D3D11Interop::AcceptDevice(VkPhysicalDevice device) {
 
 bool D3D11Interop::CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,
                                int height, SharedImage* out) {
+  // Defensive: `vulkan()` gates on device_, but never dereference null.
+  if (!device_) return false;
   auto* tex = new Texture();
   D3D11_TEXTURE2D_DESC td{};
   td.Width = static_cast<UINT>(width);

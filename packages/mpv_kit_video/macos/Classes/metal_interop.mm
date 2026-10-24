@@ -28,6 +28,10 @@ MetalInterop::MetalInterop(std::function<void()> frame_ready)
   @autoreleasepool {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     metal_ok_ = device != nil;
+    if (!metal_ok_) {
+      // Honest fallback reason (OBS-03) instead of a generic platform string.
+      metal_reason_ = "no Metal device";
+    }
     if (device) registry_id_ = device.registryID;
   }
 }
