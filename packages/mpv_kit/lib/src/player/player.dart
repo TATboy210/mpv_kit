@@ -119,6 +119,9 @@ final class Player {
     _bind('paused-for-cache', buffering, (v) => v == true);
     _bind('cache-buffering-state', bufferingPercent, (v) => nodeInt(v) ?? 0);
     _bind('seeking', seeking, (v) => v == true);
+    // UHD-01: demuxer 队列按帧尺寸自适应（首次知晓 video-params 与分辨率
+    // 变化时重算;用户显式设置过则永久让位）。见 _autoTuneDemuxer。
+    _subs.add(videoParams.stream.listen(_autoTuneDemuxer));
     // `time-pos` 按渲染帧粒度通知（60Hz 片源即 60 事件/秒），每个事件
     // 都要 node 解码 + broadcast；UI 进度条不需要帧级精度——100ms 节流，
     // 位移 >250ms（seek/拖动）时直通保持跟手。其余 state 保持即时。
@@ -214,6 +217,76 @@ final class Player {
       ..add(position)
       ..add(decodeWarning);
     _subs.add(mpv.events.listen(_onEvent));
+  }
+
+  // --- UHD-01: 帧尺寸自适应的 demuxer 队列预算 ---------------------------
+
+  /// 帧尺寸推导的 demuxer 队列预算(字节)。
+  ///
+  /// 公式(单测钉死,勿改语义):
+  /// ```text
+  /// frameBytes = w × h × 1.5                    (YUV420P 规划单位)
+  /// fwd = min(400MiB, 64 × frameBytes)          (64 帧读前,pack 上限承袭 v1)
+  /// if frameBytes ≥ 32MiB: fwd = min(fwd, 256MiB)   (巨帧条款)
+  /// back = clamp(fwd / 4, 32MiB, 100MiB)
+  /// ```
+  ///
+  /// 设计目标:4K(12.4MiB/帧)得到与 v1 完全相同的 400MiB/100MiB(零回归
+  /// 面);1080p 得到 ≈199MiB——仍覆盖 demuxer-readahead-secs=1s 在 60fps
+  /// 下的 ≈187MiB;8K(49.8MiB/帧)命中巨帧条款收缩到 256MiB/64MiB,
+  /// 与 633MiB 渲染环 + 解码池合计时约束总提交内存(v1 Phase 4 的 8K
+  /// 提交耗尽即源于固定 400/100 与环的叠加,见
+  /// docs/perf/2026-10-24-uhd-endurance.md)。
+  ///
+  /// 尺寸未知/非法返回 null(不调参)。
+  @visibleForTesting
+  static ({int fwd, int back})? demuxerQueueBudgetForTesting(int w, int h) {
+    if (w <= 0 || h <= 0) return null;
+    const fwdCap = 400 << 20, giantThreshold = 32 << 20,
+        giantCap = 256 << 20, backMin = 32 << 20, backMax = 100 << 20;
+    final frameBytes = (w * h * 1.5).round();
+    var fwd = 64 * frameBytes;
+    if (fwd > fwdCap) fwd = fwdCap;
+    if (frameBytes >= giantThreshold && fwd > giantCap) fwd = giantCap;
+    var back = fwd ~/ 4;
+    if (back < backMin) back = backMin;
+    if (back > backMax) back = backMax;
+    return (fwd: fwd, back: back);
+  }
+
+  /// 我们最后一次应用的预算(用户覆盖检测的基准之一);null = 尚未调过。
+  ({int fwd, int back})? _lastAppliedBudget;
+  var _demuxerAutoTune = true;
+
+  /// videoParams 变化时按帧尺寸重算 demuxer 队列;用户显式设置过则永久
+  /// 让位。绝不抛错进流(调参失败只跳过本次)。
+  void _autoTuneDemuxer(MpvVideoParams? params) {
+    if (_disposed || !_demuxerAutoTune || params == null) return;
+    final w = params.width, h = params.height;
+    final budget = demuxerQueueBudgetForTesting(w ?? 0, h ?? 0);
+    if (budget == null) return;
+    if (_lastAppliedBudget == budget) return; // 同分辨率的重复事件
+    // 用户覆盖检测:当前值既不是 pack 默认(400MiB/100MiB)也不是我们上
+    // 次设的值,即用户动过 —— 永久停用自适应。
+    const packFwd = 400 << 20, packBack = 100 << 20;
+    final curFwd = mpv.tryGetProperty('demuxer-max-bytes');
+    final curBack = mpv.tryGetProperty('demuxer-max-back-bytes');
+    final last = _lastAppliedBudget;
+    final ours = (curFwd is int) &&
+        (curFwd == packFwd || (last != null && curFwd == last.fwd));
+    final oursBack = (curBack is int) &&
+        (curBack == packBack || (last != null && curBack == last.back));
+    if (!ours || !oursBack) {
+      _demuxerAutoTune = false;
+      return;
+    }
+    try {
+      mpv.setProperty('demuxer-max-bytes', budget.fwd);
+      mpv.setProperty('demuxer-max-back-bytes', budget.back);
+      _lastAppliedBudget = budget;
+    } on Object {
+      // 调参失败(如 dispose 竞态)只跳过;下一次事件再试。
+    }
   }
 
   /// 底层 mpv 客户端：完整 client API（任意属性/命令/选项/hook）。

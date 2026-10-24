@@ -47,6 +47,15 @@ File _writeSilentWav(String path, {int seconds = 3}) {
   return File(path)..writeAsBytesSync(b.buffer.asUint8List());
 }
 
+bool get _libmpvMissing {
+  try {
+    MpvLibrary.open();
+    return false;
+  } on Object {
+    return true;
+  }
+}
+
 void main() {
   late Player player;
   late Directory tmp;
@@ -322,6 +331,80 @@ void main() {
     // must not register a new stream or start audio-device hotplug monitoring.
     expect(player.stateStreamsForTesting.length, trackedStreams);
   });
+
+  group('demuxer queue budget formula', () {
+    // frameBytes = w*h*1.5; fwd = min(400MiB, 64*f), giant frame
+    // (>=32MiB) caps fwd at 256MiB; back = clamp(fwd/4, 32MiB, 100MiB).
+    final mib = 1024 * 1024;
+    test('matrix across tiers', () {
+      int? f(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.fwd;
+      int? b(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.back;
+      // 640x360: frame 0.3296MiB -> 64*f = 21.1MiB (below floors later).
+      expect(f(640, 360), (640 * 360 * 1.5 * 64).round());
+      expect(b(640, 360), 32 * mib); // floor
+      // 1080p: frame 2.9756MiB -> 190.4MiB fwd; back 47.6MiB.
+      expect(f(1920, 1080), (1920 * 1080 * 1.5 * 64).round());
+      expect(b(1920, 1080), ((1920 * 1080 * 1.5 * 64) / 4).round());
+      // 4K: 64*f = 796MiB -> capped at 400MiB (v1-identical); back 100MiB.
+      expect(f(3840, 2160), 400 * mib);
+      expect(b(3840, 2160), 100 * mib);
+      // 8K: giant clause -> 256MiB fwd; back 64MiB.
+      expect(f(7680, 4320), 256 * mib);
+      expect(b(7680, 4320), 64 * mib);
+      // Just under the giant threshold stays at the 400MiB cap.
+      expect(f(4096, 2304), 400 * mib);
+    });
+
+    test('degenerate dimensions return null (no tune)', () {
+      expect(Player.demuxerQueueBudgetForTesting(0, 0), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(1920, 0), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(0, 1080), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(-1, 100), isNull);
+    });
+  });
+
+  group('demuxer queue auto-tune (real libmpv)', () {
+    test('auto-tune applies and retunes across resolutions', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      Future<void> untilBudget(int expected) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (DateTime.now().isBefore(deadline)) {
+          if (p.mpv.tryGetProperty('demuxer-max-bytes') == expected) return;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        fail('demuxer-max-bytes never became $expected '
+            '(got ${p.mpv.tryGetProperty('demuxer-max-bytes')})');
+      }
+
+      await p.open('av://lavfi:testsrc2=size=640x360:rate=30:duration=8');
+      await untilBudget((640 * 360 * 1.5 * 64).round());
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-back-bytes'),
+        32 * 1024 * 1024,
+      );
+
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await untilBudget((1920 * 1080 * 1.5 * 64).round());
+    });
+
+    test('explicit user override stops auto-tune', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      p.mpv.setProperty('demuxer-max-bytes', 777 * 1024 * 1024);
+      await p.open('av://lavfi:testsrc2=size=1280x720:rate=30:duration=8');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-bytes'),
+        777 * 1024 * 1024,
+        reason: 'the user value must survive a resolution change',
+      );
+    });
+  }, skip: _libmpvMissing ? 'libmpv not available' : null);
 
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));

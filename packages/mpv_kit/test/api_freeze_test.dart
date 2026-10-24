@@ -27,7 +27,7 @@ Set<String> publicMembers(Type type) {
 /// The only `*ForTesting` members this phase adds.
 const _seams = <Type, Set<String>>{
   Mpv: {'nativeEntriesForTesting', 'ignoredOptionsForTesting'},
-  Player: {'stateStreamsForTesting'},
+  Player: {'stateStreamsForTesting', 'demuxerQueueBudgetForTesting'},
 };
 
 /// Public surface before phase 01-02; the phase adds only [_seams].
