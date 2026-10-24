@@ -10,10 +10,7 @@
 // snapshots without a Player.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:mpv_kit/mpv_kit.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
 /// One polling snapshot of the debug property set.
