@@ -105,6 +105,26 @@ void main() {
       expect(mpv.tryGetProperty('duration'), isNull);
     });
 
+    test('an unknown option at create is recorded, not silent (OBS-04)',
+        () {
+      final mpv2 = Mpv.create(
+        options: const {'definitely-not-an-option': '1'},
+      );
+      addTearDown(mpv2.dispose);
+      expect(
+        mpv2.ignoredOptionsForTesting.join('\n'),
+        contains('definitely-not-an-option'),
+        reason: 'a tolerated unknown option must be observable (OBS-04)',
+      );
+    });
+
+    test('an invalid option value still fails create loudly', () {
+      expect(
+        () => Mpv.create(options: const {'volume': 'not-a-number'}),
+        throwsA(isA<MpvException>()),
+      );
+    });
+
     test('command returns structured result', () {
       final r = mpv.command(['expand-text', r'${volume}']);
       expect(r, isA<String>());

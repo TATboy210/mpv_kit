@@ -26,7 +26,7 @@ Set<String> publicMembers(Type type) {
 
 /// The only `*ForTesting` members this phase adds.
 const _seams = <Type, Set<String>>{
-  Mpv: {'nativeEntriesForTesting'},
+  Mpv: {'nativeEntriesForTesting', 'ignoredOptionsForTesting'},
   Player: {'stateStreamsForTesting'},
 };
 

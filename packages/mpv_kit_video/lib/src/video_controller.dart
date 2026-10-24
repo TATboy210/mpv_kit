@@ -301,7 +301,17 @@ final class MpvVideoController {
     if (current is String && current.isNotEmpty) return;
     final dir = defaultShaderCacheDir();
     if (dir == null) return;
-    player.mpv.setProperty('gpu-shader-cache-dir', dir);
+    try {
+      player.mpv.setProperty('gpu-shader-cache-dir', dir);
+    } on MpvException catch (e) {
+      // An optional diagnostic setting must not fail create on a reduced
+      // libmpv build (OBS-04); every other error stays loud.
+      if (e.error != MpvError.propertyNotFound) rethrow;
+      debugPrint(
+        'mpv_kit_video: gpu-shader-cache-dir unsupported by this libmpv '
+        'build; ignored',
+      );
+    }
   }
 
   /// Per-user cache location for compiled shaders, or null if the

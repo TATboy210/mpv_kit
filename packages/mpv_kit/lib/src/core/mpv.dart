@@ -62,6 +62,7 @@ final class Mpv {
             // Builds without Lua have no `ytdl`/`osc` options: the feature is
             // absent, so there is nothing to disable.
             if (err.error != MpvError.optionNotFound) rethrow;
+            _recordIgnoredOption(mpv, e.key, err);
           }
         }
       }
@@ -75,6 +76,7 @@ final class Mpv {
           // absent, so there is nothing to set: keep the rest and continue
           // (same contract as secureDefaults above).
           if (err.error != MpvError.optionNotFound) rethrow;
+          _recordIgnoredOption(mpv, e.key, err);
         }
       }
       if (initialize) mpv.initialize();
@@ -622,8 +624,22 @@ final class Mpv {
     bindings.waitAsyncRequests(handle);
   }
 
+  /// Options ignored at create time because this libmpv build does not know
+  /// them (`optionNotFound`), formatted `name (error)` (OBS-04 seam: the
+  /// tolerance that keeps newer-mpv options compatible must not hide typos).
+  @visibleForTesting
+  final List<String> ignoredOptionsForTesting = [];
+
   /// `mpv_error_string`。纯查找,dispose 后仍然可用（IN-02）。
   String errorString(int code) => readUtf8(bindings.errorString(code));
+
+  static void _recordIgnoredOption(Mpv mpv, String name, MpvException err) {
+    mpv.ignoredOptionsForTesting.add('$name (${err.message})');
+    developer.log(
+      'mpv_kit: option "$name" not found in this libmpv build; ignored',
+      level: 900,
+    );
+  }
 
   /// `mpv_event_name`。纯查找,dispose 后仍然可用（IN-02）。
   String eventName(int eventId) => readUtf8(bindings.eventName(eventId));
