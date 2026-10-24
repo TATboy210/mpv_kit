@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
 milestone: v2.0
-current_phase: 9
-current_phase_name: 8K Full-Rate
-status: planning
-stopped_at: Phase 10 context gathered
-last_updated: "2026-10-24T13:55:44.678Z"
+current_phase: 10
+current_phase_name: Composition Spike
+status: executing
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-10-24T17:23:52.939Z"
 last_activity: 2026-10-24
-last_activity_desc: Phase 08 complete, transitioned to Phase 9
-state_head: d04e213e25c14779f5f6dbd7f65fb0ad7b719919
+last_activity_desc: Phase 10 execution started
+state_head: f1cd40def76d9c8fe4d187302821258bd0f9cbdc
 progress:
   total_phases: 5
   completed_phases: 8
-  total_plans: 5
+  total_plans: 8
   completed_plans: 24
   percent: 100
 milestone_name: GPU-Next Optimization & Full-Rate UHD
@@ -25,14 +25,14 @@ milestone_name: GPU-Next Optimization & Full-Rate UHD
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** v2.0 — Phase 9 8K Full-Rate（阶段 1-6 属 v1，已归档）
+**Current focus:** Phase 10 — Composition Spike
 
 ## Current Position
 
-Phase: 9 — 8K Full-Rate
-Plan: 1 of 2 complete (09-01 done; 09-02 blocked)
-Status: Partial — UHD-02 unproven, moved on to Phase 10 by operator decision
-Last activity: 2026-10-24 — 09-02 endurance attempted 3× (8K) + 1× (4K); all harness-side failures, no `BENCH uhd` line. Paused; evidence in `phases/09-8k-full-rate/evidence/`.
+Phase: 10 (Composition Spike) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-24 — Phase 10 execution started
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Last activity: 2026-10-24 — 09-02 endurance attempted 3× (8K) + 1× (4K); all
 | Phase 07 P01 | 40 min | 2 tasks | 5 files |
 | Phase 07 P02 | 95 min | 2 tasks | 2 files |
 | Phase 08 P01 | 35 min | 2 tasks | 5 files |
+| Phase 10 P01 | 2h 10m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,9 @@ Recent decisions affecting current work:
 - [Phase 07]: 宿主磁盘 100% 满的故障签名：进程无声死亡（无 WER）+ CMakeCache 截断 parse error + 增量构建 MSB8066；与提交耗尽（WER 有记录）可区分。
 - [Phase 07]: 回归二进制 = dev.3（字节等同论证）；本地无 MSYS2/meson，新树构建依赖 CI。
 - [Phase 08]: HUD 数据层/组件层分离（HudSnapshot.capture 是唯一触 mpv 的缝隙，测试用 fabricated 快照）；合成路径行静态至 Phase 11 接真实值；拖放白名单 isVideoPlayable 独立纯函数。
+- [Phase 10]: Both surface types bind through ANGLE: DxgiSharedHandle uses EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE (0x3200), D3d11Texture2D uses EGL_D3D_TEXTURE_ANGLE (0x33A3).
+- [Phase 10]: The DXGI resource is owned by mpv_kit's own D3D11 device; ANGLE's in-PE Renderer11 device opens the KMT handle, so two D3D11 devices coexist in one process.
+- [Phase 10]: No fence or keyed-mutex acquisition exists in the production or consumption paths; Impeller removes only Ganesh flush/submit/reset around the same ANGLE-bound GL texture.
 
 ### Pending Todos
 
@@ -160,6 +164,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T13:55:44.605Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-composition-spike/10-CONTEXT.md
+Last session: 2026-10-24T17:23:52.864Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: None
