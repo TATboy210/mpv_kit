@@ -4,16 +4,16 @@ milestone: v2.0
 current_phase: 10
 current_phase_name: Composition Spike
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-10-24T17:23:52.939Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-10-24T17:33:27.000Z"
 last_activity: 2026-10-24
-last_activity_desc: Phase 10 execution started
-state_head: f1cd40def76d9c8fe4d187302821258bd0f9cbdc
+last_activity_desc: 10-02 harness ready; 10-03 smoke run next
+state_head: f56440d8c555b6352657eb99df190a717e8d1fdb
 progress:
   total_phases: 5
   completed_phases: 8
   total_plans: 8
-  completed_plans: 24
+  completed_plans: 25
   percent: 100
 milestone_name: GPU-Next Optimization & Full-Rate UHD
 ---
@@ -30,14 +30,14 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 ## Current Position
 
 Phase: 10 (Composition Spike) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-10-24 — Phase 10 execution started
+Last activity: 2026-10-24 — 10-02 harness ready (10-03 run next)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: ~15 min
 - Total execution time: ~6 hours
 
@@ -88,6 +88,7 @@ Last activity: 2026-10-24 — Phase 10 execution started
 | Phase 07 P02 | 95 min | 2 tasks | 2 files |
 | Phase 08 P01 | 35 min | 2 tasks | 5 files |
 | Phase 10 P01 | 2h 10m | 2 tasks | 6 files |
+| Phase 10 P02 | 7 min | 1 task | 4 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Recent decisions affecting current work:
 - [Phase 10]: Both surface types bind through ANGLE: DxgiSharedHandle uses EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE (0x3200), D3d11Texture2D uses EGL_D3D_TEXTURE_ANGLE (0x33A3).
 - [Phase 10]: The DXGI resource is owned by mpv_kit's own D3D11 device; ANGLE's in-PE Renderer11 device opens the KMT handle, so two D3D11 devices coexist in one process.
 - [Phase 10]: No fence or keyed-mutex acquisition exists in the production or consumption paths; Impeller removes only Ganesh flush/submit/reset around the same ANGLE-bound GL texture.
+- [Phase 10]: The smoke pins the single local 3.47.8 SDK and gates identity before measuring (resolvedPath == MPV_KIT_LIBMPV_PATH, backend == vulkan); a mismatch is inconclusive, never an Impeller result.
+- [Phase 10]: result=pass requires a supported non-black pixel probe (nonBlackRatio >= 0.01); a missing probe is inconclusive and a black frame is failed. Idle counts as a soak failure only after 500 ms of continuous texture mount.
 
 ### Pending Todos
 
@@ -164,6 +167,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T17:23:52.864Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-10-24T17:33:27.000Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
