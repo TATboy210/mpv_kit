@@ -114,7 +114,7 @@ Plans:
 **Depends on**: Phase 4
 **Requirements**: BUILD-01, BUILD-02, BUILD-03, BUILD-04
 **Success Criteria** (what must be TRUE):
-  1. CI 在干净树上应用 `native/patches/0001..0007`，vendor 树与补丁不一致时任务失败。
+  1. CI 在干净树上应用 `native/patches/`（0004+0005 已合并、0008 集成修正补丁加入，共 7 个），vendor 树与补丁不一致时任务失败。
   2. 六个桌面目标的 bundle 可由当前树重建，并通过 sha256/MANIFEST 校验。
   3. README、ADR 与版本常量同 `native/mpv/MPV_VERSION`、macOS 部署目标、SDK 下限一致，并有一致性检查。
   4. `bt/` 不再被跟踪（保留文档化的替代方式），`pubspec.lock` 策略明确并被执行。

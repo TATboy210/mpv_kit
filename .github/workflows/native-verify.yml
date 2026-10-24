@@ -22,6 +22,15 @@ env:
     --buildtype=release -Db_lundef=true
 
 jobs:
+  # BUILD-01: prove vendor == base(MPV_VERSION) + patches before anything
+  # else trusts the vendored tree.
+  patch-drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Patch drift check
+        run: bash tools/check_patches.sh
+
   linux:
     strategy:
       fail-fast: false
