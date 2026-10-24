@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
@@ -215,6 +216,7 @@ final class Mpv {
     }
     _streamBridges.clear();
     for (final c in _pending.values) {
+      c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
       c.completeError(StateError('mpv handle disposed'));
     }
     _pending.clear();
@@ -311,6 +313,7 @@ final class Mpv {
       final rc = bindings.commandNodeAsync(handle, id, writeNode(args, a));
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'command_async(${_describe(args)})'));
       }
     });
@@ -434,6 +437,7 @@ final class Mpv {
       );
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'set_property_async($name)'));
       }
     });
@@ -455,6 +459,7 @@ final class Mpv {
       );
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'get_property_async($name)'));
       }
     });
@@ -617,17 +622,11 @@ final class Mpv {
     bindings.waitAsyncRequests(handle);
   }
 
-  /// `mpv_error_string`。
-  String errorString(int code) {
-    _ensureAlive();
-    return readUtf8(bindings.errorString(code));
-  }
+  /// `mpv_error_string`。纯查找,dispose 后仍然可用（IN-02）。
+  String errorString(int code) => readUtf8(bindings.errorString(code));
 
-  /// `mpv_event_name`。
-  String eventName(int eventId) {
-    _ensureAlive();
-    return readUtf8(bindings.eventName(eventId));
-  }
+  /// `mpv_event_name`。纯查找,dispose 后仍然可用（IN-02）。
+  String eventName(int eventId) => readUtf8(bindings.eventName(eventId));
 
   // ---------------------------------------------------------------------
   // Internals
@@ -647,12 +646,47 @@ final class Mpv {
   int _allocId() => _nextId++;
 
   /// 唤醒回调：在本 isolate 上排空事件队列（非阻塞）。
+  ///
+  /// 单个事件解码失败或同步监听器抛错绝不允许中断排空（OBS-02）——队列里
+  /// 排在其后的所有事件都会丢失。两类失败分别 containment 后继续。
   void _onWakeup(Pointer<Void> _) {
     while (!_disposed) {
       final p = bindings.waitEvent(handle, 0);
       if (p == nullptr || p.ref.eventId == MpvEventId.none) return;
-      _dispatch(MpvEventData.decode(p));
+      MpvEventData event;
+      try {
+        event = MpvEventData.decode(p);
+      } on Object catch (e, s) {
+        // 解码失败（例如未知 mpv_node 格式）：能定位到观察者就以流错误
+        // 送达（Player._bind 会转接 Player.errors），否则记录后丢弃。
+        // The controller's lifecycle belongs to observeProperty, not to
+        // this drain, so closing it here would be wrong.
+        // ignore: close_sinks
+        final observer = _observers[p.ref.replyUserdata];
+        if (observer != null && !observer.isClosed) {
+          try {
+            observer.addError(e, s);
+          } on Object {
+            _logDroppedEvent(e);
+          }
+        } else {
+          _logDroppedEvent(e);
+        }
+        continue;
+      }
+      try {
+        _dispatch(event);
+      } on Object catch (e) {
+        // 同步单订阅控制器的监听器抛错会从 add() 逸出：containment 后继续
+        // 排空。Player 侧的解析失败在 _bind 内自捕获并路由 Player.errors。
+        _logDroppedEvent(e);
+      }
     }
+  }
+
+  void _logDroppedEvent(Object e) {
+    // 900 = WARNING in dart:developer's log levels.
+    developer.log('mpv_kit: dropped malformed event: $e', level: 900);
   }
 
   void _dispatch(MpvEventData event) {
@@ -709,6 +743,10 @@ final class Mpv {
     final c = _pending.remove(id);
     if (c == null) return;
     if (err < 0) {
+      // Mark the reply future handled: a caller that dropped it must not
+      // produce an unhandled async error (OBS-02); listeners added later
+      // still receive the error.
+      c.future.ignore();
       c.completeError(_error(err, op));
     } else {
       c.complete(value);

@@ -716,7 +716,38 @@ final class Player {
 
   void _bind<T>(String name, MpvState<T> state, T Function(Object?) parse) {
     _states.add(state);
-    _subs.add(mpv.observeProperty(name).listen((v) => state._set(parse(v))));
+    _subs.add(
+      mpv.observeProperty(name).listen(
+        (v) {
+          try {
+            state._set(parse(v));
+          } on Object catch (e, s) {
+            // A parser meeting an unexpected node shape keeps the last good
+            // value; the failure is observable instead of escaping into the
+            // event drain (OBS-02).
+            _reportObservationFailure('property parse failed ($name)', e, s);
+          }
+        },
+        onError: (Object e, StackTrace s) => _reportObservationFailure(
+          'property observation failed ($name)',
+          e,
+          s,
+        ),
+      ),
+    );
+  }
+
+  /// Routes an observation/parse failure into `Player.errors` with the
+  /// original identity embedded (OBS-02).
+  void _reportObservationFailure(String what, Object e, StackTrace _) {
+    if (_errors.isClosed) return;
+    _errors.add(
+      MpvPlaybackError(
+        error: MpvError.generic,
+        message: '$what: ${e.runtimeType}: $e',
+        playlistEntryId: -1,
+      ),
+    );
   }
 
   /// 按当前 video-params 与 hwdec-current 重算 [decodeWarning]。

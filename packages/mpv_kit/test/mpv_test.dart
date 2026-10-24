@@ -266,8 +266,8 @@ void main() {
         () => mpv.hookContinue(0),
         mpv.wakeup,
         mpv.waitAsyncRequests,
-        () => mpv.errorString(0),
-        () => mpv.eventName(0),
+        // errorString/eventName are guard-free since Phase 3 (IN-02): pure
+        // lookups that never touch the handle, usable after dispose.
       ];
 
       for (final call in calls) {
@@ -327,5 +327,85 @@ void main() {
     addTearDown(mpv.dispose);
     expect(mpv.bindings.getTimeUs(mpv.handle), greaterThan(0));
     expect(mpv.handle, isNot(nullptr));
+  });
+
+  group('error surfacing (OBS-02)', () {
+    /// Runs [body] in a guarded zone collecting escaped errors, rethrowing
+    /// body failures (mirrors failure_injection_test.dart's `_guarded`).
+    Future<void> guarded(
+      List<Object> zoneErrors,
+      Future<void> Function() body,
+    ) async {
+      await runZonedGuarded(
+        body,
+        (error, _) => zoneErrors.add(error),
+      );
+    }
+
+    test('a throwing observer listener does not abort the drain', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final zoneErrors = <Object>[];
+      Future<void> waitUntil(bool Function() ok) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (!ok()) {
+          if (DateTime.now().isAfter(deadline)) {
+            fail('timed out waiting for a drain condition');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      }
+
+      await guarded(zoneErrors, () async {
+        final seen = <Object?>[];
+        final subA = mpv.observeProperty('volume').listen((_) {
+          throw StateError('listener boom');
+        });
+        final subB = mpv.observeProperty('volume').listen(seen.add);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        mpv.setProperty('volume', 50.0);
+        // The drain must survive observer A's throw and still deliver to B —
+        // twice, proving later queued events keep flowing.
+        await waitUntil(() => seen.isNotEmpty);
+        mpv.setProperty('volume', 60.0);
+        await waitUntil(() => seen.length >= 2);
+        await subA.cancel();
+        await subB.cancel();
+      });
+      // Dart reports a throwing sync-controller listener to the zone (the
+      // add() caller is unaffected) — that is standard platform behaviour for
+      // a *user* listener, not an mpv_kit leak. Player._bind's own listeners
+      // contain parse failures and route them to Player.errors instead.
+      expect(
+        zoneErrors.where((e) => e is! StateError),
+        isEmpty,
+        reason: 'nothing besides the injected listener error may escape',
+      );
+      expect(zoneErrors, hasLength(2), reason: 'one per delivered event');
+    });
+
+    test('an abandoned async command error does not become an unhandled '
+        'error', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final zoneErrors = <Object>[];
+      await guarded(zoneErrors, () async {
+        // Fire-and-forget: nobody listens to the reply future.
+        mpv.commandAsync({'name': 'definitely-not-a-command'});
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      expect(
+        zoneErrors,
+        isEmpty,
+        reason: 'a reply error for an abandoned future must be ignored',
+      );
+    });
+
+    test('errorString and eventName work after dispose (IN-02)', () async {
+      final mpv = _create();
+      mpv.dispose();
+      expect(mpv.errorString(0), isNotEmpty);
+      expect(mpv.eventName(1), isNotEmpty);
+    });
   });
 }
