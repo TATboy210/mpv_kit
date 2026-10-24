@@ -2,12 +2,10 @@
 // and `Player` must stay at the pre-phase baseline plus the two documented
 // `@visibleForTesting` seams. Uses `dart:mirrors` only — no libmpv required.
 //
-// `dart:mirrors` is a VM-only library. CI analyzes the Dart-only workspace
-// (the workflow removes the Flutter members before `dart pub get`), where it
-// resolves normally. A local `dart analyze` run instead sees the full Flutter
-// workspace and reports the VM library as unavailable, so the resolution
-// errors below are suppressed for that local context only.
-// ignore_for_file: uri_does_not_exist, undefined_function, undefined_identifier, undefined_name, type_test_with_undefined_name, unchecked_use_of_nullable_value
+// `dart:mirrors` is a VM-only library, so a local `dart analyze` over the
+// full Flutter workspace cannot resolve it. This file is therefore excluded
+// from static analysis in `analysis_options.yaml`; `dart test` still compiles
+// and executes it, so a compile error still fails the test run.
 @TestOn('vm')
 library;
 

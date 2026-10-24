@@ -10,13 +10,13 @@ One row per finding. Default disposition is `open`; a triaged finding must be di
 
 | Finding | Severity | Disposition | Notes |
 |---|---|---|---|
-| CR-01 | Critical | open | Reentrant `Mpv.dispose()` from a synchronous `Mpv.events` listener throws and `events` never closes. Reproduced by the reviewer with real libmpv. |
-| WR-01 | Warning | open | A live sub-client handle blocks `mpv_terminate_destroy` on the Dart thread. |
-| WR-02 | Warning | open | `StreamBridge.shutdown()` calls `source.close()` while a read/seek future may be in flight. |
-| WR-03 | Warning | open | Seek failure-injection test does not prove `_handleSeek` ran. |
-| WR-04 | Warning | open | `-t lifecycle` still loads all suites into one process; RSS isolation claim is inaccurate. |
-| IN-01 | Info | open | Broad `ignore_for_file` in `api_freeze_test.dart`. |
-| IN-02 | Info | open | `_ensureAlive` guards members that do not touch the handle. |
-| IN-03 | Info | open | `audioDevices` after dispose returns a stream that never closes. |
-| IN-04 | Info | open | `Player._onEvent` EndFile branch lacks an `isClosed` guard. |
-| IN-05 | Info | open | Concurrent second `Player.dispose()` does not await the first. |
+| CR-01 | Critical | fixed | `mpv_test.dart` `dispose from a synchronous events listener closes events without throwing`; `Mpv._closeIfOpen` retries a mid-dispatch close in a microtask. |
+| WR-01 | Warning | deferred | Behavioural-contract change: choose recursive child teardown or a documented caller contract, plus a native hang test. Phase 2 decides whether it folds into STAB-04/STAB-05; otherwise a dedicated stability insertion on a reported `createClient()` hang. |
+| WR-02 | Warning | deferred | Behavioural-contract change: track in-flight calls or declare concurrent close legal. Phase 3 (OBS-01) owns the stream-source contract and error surfacing. |
+| WR-03 | Warning | fixed | `failure_injection_test.dart` seek test waits for `seekAttempts > 0` against a seekable in-memory WAV; the read test asserts `readAttempts > 0`. |
+| WR-04 | Warning | fixed | `native-verify.yml` runs `dart test test/lifecycle_test.dart -t lifecycle --run-skipped`; `dart_test.yaml` and the test header state only file-scoped loading. |
+| IN-01 | Info | fixed | `analysis_options.yaml` excludes `test/api_freeze_test.dart`; the broad `ignore_for_file` is gone and `dart test` still compiles it. |
+| IN-02 | Info | deferred | API-semantics change on frozen methods: rebaseline the post-dispose table and redefine the native-entry counter. Phase 3 observability, or an explicitly approved API-semantics change. |
+| IN-03 | Info | fixed | `player_test.dart` `audioDevices first read after dispose is already closed`; the `_disposed` branch closes the lazily created state. |
+| IN-04 | Info | fixed | `player.dart` guards the end-file error branch with `!_errors.isClosed`; a source gate stands in because the branch is currently unreachable. |
+| IN-05 | Info | deferred | Behavioural-contract change: share one dispose future and define dual-caller error semantics. Phase 2 (STAB-04/STAB-05), where controller dispose concurrency is in scope. |
