@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 - [x] 01-01-PLAN.md — Exception-safe `Player.dispose`, state/event stream closure, and dispose ordering
-- [ ] 01-04-PLAN.md — Gap closure: dispatch-safe stream close (CR-01), lazy `audioDevices` (IN-03), `_errors.isClosed` guard (IN-04)
+- [x] 01-04-PLAN.md — Gap closure: dispatch-safe stream close (CR-01), lazy `audioDevices` (IN-03), `_errors.isClosed` guard (IN-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
@@ -117,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 3/3 | In Progress | - |
+| 1. Player Lifetime & Dispose Safety | 4/5 | In Progress | - |
 | 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
