@@ -13,7 +13,7 @@
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错 (completed 2026-10-24)
-- [ ] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件
+- [x] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件 (completed 2026-10-24)
 - [ ] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默
 - [ ] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，4K/8K 长播无积压
 - [ ] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行
@@ -57,7 +57,15 @@ Plans:
   3. resize 与 dispose 交错执行（≥100 轮）无崩溃、无尺寸状态卡死；重新创建控制器后首帧不是黑帧。
   4. CI 对 `mpv_kit_video` 与 `mpv_kit_libs` 收集覆盖率并执行门禁，低于阈值即失败。
 
-**Plans**: TBD
+**Plans:** 3/3 executed
+
+Plans:
+**Wave 1**
+- [x] 02-01-PLAN.md — Atomic create: strict response validation, native-context release, rollback of route entry/hook/context, retry-safe
+
+**Wave 2** *(executed sequentially after Wave 1; no file conflicts)*
+- [x] 02-02-PLAN.md — Exception-safe controller dispose, post-dispose resize race handling, 100-round interleave soak, 100-cycle leak soak, single-flight Player.dispose (IN-05)
+- [x] 02-03-PLAN.md — Coverage gates for mpv_kit_libs and mpv_kit_video (artifact-fed flutter-video-coverage job)
 
 ### Phase 3: Error Surfacing
 
@@ -118,7 +126,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Player Lifetime & Dispose Safety | 5/5 | Complete    | 2026-10-24 |
-| 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
+| 2. Video Controller Lifecycle & Resize Safety | 3/3 | Complete | 2026-10-24 |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
 | 5. Build Provenance & Repository Hygiene | 0/TBD | Not started | - |

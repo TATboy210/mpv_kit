@@ -25,12 +25,15 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ `Player`/`Mpv` 的 dispose 在 hook 抛错、重入调用、重复调用下仍完成核心销毁并关闭全部流；1000 次 create/dispose soak 通过 — Phase 1
 - ✓ dispose 后 31 个公共 `Mpv` 入口抛 `StateError` 且不进入 native；API 冻结由反射测试约束 — Phase 1
 - ✓ 失败注入回归套件（抛错监听器/dispose hook/流源 read·seek·close）、1000-cycle soak 与 CI tag 接线 — Phase 1
+- ✓ `MpvVideoController.create` 原子化：畸形/新版本插件响应抛 `PlatformException(code: render_init)`（绝不 TypeError、绝不静默降级 software），携带 textureId 时释放 native 上下文，后续步骤失败回滚路由表/hook/native 上下文并可重试 — Phase 2
+- ✓ 控制器 dispose 异常安全：native 通道抛错时事件流仍关闭（监听器收到 done）且错误可见；dispose 竞态中的在途 resize/ICC 失败被丢弃，活控制器上同等失败仍抛出 — Phase 2
+- ✓ 100 轮 resize/dispose 交错与 100 次 create/dispose 循环 soak：Dart 记账层零泄漏（STAB-01 分句），并发 `Player.dispose` 单次 teardown、双调用方共享同一结果（IN-05 关闭） — Phase 2
+- ✓ 三个 Dart 包全部纳入 80% 行覆盖率门禁；`flutter-video-coverage` 任务用 linux 任务构建的 libmpv 构件跑通 channel 测试（单一构建来源） — Phase 2
 
 ### Active
 
 <!-- 本里程碑要达成的目标；全部保持公共 API 不变。 -->
 
-- [ ] 消除 `MpvVideoController` create/resize/dispose 路径上的崩溃与资源泄漏（`Player`/`Mpv` 部分已在 Phase 1 完成）
 - [ ] 让错误可见：不再静默吞掉流源、属性观察与原生回退失败
 - [ ] `MpvLibrary.open()` 在显式 `MPV_KIT_LIBMPV_PATH` 加载失败时静默回退到平台默认库，调用方无法得知实际加载的是哪份 libmpv — 2026-10-24 在 Phase 1 收尾时发现（归 OBS-04）
 - [ ] 修复每个属性事件重复解码等热路径浪费，并以基准数据证明收益
@@ -38,7 +41,6 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - [ ] 六目标（Windows/Linux/macOS × x64/arm64）构建与冒烟一致、可复现
 - [ ] 4K/8K UHD 长时间播放：`delayed≈0`、`avdiff` 有界、无帧积压
 - [ ] 补丁与构建单一来源，README/ADR 与实际 vendor 版本一致
-- [ ] 为关键失败路径补充回归测试（真实插件、失败注入）
 
 ### Out of Scope
 
@@ -79,6 +81,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | 生命周期不变量用「失败注入 + soak」固化，而不是只写文档 | 退出码与流关闭是可观测证据 | ✓ Phase 1 |
 | 同步广播控制器的关闭必须走一个派发安全的助手 | 在监听器内重入 dispose 是真实可达路径 | ✓ Phase 1 |
 | 验证结论必须区分「测过且通过」与「因环境没跑」 | Phase 1 曾把可执行测试误判为环境受限，导致 4 条真值长期悬空 | ✓ Phase 1 |
+| create 响应的 backend 字段严格校验（garbage 抛错而非静默 software 降级） | 同仓库插件/Dart 对里任何其他值都是协议断裂,STAB-04 要求它可见 | ✓ Phase 2 |
+| 重入 dispose 与并发 dispose 在调用时刻不可区分,一律共享 in-flight future;hook 内 await dispose 列为禁止模式 | 死锁不可恢复,而早返回语义可恢复;unawaited 重入模式(Phase 1 固化)不受影响 | ✓ Phase 2 |
+| 覆盖率任务消费 linux 构建的 libmpv 构件,不重复构建 | 单一构建来源(BUILD-01 方向);构件缺失时 download 步骤先响亮失败 | ✓ Phase 2 |
 
 ## Evolution
 
@@ -98,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 1*
+*Last updated: 2026-10-24 after Phase 2*
