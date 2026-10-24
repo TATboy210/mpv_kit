@@ -14,6 +14,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:mpv_kit/mpv_kit.dart';
@@ -39,12 +40,20 @@ bool _skipWithoutStreamBridge() {
 }
 
 /// A source whose read always throws, with an unknown (live) size.
+///
+/// [readAttempts] proves the bridge actually called [read] before the test
+/// accepts the reported playback error.
 final class _ThrowingReadSource implements MpvStreamSource {
+  int readAttempts = 0;
+
   @override
   int? get size => null;
 
   @override
-  FutureOr<Uint8List> read(int maxBytes) => throw StateError('read boom');
+  FutureOr<Uint8List> read(int maxBytes) {
+    readAttempts++;
+    throw StateError('read boom');
+  }
 
   @override
   int seek(int offset) => throw UnsupportedError('not seekable');
@@ -53,19 +62,71 @@ final class _ThrowingReadSource implements MpvStreamSource {
   void close() {}
 }
 
-/// A source whose seek always throws; reads report end of stream.
+/// A source whose seek always throws while serving a seekable in-memory WAV.
+///
+/// mpv's demuxer has to read real container bytes before it will issue a seek,
+/// so the source is backed by a valid WAV rather than an immediate EOF.
+/// [readAttempts] and [seekAttempts] prove both bridge handlers ran.
 final class _ThrowingSeekSource implements MpvStreamSource {
-  @override
-  int? get size => null;
+  _ThrowingSeekSource(this._bytes);
+
+  final Uint8List _bytes;
+  int readAttempts = 0;
+  int seekAttempts = 0;
+  int _position = 0;
 
   @override
-  FutureOr<Uint8List> read(int maxBytes) => Uint8List(0);
+  int? get size => _bytes.length;
 
   @override
-  FutureOr<int> seek(int offset) => throw StateError('seek boom');
+  FutureOr<Uint8List> read(int maxBytes) {
+    readAttempts++;
+    final remaining = _bytes.length - _position;
+    if (remaining <= 0) return Uint8List(0);
+    final n = math.min(maxBytes, remaining);
+    final chunk = Uint8List.sublistView(_bytes, _position, _position + n);
+    _position += n;
+    return chunk;
+  }
+
+  @override
+  FutureOr<int> seek(int offset) {
+    seekAttempts++;
+    throw StateError('seek boom');
+  }
 
   @override
   void close() {}
+}
+
+/// Builds [seconds] of silent 8 kHz mono 16-bit PCM WAV bytes in memory.
+///
+/// Mirrors `player_test.dart`'s `_writeSilentWav` header shape without touching
+/// the filesystem: an exact, index-free source lets the demuxer seek for real.
+Uint8List _silentWavBytes({int seconds = 3}) {
+  const rate = 8000, bytesPerSample = 2, headerBytes = 44;
+  final dataBytes = seconds * rate * bytesPerSample;
+  final b = ByteData(headerBytes + dataBytes);
+  void tag(int offset, String s) {
+    for (var i = 0; i < 4; i++) {
+      b.setUint8(offset + i, s.codeUnitAt(i));
+    }
+  }
+
+  tag(0, 'RIFF');
+  b.setUint32(4, 36 + dataBytes, Endian.little);
+  tag(8, 'WAVE');
+  tag(12, 'fmt ');
+  b.setUint32(16, 16, Endian.little); // fmt chunk size
+  b.setUint16(20, 1, Endian.little); // PCM
+  b.setUint16(22, 1, Endian.little); // mono
+  b.setUint32(24, rate, Endian.little);
+  b.setUint32(28, rate * bytesPerSample, Endian.little); // byte rate
+  b.setUint16(32, bytesPerSample, Endian.little); // block align
+  b.setUint16(34, 16, Endian.little); // bits per sample
+  tag(36, 'data');
+  b.setUint32(40, dataBytes, Endian.little);
+  return b.buffer.asUint8List();
 }
 
 /// A source whose close always throws, recording how often each call ran.
@@ -280,15 +341,21 @@ void main() {
     if (_skipWithoutStreamBridge()) return;
     final player = _createPlayer();
     addTearDown(player.dispose);
+    final source = _ThrowingReadSource();
     final zoneErrors = <Object>[];
     await _guarded(zoneErrors, () async {
       player.mpv.registerStreamProtocol(
         'failread',
-        (uri) => uri == 'failread://x' ? _ThrowingReadSource() : null,
+        (uri) => uri == 'failread://x' ? source : null,
       );
       final error = player.errors.first.timeout(const Duration(seconds: 10));
       unawaited(player.open('failread://x').catchError((Object _) {}));
       final playbackError = await error;
+      expect(
+        source.readAttempts,
+        greaterThan(0),
+        reason: 'the bridge must have called read before reporting the error',
+      );
       expect(playbackError.message, isNotEmpty);
       await player.dispose().timeout(const Duration(seconds: 10));
     });
@@ -299,33 +366,26 @@ void main() {
     if (_skipWithoutStreamBridge()) return;
     final player = _createPlayer();
     addTearDown(player.dispose);
+    final source = _ThrowingSeekSource(_silentWavBytes());
     final zoneErrors = <Object>[];
     await _guarded(zoneErrors, () async {
-      player.mpv.registerStreamProtocol(
-        'failseek',
-        (_) => _ThrowingSeekSource(),
+      player.mpv.registerStreamProtocol('failseek', (_) => source);
+      // Open without `start`; the seek is issued explicitly after the demuxer
+      // has read the WAV, so the bridge's seek handler is provably reached.
+      unawaited(player.open('failseek://x').catchError((Object _) {}));
+      await _waitFor(
+        'the demuxer to read the stream',
+        () => source.readAttempts > 0,
       );
-      // `start` makes mpv seek during the open, which calls source.seek.
-      try {
-        await player
-            .open('failseek://x', start: const Duration(seconds: 1))
-            .timeout(const Duration(seconds: 10));
-      } on TimeoutException {
-        rethrow;
-      } on Object {
-        // Failing the open cleanly is acceptable; seek-error reporting is
-        // Phase 3 (OBS-01), so no playback error is asserted here.
-      }
-      // Provoke another seek in case the opening one was short-circuited.
-      try {
-        await player
-            .seek(const Duration(seconds: 2))
-            .timeout(const Duration(seconds: 10));
-      } on TimeoutException {
-        rethrow;
-      } on Object {
-        // Containment is the contract, not the error code.
-      }
+      unawaited(
+        player.seek(const Duration(seconds: 2)).catchError((Object _) {}),
+      );
+      await _waitFor(
+        'the stream seek to be attempted',
+        () => source.seekAttempts > 0,
+      );
+      // Containment is the contract; the error code belongs to Phase 3.
+      expect(source.seekAttempts, greaterThan(0));
       await player.dispose().timeout(const Duration(seconds: 10));
     });
     expect(zoneErrors, isEmpty, reason: 'a seek throw must stay in the bridge');
