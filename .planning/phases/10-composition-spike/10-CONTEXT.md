@@ -26,6 +26,11 @@
 ### REA 取证深度
 - **D-01:** 对纹理消费路径做**逐路径反编译到伪代码**，而不是只做符号级定位。报告要能逐点落到 allocation / fence / 设备归属，使 Phase 11 可以直接照着实现。 — **Reversibility:** reversible — 只是文档深度，多做的取证不会约束后续设计。
 - **D-02 (superseded 2026-10-24):** ~~取证对象固定为 Flutter 3.47.6~~ → **目标版本改为 Flutter 3.47.8**（用户决定，3.47.8 已发布）。取证对象是 3.47.8 的 `flutter_windows.dll`；CI 的 `FLUTTER_VERSION: 3.47.6` 需同步升级。**REV-1:** `10-RESEARCH.md` 中 3.47.6 的下载 URL、DLL sha256、SDK sha256、锚点字符串计数与源码结论全部作废，必须按 3.47.8 重新取证后才能据以规划。 — **Reversibility:** costly — 已写好的两份计划与一次调研建立在此版本上，改版需要重跑调研并重写计划。
+- **D-02a (local artifact, verified 2026-10-24):** 3.47.8 已装在本机，**DLL 与 PDB 均在场，无需下载**：
+  `D:\flutter\bin\cache\artifacts\engine\windows-x64\flutter_windows.dll` — 46,636,544 B，sha256 `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170`；
+  同目录 `flutter_windows.dll.pdb` — 278,859,776 B。
+  Flutter 3.47.8 stable，framework revision `737ba8f885`，engine hash `dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2`（engine revision `cf636b1dfb`）。
+  计划里的「下载 debug 产物」任务应删除；改为直接使用该路径并校验上述 sha256/尺寸。
 
 ### Impeller 冒烟范围
 - **D-03 (superseded 2026-10-24):** ~~冒烟只测 3.47.6~~ → 冒烟**只测 3.47.8**，仍不做多版本对照。若失败，报告记录「升级到哪个版本可能修好、前置条件是什么」，但不代为验证。 — **Reversibility:** reversible。
