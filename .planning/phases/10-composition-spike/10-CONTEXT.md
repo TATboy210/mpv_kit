@@ -25,10 +25,10 @@
 
 ### REA 取证深度
 - **D-01:** 对纹理消费路径做**逐路径反编译到伪代码**，而不是只做符号级定位。报告要能逐点落到 allocation / fence / 设备归属，使 Phase 11 可以直接照着实现。 — **Reversibility:** reversible — 只是文档深度，多做的取证不会约束后续设计。
-- **D-02:** 取证对象固定为本机 Flutter 3.47.6 的 `flutter_windows.dll`（与 CI 的 `FLUTTER_VERSION: 3.47.6` 一致），不额外搭建其他版本。 — **Reversibility:** reversible。
+- **D-02 (superseded 2026-10-24):** ~~取证对象固定为 Flutter 3.47.6~~ → **目标版本改为 Flutter 3.47.8**（用户决定，3.47.8 已发布）。取证对象是 3.47.8 的 `flutter_windows.dll`；CI 的 `FLUTTER_VERSION: 3.47.6` 需同步升级。**REV-1:** `10-RESEARCH.md` 中 3.47.6 的下载 URL、DLL sha256、SDK sha256、锚点字符串计数与源码结论全部作废，必须按 3.47.8 重新取证后才能据以规划。 — **Reversibility:** costly — 已写好的两份计划与一次调研建立在此版本上，改版需要重跑调研并重写计划。
 
 ### Impeller 冒烟范围
-- **D-03:** 冒烟**只测锁定的 3.47.6**，不额外试含 #191017 的新引擎。若失败，报告负责记录「升级到哪个版本可能修好、升级的前置条件是什么」，但不代为验证。 — **Reversibility:** reversible。
+- **D-03 (superseded 2026-10-24):** ~~冒烟只测 3.47.6~~ → 冒烟**只测 3.47.8**，仍不做多版本对照。若失败，报告记录「升级到哪个版本可能修好、前置条件是什么」，但不代为验证。 — **Reversibility:** reversible。
 - **D-04:** 冒烟内容合并为同一次运行的三段（这是 D-03 的 Impeller 范围与 D-06 的判定门槛调和后的结果，不是两个独立任务）：
   1. `create → 渲一帧 → dispose`（最小链路）
   2. 一次 4K 帧
