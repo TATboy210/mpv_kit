@@ -1,5 +1,7 @@
 // MpvVideoController against a fake platform channel (headless libmpv,
 // vo=null). Skipped when no libmpv can be loaded (MPV_KIT_LIBMPV_PATH).
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +77,89 @@ void main() {
     expect((args['symbols'] as List).every((s) => s is int && s != 0), isTrue);
     // The shader cache directory is configured before creation.
     expect(player.mpv.getProperty('gpu-shader-cache-dir'), isNotEmpty);
+  }, skip: skip);
+
+  test('malformed create result throws PlatformException and releases the texture',
+      () async {
+    final shapes = <Map<String, Object?>>[
+      {'backend': 'vulkan', 'reason': 'x'},
+      {'textureId': 'x', 'backend': 'vulkan', 'reason': 'x'},
+      {'textureId': 7, 'backend': 'garbage', 'reason': 'x'},
+      {'textureId': 7, 'backend': 'vulkan', 'reason': 5},
+    ];
+    for (final shape in shapes) {
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method == 'create') return shape;
+        return null;
+      });
+      await expectLater(
+        MpvVideoController.create(player),
+        throwsA(isA<PlatformException>().having((e) => e.code, 'code',
+            'render_init')),
+      );
+    }
+    // Only the shapes carrying an int textureId can release the native
+    // context; the wrong-typed-textureId shapes cannot name it.
+    expect(calls.where((m) => m.method == 'dispose'), hasLength(2));
+  }, skip: skip);
+
+  test('malformed create result without textureId cannot release native resources',
+      () async {
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'create') return {'backend': 'vulkan', 'reason': 'x'};
+      return null;
+    });
+    await expectLater(MpvVideoController.create(player),
+        throwsA(isA<PlatformException>()));
+    expect(calls.where((m) => m.method == 'dispose'), isEmpty);
+    // Nothing was registered, so player disposal adds no controller teardown.
+    await player.dispose();
+    expect(calls.where((m) => m.method == 'dispose'), isEmpty);
+  }, skip: skip);
+
+  test('create rolls back when the player dies mid-create, retry succeeds',
+      () async {
+    // Hold the create response until the player core is gone, so the later
+    // create steps (initial refresh-rate sync) hit a disposed mpv.
+    final gate = Completer<void>();
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      switch (call.method) {
+        case 'create':
+          await gate.future;
+          return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+        case 'getDisplayRefreshRate':
+          return 60.0;
+        default:
+          return null;
+      }
+    });
+    final createFuture = MpvVideoController.create(player);
+    await player.dispose();
+    gate.complete();
+    await expectLater(createFuture, throwsA(isA<StateError>()));
+    expect(calls.where((m) => m.method == 'dispose'), hasLength(1));
+    // A retry on a live player succeeds and leaves exactly one live hook.
+    final player2 = Player(options: const {'vo': 'null', 'ao': 'null'});
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'create') {
+        return {'textureId': 8, 'backend': 'vulkan', 'reason': 'vulkan (y)'};
+      }
+      return null;
+    });
+    try {
+      final c = await MpvVideoController.create(player2);
+      expect(c.textureId, 8);
+      final disposedBefore = calls.where((m) => m.method == 'dispose').length;
+      await player2.dispose();
+      expect(
+          calls.where((m) => m.method == 'dispose').length, disposedBefore + 1);
+    } finally {
+      if (!player2.mpv.isDisposed) await player2.dispose();
+    }
   }, skip: skip);
 
   test('setSize ignores repeats and invalid sizes', () async {

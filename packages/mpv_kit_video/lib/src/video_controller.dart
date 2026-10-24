@@ -171,38 +171,74 @@ final class MpvVideoController {
       'symbols': [for (final s in _symbols) lib.lookup<Void>(s).address],
       'renderer': requested.wireName,
     });
-    if (result == null) {
-      throw PlatformException(code: 'render_init', message: 'no result');
+    final textureId = result?['textureId'];
+    final backendName = result?['backend'];
+    final reason = result?['reason'];
+    // Validate before trusting the response: a malformed or newer plugin
+    // response must surface as PlatformException (STAB-04), never as a
+    // TypeError — and a garbage `backend` is a protocol break, not a reason
+    // to silently downgrade to software.
+    if (textureId is! int ||
+        backendName is! String ||
+        (backendName != 'vulkan' && backendName != 'software') ||
+        (reason != null && reason is! String)) {
+      // The native context already exists. Release it when the response
+      // named a texture; without a usable textureId there is no handle to
+      // free it with, so it lives until process exit (protocol break).
+      if (textureId is int) await _release(textureId);
+      throw PlatformException(
+        code: 'render_init',
+        message: 'malformed create result',
+        details: 'textureId: ${textureId.runtimeType}, '
+            'backend: ${backendName.runtimeType}, '
+            'reason: ${reason.runtimeType}',
+      );
     }
     final controller = MpvVideoController._(
       player,
-      result['textureId']! as int,
-      result['backend'] == 'vulkan'
+      textureId,
+      backendName == 'vulkan'
           ? MpvVideoBackend.vulkan
           : MpvVideoBackend.software,
-      result['reason'] as String? ?? '',
+      reason is String ? reason : '',
     );
-    _live[controller.textureId] = controller;
-    player.addDisposeHook(controller.dispose);
-    await controller._syncInitialRefreshRate();
-    debugPrint(
-      'mpv_kit_video: ${controller.backend.name} '
-      '(${controller.reason})',
-    );
-    // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
-    // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
-    // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
-    if (controller.backend == MpvVideoBackend.software) {
-      controller._onEvent(
-        MpvVideoEvent(
-          MpvVideoEventKind.softwareFallback,
-          controller.reason.isEmpty
-              ? 'rendering in software'
-              : 'rendering in software: ${controller.reason}',
-        ),
+    try {
+      _live[textureId] = controller;
+      player.addDisposeHook(controller.dispose);
+      await controller._syncInitialRefreshRate();
+      debugPrint(
+        'mpv_kit_video: ${controller.backend.name} '
+        '(${controller.reason})',
       );
+      // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
+      // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
+      // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
+      if (controller.backend == MpvVideoBackend.software) {
+        controller._onEvent(
+          MpvVideoEvent(
+            MpvVideoEventKind.softwareFallback,
+            controller.reason.isEmpty
+                ? 'rendering in software'
+                : 'rendering in software: ${controller.reason}',
+          ),
+        );
+      }
+      return controller;
+    } on Object {
+      await controller._rollback();
+      rethrow;
     }
-    return controller;
+  }
+
+  /// Releases the native context for [textureId] after create already made
+  /// the native side allocate it. Best effort: a broken channel or an id the
+  /// native side does not know (`no_texture`) leaves nothing more to do.
+  static Future<void> _release(int textureId) async {
+    try {
+      await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
+    } on Object {
+      // Swallowed on purpose: rollback must not mask the original error.
+    }
   }
 
   /// 初次同步显示刷新率。
@@ -227,6 +263,15 @@ final class MpvVideoController {
       hz = displays.isEmpty ? 0 : displays.first.refreshRate;
     }
     syncDisplayRefreshRate(hz);
+  }
+
+  /// Undoes everything [create] installed after the native context existed:
+  /// the routing entry, the player dispose hook, then the native context
+  /// itself. The original error is rethrown by the caller.
+  Future<void> _rollback() async {
+    _live.remove(textureId);
+    player.removeDisposeHook(dispose);
+    await _release(textureId);
   }
 
   static void _installHandler() {
