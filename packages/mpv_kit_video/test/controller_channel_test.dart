@@ -227,6 +227,99 @@ void main() {
     await c.dispose();
   }, skip: skip);
 
+  test('resize and dispose interleave 100 rounds without sticking', () async {
+    // Hold every setSize in flight until the round ends, so dispose always
+    // races a pending resize like MpvVideo's debounced requests do.
+    final gates = <Completer<void>>[];
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      switch (call.method) {
+        case 'create':
+          return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+        case 'setSize':
+          final gate = Completer<void>();
+          gates.add(gate);
+          await gate.future;
+          return null;
+        default:
+          return null;
+      }
+    });
+    for (var round = 0; round < 100; round++) {
+      final c = await MpvVideoController.create(player);
+      final done = Completer<void>();
+      c.events.listen((e) {
+        // Every 10th round disposes re-entrantly from inside the listener.
+        if (round % 10 == 0) unawaited(c.dispose());
+      }, onDone: done.complete);
+      unawaited(c.setSize(640, 360));
+      if (round % 10 != 0) {
+        await c.dispose();
+      } else {
+        await nativeEvent('resize', '1x1');
+        await pumpEventQueue();
+      }
+      await done.future.timeout(const Duration(seconds: 5));
+      // A controller recreated in the same texture id routes events and
+      // accepts new sizes — no stuck state left behind.
+      final fresh = await MpvVideoController.create(player);
+      final freshGot = <MpvVideoEventKind>[];
+      final freshSub = fresh.events.listen((e) => freshGot.add(e.kind));
+      await nativeEvent('resize', '1x1');
+      await pumpEventQueue();
+      expect(freshGot, contains(MpvVideoEventKind.resize));
+      await freshSub.cancel();
+      await fresh.dispose();
+      for (final gate in List.of(gates)) {
+        if (!gate.isCompleted) gate.complete();
+      }
+      gates.clear();
+      await pumpEventQueue();
+    }
+    // Restore an ungated mock: the final controller must respond to sizes
+    // immediately (the gated handler above is only for the in-flight rounds).
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'create') {
+        return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+      }
+      return null;
+    });
+    final last = await MpvVideoController.create(player);
+    await last.setSize(2, 2);
+    await last.setSize(3, 3);
+    expect(
+      calls.where((m) => m.method == 'setSize').map(
+            (m) => (m.arguments as Map)['width'],
+          ),
+      containsAll([2, 3]),
+    );
+    await last.dispose();
+  }, skip: skip);
+
+  test('create/dispose cycles do not accumulate hooks', () async {
+    for (var i = 0; i < 100; i++) {
+      final c = await MpvVideoController.create(player);
+      final done = Completer<void>();
+      c.events.listen((_) {}, onDone: done.complete);
+      await c.dispose();
+      await done.future.timeout(const Duration(seconds: 5));
+    }
+    final disposeCount = calls.where((m) => m.method == 'dispose').length;
+    expect(disposeCount, 100);
+    // A create still works while the player is alive.
+    final last = await MpvVideoController.create(player);
+    final lastDone = Completer<void>();
+    last.events.listen((_) {}, onDone: lastDone.complete);
+    await last.dispose();
+    await lastDone.future.timeout(const Duration(seconds: 5));
+    final total = calls.where((m) => m.method == 'dispose').length;
+    expect(total, 101);
+    // No leaked hooks: player disposal adds no controller teardown calls.
+    await player.dispose();
+    expect(calls.where((m) => m.method == 'dispose').length, total);
+  }, skip: skip);
+
   test('native events are routed and deviceLost marks it broken', () async {
     final c = await MpvVideoController.create(player);
     final got = <MpvVideoEvent>[];
