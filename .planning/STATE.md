@@ -20,7 +20,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** 里程碑 v1 完成(待 /gsd-complete-milestone 正式收口)
+**Current focus:** v2.0 — Phase 7 mpv-master Vendor Advance(阶段 1-6 属 v1,已归档)
 
 ## Current Position
 
