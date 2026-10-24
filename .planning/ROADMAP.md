@@ -4,7 +4,7 @@
 
 ## Overview
 
-研究驱动（见 `.planning/research/SUMMARY.md`）：先把 vendor 树推进到 mpv-master 新点并重放补丁（PATCH-DRIFT 门禁机械验证），锁定 gpu-next 上游演化；同时把 8K 提交内存耗尽的修复落在 Player 选项包推导层；早做调试 HUD 为后续一切提供观测面板；拖拽播放补齐调试体验；合成路径（ANGLE 绕过）以 spike 先行——REA 逆向引擎二进制实证 + Impeller 冒烟，依证据实施原生路径并保留运行时回退；最后以 4K/8K 满血验收收口。v1 的五道 CI 门禁与三平台 integration test 全程把关。
+研究驱动（见 `.planning/research/SUMMARY.md`）：先把 vendor 树推进到 mpv-master 新点并重放补丁（PATCH-DRIFT 门禁机械验证），锁定 gpu-next 上游演化；同时把 8K 提交内存耗尽的修复落在 Player 选项包推导层；早做调试 HUD 为后续一切提供观测面板；拖拽播放补齐调试体验；合成路径以 spike 先行——REA 逆向引擎二进制实证 + Impeller 冒烟；依证据在「升级引擎绕过 / 上推 Flutter issue / 自改 ANGLE」之间选路，目标是**缩短渲染链路**而非承诺无 ANGLE，并保留运行时回退；最后以 4K/8K 满血验收收口。v1 的五道 CI 门禁与三平台 integration test 全程把关。
 
 ## Phases
 
@@ -12,7 +12,7 @@
 - [x] **Phase 8: Debug HUD & Drag-and-Drop** - 可切换调试 overlay（五组属性+事件流+合成路径）与拖拽播放 (completed 2026-10-25; drag gesture itself left as 30 s manual UAT)
 - [ ] **Phase 9: 8K Full-Rate** - demuxer 队列按帧尺寸推导，8K 30 分钟门禁通过
 - [ ] **Phase 10: Composition Spike** - REA 实证引擎纹理消费路径 + Impeller 冒烟，决策落盘
-- [ ] **Phase 11: Native Composition Path** - 依 spike 实施原生合成（ANGLE 回退），延迟预算实测参数化
+- [ ] **Phase 11: Native Composition Path** - 依证据选路缩短渲染链路（升级绕过 / 上推 issue / 自改 ANGLE），带 ANGLE 回退与延迟预算参数化
 
 ## Phase Details
 
@@ -73,13 +73,17 @@ Plans:
 
 ### Phase 11: Native Composition Path
 
-**Goal**: 依 spike 结论实施原生合成路径，整链路（mpv Vulkan 后端 + 原生合成）无 ANGLE；保留运行时回退。
+**Goal**: **缩短播放器渲染链路**，以可度量的合成开销与 4K 支撑为准，而不是以「无 ANGLE」这种在 3.47.6 上无法验证的口号。按 Phase 10 的证据选路线，三条并行候选：① 能绕过就绕过（升级到提供 Vulkan/D3D 后端的引擎版本）；② 绕不过就把本项目的 4K 外部纹理合成需求与复现整理成 Flutter GitHub issue 上推；③ 仍不行则自行修改 ANGLE 相关路径以提升效率、支撑 4K。保留运行时回退 ANGLE 路径。
+
+> **前提更正（2026-10-24，Phase 10 调研）：** 3.47.6 的 Windows Impeller 是 GLES-over-ANGLE，`impeller/renderer/backend/` 只有 gles/metal/vulkan；`EmbedderExternalTextureGL::ResolveTextureImpeller` 消费的仍是 ANGLE 绑定的 GL 纹理。因此「启用 Impeller = 整链路无 ANGLE」不成立，本阶段目标据此重写。证据见 `.planning/phases/10-composition-spike/10-RESEARCH.md`。
+
 **Depends on**: Phase 10（证据与决策）
 **Requirements**: COMP-02, COMP-03
 **Success Criteria** (what must be TRUE):
-  1. 原生路径按 spike 决策实施；探测失败时自动回退 ANGLE 路径，`backend`/`reason`/HUD 上报实际路径（Phase 3 诚实 reason 基建）。
-  2. 每条路径的 compositor 延迟预算以基准实测并参数化（替换拍脑袋的 quarantine=4）；100 轮 resize/dispose 交错 soak 无 use-after-release、无黑帧。
-  3. 4K/8K 满血验收：4K 30 分钟门禁复绿；8K 达标（Phase 9 绿后 compositor 变更必须复验）；三平台 CI 全绿。
+  1. 依 Phase 10 的证据选定路线并记录理由；实施后每条路径探测失败可自动回退 ANGLE，`backend`/`reason`/HUD 上报实际路径（Phase 3 诚实 reason 基建）。
+  2. **可度量收口**：选定路线在 4K 下产生可复现的合成开销改善（前后基准对比），或明确记录该路线被证伪并说明剩余开销来自哪里——不接受「感觉更快」。
+  3. 每条路径的 compositor 延迟预算以基准实测并参数化（替换拍脑袋的 quarantine=4）；100 轮 resize/dispose 交错 soak 无 use-after-release、无黑帧。
+  4. 4K/8K 满血验收：4K 30 分钟门禁复绿；8K 达标（Phase 9 绿后 compositor 变更必须复验）；三平台 CI 全绿。
 
 **Plans**: TBD
 
