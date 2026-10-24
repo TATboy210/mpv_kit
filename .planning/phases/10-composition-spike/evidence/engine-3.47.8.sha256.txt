@@ -1,0 +1,99 @@
+# Flutter 3.47.8 engine artifact — pinning evidence
+
+Date (UTC): 2026-10-24
+Host: Windows 11 (win32), Git Bash
+D-02 / D-02a: the analysis target is the LOCALLY INSTALLED Flutter 3.47.8
+artifact. No download was performed. No network access was used for this task.
+
+## SDK identity
+
+`D:/flutter/bin/flutter --version` (captured 2026-10-24):
+
+```
+Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 737ba8f885 (35 hours ago) • 2026-10-22 21:37:31 -0700
+Engine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (35 hours ago) • 2026-10-23 02:13:38.000Z
+Tools • Dart 3.13.7 • DevTools 2.60.0
+```
+
+## Analyzed artifact (ACCEPTED)
+
+Path:
+`D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll`
+
+| Property | Value |
+|---|---|
+| Size | 46,636,544 bytes |
+| sha256 | `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170` |
+
+Companion PDB (same directory, ACCEPTED):
+
+Path:
+`D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll.pdb`
+
+| Property | Value |
+|---|---|
+| Size | 278,859,776 bytes |
+| Location | same directory as the DLL |
+
+`windows-x64-debug/` is empty on this machine; the debug DLL/PDB used by
+Windows builds live in `windows-x64/`, which is what is analyzed here.
+
+## Commands used (reproducible)
+
+```bash
+DLL="D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll"
+sha256sum "$DLL"
+stat -c %s "$DLL"
+stat -c %s "$DLL.pdb"
+```
+
+Observed output:
+
+```
+9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170  .../flutter_windows.dll
+46636544
+278859776
+```
+
+## Disambiguation: excluded stale build-tree copy
+
+`D:/mpv_kit/example/windows/flutter/ephemeral/flutter_windows.dll` exists and
+is a STALE build-tree copy. It is neither the 3.47.8 SDK artifact nor a
+previous SDK artifact, and it was NOT used for any analysis.
+
+| Property | Value |
+|---|---|
+| Path | `D:/mpv_kit/example/windows/flutter/ephemeral/flutter_windows.dll` |
+| Size | 46,621,696 bytes |
+| sha256 | `b60f6940fdabeca7ea9688448852c705e76dbe6513902651dfb1e92bc1db9fd2` |
+| Status | EXCLUDED — not an analysis object |
+
+This size/sha256 pair matches the 3.47.6 download artifact quoted in
+`10-RESEARCH.md`, not the installed 3.47.8 artifact; do not confuse the two.
+Any evidence derived from this copy would be detached from the target version
+(threat T-10-03).
+
+## Provenance gap (recorded, not resolved)
+
+The shipped DLL was built at engine revision `cf636b1dfb`. That revision is
+NOT resolvable in the `flutter/engine` GitHub repository (API returns
+`422 No commit found`). Consequently the chain
+
+`shipped DLL` ↔ `tag-tree source at 3.47.8`
+
+is unverified at the revision level. It is instead supported by:
+
+- identical anchor-string counts between the 3.47.6 and 3.47.8 DLLs;
+- an identical import table between the two DLLs;
+- byte-identical engine source files at tags 3.47.6 and 3.47.8 for every file
+  this phase reasons about.
+
+This gap is stated again in the report provenance section; behaviour
+conclusions are not at risk, but the binary↔source link is one hop short.
+
+## Repository hygiene
+
+The DLL and PDB are NOT copied into the repository. Only the textual evidence
+in this directory is committed. No binary content is embedded in any evidence
+file.
