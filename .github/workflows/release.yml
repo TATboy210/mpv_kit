@@ -133,8 +133,10 @@ jobs:
           cp -a deps prefix
           SKIP_DEPS=1 bash native/build/build.sh "$PWD/prefix"
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
-        # See native-verify.yml: MoltenVK aborts on GitHub's Intel VMs.
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Environment limitation, made explicit (see native-verify.yml):
+        # MoltenVK aborts on GitHub's Intel VMs; real Intel Macs are
+        # unaffected. Conditional skip is visible; arm64 runs strictly.
+        if: matrix.runner != 'macos-15-intel'
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
@@ -149,7 +151,8 @@ jobs:
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }} 12.0
       - name: Test the packaged bundle (build prefix hidden)
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Same Intel-VM environment limitation as the smoke step above.
+        if: matrix.runner != 'macos-15-intel'
         run: |
           mv prefix prefix.hidden
           DYLD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]

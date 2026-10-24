@@ -30,6 +30,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Patch drift check
         run: bash tools/check_patches.sh
+      - name: Six-target matrix and continue-on-error audit
+        run: python tools/check_matrix.py
 
   linux:
     strategy:
@@ -294,6 +296,7 @@ jobs:
           nm -gU prefix/lib/libmpv.2.dylib | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: Vulkan loader diagnostics
+        # Purely informational (vulkaninfo tail); failures are irrelevant.
         continue-on-error: true
         env:
           VK_LOADER_DEBUG: error,warn,info
@@ -301,9 +304,13 @@ jobs:
           brew install vulkan-tools || true
           vulkaninfo --summary 2>&1 | tail -40 || true
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
-        # GitHub's Intel macOS VMs expose a paravirtual GPU on which MoltenVK
-        # aborts inside vkCreateInstance; real Intel Macs are unaffected.
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Environment limitation, made explicit: GitHub's Intel macOS VMs
+        # expose a paravirtual GPU on which MoltenVK aborts inside
+        # vkCreateInstance; real Intel Macs are unaffected. The step is
+        # conditionally SKIPPED (visible in the run) rather than
+        # continue-on-error (which would mask real failures on this
+        # runner); arm64 runners still run it strictly.
+        if: matrix.runner != 'macos-15-intel'
         env:
           MVK_CONFIG_LOG_LEVEL: '2'
           VK_LOADER_DEBUG: error,warn
@@ -375,6 +382,8 @@ jobs:
           }
       - uses: msys2/setup-msys2@v2
         id: msys2
+        # Retry pattern, not suppression: an immediate second attempt
+        # follows (below); if both fail, the build step fails the job.
         continue-on-error: true
         with:
           msystem: ${{ matrix.msystem }}
