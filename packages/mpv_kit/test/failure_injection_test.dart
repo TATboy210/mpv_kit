@@ -14,6 +14,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -32,6 +33,10 @@ final bool _streamBridgeAvailable = MpvLibrary.open().library.providesSymbol(
 /// Skips the current test when the bridge is unavailable; returns true then.
 bool _skipWithoutStreamBridge() {
   if (_streamBridgeAvailable) return false;
+  if (Platform.environment['MPV_KIT_REQUIRE_LIBMPV'] != null) {
+    fail('the stream bridge is required by CI (MPV_KIT_REQUIRE_LIBMPV) but '
+        'this libmpv lacks mpv_kit patch 0006 — the wrong library loaded');
+  }
   markTestSkipped(
     'MPV_KIT_STREAM_BRIDGE unavailable: this libmpv has no mpv_kit stream '
     'bridge (mpv_kit patch 0006); run against the patched build (CI does)',

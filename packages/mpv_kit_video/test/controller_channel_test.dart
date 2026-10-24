@@ -1,6 +1,9 @@
 // MpvVideoController against a fake platform channel (headless libmpv,
-// vo=null). Skipped when no libmpv can be loaded (MPV_KIT_LIBMPV_PATH).
+// vo=null). Skipped when no libmpv can be loaded (MPV_KIT_LIBMPV_PATH) —
+// unless MPV_KIT_REQUIRE_LIBMPV is set (CI): a missing library is then a
+// failure, never a silent skip.
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -20,7 +23,12 @@ bool _libmpvAvailable() {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final skip = _libmpvAvailable() ? null : 'libmpv not available';
+  final available = _libmpvAvailable();
+  if (!available && Platform.environment['MPV_KIT_REQUIRE_LIBMPV'] != null) {
+    fail('libmpv is required by CI (MPV_KIT_REQUIRE_LIBMPV) but could not '
+        'be loaded — set MPV_KIT_LIBMPV_PATH (see README)');
+  }
+  final skip = available ? null : 'libmpv not available';
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   late List<MethodCall> calls;

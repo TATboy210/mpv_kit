@@ -165,6 +165,74 @@ jobs:
           flutter analyze --fatal-infos
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_video line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
 
+  # VERIFY-01: run the real-plugin integration test (create -> render a
+  # frame -> dispose; no channel mocks) on real Flutter runners of every
+  # OS, against the libmpv the verify tier above just built (artifacts,
+  # never rebuilt). A failure on any OS fails the workflow: no
+  # continue-on-error.
+  integration-test:
+    needs: [linux, windows, macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux
+            artifact: libmpv-verify-linux-ubuntu-24.04
+            libname: libmpv.so.2
+          - runner: windows-2025
+            target: windows
+            artifact: libmpv-verify-CLANG64
+            libname: libmpv-2.dll
+          - runner: macos-15
+            target: macos
+            artifact: libmpv-verify-macos-macos-15
+            libname: libmpv.2.dylib
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Linux build and runtime dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
+            xvfb mesa-vulkan-drivers
+      - name: macOS runtime dependencies
+        if: matrix.target == 'macos'
+        run: brew install ffmpeg libplacebo libass vulkan-loader
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: stage
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Real-plugin integration test
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          case "${{ matrix.target }}" in
+            linux)
+              export LD_LIBRARY_PATH="$libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
+              ;;
+            macos)
+              export DYLD_LIBRARY_PATH="$libdir${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+              cd example && flutter test integration_test/real_plugin_test.dart -d macos
+              ;;
+            *)
+              cd example && flutter test integration_test/real_plugin_test.dart -d windows
+              ;;
+          esac
+
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
   # the runtime is loaded first. Leak checking is off (system libraries such
@@ -255,6 +323,18 @@ jobs:
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
+      # The integration-test job (below) consumes this instead of rebuilding
+      # libmpv. Runtime deps resolve from /opt/homebrew (same formulae as
+      # the build above).
+      - name: Stage libmpv for the integration test
+        run: |
+          mkdir -p stage
+          cp -r prefix/lib/. stage/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-macos-${{ matrix.runner }}
+          path: stage
+          retention-days: 14
 
   windows:
     strategy:
