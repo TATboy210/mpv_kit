@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v2.0
 current_phase: 10
 current_phase_name: Composition Spike
-status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-10-24T17:33:27.000Z"
+status: verifying
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-10-24T17:52:19.116Z"
 last_activity: 2026-10-24
-last_activity_desc: 10-02 harness ready; 10-03 smoke run next
-state_head: f56440d8c555b6352657eb99df190a717e8d1fdb
+last_activity_desc: 10-03 complete: smoke pair inconclusive (harness gate), identity proven, ADR 0003 recorded
+state_head: 6f3656e8e76a1f088935043f43c9d4b582071be1
 progress:
   total_phases: 5
   completed_phases: 8
@@ -31,8 +31,8 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 
 Phase: 10 (Composition Spike) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-10-24 — 10-02 harness ready (10-03 run next)
+Status: Phase complete — ready for verification
+Last activity: 2026-10-24 — 10-03 complete: smoke pair inconclusive (harness gate), identity proven, ADR 0003 recorded
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Last activity: 2026-10-24 — 10-02 harness ready (10-03 run next)
 | Phase 08 P01 | 35 min | 2 tasks | 5 files |
 | Phase 10 P01 | 2h 10m | 2 tasks | 6 files |
 | Phase 10 P02 | 7 min | 1 task | 4 files |
+| Phase 10 P03 | 14 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,8 @@ Recent decisions affecting current work:
 - [Phase 10]: No fence or keyed-mutex acquisition exists in the production or consumption paths; Impeller removes only Ganesh flush/submit/reset around the same ANGLE-bound GL texture.
 - [Phase 10]: The smoke pins the single local 3.47.8 SDK and gates identity before measuring (resolvedPath == MPV_KIT_LIBMPV_PATH, backend == vulkan); a mismatch is inconclusive, never an Impeller result.
 - [Phase 10]: result=pass requires a supported non-black pixel probe (nonBlackRatio >= 0.01); a missing probe is inconclusive and a black frame is failed. Idle counts as a soak failure only after 500 ms of continuous texture mount.
+- [Phase 10]: 10-03: Smoke classification is inconclusive (the 10-02 harness part-1 gate requires a resize event that only setSize produces), identity proven from the engine log; D-05 is unsettled and Phase 11 must settle it first.
+- [Phase 10]: 10-03: ADR 0003 rejects the 'no ANGLE' slogan on 3.47.8; Phase 11 primary route is upstreaming the requirement, with the upgrade bypass as delivery vehicle and modified ANGLE as fallback.
 
 ### Pending Todos
 
@@ -167,6 +170,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T17:33:27.000Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-10-24T17:52:19.033Z
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None

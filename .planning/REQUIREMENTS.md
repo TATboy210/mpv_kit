@@ -20,7 +20,7 @@
 
 ### Native Composition (COMP)
 
-- [ ] **COMP-01**: 合成路径 spike 报告——REA 逆向本机 flutter_windows.dll（3.47.6）的纹理消费路径 + Impeller 开关冒烟；决策记录（哪条路径、证据、回退条件）
+- [x] **COMP-01**: 合成路径 spike 报告——REA 逆向本机 flutter_windows.dll（3.47.6）的纹理消费路径 + Impeller 开关冒烟；决策记录（哪条路径、证据、回退条件）
 - [ ] **COMP-02**: 依 spike 结论实施原生合成路径（带 ANGLE 运行时回退），`backend`/`reason` 上报实际合成路径，HUD 可见
 - [ ] **COMP-03**: 每条合成路径的 compositor 延迟预算实测并参数化（quarantine），100 轮交错 soak 无 use-after-release、无黑帧
 
@@ -41,15 +41,18 @@
 ## Deferred（未来里程碑）
 
 ### Playback Features（继承 v1-v2）
+
 - **FEAT-01**: 渲染桥向 mpv 回报 vsync/显示相位（`video-sync=display-*` 可用）
 - **FEAT-02**: HDR swapchain 提示与 tone-map 路径
 - **FEAT-03**: 播放列表、字幕与音轨的更高层 API
 - **FEAT-04**: 多文件拖入生成播放列表（DND-01 只取首个，留扩展点）
 
 ### Renderer Compatibility（继承 v1-v2）
+
 - **GPU-01..03**: 旧 GPU 的 Vulkan 1.2 设备支持、可诊断的能力协商、真实回退链验证
 
 ### Platform
+
 - **PLAT-01/02**: Android 垂直切片、iOS 可行性（不变）
 
 ## Out of Scope
@@ -73,7 +76,7 @@
 | DND-01 | Phase 8 | Complete |
 | UHD-01 | Phase 9 | Pending |
 | UHD-02 | Phase 9 | Pending |
-| COMP-01 | Phase 10 | Pending |
+| COMP-01 | Phase 10 | Complete |
 | COMP-02 | Phase 11 | Pending |
 | COMP-03 | Phase 11 | Pending |
 
