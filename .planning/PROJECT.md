@@ -22,13 +22,17 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ LGPL 预构建 libmpv 的下载、sha256/MANIFEST 校验与原生资产打包钩子 — existing
 - ✓ 七项下游补丁（Vulkan render backend、Vulkan hwdec、shader cache、gpu-next Vulkan、renderer 上报、stream bridge、音频设备枚举修复） — existing
 - ✓ 六目标 CI 构建、ABI 审计、ASan/UBSan 与 80% 行覆盖率门禁（Linux） — existing
+- ✓ `Player`/`Mpv` 的 dispose 在 hook 抛错、重入调用、重复调用下仍完成核心销毁并关闭全部流；1000 次 create/dispose soak 通过 — Phase 1
+- ✓ dispose 后 31 个公共 `Mpv` 入口抛 `StateError` 且不进入 native；API 冻结由反射测试约束 — Phase 1
+- ✓ 失败注入回归套件（抛错监听器/dispose hook/流源 read·seek·close）、1000-cycle soak 与 CI tag 接线 — Phase 1
 
 ### Active
 
 <!-- 本里程碑要达成的目标；全部保持公共 API 不变。 -->
 
-- [ ] 消除 dispose/事件/创建失败路径上的崩溃与原生资源泄漏
+- [ ] 消除 `MpvVideoController` create/resize/dispose 路径上的崩溃与资源泄漏（`Player`/`Mpv` 部分已在 Phase 1 完成）
 - [ ] 让错误可见：不再静默吞掉流源、属性观察与原生回退失败
+- [ ] `MpvLibrary.open()` 在显式 `MPV_KIT_LIBMPV_PATH` 加载失败时静默回退到平台默认库，调用方无法得知实际加载的是哪份 libmpv — 2026-10-24 在 Phase 1 收尾时发现（归 OBS-04）
 - [ ] 修复每个属性事件重复解码等热路径浪费，并以基准数据证明收益
 - [ ] 建立可复现的性能/稳定性验证（create/dispose 循环、resize、长时播放）
 - [ ] 六目标（Windows/Linux/macOS × x64/arm64）构建与冒烟一致、可复现
@@ -50,6 +54,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - 代码库映射位于 `.planning/codebase/`（STACK、ARCHITECTURE、STRUCTURE、CONVENTIONS、TESTING、INTEGRATIONS、CONCERNS），缺陷与脆弱点以 `CONCERNS.md` 为准。
 - 现有文档：`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE-diagrams.md`、`docs/adr/0001`、`docs/adr/0002`、`docs/reverse-engineering/`。
 - 真机验证目前只有 Windows x64（RTX 4060）；Linux/macOS 仅编译与 lavapipe/MoltenVK 冒烟。
+- 本地 `bt/` 下的 `libmpv-2.dll` **带 patch 0006**（导出 `mpv_kit_stream_*`）。Windows 没有 rpath，直接把它设为 `MPV_KIT_LIBMPV_PATH` 会因依赖 DLL 不在搜索路径而静默回落到 PATH 上的 stock 库；要跑流源测试必须同时把 `bt/` 加进 PATH。Phase 1 曾因此错误地把 3 条可执行测试记为「环境受限」。
 - 已知问题集中在：`Player.dispose` 非异常安全、`Mpv` 方法在 dispose 后仍可调用、属性事件重复解码、`MpvVideoController.create` 解析失败无回滚、流源错误被吞、`bt/` 38MB DLL 入库、`pubspec.lock` 被忽略、SDK 约束不一致。
 - 探索阶段曾误判"Linux/macOS `create` 必然失败"与"系统 libmpv 不支持 `gpu-shader-cache-dir`"；经源码复核均为误报，现状可用但缺少测试与可读错误。
 
@@ -71,6 +76,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | 不设发布节点 | 用户明确版本发布不着急 | — Pending |
 | 只覆盖六个桌面目标 | 移动端渲染与 bundle 工作量大，且不在当前目标内 | — Pending |
 | 性能改动必须先有基准数据 | 防止"优化"退化为重构 | — Pending |
+| 生命周期不变量用「失败注入 + soak」固化，而不是只写文档 | 退出码与流关闭是可观测证据 | ✓ Phase 1 |
+| 同步广播控制器的关闭必须走一个派发安全的助手 | 在监听器内重入 dispose 是真实可达路径 | ✓ Phase 1 |
+| 验证结论必须区分「测过且通过」与「因环境没跑」 | Phase 1 曾把可执行测试误判为环境受限，导致 4 条真值长期悬空 | ✓ Phase 1 |
 
 ## Evolution
 
@@ -90,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-23 after initialization*
+*Last updated: 2026-10-24 after Phase 1*
