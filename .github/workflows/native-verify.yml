@@ -96,7 +96,63 @@ jobs:
           # uncollected suite exits non-zero.
           dart test -t failure-injection
           dart test test/lifecycle_test.dart -t lifecycle --run-skipped
-          cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
+          cd ../mpv_kit_libs && dart analyze --fatal-infos
+          dart pub global run coverage:test_with_coverage
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_libs line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
+
+      # The Flutter coverage job consumes this artifact instead of rebuilding
+      # libmpv: one build, one provenance (BUILD-01 direction). deps/lib is
+      # included because libmpv.so.2 dlopens the deps.sh-built libplacebo and
+      # dav1d from it at load time.
+      - name: Stage libmpv for the Flutter coverage job
+        run: |
+          mkdir -p stage/lib stage/deps
+          cp -r prefix/lib/. stage/lib/
+          cp -r deps/lib/. stage/deps/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-linux-${{ matrix.runner }}
+          path: stage
+          retention-days: 14
+
+  # VERIFY-04: line-coverage gate for mpv_kit_video. Its channel tests are
+  # skip-guarded on a real libmpv, so the job downloads the linux job's build
+  # instead of running them skipped; below 80% the job fails.
+  flutter-video-coverage:
+    needs: [linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # libmpv.so.2 resolves its FFmpeg/libass/Vulkan/EGL dependencies from
+      # the distro; the -dev packages carry the same runtime .so ABI the
+      # linux job builds against.
+      - name: Install libmpv runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: libmpv-verify-linux-ubuntu-24.04
+          path: stage
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: mpv_kit_video coverage gate (80%)
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          LD_LIBRARY_PATH: ${{ github.workspace }}/stage/lib:${{ github.workspace }}/stage/deps
+        run: |
+          cd packages/mpv_kit_video
+          flutter test --coverage
+          flutter analyze --fatal-infos
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_video line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
