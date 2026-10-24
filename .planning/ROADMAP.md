@@ -1,164 +1,90 @@
-# Roadmap: mpv_kit
+# Roadmap: mpv_kit — milestone v2.0
+
+**Milestone:** v2.0 GPU-Next Optimization & Full-Rate UHD（阶段编号自 7 继续；v1 的阶段 1-6 已归档于 `.planning/milestones/v1-phases/`，其成功标准与验证记录以归档为准）
 
 ## Overview
 
-本里程碑只做现有源码的稳定性与性能优化，公共 API 冻结。路线按技术域推进：先把 `Player` 与 `MpvVideoController` 的生命周期修到可反复 create/dispose 而不泄漏、不崩溃；再让原本被静默吞掉的失败可见；然后用可重复基准驱动热路径优化并验证 4K/8K UHD 长时播放；接着收敛补丁/bundle/文档的单一事实来源；最后用真实插件 integration test 与六目标矩阵把这些保证固化在 CI 上。每个阶段都包含可独立回滚的小改动，且每阶段自带验证手段。
+研究驱动（见 `.planning/research/SUMMARY.md`）：先把 vendor 树推进到 mpv-master 新点并重放补丁（PATCH-DRIFT 门禁机械验证），锁定 gpu-next 上游演化；同时把 8K 提交内存耗尽的修复落在 Player 选项包推导层；早做调试 HUD 为后续一切提供观测面板；拖拽播放补齐调试体验；合成路径（ANGLE 绕过）以 spike 先行——REA 逆向引擎二进制实证 + Impeller 冒烟，依证据实施原生路径并保留运行时回退；最后以 4K/8K 满血验收收口。v1 的五道 CI 门禁与三平台 integration test 全程把关。
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错 (completed 2026-10-24)
-- [x] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件 (completed 2026-10-24)
-- [x] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默 (completed 2026-10-24)
-- [x] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，长播验证 (completed 2026-10-24; 4K 30 分钟全门禁通过；8K 分句经用户确认撤下——无 8K 测试条件，崩溃发现已记录)
-- [x] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行 (completed 2026-10-24)
-- [x] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行 (completed 2026-10-24)
+- [ ] **Phase 7: mpv-master Vendor Advance & gpu-next Regression** - vendor 推进到快照点，补丁重放门禁通过，新基线回归全绿
+- [ ] **Phase 8: Debug HUD & Drag-and-Drop** - 可切换调试 overlay（五组属性+事件流+合成路径）与拖拽播放
+- [ ] **Phase 9: 8K Full-Rate** - demuxer 队列按帧尺寸推导，8K 30 分钟门禁通过
+- [ ] **Phase 10: Composition Spike** - REA 实证引擎纹理消费路径 + Impeller 冒烟，决策落盘
+- [ ] **Phase 11: Native Composition Path** - 依 spike 实施原生合成（ANGLE 回退），延迟预算实测参数化
 
 ## Phase Details
 
-### Phase 1: Player Lifetime & Dispose Safety
+### Phase 7: mpv-master Vendor Advance & gpu-next Regression
 
-**Goal**: `Player` 在反复创建/销毁与异常 teardown 下都不泄漏、不崩溃，dispose 之后的调用可预测地失败。
-**Depends on**: Nothing (first phase)
-**Requirements**: STAB-01, STAB-02, STAB-03, VERIFY-03
+**Goal**: vendor 树推进到用户提供的 mpv-master 快照（或更新点），补丁 0001..0008 重放后与 vendor 字节级一致；新基线上 gpu-next 无回归。
+**Depends on**: Nothing (first phase of v2)
+**Requirements**: REBASE-01, REBASE-02
 **Success Criteria** (what must be TRUE):
-  1. 连续创建并销毁 `Player`（≥1000 次）后，`position`、`decodeWarning` 等所有状态流都收到 `done`，native 句柄与进程内存保持平稳（无单调增长）。
-  2. 任一 dispose hook 抛错时，`Player.dispose()` 仍完成 `mpv_terminate_destroy` 并关闭全部流，且错误可见；再次调用 dispose 无副作用。
-  3. dispose 后调用任意 `Mpv` 公共方法抛出 `StateError`，测试同时证明没有进入 native 调用（无 use-after-free）。
-  4. 失败注入回归测试进入 CI：抛错的 dispose hook/listener 与异常流源都能稳定复现并通过。
+  1. `native/mpv/MPV_VERSION` 指向新基线；`bash tools/check_patches.sh` 输出 PATCH-DRIFT OK（新 base + 重放后的补丁集，含 UPSTREAM.md 记录的任何手工重排）。
+  2. 一致性门禁（CONSISTENCY）通过——README/ARCHITECTURE/ADR 的版本提及与 MPV_VERSION 联动更新。
+  3. 新基线回归：seek 后画面恢复显式测试（mpv#17258 类）、4K 基准对照（对比 docs/perf 基线无退步）、六目标 CI + 三平台 integration test 全绿。
 
-**Plans:** 3/5 executed — 2 gap-closure plans ready to execute
+**Plans**: TBD
 
-Plans:
-**Wave 1**
-- [x] 01-01-PLAN.md — Exception-safe `Player.dispose`, state/event stream closure, and dispose ordering
-- [x] 01-04-PLAN.md — Gap closure: dispatch-safe stream close (CR-01), lazy `audioDevices` (IN-03), `_errors.isClosed` guard (IN-04)
+### Phase 8: Debug HUD & Drag-and-Drop
 
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
-- [x] 01-05-PLAN.md — Gap closure: seek/read proof (WR-03), CI soak isolation (WR-04), analyzer exclusion + review ledger (IN-01)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
-
-### Phase 2: Video Controller Lifecycle & Resize Safety
-
-**Goal**: `MpvVideoController` 的创建是原子的，resize 与 dispose 并发时不崩溃、不残留坏状态。
-**Depends on**: Phase 1
-**Requirements**: STAB-04, STAB-05, VERIFY-04
+**Goal**: example 应用成为调试面板——五组属性 overlay + 事件流 + 合成路径展示；拖拽视频即播。
+**Depends on**: Phase 7（HUD 在最终 vendor 点上开发与验证；合成路径字段在 11 前显示 ANGLE 占位）
+**Requirements**: HUD-01, HUD-02, DND-01
 **Success Criteria** (what must be TRUE):
-  1. `create` 在平台返回畸形/缺字段或后续步骤抛错时，回滚 texture、dispose hook 与路由表，随后重试 create 成功。
-  2. 畸形平台响应抛 `PlatformException`，而不是 `TypeError` 或空值崩溃。
-  3. resize 与 dispose 交错执行（≥100 轮）无崩溃、无尺寸状态卡死；重新创建控制器后首帧不是黑帧。
-  4. CI 对 `mpv_kit_video` 与 `mpv_kit_libs` 收集覆盖率并执行门禁，低于阈值即失败。
+  1. 可切换 overlay 实时显示同步（avsync 族）/缓存（demuxer-cache-state）/解码（hwdec/params）/渲染（backend/reason/事件）/音频五组，1s 轮询不触生产热路径。
+  2. 拖拽视频文件到窗口播放首个视频；非视频忽略且 HUD 提示；播放器交互不冲突。
+  3. HUD 显示当前合成路径（ANGLE 阶段为实际后端+reason；11 完成后含 compositor 信息）。
 
-**Plans:** 3/3 executed
+**Plans**: TBD
 
-Plans:
-**Wave 1**
-- [x] 02-01-PLAN.md — Atomic create: strict response validation, native-context release, rollback of route entry/hook/context, retry-safe
+### Phase 9: 8K Full-Rate
 
-**Wave 2** *(executed sequentially after Wave 1; no file conflicts)*
-- [x] 02-02-PLAN.md — Exception-safe controller dispose, post-dispose resize race handling, 100-round interleave soak, 100-cycle leak soak, single-flight Player.dispose (IN-05)
-- [x] 02-03-PLAN.md — Coverage gates for mpv_kit_libs and mpv_kit_video (artifact-fed flutter-video-coverage job)
-
-### Phase 3: Error Surfacing
-
-**Goal**: 失败不再被静默吞掉——流源、属性观察、渲染回退与选项错误都可观测，并保留原始信息。
-**Depends on**: Phase 2
-**Requirements**: OBS-01, OBS-02, OBS-03, OBS-04
+**Goal**: 8K 连续 30 分钟满帧：零丢帧、avdiff 有界、无积压、无提交内存耗尽；且不伤 1080p/4K 吞吐。
+**Depends on**: Phase 8（HUD 提供验收观测面板）
+**Requirements**: UHD-01, UHD-02
 **Success Criteria** (what must be TRUE):
-  1. 流源 open/read/seek 失败出现在 `Player.errors`，保留原始异常类型与消息，播放侧以明确错误结束。
-  2. 属性观察失败或解析失败出现在 `Player.errors`，测试中不再出现未捕获异步错误。
-  3. Vulkan→software 回退与 D3D11 设备创建失败产生带可读 `reason` 的事件（Windows/Linux/macOS）。
-  4. 不支持的选项或拼写错误会被记录/暴露，同时 create 保持向后兼容（不抛错）。
+  1. Player demuxer 队列选项按帧尺寸推导（公式文档化并有单测）；1080p/4K 基准与 v1 基线对照无退步。
+  2. 8K 7680x4320 × 1800s：UHD endurance 门禁全绿（此前崩溃于 ≤40s）。
+  3. 验收记录落盘 docs/perf（机器/分辨率/指标终值，复用 v1 报告格式）。
 
-**Plans:** 4/4 executed
+**Plans**: TBD
 
-Plans:
-**Wave 1**
-- [x] 03-01-PLAN.md — Stream source failures on Player.errors with original identity; WR-02 contract amendment
-- [x] 03-03-PLAN.md — Honest interop fallback reasons (D3D11 HRESULT, Metal probe, CreateImage guard)
+### Phase 10: Composition Spike
 
-**Wave 2** *(executed sequentially after Wave 1)*
-- [x] 03-02-PLAN.md — Observation/parse failures → Player.errors, failure-proof drain, IN-02 rebaseline
-- [x] 03-04-PLAN.md — Option/library resolution observability (OBS-04)
-
-### Phase 4: Measured Performance & UHD Endurance
-
-**Goal**: 用可重复基准量化热路径收益，并证明 4K/8K UHD 长时间播放没有帧积压。
-**Depends on**: Phase 3
-**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04
+**Goal**: 以证据决定合成路径：REA 逆向本机 flutter_windows.dll（3.47.6）的外部纹理消费实现 + Impeller 开关冒烟。
+**Depends on**: Phase 7（在最终 vendor 点上做渲染实验）
+**Requirements**: COMP-01
 **Success Criteria** (what must be TRUE):
-  1. 可重复运行的基准存在，输出 `delayed`、`avdiff`、掉帧、create/dispose 循环与 resize 数据，并留下改动前的基线记录。
-  2. 每个属性事件只解码一次 `mpv_node`（测试断言单次解码），`time-pos` 热路径有改动前后的分配/CPU 对比数据。
-  3. 4K 与 8K 连续播放 30 分钟：`delayed≈0`、`avdiff` 有界、无帧积压。
-  4. 公共 API 无变化（API diff 为空），事件/状态热路径分配下降且行为不变。
+  1. REA 报告：两种表面类型在 3.47.6 二进制中的实际绑定路径（ANGLE 与否、fence 语义、设备归属），证据（反汇编/符号）落盘 docs/reverse-engineering/。
+  2. Impeller 冒烟：示例应用开启 Impeller 后 create→渲染一帧→dispose 的结果记录（成功/崩溃，对照 flutter#191468 与 #191017）。
+  3. 决策文档：选定的路径、依据、回退条件、quarantine 预算假设；若结论是"3.47.6 不可行"，记录所需 Flutter 版本与升级条件，Phase 11 依此调整（允许缩为记录性收口）。
 
-**Plans:** 3/3 executed
+**Plans**: TBD
 
-Plans:
-**Wave 1** *(strictly sequential: the baseline must precede every optimization)*
-- [x] 04-01-PLAN.md — Benchmark harness (decode micro-bench + real-machine integration bench) and the BEFORE baseline
-- [x] 04-02-PLAN.md — Single mpv_node decode (PERF-01) + allocation-free time-pos throttle (PERF-04), with after-data
-- [x] 04-03-PLAN.md — UHD endurance: 4K 30-min PASS; 8K reproducible commit-exhaustion crash recorded as failed data
+### Phase 11: Native Composition Path
 
-### Phase 5: Build Provenance & Repository Hygiene
-
-**Goal**: 补丁、bundle 与文档只有一个事实来源，CI 能发现漂移。
-**Depends on**: Phase 4
-**Requirements**: BUILD-01, BUILD-02, BUILD-03, BUILD-04
+**Goal**: 依 spike 结论实施原生合成路径，整链路（mpv Vulkan 后端 + 原生合成）无 ANGLE；保留运行时回退。
+**Depends on**: Phase 10（证据与决策）
+**Requirements**: COMP-02, COMP-03
 **Success Criteria** (what must be TRUE):
-  1. CI 在干净树上应用 `native/patches/`（0004+0005 已合并、0008 集成修正补丁加入，共 7 个），vendor 树与补丁不一致时任务失败。✓ PATCH-DRIFT OK 本地实跑;CI 首跑待 push。
-  2. 六个桌面目标的 bundle 可由当前树重建，并通过 sha256/MANIFEST 校验。
-  3. README、ADR 与版本常量同 `native/mpv/MPV_VERSION`、macOS 部署目标、SDK 下限一致，并有一致性检查。
-  4. `bt/` 不再被跟踪（保留文档化的替代方式），`pubspec.lock` 策略明确并被执行。
+  1. 原生路径按 spike 决策实施；探测失败时自动回退 ANGLE 路径，`backend`/`reason`/HUD 上报实际路径（Phase 3 诚实 reason 基建）。
+  2. 每条路径的 compositor 延迟预算以基准实测并参数化（替换拍脑袋的 quarantine=4）；100 轮 resize/dispose 交错 soak 无 use-after-release、无黑帧。
+  3. 4K/8K 满血验收：4K 30 分钟门禁复绿；8K 达标（Phase 9 绿后 compositor 变更必须复验）；三平台 CI 全绿。
 
-**Plans:** 3/3 executed
-
-Plans:
-**Wave 1**
-- [x] 05-01-PLAN.md — Patch-drift gate (script + CI first job; patch set regenerated 0004+0005 merged, 0008 added)
-- [x] 05-02-PLAN.md — Repo hygiene: bt/ untracked, pubspec.lock committed with policy, docs updated
-
-**Wave 2**
-- [x] 05-03-PLAN.md — Consistency checker with drift fixes; pin freshness + release self-verification
-
-### Phase 6: Cross-Platform Verification
-
-**Goal**: 真实插件路径与六目标矩阵在 CI 中真实运行，而不是被 skip。
-**Depends on**: Phase 5
-**Requirements**: VERIFY-01, VERIFY-02
-**Success Criteria** (what must be TRUE):
-  1. 真实插件 integration test（create → 渲染一帧 → dispose）在有真实 libmpv 的 Windows/Linux/macOS CI runner 上执行并通过，不再 skip。
-  2. 六目标矩阵（Windows/Linux/macOS × x64/arm64）构建与冒烟全部通过，受支持目标没有 `continue-on-error`。
-  3. 集成测试失败会阻断合并，且因缺少 libmpv 而跳过的测试改为显式失败或真实运行。
-
-**Plans:** 3/3 executed
-
-Plans:
-**Wave 1**
-- [x] 06-01-PLAN.md — Real-plugin integration test (no mocks), local proof + RED proof
-
-**Wave 2**
-- [x] 06-02-PLAN.md — CI wiring: integration-test matrix job on 3 OS; MPV_KIT_REQUIRE_LIBMPV fail-loud guards; flutter-plugin runs channel tests on the hook bundle
-- [x] 06-03-PLAN.md — Six-target matrix audit; Intel-VM continue-on-error converted to explicit if-skips
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 7 → 8 → 9 → 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 5/5 | Complete    | 2026-10-24 |
-| 2. Video Controller Lifecycle & Resize Safety | 3/3 | Complete | 2026-10-24 |
-| 3. Error Surfacing | 4/4 | Complete | 2026-10-24 |
-| 4. Measured Performance & UHD Endurance | 3/3 | Complete | 2026-10-24 |
-| 5. Build Provenance & Repository Hygiene | 3/3 | Complete | 2026-10-24 |
-| 6. Cross-Platform Verification | 3/3 | Complete | 2026-10-24 |
+| 7. mpv-master Vendor Advance & gpu-next Regression | 0/TBD | Not started | - |
+| 8. Debug HUD & Drag-and-Drop | 0/TBD | Not started | - |
+| 9. 8K Full-Rate | 0/TBD | Not started | - |
+| 10. Composition Spike | 0/TBD | Not started | - |
+| 11. Native Composition Path | 0/TBD | Not started | - |
