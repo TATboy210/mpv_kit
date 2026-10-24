@@ -296,6 +296,30 @@ void main() {
       );
       expect(mpv.nativeEntriesForTesting, before);
     });
+
+    test('dispose from a synchronous events listener closes events without '
+        'throwing', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final done = Completer<void>();
+      Object? escaped;
+      mpv.events.listen(
+        (_) {
+          try {
+            mpv.dispose();
+          } on Object catch (error) {
+            escaped = error;
+          }
+        },
+        onDone: done.complete,
+      );
+      // Any event starts the synchronous dispatch that re-enters dispose.
+      unawaited(mpv.setPropertyAsync('volume', 42.0).catchError((Object _) {}));
+      await done.future.timeout(const Duration(seconds: 5));
+      expect(escaped, isNull);
+      expect(mpv.isDisposed, isTrue);
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+    });
   });
 
   test('raw bindings remain usable for unwrapped calls', () {
