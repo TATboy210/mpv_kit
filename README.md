@@ -1,6 +1,7 @@
 # mpv_kit
 
-Flutter / Dart bindings for **libmpv 0.41.0** with a **Vulkan** render
+Flutter / Dart bindings for **libmpv v0.41.0-1113-gfd9265a905** (vendored
+under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
@@ -92,7 +93,9 @@ The tests need a real libmpv unless they are pure-Dart. Two supported ways:
    `libmpv.so.2` (e.g. from the hook cache under
    `.dart_tool/hooks_runner/shared/mpv_kit_libs/build/`) **and put that
    directory on `PATH`** — on Windows the dependency DLLs must be reachable
-   or loading silently falls back to another libmpv.
+   or loading silently falls back to another libmpv. Git Bash note: `PATH`
+   entries must use the POSIX form (`/d/mpv_kit/...`); a `D:/...` entry is
+   not converted and dependency resolution fails.
 
 The old `bt/` directory of prebuilt DLLs was retired and removed from the
 repository (stale pre-rebase binaries without the working Vulkan render

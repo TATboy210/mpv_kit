@@ -256,7 +256,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Archive bundles
+      - name: Archive and verify bundles
         run: |
           mkdir release
           for d in artifacts/libmpv-*; do
@@ -265,6 +265,17 @@ jobs:
           done
           (cd release && sha256sum *.tar.gz > SHA256SUMS)
           cat release/SHA256SUMS
+          # Self-verification before publishing: every tar matches its
+          # SHA256SUMS line, and every tar carries a MANIFEST.txt whose
+          # per-file hashes verify against the archived contents.
+          for t in release/*.tar.gz; do
+            grep -F "$(sha256sum "$t" | cut -d' ' -f1)" release/SHA256SUMS               > /dev/null || { echo "$t: not in SHA256SUMS"; exit 1; }
+            rm -rf verify && mkdir verify
+            tar -C verify -xzf "$t"
+            test -f verify/MANIFEST.txt || { echo "$t: no MANIFEST.txt"; exit 1; }
+            (cd verify && sha256sum -c MANIFEST.txt)               || { echo "$t: MANIFEST mismatch"; exit 1; }
+            rm -rf verify
+          done
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
