@@ -112,6 +112,7 @@ final class Player {
   Player.wrap(Mpv mpv) : this._(mpv);
 
   Player._(this.mpv) {
+    mpv.onSourceError = _reportSourceError;
     _bind('pause', paused, (v) => v == true);
     _bind('idle-active', idle, (v) => v == true);
     _bind('eof-reached', completed, (v) => v == true);
@@ -360,6 +361,13 @@ final class Player {
   final audioDevice = MpvState<String>._('auto');
 
   /// Files that failed to load (`end-file` with reason `error`).
+  ///
+  /// Also carries stream-source-level failures (a registered
+  /// [MpvStreamSource] whose open/read/seek/close threw, with the original
+  /// exception type and message embedded in [MpvPlaybackError.message]) and
+  /// property-observation/parse failures (OBS-01/OBS-02). A source-level
+  /// open/read failure is additionally reported as a playback-level
+  /// `end-file` error; a seek failure surfaces without ending playback.
   Stream<MpvPlaybackError> get errors => _errors.stream;
 
   /// mpv log messages at or above the level set with [setLogLevel].
@@ -731,6 +739,27 @@ final class Player {
     decodeWarning._set(
       '${params.width}×${params.height} 软解播放（hwdec=${hz ?? 'no'}）：'
       '该驱动未建立 Vulkan Video 硬解，4K 可能掉帧、8K 无法满帧',
+    );
+  }
+
+  /// Maps a stream-source failure reported by the bridge into
+  /// `Player.errors` with the original exception identity embedded
+  /// (OBS-01). The mpv-facing error codes stay in the bridge.
+  void _reportSourceError(String operation, Object error, StackTrace _) {
+    if (_errors.isClosed) return;
+    final code = switch (operation) {
+      'open' => MpvError.loadingFailed,
+      'seek' =>
+        error is UnsupportedError ? MpvError.unsupported : MpvError.generic,
+      _ => MpvError.generic,
+    };
+    _errors.add(
+      MpvPlaybackError(
+        error: code,
+        message: 'stream source $operation failed: '
+            '${error.runtimeType}: $error',
+        playlistEntryId: -1,
+      ),
     );
   }
 

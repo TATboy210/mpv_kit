@@ -23,6 +23,10 @@ import 'node.dart';
 ///
 /// mpv calls one method at a time per stream (from its demuxer thread), and
 /// waits for each returned future, so implementations need no locking.
+///
+/// `close` may arrive while an open/read/seek is still pending (shutdown or
+/// teardown race): implementations must guarantee their futures eventually
+/// complete, or accept that abandoned calls never do.
 abstract interface class MpvStreamSource {
   /// Total size in bytes, or null if unknown (live streams). Seeking and
   /// duration estimates need a size.
@@ -172,13 +176,35 @@ final class StreamBridge {
   var _nextStream = 1;
   var _shutdown = false;
 
+  /// Invoked when a source's open/read/seek/close throws. The mpv-facing
+  /// error codes are unchanged; reporting is purely additive (OBS-01).
+  /// `Mpv.registerStreamProtocol` wires this to `Mpv.onSourceError`.
+  void Function(String operation, Object error, StackTrace stackTrace)?
+      onSourceError;
+
+  /// Delivers a swallowed source exception to [onSourceError] without ever
+  /// letting the report (or a throwing consumer) break request completion.
+  void _report(String operation, Object error, StackTrace stackTrace) {
+    final sink = onSourceError;
+    if (sink == null) return;
+    try {
+      sink(operation, error, stackTrace);
+    } on Object {
+      // A failing consumer must not become an uncaught async error.
+    }
+  }
+
   /// Fails every pending request; afterwards no request buffer is touched.
   void shutdown() {
     if (_shutdown) return;
     _shutdown = true;
     _b.shutdown(_registration);
     for (final s in _sources.values) {
-      unawaited(Future.sync(s.close).catchError((Object _) {}));
+      unawaited(
+        Future.sync(s.close).catchError(
+          (Object e, StackTrace s) => _report('close', e, s),
+        ),
+      );
     }
     _sources.clear();
   }
@@ -200,7 +226,13 @@ final class StreamBridge {
     if (_shutdown) return;
     if (op == _opClose) {
       final s = _sources.remove(stream);
-      if (s != null) unawaited(Future.sync(s.close).catchError((Object _) {}));
+      if (s != null) {
+        unawaited(
+          Future.sync(s.close).catchError(
+            (Object e, StackTrace st) => _report('close', e, st),
+          ),
+        );
+      }
       return;
     }
     // Claim the request first: only then do data and the mpv thread's wait
@@ -222,15 +254,20 @@ final class StreamBridge {
     MpvStreamSource? source;
     try {
       source = await _open(uri);
-    } on Object {
+    } on Object catch (e, s) {
+      // Null rejects the URI; a throw is a real source failure — report it
+      // (OBS-01) and keep the mpv-facing loading_failed semantics.
       source = null;
+      _report('open', e, s);
     }
     if (_shutdown) {
       // `_onRequest` runs this method under `unawaited`, so a throwing close
       // would escape as an unhandled async error after `dispose()` returned.
       // Contain it exactly like the `shutdown()` sweep.
       if (source != null) {
-        await Future.sync(source.close).catchError((Object _) {});
+        await Future.sync(source.close).catchError(
+          (Object e, StackTrace st) => _report('close', e, st),
+        );
       }
       return;
     }
@@ -254,8 +291,9 @@ final class StreamBridge {
     Uint8List? chunk;
     try {
       chunk = source == null ? null : await source.read(capacity);
-    } on Object {
+    } on Object catch (e, s) {
       chunk = null;
+      _report('read', e, s);
     }
     // After shutdown the buffer may be gone: never write into it then.
     if (_shutdown) return;
@@ -274,10 +312,12 @@ final class StreamBridge {
       result = source == null
           ? MpvError.generic.code
           : await source.seek(offset);
-    } on UnsupportedError {
+    } on UnsupportedError catch (e, s) {
       result = MpvError.unsupported.code;
-    } on Object {
+      _report('seek', e, s);
+    } on Object catch (e, s) {
       result = MpvError.generic.code;
+      _report('seek', e, s);
     }
     if (_shutdown) return;
     _b.complete(request, result, 0);

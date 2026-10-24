@@ -105,6 +105,15 @@ final class Mpv {
   final _events = StreamController<MpvEventData>.broadcast(sync: true);
   final _pending = <int, Completer<Object?>>{};
   final _observers = <int, StreamController<Object?>>{};
+  /// Invoked when a registered stream source's open/read/seek/close throws.
+  ///
+  /// `Player` installs this to surface source failures on `Player.errors`
+  /// with the original exception identity (OBS-01); direct
+  /// [registerStreamProtocol] users may install their own. The mpv-facing
+  /// error codes are unchanged — reporting is purely additive.
+  void Function(String operation, Object error, StackTrace stackTrace)?
+      onSourceError;
+
   final _streamBridges = <StreamBridge>[];
   var _nextId = 1;
   var _disposed = false;
@@ -541,7 +550,12 @@ final class Mpv {
   /// bridge, [MpvException] if the protocol is taken.
   void registerStreamProtocol(String protocol, MpvStreamOpener open) {
     _ensureAlive();
-    _streamBridges.add(StreamBridge.register(bindings, handle, protocol, open));
+    final bridge = StreamBridge.register(bindings, handle, protocol, open);
+    // Captured at register time: Player installs onSourceError in its
+    // constructor, before any protocol can be registered on it.
+    bridge.onSourceError = (operation, error, stackTrace) =>
+        onSourceError?.call(operation, error, stackTrace);
+    _streamBridges.add(bridge);
   }
 
   // ---------------------------------------------------------------------

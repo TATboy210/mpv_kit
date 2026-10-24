@@ -56,6 +56,8 @@ const _baseline = <Type, Set<String>>{
     'isDisposed',
     'loadConfigFile',
     'observeProperty',
+    // Phase 3 (OBS-01): the stream-source error sink Player installs.
+    'onSourceError',
     'registerStreamProtocol',
     'requestEvent',
     'requestLogMessages',

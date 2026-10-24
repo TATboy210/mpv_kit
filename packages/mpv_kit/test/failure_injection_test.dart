@@ -348,16 +348,29 @@ void main() {
         'failread',
         (uri) => uri == 'failread://x' ? source : null,
       );
-      final error = player.errors.first.timeout(const Duration(seconds: 10));
+      final entries = <MpvPlaybackError>[];
+      final sub = player.errors.listen(entries.add);
       unawaited(player.open('failread://x').catchError((Object _) {}));
-      final playbackError = await error;
+      // The demuxer's probe seek also fails on this source (UnsupportedError)
+      // and is reported first (OBS-01); wait for the read entry specifically.
+      await _waitFor(
+        'the read failure to be reported',
+        () =>
+            entries.any((e) => e.message.contains('stream source read failed')),
+      );
       expect(
         source.readAttempts,
         greaterThan(0),
         reason: 'the bridge must have called read before reporting the error',
       );
-      expect(playbackError.message, isNotEmpty);
+      // The original exception identity survives (OBS-01): type + message.
+      final readEntry = entries
+          .firstWhere((e) => e.message.contains('stream source read failed'));
+      expect(readEntry.message, contains('StateError'));
+      expect(readEntry.message, contains('read boom'));
+      expect(readEntry.error, MpvError.generic);
       await player.dispose().timeout(const Duration(seconds: 10));
+      await sub.cancel();
     });
     expect(zoneErrors, isEmpty, reason: 'a read throw must stay in the bridge');
   });
@@ -370,25 +383,110 @@ void main() {
     final zoneErrors = <Object>[];
     await _guarded(zoneErrors, () async {
       player.mpv.registerStreamProtocol('failseek', (_) => source);
+      // Subscribe before open: mpv's seekability PROBE seek fails on this
+      // source and is reported (OBS-01); reports are broadcast without
+      // replay, so a later collector would miss it.
+      final entries = <MpvPlaybackError>[];
+      final sub = player.errors.listen(entries.add);
       // Open without `start`; the seek is issued explicitly after the demuxer
       // has read the WAV, so the bridge's seek handler is provably reached.
       unawaited(player.open('failseek://x').catchError((Object _) {}));
       await _waitFor(
-        'the demuxer to read the stream',
-        () => source.readAttempts > 0,
-      );
-      unawaited(
-        player.seek(const Duration(seconds: 2)).catchError((Object _) {}),
-      );
-      await _waitFor(
-        'the stream seek to be attempted',
-        () => source.seekAttempts > 0,
+        'the demuxer to read the stream and probe seekability',
+        () => source.readAttempts > 0 && source.seekAttempts > 0,
       );
       // Containment is the contract; the error code belongs to Phase 3.
       expect(source.seekAttempts, greaterThan(0));
+      // OBS-01: the seek failure itself surfaces with its original identity,
+      // while playback continues (no error end-file after the seek entry).
+      await _waitFor(
+        'the seek failure to be reported',
+        () =>
+            entries.any((e) => e.message.contains('stream source seek failed')),
+      );
+      final seekEntry = entries
+          .firstWhere((e) => e.message.contains('stream source seek failed'));
+      expect(seekEntry.message, contains('StateError'));
+      expect(seekEntry.message, contains('seek boom'));
+      expect(seekEntry.error, MpvError.generic);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(
+        entries.where((e) => e.error == MpvError.loadingFailed),
+        isEmpty,
+        reason: 'a failed seek must not end playback',
+      );
+      await sub.cancel();
       await player.dispose().timeout(const Duration(seconds: 10));
     });
     expect(zoneErrors, isEmpty, reason: 'a seek throw must stay in the bridge');
+  });
+
+  test('a close failure during dispose is reported before the stream closes',
+      () async {
+    if (_skipWithoutStreamBridge()) return;
+    final player = _createPlayer();
+    addTearDown(player.dispose);
+    final source = _ThrowingCloseSource(blockReads: true);
+    final zoneErrors = <Object>[];
+    await _guarded(zoneErrors, () async {
+      player.mpv.registerStreamProtocol('failclosedispose', (_) => source);
+      final entries = <MpvPlaybackError>[];
+      final done = Completer<void>();
+      player.errors.listen(entries.add, onDone: done.complete);
+      unawaited(player.open('failclosedispose://x').catchError((Object _) {}));
+      await _waitFor(
+        'the live source to be read',
+        () => source.readAttempts > 0,
+      );
+      // The shutdown sweep closes the source while Player.errors is still
+      // open, so the failure stays observable (OBS-01) before `done`.
+      await player.dispose().timeout(const Duration(seconds: 10));
+      await done.future.timeout(const Duration(seconds: 5));
+      expect(
+        entries.any((e) => e.message.contains('stream source close failed')),
+        isTrue,
+        reason: 'the shutdown-sweep close failure stays observable',
+      );
+      expect(player.mpv.isDisposed, isTrue);
+    });
+    expect(zoneErrors, isEmpty);
+  });
+
+  test('a source whose open throws surfaces the original error on '
+      'Player.errors', () async {
+    if (_skipWithoutStreamBridge()) return;
+    final player = _createPlayer();
+    addTearDown(player.dispose);
+    final zoneErrors = <Object>[];
+    await _guarded(zoneErrors, () async {
+      player.mpv.registerStreamProtocol('failopen', (uri) {
+        if (uri == 'failopen://x') throw StateError('open boom');
+        return null;
+      });
+      final entries = <MpvPlaybackError>[];
+      final sub = player.errors.listen(entries.add);
+      unawaited(player.open('failopen://x').catchError((Object _) {}));
+      await _waitFor(
+        'the open failure to be reported',
+        () =>
+            entries.any((e) => e.message.contains('stream source open failed')),
+      );
+      final sourceLevel = entries
+          .firstWhere((e) => e.message.contains('stream source open failed'));
+      expect(sourceLevel.error, MpvError.loadingFailed);
+      expect(sourceLevel.message, contains('StateError'));
+      expect(sourceLevel.message, contains('open boom'));
+      // Playback still ends with an explicit error (the END_FILE entry).
+      await _waitFor(
+        'the playback-level end-file error',
+        () => entries.any((e) =>
+            e.error == MpvError.loadingFailed &&
+            !e.message.contains('stream source')),
+      );
+      await sub.cancel();
+      await player.dispose().timeout(const Duration(seconds: 10));
+    });
+    expect(zoneErrors, isEmpty, reason: 'an open throw must stay in the bridge');
   });
 
   test('a source whose close throws is contained on every close path', () async {
