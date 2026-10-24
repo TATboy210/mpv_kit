@@ -14,7 +14,7 @@ app
                               │
                               ▼
                     libmpv-2.dll / libmpv.so.2 / mpv.2.framework
-                    (mpv 0.41.0 + native/patches, FFmpeg 8.1.3 LGPL)
+                    (mpv 0.41.0-1115 + native/patches, FFmpeg 8.1.3 LGPL)
 ```
 
 * **mpv_kit** opens libmpv once per process (`MpvLibrary.open`: explicit

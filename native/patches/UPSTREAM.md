@@ -1,8 +1,9 @@
 # Upstreaming status of the mpv_kit patches
 
-Base: mpv 0.41.0-1113 (gfd9265a905, mpv master snapshot matching the
-shinchiro 2026-10-09 build; vendored as `native/mpv`, `MPV_VERSION`
-records the exact base). Previously mpv 0.41.0; rebased 2026-10-22.
+Base: mpv 0.41.0-1115 (gb2c255c13, 2026-10-09 "wayland: use configure
+bounds in window geometry"; vendored as `native/mpv`, `MPV_VERSION`
+records the exact base). Previously 0.41.0-1113 (gfd9265a905); advanced
+2026-10-24 (milestone v2 Phase 7).
 
 **Provenance gate (2026-10-24):** `tools/check_patches.sh` fetches the
 base commit, applies the patch set with GNU `patch -p1`, and diffs the
@@ -25,6 +26,28 @@ regenerated from the vendored tree on 2026-10-24 to make that true:
 `bash tools/check_patches.sh` is wired as the `patch-drift` job in
 native-verify.yml.
 
+## Rebase onto 0.41.0-1115 (2026-10-24, milestone v2 Phase 7)
+
+The user-provided mpv-master snapshot (no git metadata) was identified by
+blob-hash walk and FULL-TREE verification as exactly `b2c255c13e8e`
+(diff count 0, excluding the zip's stray .code-review-graph). The advance
+from the previous base is just two upstream commits:
+
+- `06ee185d3` "osdep/io: restore umask-based file creation permissions" —
+  upstream adopted the exact open-mode change (0600 -> 0666) our old 0008
+  carried: **that delta is superseded and dropped**.
+- `b2c255c13` "wayland: use configure bounds in window geometry" — the
+  wayland_common.c refactor our old 0008 papered over by keeping the
+  pre-refactor snapshot: **that delta is superseded and dropped**; the
+  vendor now carries upstream's refactored wayland.
+
+Consequences: 0001..0007 replayed onto the new base with zero rejects
+(only fuzz/offset notes: 0001 x3, 0002 x1, 0006 x2, 0007 x3 — recorded in
+the patch files' application, no hunks hand-ported this time);
+**0008 shrank to the MPV_VERSION vendor stamp** (the version file is
+build-generated upstream, UNKNOWN without git). PATCH-DRIFT verifies
+byte-identity at the new base.
+
 | Patch | Upstream fit | Plan |
 |---|---|---|
 | 0001 vo_libmpv Vulkan render backend | A previous RFC (mpv-player/mpv#18258, closed 2026-07-13) was rejected on process grounds: maintainers asked for preserved authorship, small commits and for porting vo_gpu_next to the render API *first*. | RFC series in that order: (1) gpu-next render backend for the existing GL API, (2) Vulkan API type, (3) host-image semaphores. Needs maintainer buy-in before code. |
@@ -33,7 +56,7 @@ native-verify.yml.
 | 0004 gpu-next render backend + active renderer via get_info | This is step (1) the maintainers asked for; 0005's tiny API addition is folded in (it depends on 0004 and shares its files). | First PR to propose (split 0005 back out for review). |
 | 0006 asynchronous stream bridge | mpv-specific glue for hosts that cannot answer stream_cb synchronously (Dart). Upstream's view so far is that stream_cb is enough. | Keep downstream. |
 | 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
-| 0008 vendor integration fixes | Not a feature: `io.c` open-mode change, the wayland snapshot state, and the version stamp — the residual vendored-tree delta with no feature owner. | N/A (re-generated at each rebase). |
+| 0008 vendor integration fixes | The MPV_VERSION vendor stamp only — upstream commits `06ee185d3`+`b2c255c13` superseded the old io.c/wayland deltas in the 2026-10-24 rebase. | N/A (re-generated at each rebase). |
 
 ## Rebase onto mpv 0.41.0-1113 (2026-10-22)
 

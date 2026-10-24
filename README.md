@@ -1,6 +1,6 @@
 # mpv_kit
 
-Flutter / Dart bindings for **libmpv v0.41.0-1113-gfd9265a905** (vendored
+Flutter / Dart bindings for **libmpv v0.41.0-1115-gb2c255c13** (vendored
 under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
