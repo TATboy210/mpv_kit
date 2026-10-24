@@ -1,0 +1,99 @@
+# Phase 10 / 10-03 Task 1 — Impeller smoke classification
+# Machine-readable lines first; details below. classification and identity are
+# separate fields by design (D-06 / T-10-10).
+
+classification: inconclusive
+identity: proven
+reason: The 10-02 harness aborts in its own part-1 readiness gate in both runs (resizeEvents=0 after 30 s), because the renderer only emits resize after SetSize changes width_/height_ (video_renderer.cc:166-179, 541) and the harness never calls setSize before part 1; this is a harness defect, not a renderer failure, so D-05 was not exercised.
+switch: --enable-impeller
+nonBlackRatio: unsupported
+rgba8_on: 0
+rgba8_off: 0
+
+# --- Run matrix --------------------------------------------------------------
+# Both runs: debug build, Flutter 3.47.8 (framework 737ba8f885, engine revision
+# cf636b1dfb), one external texture, visible desktop window, libmpv from the
+# mpv_kit_libs hook build v0.1.0-dev.3. The older bt/libmpv-2.dll was NOT used.
+
+run-on.classification: inconclusive
+run-on.switch: --enable-impeller
+run-on.exit_code: 1
+run-on.start: 2026-10-24T17:39:18Z
+run-on.end: 2026-10-24T17:41:18Z
+run-on.log: .planning/phases/10-composition-spike/evidence/impeller-on.log
+run-on.command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter test integration_test/impeller_smoke_test.dart -d windows --enable-impeller
+
+run-off.classification: inconclusive
+run-off.switch: --no-enable-impeller
+run-off.exit_code: 1
+run-off.start: 2026-10-24T17:42:40Z
+run-off.end: 2026-10-24T17:44:01Z
+run-off.log: .planning/phases/10-composition-spike/evidence/impeller-off.log
+run-off.command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter test integration_test/impeller_smoke_test.dart -d windows --no-enable-impeller
+
+# --- Why the classification is inconclusive (not failed, not a crash) --------
+# 1. No renderer failure was exercised. Both runs stop before the soak and
+#    before the pixel probe:
+#      Bad state: part 1 readiness timeout:
+#        params=1920x1080 fps=30.000000000000018 resizeEvents=0
+#    (identical in impeller-on.log and impeller-off.log).
+# 2. The gate is unsatisfiable as written in 10-02. VideoRenderer::SetSize is
+#    the only writer of width_/height_ (video_renderer.cc:166-179), and
+#    Emit("resize", ...) fires only when w/h differ from the ring
+#    (video_renderer.cc:499, 541). The harness calls setSize only in part 2 and
+#    in the soak loop, never before the part-1 gate.
+# 3. No BENCH impeller line reached the captured console in either run
+#    (count = 0). Per the plan this alone is an evidence gap, never a verdict.
+# 4. Pixel probe was never executed (part 2 not reached) -> nonBlackRatio:
+#    unsupported -> pass is impossible even if classification were revisited.
+# 5. Therefore D-05 ("30 s continuous + 100 resize/dispose rounds does not
+#    crash") was neither confirmed nor refuted. Recording failed or
+#    renderer-crash would attribute a harness defect to the renderer (W2/T-10-09).
+
+# --- Identity (engine's own log line, not mpv_kit fields) -------------------
+# Q1 answer: `flutter test -d windows` does NOT forward the app process's engine
+# log. Neither test log contains any engine line. The documented fallback
+# (same SDK, same env, `flutter run -d windows`) was used and recorded as
+# identity-source: flutter-run.
+
+identity-source: flutter-run
+identity-on.log: .planning/phases/10-composition-spike/evidence/impeller-run-on.log
+identity-off.log: .planning/phases/10-composition-spike/evidence/impeller-run-off.log
+identity-on.command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter run -d windows --enable-impeller   (timeout 75s)
+identity-off.command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter run -d windows --no-enable-impeller   (timeout 75s)
+identity-on.line: [IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+identity-on.matches: 1
+identity-off.matches: 0
+# Proven because the positive uses the engine's own line and the negative is
+# produced by the same transport with only the switch changed. The Impeller
+# identity explains nothing about the harness abort, which is identical with
+# the switch off.
+
+# --- libmpv / mpv backend identity gate --------------------------------------
+# The harness's preflight gate passed in both runs (it throws before part 1 on
+# a mismatch), so resolved libmpv == MPV_KIT_LIBMPV_PATH and the mpv backend is
+# vulkan:
+resolvedLibmpv: D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll
+mpvBackend: vulkan
+mpvBackend.line: mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+benchesLined: 0
+
+# --- Crash forensics (recorded, and negative) -------------------------------
+# Neither run looks like #191468: exit code 1 is the test framework reporting
+# the readiness timeout, not a native exception. No match against the
+# 3.47.0-specific offset 0x2c55f7 was attempted.
+crash.wer: no mpv_kit_example dump in %LOCALAPPDATA%/CrashDumps (latest entries are unrelated apps from earlier dates)
+crash.eventlog: no Application Error (Id 1000) event naming flutter_windows.dll in the last 2 hours before classification
+crash.last_stage: part1 (before BENCH soak-start; no BENCH line emitted)
+crash.exception_code: none observed (0xC0000005 not present)
+
+# --- Scope note vs #191468 ---------------------------------------------------
+# This app uses ONE external texture; #191468 used four. Even a clean run would
+# not prove the historical crash is gone; here there was no crash to compare.
+
+# --- RGBA8 cliff scan (W2) ---------------------------------------------------
+rgba8.scan_command: grep -a -c 'Only support GL_RGBA8 format now' <log>
+rgba8_on: 0
+rgba8_off: 0
+# Zero hits in both; no format rejection. This does not become a pass because
+# the workload never ran.

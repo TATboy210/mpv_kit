@@ -18,3 +18,11 @@ D:             326739423232 318556262400 8183160832  98% /d
 - status: ok — the smoke preparation may proceed.
 - No long build (>= 5.5 GiB headroom required) is attempted if this line
   ever reads inconclusive.
+
+## Run gate (10-03 Task 1, before the smoke pair)
+# Captured: 2026-10-24T17:39:07Z
+# Command: df -B1 .   (repo root D:/mpv_kit, drive D:)
+run-gate: avail_bytes=8183009280 threshold_bytes=5905580032 status=ok
+
+Filesystem        1B-blocks         Used  Available Use% Mounted on
+D:             326739423232 318556418048 8183005184  98% /d
