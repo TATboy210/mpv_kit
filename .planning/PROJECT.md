@@ -32,6 +32,10 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 流源 open/read/seek/close 失败经 `Player.errors` 暴露并保留原始异常类型与消息；seek 失败不终止播放；demuxer 语义不变 — Phase 3
 - ✓ 属性观察/解析失败路由 `Player.errors`；事件排空故障免疫（坏事件/抛错监听器不中断后续事件）；被弃 reply future 不再产生未处理异步错误 — Phase 3
 - ✓ Windows/macOS 回退原因诚实化（D3D11 HRESULT、Metal 探测、CreateImage 空引用守卫） — Phase 3
+- ✓ 可重复基准（decode 微基准 + 真机播放/循环/resize 集成基准）与改动前基线记录 — Phase 4
+- ✓ 每个属性事件单次 mpv_node 解码（计数器证明）+ time-pos 节流路径零分配；decode-double −38%、decode-map −49% — Phase 4
+- ✓ 4K 3840x2160 连续 30 分钟：零丢帧、avsync 峰值 4.7e-05、累计漂移 −0.033s 有界、无积压 — Phase 4
+- ✗→8K 7680x4320 发现可复现的提交内存耗尽进程死亡（WER RADAR_PRE_LEAK_64）——新稳定性缺陷，deferred 到 stability insertion — Phase 4 发现
 - ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
 ### Active
@@ -89,6 +93,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | seek 失败上抛但不终止播放 | mpv 语义允许瞬时 seek 失败;只有 open/read 终止播放 | ✓ Phase 3 |
 | 用户监听器抛错仍进 zone(不吞用户代码),只保证排空存活 | Dart 同步控制器标准语义;Player 自身监听器已全 containment | ✓ Phase 3 |
 | errorString/eventName 移除 post-dispose 守卫(IN-02) | 纯查找不触 handle;处置文件明确授权 Phase 3 重定基线 | ✓ Phase 3 |
+| 基线必须先于一切优化提交 | ROADMAP criterion 1 的"改动前基线";计划顺序强制 | ✓ Phase 4 |
+| 8K 崩溃是数据不是环境噪声,门禁不放松 | 可复现 3 次 + WER 证据;放松门禁等于隐藏稳定性缺陷 | ✓ Phase 4 |
+| 基准 libmpv 用 hook 构建(dev.3),bt/ 旧 DLL 不可用于渲染基准 | bt/(10 月 15 日预重基)的 render_context_create 报 not implemented,静默落 software | ✓ Phase 4 |
 
 ## Evolution
 
@@ -108,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 3*
+*Last updated: 2026-10-24 after Phase 4*

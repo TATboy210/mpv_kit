@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错 (completed 2026-10-24)
 - [x] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件 (completed 2026-10-24)
 - [x] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默 (completed 2026-10-24)
-- [ ] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，4K/8K 长播无积压
+- [x] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，长播验证 (completed 2026-10-24; 4K 30 分钟全门禁通过，8K 发现提交内存耗尽崩溃，deferred 到 stability insertion)
 - [ ] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行
 - [ ] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行
 
@@ -100,7 +100,13 @@ Plans:
   3. 4K 与 8K 连续播放 30 分钟：`delayed≈0`、`avdiff` 有界、无帧积压。
   4. 公共 API 无变化（API diff 为空），事件/状态热路径分配下降且行为不变。
 
-**Plans**: TBD
+**Plans:** 3/3 executed
+
+Plans:
+**Wave 1** *(strictly sequential: the baseline must precede every optimization)*
+- [x] 04-01-PLAN.md — Benchmark harness (decode micro-bench + real-machine integration bench) and the BEFORE baseline
+- [x] 04-02-PLAN.md — Single mpv_node decode (PERF-01) + allocation-free time-pos throttle (PERF-04), with after-data
+- [x] 04-03-PLAN.md — UHD endurance: 4K 30-min PASS; 8K reproducible commit-exhaustion crash recorded as failed data
 
 ### Phase 5: Build Provenance & Repository Hygiene
 
@@ -137,6 +143,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Player Lifetime & Dispose Safety | 5/5 | Complete    | 2026-10-24 |
 | 2. Video Controller Lifecycle & Resize Safety | 3/3 | Complete | 2026-10-24 |
 | 3. Error Surfacing | 4/4 | Complete | 2026-10-24 |
-| 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
+| 4. Measured Performance & UHD Endurance | 3/3 | Complete | 2026-10-24 |
 | 5. Build Provenance & Repository Hygiene | 0/TBD | Not started | - |
 | 6. Cross-Platform Verification | 0/TBD | Not started | - |

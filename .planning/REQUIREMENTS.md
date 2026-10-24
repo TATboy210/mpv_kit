@@ -24,10 +24,10 @@
 
 ### Performance (PERF)
 
-- [ ] **PERF-01**: 每个属性事件只解码一次 `mpv_node`（消除 `time-pos` 热路径的重复解码）
-- [ ] **PERF-02**: 存在可重复运行的基准（`delayed`、`avdiff`、掉帧、create/dispose 循环、resize）
-- [ ] **PERF-03**: 4K/8K UHD 连续播放 30 分钟无帧积压（`delayed≈0`、`avdiff` 有界）
-- [ ] **PERF-04**: 减少事件/状态热路径分配，且不改变公共 API
+- [x] **PERF-01**: 每个属性事件只解码一次 `mpv_node`（消除 `time-pos` 热路径的重复解码）
+- [x] **PERF-02**: 存在可重复运行的基准（`delayed`、`avdiff`、掉帧、create/dispose 循环、resize）
+- [ ] **PERF-03**: 4K/8K UHD 连续播放 30 分钟无帧积压（`delayed≈0`、`avdiff` 有界）— 4K 达成（30 分钟全门禁通过）；8K 失败：可复现的提交内存耗尽崩溃（docs/perf/2026-10-24-uhd-endurance.md），deferred 到 stability insertion
+- [x] **PERF-04**: 减少事件/状态热路径分配，且不改变公共 API
 
 ### Build & Provenance (BUILD)
 
@@ -90,10 +90,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | OBS-02 | Phase 3 | Complete |
 | OBS-03 | Phase 3 | Complete |
 | OBS-04 | Phase 3 | Complete |
-| PERF-01 | Phase 4 | Pending |
-| PERF-02 | Phase 4 | Pending |
-| PERF-03 | Phase 4 | Pending |
-| PERF-04 | Phase 4 | Pending |
+| PERF-01 | Phase 4 | Complete |
+| PERF-02 | Phase 4 | Complete |
+| PERF-03 | Phase 4 | Partial (4K done, 8K crash deferred) |
+| PERF-04 | Phase 4 | Complete |
 | BUILD-01 | Phase 5 | Pending |
 | BUILD-02 | Phase 5 | Pending |
 | BUILD-03 | Phase 5 | Pending |

@@ -557,6 +557,12 @@ Scope: full repo (`packages/mpv_kit`, `packages/mpv_kit_video`, `packages/mpv_ki
 - The plugin is only compiled; no automated test renders through the actual platform
   plugin (see Test Coverage Gaps).
 
+## 8K Commit-Memory Exhaustion (found by PERF-03, 2026-10-24)
+
+- **Symptom**: 8K (7680x4320) playback kills the process ≤ 40 s in, reproducibly (3/3). WER event 1001 `RADAR_PRE_LEAK_64` names commit-memory exhaustion (P1 mpv_kit_example.exe). Evidence: docs/perf/2026-10-24-uhd-endurance.md.
+- **Cause hypothesis**: one 8K YUV420P frame ≈ 124 MiB system memory; mpv's raw-frame queues (demuxer-max-bytes=400 MiB of lavfi output + decoder output + hwdec-extra-frames=6) plus the 633 MiB shared-memory ring push the commit charge over the limit. 4K is unaffected (30-min gates all green).
+- **Fix candidates**: scale demuxer/back-buffer caps by frame size; per-queue commit sampling; graceful commit-pressure event to Dart (OBS-03 style); verify the OOM ring-shrink path handles system-commit (not just VRAM) pressure.
+
 ## Test Coverage Gaps
 
 **`mpv_kit_video` behavioral tests are skipped in CI:**
