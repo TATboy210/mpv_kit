@@ -1,113 +1,83 @@
 # Requirements: mpv_kit
 
-**Defined:** 2026-10-23
+**Milestone:** v2.0 GPU-Next Optimization & Full-Rate UHD
+**Defined:** 2026-10-24
 **Core Value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
+**Research:** .planning/research/SUMMARY.md（ANGLE 绕过路径、gpu-next 社区反馈、mpv-master 快照、HUD/拖拽盘点）
 
-## v1 Requirements
+## Milestone v1.0 (completed 2026-10-24)
 
-本里程碑的提交范围。每条都保持公共 API 不变，并可在六个桌面目标（Windows/Linux/macOS × x64/arm64）上验证。
-
-### Stability & Lifetime (STAB)
-
-- [x] **STAB-01**: 反复创建/销毁 `Player` 与 `MpvVideoController` 不泄漏原生资源，`events`/状态流正确关闭
-- [x] **STAB-02**: 任一 dispose hook 抛错时 `Player.dispose()` 仍完成 `mpv` 核心销毁，且可重复调用
-- [x] **STAB-03**: `Mpv` 公共方法在 dispose 后调用抛出明确 `StateError`，不触发 native use-after-free
-- [x] **STAB-04**: `MpvVideoController.create` 解析失败或后续步骤抛错时回滚纹理、dispose hook 与路由表，重试可成功
-- [x] **STAB-05**: resize 与 dispose 并发时无崩溃、无黑帧、无尺寸状态卡死
-
-### Observability (OBS)
-
-- [x] **OBS-01**: 流源 open/read/seek 失败经 `Player.errors` 暴露，并保留原始异常信息
-- [x] **OBS-02**: 属性观察失败进入 `Player.errors`，不产生未捕获异步错误
-- [x] **OBS-03**: Vulkan→software 回退与 D3D11 设备失败给出可读 `reason` 与对应事件
-- [x] **OBS-04**: 不支持的选项或拼写错误不再完全静默（保持向后兼容地记录或暴露）
-
-### Performance (PERF)
-
-- [x] **PERF-01**: 每个属性事件只解码一次 `mpv_node`（消除 `time-pos` 热路径的重复解码）
-- [x] **PERF-02**: 存在可重复运行的基准（`delayed`、`avdiff`、掉帧、create/dispose 循环、resize）
-- [x] **PERF-03**: 4K/8K UHD 连续播放 30 分钟无帧积压（`delayed≈0`、`avdiff` 有界）— 4K 达成（30 分钟全门禁通过）。8K 分句经用户确认撤下：没有 8K 视频测试条件；探索中发现的提交内存耗尽崩溃记录在 docs/perf/2026-10-24-uhd-endurance.md 与 CONCERNS.md，供将来支持 8K 时参考
-- [x] **PERF-04**: 减少事件/状态热路径分配，且不改变公共 API
-
-### Build & Provenance (BUILD)
-
-- [x] **BUILD-01**: 补丁单一来源，CI 能检测 vendor 树与 `native/patches/` 的漂移
-- [x] **BUILD-02**: 六个桌面目标的 bundle 可由当前树可复现重建，并通过 sha256/MANIFEST 校验
-- [x] **BUILD-03**: 文档与版本一致（vendor commit、macOS 部署目标、SDK 约束）
-- [x] **BUILD-04**: 仓库卫生（`bt/` 不再跟踪、`pubspec.lock` 策略明确）
-
-### Cross-platform Verification (VERIFY)
-
-- [x] **VERIFY-01**: 真实插件 integration test 在 Windows/Linux/macOS CI 跑通（create、渲染一帧、dispose）
-- [x] **VERIFY-02**: 六目标（x64/arm64 × 三 OS）构建与冒烟全部通过
-- [x] **VERIFY-03**: 关键失败路径有回归测试（失败注入、抛错监听器/dispose hook、异常流源）
-- [x] **VERIFY-04**: 覆盖率门禁覆盖 `mpv_kit_video` 与 `mpv_kit_libs`
+21/21 需求全部交付（STAB-01..05、OBS-01..04、PERF-01..04、BUILD-01..04、VERIFY-01..04），证据在 `.planning/milestones/v1-phases/` 与 docs/perf。公共 API 冻结由 api_freeze_test 钉死；五道 CI 门禁（patch-drift/consistency/pins/matrix/coverage）与三平台 integration test 常态运行。
 
 ## v2 Requirements
 
-Deferred to a future milestone. Tracked but not in the current roadmap.
+本里程碑范围。基线：v1 的全部门禁与测试保持绿色；公共 API 兼容优先（新增只读诊断字段需在计划中显式列出）。
 
-### Playback Features
+### mpv-master Advance & gpu-next Regression (REBASE)
 
-- **FEAT-01**: 渲染桥向 mpv 回报 vsync/显示相位，使 `video-sync=display-*` 可用
-- **FEAT-02**: HDR swapchain 提示与正确的 tone-map 路径
+- [ ] **REBASE-01**: vendor 树推进到用户提供的 mpv-master 快照（或更新点），补丁 0001..0008 重放后 PATCH-DRIFT 门禁字节级通过；MPV_VERSION/README/一致性检查联动更新
+- [ ] **REBASE-02**: 新基线上 gpu-next 回归验证——seek 后画面恢复（mpv#17258 类）、帧节奏（4K 基准对照）、六目标 CI + 三平台 integration test 全绿
+
+### Native Composition (COMP)
+
+- [ ] **COMP-01**: 合成路径 spike 报告——REA 逆向本机 flutter_windows.dll（3.47.6）的纹理消费路径 + Impeller 开关冒烟；决策记录（哪条路径、证据、回退条件）
+- [ ] **COMP-02**: 依 spike 结论实施原生合成路径（带 ANGLE 运行时回退），`backend`/`reason` 上报实际合成路径，HUD 可见
+- [ ] **COMP-03**: 每条合成路径的 compositor 延迟预算实测并参数化（quarantine），100 轮交错 soak 无 use-after-release、无黑帧
+
+### 8K Full-Rate (UHD)
+
+- [ ] **UHD-01**: Player 的 demuxer 队列选项按帧尺寸推导（公式文档化）；1080p/4K/8K 三档回归基准同时通过（不伤低分辨率吞吐）
+- [ ] **UHD-02**: 8K 7680x4320 连续 30 分钟通过 v1 门禁（零丢帧、avdiff 有界、无积压、无提交内存耗尽）
+
+### Debug HUD (HUD)
+
+- [ ] **HUD-01**: example 可切换调试 overlay——同步/缓存/解码/渲染/音频五组属性（stats.lua 同源集合，已对目录核对）+ 控制器事件流实时叠加
+- [ ] **HUD-02**: HUD 显示实际合成路径与后端信息（backend/reason/compositor）
+
+### Drag-and-Drop (DND)
+
+- [ ] **DND-01**: 拖拽视频文件到 example 窗口即播放首个视频（desktop_drop）；非视频文件忽略并 HUD 提示；与播放器手势不冲突
+
+## Deferred（未来里程碑）
+
+### Playback Features（继承 v1-v2）
+- **FEAT-01**: 渲染桥向 mpv 回报 vsync/显示相位（`video-sync=display-*` 可用）
+- **FEAT-02**: HDR swapchain 提示与 tone-map 路径
 - **FEAT-03**: 播放列表、字幕与音轨的更高层 API
+- **FEAT-04**: 多文件拖入生成播放列表（DND-01 只取首个，留扩展点）
 
-### Renderer Compatibility
-
-- **GPU-01**: Vulkan 1.2 设备（NVIDIA Maxwell/Pascal 如 GTX 960、AMD GCN 如 Polaris/Vega）可用 gpu-next 渲染，不再因 `apiVersion < 1.3` 门槛直接落到 software
-- **GPU-02**: 设备能力协商可诊断——`PickDevice` 按所需扩展 + timeline semaphore 选择，失败原因包含设备名与缺失项；`vkCreateDevice` 失败时以最小 feature 集重试
-- **GPU-03**: 在旧 GPU 上验证 `gpu-next → gpu(gl_video Vulkan context) → software` 的真实回退链，并记录各档的 `backend`/`reason`
+### Renderer Compatibility（继承 v1-v2）
+- **GPU-01..03**: 旧 GPU 的 Vulkan 1.2 设备支持、可诊断的能力协商、真实回退链验证
 
 ### Platform
-
-- **PLAT-01**: Android 垂直切片（libmpv 交叉编译 + Flutter 纹理）
-- **PLAT-02**: iOS 可行性评估与 ADR
+- **PLAT-01/02**: Android 垂直切片、iOS 可行性（不变）
 
 ## Out of Scope
 
-Explicitly excluded from this milestone. Documented to prevent scope creep.
-
-| Feature | Reason |
-|---------|--------|
-| 新增或破坏性公共 API | 本里程碑 API 冻结，降低回归面 |
-| 版本发布、CHANGELOG、pub 发布流程 | 用户明确不着急，专注源码健康度 |
-| 大规模渲染架构重写 | 违反"小改动大收益"原则，只做有数据支撑的局部优化 |
-| Android/iOS/web 支持 | 渲染互操作与 bundle 目标均未覆盖，非当前目标 |
+| 项 | 理由 |
+|----|------|
+| 破坏性公共 API 变更 | 兼容优先；只读诊断新增须计划内显式声明 |
+| DirectComposition 子窗口合成（STACK 选项 C） | 失去 widget 合成；仅作记录不实施 |
+| 移动端/web | 不变 |
+| MPO/HAGS 显示栈问题的"修复" | 环境属系统层；以 HUD 观测 + 文档应对（mpv#15196 教训） |
+| 大规模重构渲染环/队列架构 | 沿用 v1"小改动大收益"原则；8K 修复限定在选项包推导层 |
 
 ## Traceability
 
-Which phases cover which requirements. Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAB-01 | Phase 1 | Complete |
-| STAB-02 | Phase 1 | Complete |
-| STAB-03 | Phase 1 | Complete |
-| STAB-04 | Phase 2 | Complete |
-| STAB-05 | Phase 2 | Complete |
-| OBS-01 | Phase 3 | Complete |
-| OBS-02 | Phase 3 | Complete |
-| OBS-03 | Phase 3 | Complete |
-| OBS-04 | Phase 3 | Complete |
-| PERF-01 | Phase 4 | Complete |
-| PERF-02 | Phase 4 | Complete |
-| PERF-03 | Phase 4 | Complete (4K; 8K withdrawn — no test material, crash documented) |
-| PERF-04 | Phase 4 | Complete |
-| BUILD-01 | Phase 5 | Complete |
-| BUILD-02 | Phase 5 | Complete |
-| BUILD-03 | Phase 5 | Complete |
-| BUILD-04 | Phase 5 | Complete |
-| VERIFY-01 | Phase 6 | Complete |
-| VERIFY-02 | Phase 6 | Complete |
-| VERIFY-03 | Phase 1 | Complete |
-| VERIFY-04 | Phase 2 | Complete |
+| REBASE-01 | Phase 7 | Pending |
+| REBASE-02 | Phase 7 | Pending |
+| HUD-01 | Phase 8 | Pending |
+| HUD-02 | Phase 8 | Pending |
+| DND-01 | Phase 8 | Pending |
+| UHD-01 | Phase 9 | Pending |
+| UHD-02 | Phase 9 | Pending |
+| COMP-01 | Phase 10 | Pending |
+| COMP-02 | Phase 11 | Pending |
+| COMP-03 | Phase 11 | Pending |
 
-**Coverage:**
-- v1 requirements: 21 total
-- Mapped to phases: 21
-- Unmapped: 0
+**Coverage:** v2 requirements 10/10 mapped; unmapped 0。
 
 ---
-*Requirements defined: 2026-10-23*
-*Last updated: 2026-10-23 after roadmap creation (traceability filled)*
+*Requirements defined: 2026-10-24 (milestone v2.0, research-driven)*
