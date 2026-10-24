@@ -257,6 +257,20 @@ void main() {
     await p.dispose(); // a second dispose is harmless
   });
 
+  test('audioDevices first read after dispose is already closed', () async {
+    final trackedStreams = player.stateStreamsForTesting.length;
+    await player.dispose();
+    final devices = player.audioDevices;
+    final done = Completer<void>();
+    devices.stream.listen((_) {}, onDone: done.complete);
+    await done.future.timeout(const Duration(seconds: 5));
+    expect(devices.value, isEmpty);
+    expect(player.mpv.isDisposed, isTrue);
+    // The lazy state must stay outside _states: a first post-dispose read
+    // must not register a new stream or start audio-device hotplug monitoring.
+    expect(player.stateStreamsForTesting.length, trackedStreams);
+  });
+
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));
     expect(mpvOptions.map((e) => e.name), containsAll(['hwdec', 'vo']));
