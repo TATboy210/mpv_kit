@@ -188,6 +188,138 @@ void main() {
         },
       );
     });
+
+    test('dispose closes Mpv.events and observer streams', () async {
+      final eventsDone = Completer<void>();
+      final observerDone = Completer<void>();
+      mpv.events.listen((_) {}, onDone: eventsDone.complete);
+      mpv
+          .observeProperty('volume')
+          .listen((_) {}, onDone: observerDone.complete);
+      mpv.dispose();
+      await eventsDone.future.timeout(const Duration(seconds: 5));
+      await observerDone.future.timeout(const Duration(seconds: 5));
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+      expect(mpv.isDisposed, isTrue);
+    });
+
+    test('observeProperty stream listened after dispose fails without native '
+        'access', () async {
+      final stream = mpv.observeProperty('volume');
+      mpv.dispose();
+      final error = Completer<Object>();
+      stream.listen((_) {}, onError: (Object e) => error.complete(e));
+      expect(
+        await error.future.timeout(const Duration(seconds: 5)),
+        isA<StateError>(),
+      );
+    });
+  });
+
+  group('post-dispose guard', () {
+    // Every public member that can reach the native handle must fail with a
+    // catchable StateError after dispose, and none of those rejections may
+    // count as a native entry (that would mean FFI was entered).
+    test('every public Mpv entry point throws StateError without a native '
+        'entry', () {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+
+      final liveEntries = mpv.nativeEntriesForTesting;
+      expect(mpv.getProperty('volume'), isNotNull);
+      expect(
+        mpv.nativeEntriesForTesting,
+        greaterThan(liveEntries),
+        reason: 'the counter must track real handler entries',
+      );
+
+      mpv.dispose();
+      final afterDispose = mpv.nativeEntriesForTesting;
+
+      final calls = <void Function()>[
+        mpv.initialize,
+        () => mpv.clientName,
+        () => mpv.clientId,
+        () => mpv.timeNs,
+        () => mpv.createClient('x'),
+        () => mpv.loadConfigFile('x'),
+        () => mpv.setOptionString('volume', '1'),
+        () => mpv.setOption('volume', 1.0),
+        () => mpv.command(['get-property', 'volume']),
+        () => mpv.commandString('set volume 1'),
+        () => mpv.commandAsync(['get-property', 'volume']),
+        () => mpv.setProperty('volume', 1.0),
+        () => mpv.setPropertyString('volume', '1'),
+        () => mpv.deleteProperty('volume'),
+        () => mpv.getProperty('volume'),
+        () => mpv.tryGetProperty('volume'),
+        () => mpv.getPropertyString('volume'),
+        () => mpv.setPropertyAsync('volume', 1.0),
+        () => mpv.getPropertyAsync('volume'),
+        () => mpv.observeProperty('volume'),
+        () => mpv.getOptionValue(MpvOptions.volume),
+        () => mpv.setOptionValue(MpvOptions.volume, 1.0),
+        () => mpv.registerStreamProtocol('x', (_) => null),
+        () => mpv.requestLogMessages('no'),
+        () => mpv.requestEvent(MpvEventId.tick, enable: false),
+        () => mpv.hookAdd('on_load'),
+        () => mpv.hookContinue(0),
+        mpv.wakeup,
+        mpv.waitAsyncRequests,
+        () => mpv.errorString(0),
+        () => mpv.eventName(0),
+      ];
+
+      for (final call in calls) {
+        expect(call, throwsStateError);
+      }
+      expect(
+        mpv.nativeEntriesForTesting,
+        afterDispose,
+        reason: 'no post-dispose call may count as a native entry',
+      );
+    });
+
+    test('observer stream created before dispose fails on late listen without '
+        'native access', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final stream = mpv.observeProperty('volume');
+      mpv.dispose();
+      final before = mpv.nativeEntriesForTesting;
+
+      final error = Completer<Object>();
+      stream.listen((_) {}, onError: error.complete);
+      expect(
+        await error.future.timeout(const Duration(seconds: 5)),
+        isA<StateError>(),
+      );
+      expect(mpv.nativeEntriesForTesting, before);
+    });
+
+    test('dispose from a synchronous events listener closes events without '
+        'throwing', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final done = Completer<void>();
+      Object? escaped;
+      mpv.events.listen(
+        (_) {
+          try {
+            mpv.dispose();
+          } on Object catch (error) {
+            escaped = error;
+          }
+        },
+        onDone: done.complete,
+      );
+      // Any event starts the synchronous dispatch that re-enters dispose.
+      unawaited(mpv.setPropertyAsync('volume', 42.0).catchError((Object _) {}));
+      await done.future.timeout(const Duration(seconds: 5));
+      expect(escaped, isNull);
+      expect(mpv.isDisposed, isTrue);
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+    });
   });
 
   test('raw bindings remain usable for unwrapped calls', () {

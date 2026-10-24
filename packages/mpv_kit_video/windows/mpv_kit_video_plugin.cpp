@@ -110,6 +110,33 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     if (!args) return result->Error("bad_args", "expected a map");
     const std::string& m = call.method_name();
     if (m == "create") return Create(*args, std::move(result));
+    // Dart reads the real refresh rate of the display the video window is
+    // on: Flutter's Display.refreshRate has long returned 0 on Windows
+    // (flutter/flutter #158721), which silently disables mpv's
+    // display-fps-override and with it every display-* video-sync mode.
+    // Returns 0.0 when the rate cannot be determined (Dart falls back).
+    if (m == "getDisplayRefreshRate") {
+      HWND view = registrar_->GetView()
+                      ? registrar_->GetView()->GetNativeWindow()
+                      : nullptr;
+      HWND root = view ? GetAncestor(view, GA_ROOT) : nullptr;
+      HMONITOR monitor = MonitorFromWindow(
+          root ? root : view, MONITOR_DEFAULTTONEAREST);
+      MONITORINFOEXW info{};
+      info.cbSize = sizeof(info);
+      DEVMODEW dm{};
+      dm.dmSize = sizeof(dm);
+      if (monitor && GetMonitorInfoW(monitor, &info)) {
+        // ENUM_CURRENT_SETTINGS: the mode the display is in right now, so
+        // a window moved onto a 144 Hz screen reports 144, not the primary.
+        if (!EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &dm) ||
+            !(dm.dmFields & DM_DISPLAYFREQUENCY) || dm.dmDisplayFrequency == 0)
+          return result->Success(EncodableValue(0.0));
+        return result->Success(
+            EncodableValue(static_cast<double>(dm.dmDisplayFrequency)));
+      }
+      return result->Success(EncodableValue(0.0));
+    }
     const EncodableValue* id_v = Arg(*args, "textureId");
     auto it = id_v ? instances_.find(ToInt(*id_v)) : instances_.end();
     if (it == instances_.end())
@@ -176,6 +203,9 @@ class MpvKitVideoPlugin : public flutter::Plugin {
         inst->interop.get(),
         [](const std::string& msg) {
           OutputDebugStringA((msg + "\n").c_str());
+          // Also to stderr: `flutter run` attaches it, so the sync-wait
+          // probe lines are visible in the terminal without DebugView.
+          if (stderr) fprintf(stderr, "%s\n", msg.c_str());
         },
         [this, raw](const char* kind, const std::string& msg) {
           PostEvent(raw->texture_id.load(), kind, msg);

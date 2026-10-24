@@ -55,10 +55,15 @@ class VulkanContext {
   /// Creates instance + device. On failure [error] explains why.
   bool Init(std::string* error);
 
-  /// (Re)allocates [count] images of the given size. The previous ring is
-  /// kept (retired) until FreeRetired() or the next reallocation, so its
-  /// last frame can stay on screen meanwhile. Waits for the GPU.
-  bool AllocateRing(int count, int width, int height, std::string* error);
+  /// (Re)allocates [count] images of the given size. Only the old
+  /// generation's front image ([keep_retired], may be null) survives into
+  /// retirement — its platform texture must stay valid while the compositor
+  /// may still sample it; the rest of the old generation is destroyed at
+  /// once (retiring everything would pin count×w×h×4 bytes of VRAM — at 8K
+  /// that is ~930 MB for nothing). Each destroyed image is awaited on its
+  /// own last timeline value, not with a device-wide vkDeviceWaitIdle.
+  bool AllocateRing(int count, int width, int height,
+                    SharedImage* keep_retired, std::string* error);
   void FreeRing();
   void FreeRetired();
 

@@ -17,7 +17,9 @@ env:
   MESON_ARGS: >-
     -Dlibmpv=true -Dcplayer=false -Dgpl=false
     -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
-    -Drubberband=disabled -Dtests=false --buildtype=release -Db_lundef=true
+    -Drubberband=disabled -Dtests=false
+    -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled
+    --buildtype=release -Db_lundef=true
 
 jobs:
   linux:
@@ -32,13 +34,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gcc \
+            meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils \
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
-            libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
           meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
           meson compile -C out
@@ -50,8 +64,8 @@ jobs:
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: render_vk smoke test (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           vulkaninfo --summary || true
           meson setup tests-out native/tests
@@ -60,6 +74,8 @@ jobs:
       - name: Dart tests (mpv_kit, mpv_kit_libs)
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
+          # libmpv.so dlopens the deps.sh-built libplacebo/dav1d at load time.
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
@@ -68,7 +84,75 @@ jobs:
           cd packages/mpv_kit && dart analyze --fatal-infos
           dart pub global run coverage:test_with_coverage
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
-          cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
+          # The `lifecycle` tag is skipped by default in dart_test.yaml, so the
+          # concurrent coverage run above never executes the soak. The explicit
+          # file-scoped invocation below loads only lifecycle_test.dart, so no
+          # other suite's tests execute in that invocation and the process-wide
+          # RSS delta contains no other suite's allocations.
+          #
+          # `--run-skipped` is load-bearing: without it the same invocation
+          # reports "All tests skipped" and still exits 0, so dropping the flag
+          # would leave this job green with zero soak cycles. Only a missing or
+          # uncollected suite exits non-zero.
+          dart test -t failure-injection
+          dart test test/lifecycle_test.dart -t lifecycle --run-skipped
+          cd ../mpv_kit_libs && dart analyze --fatal-infos
+          dart pub global run coverage:test_with_coverage
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_libs line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
+
+      # The Flutter coverage job consumes this artifact instead of rebuilding
+      # libmpv: one build, one provenance (BUILD-01 direction). deps/lib is
+      # included because libmpv.so.2 dlopens the deps.sh-built libplacebo and
+      # dav1d from it at load time.
+      - name: Stage libmpv for the Flutter coverage job
+        run: |
+          mkdir -p stage/lib stage/deps
+          cp -r prefix/lib/. stage/lib/
+          cp -r deps/lib/. stage/deps/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-linux-${{ matrix.runner }}
+          path: stage
+          retention-days: 14
+
+  # VERIFY-04: line-coverage gate for mpv_kit_video. Its channel tests are
+  # skip-guarded on a real libmpv, so the job downloads the linux job's build
+  # instead of running them skipped; below 80% the job fails.
+  flutter-video-coverage:
+    needs: [linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # libmpv.so.2 resolves its FFmpeg/libass/Vulkan/EGL dependencies from
+      # the distro; the -dev packages carry the same runtime .so ABI the
+      # linux job builds against.
+      - name: Install libmpv runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: libmpv-verify-linux-ubuntu-24.04
+          path: stage
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: mpv_kit_video coverage gate (80%)
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          LD_LIBRARY_PATH: ${{ github.workspace }}/stage/lib:${{ github.workspace }}/stage/deps
+        run: |
+          cd packages/mpv_kit_video
+          flutter test --coverage
+          flutter analyze --fatal-infos
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_video line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
@@ -79,18 +163,30 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv (debug, ASan + UBSan)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
           meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib
           meson compile -C out
           meson install -C out
       - name: Native tests under sanitizers (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |

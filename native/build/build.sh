@@ -60,6 +60,9 @@ bash "$here/ffmpeg.sh" "$prefix" ${ffmpeg_args[@]+"${ffmpeg_args[@]}"}
 # NULL function pointer at run time instead of a link error.
 build=${MPV_BUILDDIR:-$PWD/.mpv-build}
 rm -rf "$build"
+# mpv 0.41.0-1113 (master) additions: keep everything optional explicit,
+# and the LGPL bundle free of new dependencies (amf FRC filter, dvdnav's
+# sibling dvda, the libcurl stream backend, the subrandr subtitle renderer).
 meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
   --buildtype=release -Db_ndebug=false -Db_lundef=true --wrap-mode=nodownload \
   -Dlibmpv=true -Dcplayer=false -Dtests=false -Dgpl=false \
@@ -72,6 +75,7 @@ meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
   -Dsdl2-gamepad=disabled -Dopenal=disabled -Djack=disabled -Dsixel=disabled \
   -Dcaca=disabled -Dlibavdevice=enabled -Dshaderc=disabled \
   -Dspirv-cross=disabled \
+  -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled \
   ${mpv_args[@]+"${mpv_args[@]}"}
 # -Dvulkan=enabled only makes the dependency lookup mandatory; mpv's
 # extra header check can still disable the feature without an error.

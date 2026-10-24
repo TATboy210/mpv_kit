@@ -1,0 +1,43 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Player Lifetime & Dispose Safety",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Video Controller Lifecycle & Resize Safety",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Error Surfacing",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Measured Performance & UHD Endurance",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Build Provenance & Repository Hygiene",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Cross-Platform Verification",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step (plan phase 3)",
+    "reason": "Phase 3 of 6 — needs a plan"
+  },
+  "updated_at": "2026-10-24T12:30:00.000Z"
+}

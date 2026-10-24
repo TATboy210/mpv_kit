@@ -177,6 +177,16 @@ class VideoRenderer {
   static constexpr std::chrono::milliseconds kMinBackoff{100};
   static constexpr std::chrono::milliseconds kMaxBackoff{5000};
   int failures_ = 0;
+
+  // Sync-wait probe: rolling stats of the two per-frame CPU waits on the
+  // GPU timeline (RenderOnce). Aggregated over kProbeWindow frames and
+  // emitted via log_ — the numbers decide whether the second (post-render)
+  // wait is worth replacing with a keyed-mutex handoff.
+  static constexpr int kProbeWindow = 120;
+  int probe_frames_ = 0;
+  double probe_wait_prev_ms_ = 0;  // wait before writing the ring image
+  double probe_wait_done_ms_ = 0;  // wait after mpv finished rendering
+  double probe_wait_done_max_ms_ = 0;
   std::chrono::steady_clock::time_point retry_at_{};
   bool device_lost_ = false;
 
@@ -202,6 +212,13 @@ class VideoRenderer {
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
+  // Rendered into but not yet waited on (Vulkan only). Published — i.e.
+  // copied into front_ behind the per-frame GPU-finish wait — at the start
+  // of the next RenderOnce, giving the pipeline depth 2: the GPU renders
+  // frame N while the render thread schedules N+1, instead of sleeping on
+  // the CPU right after each render call. The publish gate is unchanged:
+  // nothing becomes visible before its GPU work completed.
+  int pending_front_ = -1;
   int in_use_ = -1;                     // frame the compositor holds
   int quarantine_[kMaxQuarantine] = {-1, -1, -1, -1};  // newest first
   // After a reallocation the previous generation's last frame stays on

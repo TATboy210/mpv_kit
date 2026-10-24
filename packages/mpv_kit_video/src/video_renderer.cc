@@ -261,7 +261,10 @@ int VideoRenderer::PickBackBuffer() {
     for (int q = 0; q < quarantine_count_; q++) busy = busy || i == quarantine_[q];
     if (!busy) return i;
   }
-  return 0;  // unreachable: ring_size_ leaves one image free
+  return 0;  // unreachable: ring_size_ leaves one image free. The frame
+             // rendered last round needs no exclusion: the publish gate at
+             // the top of RenderOnce has already moved it into front_ (and
+             // cleared pending_front_) before this runs.
 }
 
 void VideoRenderer::FreeRetiredIfDone() {
@@ -405,8 +408,67 @@ void VideoRenderer::SkipFrame() {
 }
 
 VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
+  // Publish the frame rendered last round now that its slot must be
+  // finished: the post-render wait lives here (not right after the render
+  // call) so the GPU works on this round's frame while we wait for the
+  // previous one. Vulkan only — software rendering is synchronous already.
+  if (backend_ == Backend::kVulkan && pending_front_ >= 0) {
+    const auto wait_done_begin = std::chrono::steady_clock::now();
+    const VkResult done = vulkan_->WaitImage(pending_front_);
+    const double wait_done_ms = std::chrono::duration<double, std::milli>(
+                                    std::chrono::steady_clock::now() -
+                                    wait_done_begin)
+                                    .count();
+    probe_wait_done_ms_ += wait_done_ms;
+    probe_wait_done_max_ms_ = std::max(probe_wait_done_max_ms_, wait_done_ms);
+    // One aggregated line per probe window: avg publish wait per frame
+    // plus the worst single wait, to size the serialisation tax.
+    if (++probe_frames_ >= kProbeWindow) {
+      log_("mpv_kit: render waits avg/over " + std::to_string(probe_frames_) +
+           " frames: prev=" +
+           std::to_string(probe_wait_prev_ms_ / probe_frames_) + "ms done=" +
+           std::to_string(probe_wait_done_ms_ / probe_frames_) + "ms max_done=" +
+           std::to_string(probe_wait_done_max_ms_) + "ms");
+      probe_frames_ = 0;
+      probe_wait_prev_ms_ = 0;
+      probe_wait_done_ms_ = 0;
+      probe_wait_done_max_ms_ = 0;
+    }
+    if (done != VK_SUCCESS) {
+      pending_front_ = -1;
+      // The frame is consumed either way: keep vo_libmpv's counts moving.
+      api_.render_context_report_swap(render_ctx_);
+      *error = done == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
+      return done == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
+                                          : RenderResult::kFailed;
+    }
+    int swaps = 0;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      front_ = pending_front_;
+      pending_front_ = -1;
+      // First frame of a new generation: the retired one may go once the
+      // compositor has moved past it (same rule as the quarantine).
+      if (retired_countdown_ < 0 &&
+          (retired_front_.platform || retired_front_.pixels))
+        retired_countdown_ = quarantine_count_ + 1;
+      // The previous frame was never displayed: it still counts as swapped.
+      if (swap_pending_) swaps++;
+      const bool consuming = std::chrono::steady_clock::now() - last_acquire_ <
+                             kPresentTimeout;
+      swap_pending_ = consuming;
+      if (!consuming) swaps++;
+    }
+    for (int i = 0; i < swaps; i++)
+      api_.render_context_report_swap(render_ctx_);
+    interop_->FrameReady();
+  }
+
   int w, h, back;
   bool failed_before_render = false;
+  // Old generation's front slot, valid across the realloc below: the one
+  // image whose Vulkan side survives into retirement.
+  int keep_front = -1;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     w = width_;
@@ -415,6 +477,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       // Old images are about to be retired; their last frame stays on
       // screen until a new one exists.
       if (front_ >= 0) {
+        keep_front = front_;
         retired_front_ = Frame{};
         retired_front_.index = -2;  // never equal to a ring index
         retired_front_.width = ring_w_;
@@ -437,10 +500,28 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       // Under the lock: AcquireFront() must never observe a half-built ring.
       std::lock_guard<std::mutex> lock(mutex_);
       if (backend_ == Backend::kVulkan) {
-        if (!vulkan_->AllocateRing(ring_size_, w, h, error)) {
-          ring_w_ = ring_h_ = 0;
-          retired_front_ = Frame{};  // AllocateRing freed everything
-          failed_before_render = true;
+        // The compositor may still sample the front frame: only that ring
+        // slot survives into retirement, the rest is freed at once.
+        SharedImage* keep =
+            keep_front >= 0 ? &vulkan_->ring()[keep_front] : nullptr;
+        if (!vulkan_->AllocateRing(ring_size_, w, h, keep, error)) {
+          // 8K on a small GPU: the full ring may not fit. One retry with
+          // the smallest ring whose quarantine (2) still respects the
+          // documented tearing constraint beats dropping to software.
+          const int fallback_quarantine = 2;
+          const int fallback_ring = fallback_quarantine + 3;
+          if (ring_size_ > fallback_ring &&
+              vulkan_->AllocateRing(fallback_ring, w, h, keep, error)) {
+            ring_size_ = fallback_ring;
+            quarantine_count_ = fallback_quarantine;
+            log_("mpv_kit: shared-image allocation failed at ring " +
+                 std::to_string(ring_size_) + ", retried with a ring of " +
+                 std::to_string(fallback_ring));
+          } else {
+            ring_w_ = ring_h_ = 0;
+            retired_front_ = Frame{};  // AllocateRing freed everything
+            failed_before_render = true;
+          }
         }
       } else {
         sw_retired_ = std::move(sw_buffers_);
@@ -462,7 +543,11 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   if (backend_ == Backend::kVulkan) {
     SharedImage& img = vulkan_->ring()[back];
     // Previous use of this image must be finished before we write to it.
+    const auto wait_prev_begin = std::chrono::steady_clock::now();
     const VkResult prev = vulkan_->WaitImage(back);
+    probe_wait_prev_ms_ +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - wait_prev_begin)
+            .count();
     if (prev != VK_SUCCESS) {
       SkipFrame();
       *error = prev == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
@@ -493,16 +578,11 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     err = api_.render_context_render(render_ctx_, params);
     // Only a successful render transitions the image out of UNDEFINED.
     if (err >= 0) img.initialized = true;
-    if (err >= 0) {
-      // The compositor reads without GPU sync, so complete the frame first.
-      const VkResult done = vulkan_->WaitImage(back);
-      if (done != VK_SUCCESS) {
-        api_.render_context_report_swap(render_ctx_);  // frame consumed
-        *error = done == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
-        return done == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
-                                            : RenderResult::kFailed;
-      }
-    }
+    // The compositor reads without GPU sync, so the frame must be finished
+    // before it becomes visible — but that wait happens at the publish
+    // gate at the top of the next round: the GPU renders this frame while
+    // the render thread schedules the next one (pipeline depth 2).
+    if (err >= 0) pending_front_ = back;
   } else {
     int size[2] = {w, h};
     size_t stride = size_t(w) * 4;
@@ -526,6 +606,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     api_.render_context_report_swap(render_ctx_);
     return RenderResult::kFailed;
   }
+  // Software frames are complete as soon as the CPU render returned —
+  // publish them right away. Vulkan frames go through the publish gate at
+  // the top of the next round instead.
   int swaps = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);

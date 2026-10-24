@@ -35,7 +35,9 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   final player = Player(options: {
     // Vulkan Video decoding where available, else the safe platform default.
-    'hwdec': 'vulkan,auto-safe',
+    'hwdec': 'vulkan,d3d11va-copy,auto-safe',
+    // video-sync 用 Player 默认(audio):display-* 的相位调度与渲染桥
+    // 异步发布链不合拍,实测积压 603 帧,见 Player 的 doc 注释。
     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
     // click a forcibly killed audio stream makes in the speakers).
     'ao': ?Platform.environment['MPV_KIT_EXAMPLE_AO'],
@@ -80,6 +82,13 @@ class _PlayerPageState extends State<PlayerPage> {
   void _stats() {
     final m = player.mpv;
     String p(String name) => '${m.tryGetProperty(name) ?? '-'}';
+    final line = 'hwdec=${p('hwdec-current')} size=${p('width')}x${p('height')} '
+        'fps=${p('container-fps')} display-fps=${p('display-fps')} '
+        'vsync=${p('video-sync')} dropped=${p('frame-drop-count')} '
+        'dec-drop=${p('decoder-frame-drop-count')} '
+        'delayed=${p('vo-delayed-frame-count')} '
+        'avdiff=${p('avsync')}';
+    debugPrint(line);
     setState(() {
       stats = 'backend ${video?.backend.name} (${video?.reason})\n'
           'hwdec ${p('hwdec-current')}  codec ${p('video-codec')}\n'
@@ -149,20 +158,12 @@ class _Controls extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: StreamBuilder<Duration>(
-              stream: player.position.stream,
-              builder: (_, _) {
-                final d = player.duration.value.inMilliseconds;
-                final p = player.position.value.inMilliseconds;
-                return Slider(
-                  value: d == 0 ? 0 : (p / d).clamp(0, 1).toDouble(),
-                  onChanged: d == 0
-                      ? null
-                      : (x) => unawaited(player
-                          .seek(Duration(milliseconds: (x * d).round()))),
-                );
-              },
-            ),
+            // Not a StreamBuilder on position: the position stream ticks at
+            // frame rate (throttled to 100ms in Player), and a rebuild per
+            // tick is UI churn next to a 4K decode. A 250 ms timer reads
+            // the current value — 4 rebuilds/s is plenty smooth for a
+            // seekbar and keeps the example copy-paste-safe.
+            child: _PositionSlider(player: player),
           ),
           SizedBox(
             width: 360,
@@ -174,4 +175,46 @@ class _Controls extends StatelessWidget {
           ),
         ]),
       );
+}
+
+/// Seekbar driven by a 250 ms timer instead of a per-tick stream rebuild
+/// (see the comment at the call site).
+class _PositionSlider extends StatefulWidget {
+  const _PositionSlider({required this.player});
+
+  final Player player;
+
+  @override
+  State<_PositionSlider> createState() => _PositionSliderState();
+}
+
+class _PositionSliderState extends State<_PositionSlider> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.player.duration.value.inMilliseconds;
+    final p = widget.player.position.value.inMilliseconds;
+    return Slider(
+      value: d == 0 ? 0 : (p / d).clamp(0, 1).toDouble(),
+      onChanged: d == 0
+          ? null
+          : (x) => unawaited(
+              widget.player.seek(Duration(milliseconds: (x * d).round()))),
+    );
+  }
 }

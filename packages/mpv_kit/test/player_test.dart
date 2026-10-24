@@ -233,6 +233,96 @@ void main() {
     await p.dispose(); // idempotent
   });
 
+  test('throwing dispose hook still destroys the core and closes all '
+      'streams', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    // A failing assertion must not leak the native core — and with it the
+    // wakeup listener that keeps the isolate alive — for the rest of the run.
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    final sentinel = StateError('dispose hook exploded');
+    Future<void> hook() async => throw sentinel;
+    final positionDone = Completer<void>();
+    final decodeWarningDone = Completer<void>();
+    p.position.stream.listen((_) {}, onDone: positionDone.complete);
+    p.decodeWarning.stream.listen((_) {}, onDone: decodeWarningDone.complete);
+    p.addDisposeHook(hook);
+    // The hook error is surfaced unchanged...
+    await expectLater(p.dispose(), throwsA(same(sentinel)));
+    // ...but every teardown step still ran.
+    expect(p.mpv.isDisposed, isTrue);
+    await positionDone.future.timeout(const Duration(seconds: 5));
+    await decodeWarningDone.future.timeout(const Duration(seconds: 5));
+    await p.dispose(); // a second dispose is harmless
+  });
+
+  test('concurrent dispose runs teardown once and shares the outcome',
+      () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    var hookRuns = 0;
+    p.addDisposeHook(() async {
+      hookRuns++;
+      // A slow stage: the second caller must wait for it, not return early.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    final f1 = p.dispose();
+    final f2 = p.dispose();
+    await f2.timeout(const Duration(seconds: 5));
+    // The second caller shares the teardown: by the time it completes, the
+    // whole teardown (including the slow hook) has run.
+    expect(hookRuns, 1);
+    expect(p.mpv.isDisposed, isTrue);
+    await f1.timeout(const Duration(seconds: 5));
+    expect(p.mpv.isDisposed, isTrue);
+    await p.dispose(); // cached future replays harmlessly
+  });
+
+  test('concurrent dispose surfaces the same error to both callers', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    final sentinel = StateError('dispose hook exploded');
+    p.addDisposeHook(() async => throw sentinel);
+    final f1 = p.dispose();
+    final f2 = p.dispose();
+    await expectLater(f1, throwsA(same(sentinel)));
+    await expectLater(f2, throwsA(same(sentinel)));
+  });
+
+  test('reentrant dispose from a hook does not deadlock', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    var hookRuns = 0;
+    p.addDisposeHook(() async {
+      hookRuns++;
+      unawaited(p.dispose()); // must return immediately, not await itself
+    });
+    await p.dispose().timeout(const Duration(seconds: 5));
+    expect(hookRuns, 1);
+    expect(p.mpv.isDisposed, isTrue);
+  });
+
+  test('audioDevices first read after dispose is already closed', () async {
+    final trackedStreams = player.stateStreamsForTesting.length;
+    await player.dispose();
+    final devices = player.audioDevices;
+    final done = Completer<void>();
+    devices.stream.listen((_) {}, onDone: done.complete);
+    await done.future.timeout(const Duration(seconds: 5));
+    expect(devices.value, isEmpty);
+    expect(player.mpv.isDisposed, isTrue);
+    // The lazy state must stay outside _states: a first post-dispose read
+    // must not register a new stream or start audio-device hotplug monitoring.
+    expect(player.stateStreamsForTesting.length, trackedStreams);
+  });
+
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));
     expect(mpvOptions.map((e) => e.name), containsAll(['hwdec', 'vo']));

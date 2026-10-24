@@ -7,6 +7,8 @@ library;
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import '../core/errors.dart';
 import '../core/events.dart';
 import '../core/mpv.dart';
@@ -27,7 +29,9 @@ final class MpvState<T> {
   Stream<T> get stream => _controller.stream;
 
   void _set(T v) {
-    if (v == _value) return;
+    // A late `ShutdownEvent` (or a dispose-ordering race) must not add to a
+    // closed controller: that throws into the event loop.
+    if (_controller.isClosed || v == _value) return;
     _value = v;
     _controller.add(v);
   }
@@ -46,8 +50,35 @@ final class MpvState<T> {
 final class Player {
   /// 创建播放器。[options] 在 `mpv_initialize` 前生效（如 `hwdec`、`vo`）。
   ///
-  /// Defaults: `vo=libmpv` (rendered by mpv_kit_video), `hwdec=auto-safe`,
+  /// Defaults: `vo=libmpv` (rendered by mpv_kit_video), `hwdec=vulkan,auto-safe`,
   /// `keep-open=yes` (stay on the last frame at EOF), `idle=yes`.
+  ///
+  /// `hwdec` 首选 `vulkan`（Vulkan Video 零拷贝解码，4K 60fps 无每帧
+  /// GPU→CPU 拷贝）。Vulkan Video 是 Turing/RDNA2 起的驱动特性：
+  /// GTX 960 这类老卡上它会失败，此时落到 `d3d11va-copy` —— NVDEC/
+  /// UVD 仍在硬件解码，只是解出的帧拷到系统内存再交给 gpu-next
+  /// （每帧 ~12MB 往返，4K30 下 ~370MB/s，远小于软解的 CPU 开销）。
+  /// 没有这档，interop 不匹配会让 mpv 静默落回纯软解，4K 必卡。
+  /// 最后 `auto-safe` 兜底（无硬解能力时交回 mpv 的保守选择）。
+  ///
+  /// 其余默认项面向 4K/8K 满帧播放（各项含义见行内注释），全部可被
+  /// [options] 覆盖：
+  /// - `video-sync=audio`（mpv 默认，显式固定）：实测对照中 display-*
+  ///   模式与渲染桥的异步发布链不合拍——mpv 按显示相位等 flip，而
+  ///   report_swap 由 Flutter 合成器的节奏驱动，两拍对不齐时帧全部
+  ///   积压（4060 上 20 秒积压 603 帧）。audio 时钟调度没有这个相位
+  ///   约束，同机实测 delayed=0、avdiff 微秒级。display-* 要可用需要
+  ///   渲染桥按 display 相位回报 vsync（未来项）。
+  /// - `video-timing-offset=0.02`：audio 同步模式的兜底保障——默认
+  ///   0.05 会让 render API 客户端被限到 ~20fps（mpv 文档明说）。
+  /// - 缓存组：100Mbps（≈12.5MB/s）4K 源默认 150MB 缓冲只有 12 秒，
+  ///   放大到 400MB/100MB 回看；`hysteresis-bytes` 治高码率的读停-读停
+  ///   抖动；`stream-buffer-size` 从 128KB 提到 4M 减少 IO 粒度。
+  /// - `hwdec-extra-frames=6`：auto 恒等于 6（不开插帧时），显式固定
+  ///   免受 req_frames 推导影响，4K HEVC/AV1 池稳定。
+  /// - `dither=no` / `hdr-compute-peak=no`：目标固定是 SDR 8bit 纹理，
+  ///   8bit 蓝噪声抖动视觉无损、HDR peak 检测 pass 无意义（HDR→SDR
+  ///   tone-map 仍照做，只是省掉逐帧峰值统计）。
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
@@ -56,10 +87,21 @@ final class Player {
       libraryPath: libraryPath,
       options: {
         'vo': 'libmpv',
-        'hwdec': 'auto-safe',
+        'hwdec': 'vulkan,d3d11va-copy,auto-safe',
         'keep-open': 'yes',
         'idle': 'yes',
         'terminal': 'no',
+        // --- 4K/8K 满帧参数包（见上方 doc 注释） ---
+        'video-sync': 'audio',
+        'video-timing-offset': '0.02',
+        'demuxer-max-bytes': '400MiB',
+        'demuxer-max-back-bytes': '100MiB',
+        'demuxer-hysteresis-bytes': '32MiB',
+        'stream-buffer-size': '4MiB',
+        'hwdec-extra-frames': '6',
+        'dither': 'no',
+        'hdr-compute-peak': 'no',
+        'deband': 'no',
         ...options,
       },
     );
@@ -76,7 +118,19 @@ final class Player {
     _bind('paused-for-cache', buffering, (v) => v == true);
     _bind('cache-buffering-state', bufferingPercent, (v) => nodeInt(v) ?? 0);
     _bind('seeking', seeking, (v) => v == true);
-    _bind('time-pos', position, (v) => secondsToDuration(v) ?? Duration.zero);
+    // `time-pos` 按渲染帧粒度通知（60Hz 片源即 60 事件/秒），每个事件
+    // 都要 node 解码 + broadcast；UI 进度条不需要帧级精度——100ms 节流，
+    // 位移 >250ms（seek/拖动）时直通保持跟手。其余 state 保持即时。
+    var lastPosEmitMs = 0;
+    _subs.add(mpv.observeProperty('time-pos').listen((v) {
+      final d = secondsToDuration(v) ?? Duration.zero;
+      final ms = DateTime.now().millisecondsSinceEpoch;
+      final jumped =
+          (d - position._value).abs() > const Duration(milliseconds: 250);
+      if (!jumped && ms - lastPosEmitMs < 100) return;
+      lastPosEmitMs = ms;
+      position._set(d);
+    }));
     _bind('duration', duration, (v) => secondsToDuration(v) ?? Duration.zero);
     _bind(
       'demuxer-cache-duration',
@@ -141,6 +195,15 @@ final class Player {
       (v) => v is Map<String, Object?> ? MpvAudioParams.fromNode(v) : null,
     );
     _bind('audio-device', audioDevice, (v) => v as String? ?? 'auto');
+    // 两个来源任一变化都要重算告警（新文件装载/硬解建立/失败回退）。
+    _subs.add(videoParams.stream.listen((_) => _updateDecodeWarning()));
+    _subs.add(hwdecCurrent.stream.listen((_) => _updateDecodeWarning()));
+    // `position`（自定义节流解析）与 `decodeWarning`（派生状态）不走
+    // `_bind`，但同样必须在 dispose/ShutdownEvent 时被关闭/重置——
+    // 未登记的状态流永远收不到 `done`，是确认的生命周期缺陷。
+    _states
+      ..add(position)
+      ..add(decodeWarning);
     _subs.add(mpv.events.listen(_onEvent));
   }
 
@@ -251,6 +314,13 @@ final class Player {
   /// 实际生效的硬解后端（如 `vulkan`、`d3d11va`），软解时为 null/`no`。
   final hwdecCurrent = MpvState<String?>._(null);
 
+  /// 静默软解告警：>1080p 的视频却没走硬件解码时给出一条人话说明，
+  /// 否则 null。Vulkan render context 只能消费 Vulkan hwdec 的帧，
+  /// `auto-safe` 尾巴（d3d11va/vaapi…）与它 interop 不匹配时 mpv 初始化
+  /// hwdec 失败会**静默**回退软解——4K 吃力、8K 无解，默认只在 mpv 日志
+  /// 里可见；这条状态把它变成可观察的。
+  final decodeWarning = MpvState<String?>._(null);
+
   /// Absolute position up to which the demuxer has cached data
   /// (`demuxer-cache-time`); zero when nothing is cached.
   final bufferedPosition = MpvState<Duration>._(Duration.zero);
@@ -272,7 +342,12 @@ final class Player {
   /// picker should not pay for.
   late final MpvState<List<MpvAudioDevice>> audioDevices = () {
     final state = MpvState<List<MpvAudioDevice>>._(const []);
-    if (_disposed) return state;
+    if (_disposed) {
+      // A first read after teardown hands out a state that no dispose pass
+      // can reach (it is never registered in _states), so close it here.
+      unawaited(state._close());
+      return state;
+    }
     _bind(
       'audio-device-list',
       state,
@@ -557,42 +632,122 @@ final class Player {
       _disposeHooks.remove(hook);
 
   /// 释放 mpv 与全部状态流。Idempotent.
-  Future<void> dispose() async {
-    if (_disposed) return;
-    _disposed = true;
-    // Copy: hooks remove themselves while running.
-    for (final hook in List.of(_disposeHooks)) {
-      await hook();
-    }
-    _disposeHooks.clear();
-    for (final s in _subs) {
-      await s.cancel();
-    }
-    mpv.dispose();
-    await _errors.close();
-    await _logs.close();
-    for (final s in _states) {
-      await s._close();
+  ///
+  /// 并发调用共享同一个 teardown future（IN-05）：每个调用方都观察到同一
+  /// 结果——包括 hook 抛错时的同一个错误对象。teardown 结束后，它的错误
+  /// 已经抛给参与竞速的调用方，之后的幂等调用正常完成。从 teardown 内部
+  /// （hook 或事件监听器里）重入的调用拿到的是同一个共享 future：不要
+  /// await 它——teardown 正在等待那个 hook,await 自己会死锁（Phase 1 固化
+  /// 的重入模式是 `unawaited(dispose())`,不受影响）。各阶段相互隔离：某个
+  /// dispose hook、订阅取消或流关闭抛错时，后续阶段仍然执行，原生核心
+  /// （`mpv_terminate_destroy`）一定会被销毁。全部阶段跑完后才把收集到的
+  /// 错误抛给调用方：单个错误原样重抛，多个错误合并为 [StateError]。
+  Future<void> dispose() {
+    final inFlight = _disposeFuture;
+    if (inFlight == null) return _disposeFuture = _dispose();
+    return _disposeDone ? Future<void>.value() : inFlight;
+  }
+
+  Future<void>? _disposeFuture;
+  var _disposeDone = false;
+
+  Future<void> _dispose() async {
+    try {
+      if (_disposed) return;
+      _disposed = true;
+      final errors = <Object>[];
+      Future<void> stage(Future<void> Function() body) async {
+        try {
+          await body();
+        } on Object catch (error) {
+          errors.add(error);
+        }
+      }
+
+      // Copy: hooks may remove themselves while running.
+      final hooks = List.of(_disposeHooks);
+      _disposeHooks.clear();
+      for (final hook in hooks) {
+        // A render context hook must still free the context before the core,
+        // so hooks stay first even though they are individually isolated.
+        await stage(hook);
+      }
+      for (final s in _subs) {
+        await stage(s.cancel);
+      }
+      await stage(() async {
+        mpv.dispose();
+      });
+      await stage(_errors.close);
+      await stage(_logs.close);
+      // Registered states — including position/decodeWarning — close here, so
+      // every listener receives `done`.
+      for (final state in _states) {
+        await stage(state._close);
+      }
+      if (errors.isEmpty) return;
+      if (errors.length == 1) throw errors.single;
+      throw StateError(
+        'Player.dispose() failed in ${errors.length} teardown stages:\n'
+        '${errors.map((error) => '  $error').join('\n')}',
+      );
+    } finally {
+      _disposeDone = true;
     }
   }
 
   // --- Internals ---------------------------------------------------------
+
+  /// Every state stream this player owns.
+  ///
+  /// Test seam: proves teardown closes every controller, including the ones
+  /// not created through the standard property-binding path.
+  @visibleForTesting
+  Iterable<Stream<Object?>> get stateStreamsForTesting =>
+      _states.map((state) => state.stream);
 
   void _bind<T>(String name, MpvState<T> state, T Function(Object?) parse) {
     _states.add(state);
     _subs.add(mpv.observeProperty(name).listen((v) => state._set(parse(v))));
   }
 
+  /// 按当前 video-params 与 hwdec-current 重算 [decodeWarning]。
+  ///
+  /// 阈值取 1920×1088（1080p 按 16 对齐后的宏块高度）：软解兜得住的
+  /// 上限；超过且没走硬解（`hwdec-current` 为 null/`no`）才告警。
+  /// 无视频时清空告警（音频-only 文件不算异常）。
+  void _updateDecodeWarning() {
+    final params = videoParams.value;
+    if (params == null ||
+        (params.width ?? 0) * (params.height ?? 0) <= 1920 * 1088) {
+      decodeWarning._set(null);
+      return;
+    }
+    final hz = hwdecCurrent.value;
+    if (hz != null && hz != 'no') {
+      decodeWarning._set(null);
+      return;
+    }
+    decodeWarning._set(
+      '${params.width}×${params.height} 软解播放（hwdec=${hz ?? 'no'}）：'
+      '该驱动未建立 Vulkan Video 硬解，4K 可能掉帧、8K 无法满帧',
+    );
+  }
+
   void _onEvent(MpvEventData e) {
     switch (e) {
       case EndFileEvent(reason: EndFileReason.error):
-        _errors.add(
-          MpvPlaybackError(
-            error: MpvError.fromCode(e.fileError),
-            message: mpv.errorString(e.fileError),
-            playlistEntryId: e.playlistEntryId,
-          ),
-        );
+        // Same late-event guard as the logs branch below: teardown may have
+        // closed the controller while this event was still draining.
+        if (!_errors.isClosed) {
+          _errors.add(
+            MpvPlaybackError(
+              error: MpvError.fromCode(e.fileError),
+              message: mpv.errorString(e.fileError),
+              playlistEntryId: e.playlistEntryId,
+            ),
+          );
+        }
       case LogMessageEvent():
         if (!_logs.isClosed) _logs.add(e);
       case ShutdownEvent():

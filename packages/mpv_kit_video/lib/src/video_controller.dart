@@ -71,6 +71,12 @@ enum MpvVideoEventKind {
   /// [MpvVideoRenderer.software]).
   deviceLost,
 
+  /// Dart-side warning: rendering fell back to software ([reason] says
+  /// why). Every frame is a full CPU render plus buffer copies — 4K+ is
+  /// not viable on this path. Not produced by the native plugin; emitted
+  /// once at create time when the backend resolved to software.
+  softwareFallback,
+
   /// A kind this version does not know (newer plugin).
   unknown;
 
@@ -165,28 +171,107 @@ final class MpvVideoController {
       'symbols': [for (final s in _symbols) lib.lookup<Void>(s).address],
       'renderer': requested.wireName,
     });
-    if (result == null) {
-      throw PlatformException(code: 'render_init', message: 'no result');
+    final textureId = result?['textureId'];
+    final backendName = result?['backend'];
+    final reason = result?['reason'];
+    // Validate before trusting the response: a malformed or newer plugin
+    // response must surface as PlatformException (STAB-04), never as a
+    // TypeError — and a garbage `backend` is a protocol break, not a reason
+    // to silently downgrade to software.
+    if (textureId is! int ||
+        backendName is! String ||
+        (backendName != 'vulkan' && backendName != 'software') ||
+        (reason != null && reason is! String)) {
+      // The native context already exists. Release it when the response
+      // named a texture; without a usable textureId there is no handle to
+      // free it with, so it lives until process exit (protocol break).
+      if (textureId is int) await _release(textureId);
+      throw PlatformException(
+        code: 'render_init',
+        message: 'malformed create result',
+        details: 'textureId: ${textureId.runtimeType}, '
+            'backend: ${backendName.runtimeType}, '
+            'reason: ${reason.runtimeType}',
+      );
     }
     final controller = MpvVideoController._(
       player,
-      result['textureId']! as int,
-      result['backend'] == 'vulkan'
+      textureId,
+      backendName == 'vulkan'
           ? MpvVideoBackend.vulkan
           : MpvVideoBackend.software,
-      result['reason'] as String? ?? '',
+      reason is String ? reason : '',
     );
-    _live[controller.textureId] = controller;
-    player.addDisposeHook(controller.dispose);
-    final displays = PlatformDispatcher.instance.displays;
-    controller.syncDisplayRefreshRate(
-      displays.isEmpty ? 0 : displays.first.refreshRate,
-    );
-    debugPrint(
-      'mpv_kit_video: ${controller.backend.name} '
-      '(${controller.reason})',
-    );
-    return controller;
+    try {
+      _live[textureId] = controller;
+      player.addDisposeHook(controller.dispose);
+      await controller._syncInitialRefreshRate();
+      debugPrint(
+        'mpv_kit_video: ${controller.backend.name} '
+        '(${controller.reason})',
+      );
+      // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
+      // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
+      // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
+      if (controller.backend == MpvVideoBackend.software) {
+        controller._onEvent(
+          MpvVideoEvent(
+            MpvVideoEventKind.softwareFallback,
+            controller.reason.isEmpty
+                ? 'rendering in software'
+                : 'rendering in software: ${controller.reason}',
+          ),
+        );
+      }
+      return controller;
+    } on Object {
+      await controller._rollback();
+      rethrow;
+    }
+  }
+
+  /// Releases the native context for [textureId] after create already made
+  /// the native side allocate it. Best effort: a broken channel or an id the
+  /// native side does not know (`no_texture`) leaves nothing more to do.
+  static Future<void> _release(int textureId) async {
+    try {
+      await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
+    } on Object {
+      // Swallowed on purpose: rollback must not mask the original error.
+    }
+  }
+
+  /// 初次同步显示刷新率。
+  ///
+  /// Windows 上 Flutter 的 `Display.refreshRate` 长期返回 0
+  /// (flutter/flutter #158721),而 0 会被 [syncDisplayRefreshRate] 丢弃
+  /// → `display-fps-override` 从未被设置 → 一切 `video-sync=display-*`
+  /// 模式失效。因此优先问插件原生层(按视频窗口所在显示器取
+  /// `EnumDisplaySettings`),拿不到再退回 Flutter 的 displays 列表。
+  Future<void> _syncInitialRefreshRate() async {
+    double hz = 0;
+    try {
+      final native = await _channel.invokeMethod<double>(
+        'getDisplayRefreshRate',
+      );
+      hz = (native ?? 0).toDouble();
+    } on PlatformException {
+      // Fall through to the Flutter-provided rate.
+    }
+    if (hz <= 0) {
+      final displays = PlatformDispatcher.instance.displays;
+      hz = displays.isEmpty ? 0 : displays.first.refreshRate;
+    }
+    syncDisplayRefreshRate(hz);
+  }
+
+  /// Undoes everything [create] installed after the native context existed:
+  /// the routing entry, the player dispose hook, then the native context
+  /// itself. The original error is rethrown by the caller.
+  Future<void> _rollback() async {
+    _live.remove(textureId);
+    player.removeDisposeHook(dispose);
+    await _release(textureId);
   }
 
   static void _installHandler() {
@@ -301,11 +386,20 @@ final class MpvVideoController {
     if (_disposed || width <= 0 || height <= 0) return;
     if (_size == (width, height)) return;
     _size = (width, height);
-    await _channel.invokeMethod<void>('setSize', {
-      'textureId': textureId,
-      'width': width,
-      'height': height,
-    });
+    try {
+      await _channel.invokeMethod<void>('setSize', {
+        'textureId': textureId,
+        'width': width,
+        'height': height,
+      });
+    } on Object {
+      // dispose won the race while this call was in flight: the plugin is
+      // gone and nobody can consume the failure (MpvVideo issues resize
+      // through unawaited). While the controller is live, rethrow — real
+      // errors must reach the caller.
+      if (_disposed) return;
+      rethrow;
+    }
   }
 
   /// Color-manages output for the display described by [profile] (the raw
@@ -319,20 +413,47 @@ final class MpvVideoController {
     if (_disposed) return;
     final enable = profile != null && profile.isNotEmpty;
     player.mpv.setProperty('icc-profile-auto', enable);
-    await _channel.invokeMethod<void>('setIccProfile', {
-      'textureId': textureId,
-      'profile': enable ? profile : Uint8List(0),
-    });
+    try {
+      await _channel.invokeMethod<void>('setIccProfile', {
+        'textureId': textureId,
+        'profile': enable ? profile : Uint8List(0),
+      });
+    } on Object {
+      // Same dispose-won-the-race rule as [setSize].
+      if (_disposed) return;
+      rethrow;
+    }
   }
 
   /// Releases the texture and render context (the [player] stays alive).
   /// Idempotent.
+  ///
+  /// The events stream closes even when the native call throws — a listener
+  /// must always observe `done` — and the channel error is still surfaced to
+  /// the caller.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _live.remove(textureId);
     player.removeDisposeHook(dispose);
-    await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
-    await _events.close();
+    try {
+      await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
+    } finally {
+      _closeEvents();
+    }
+  }
+
+  /// Closes [_events] unless already closed, retrying once in a microtask if
+  /// a dispatch was still unwinding (mirrors Mpv's `_closeIfOpen`; dispose
+  /// is re-enterable from a synchronous events listener).
+  void _closeEvents() {
+    if (_events.isClosed) return;
+    try {
+      unawaited(_events.close());
+    } on StateError {
+      scheduleMicrotask(() {
+        if (!_events.isClosed) unawaited(_events.close());
+      });
+    }
   }
 }
