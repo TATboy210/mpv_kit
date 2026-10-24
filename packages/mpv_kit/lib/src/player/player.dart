@@ -342,7 +342,12 @@ final class Player {
   /// picker should not pay for.
   late final MpvState<List<MpvAudioDevice>> audioDevices = () {
     final state = MpvState<List<MpvAudioDevice>>._(const []);
-    if (_disposed) return state;
+    if (_disposed) {
+      // A first read after teardown hands out a state that no dispose pass
+      // can reach (it is never registered in _states), so close it here.
+      unawaited(state._close());
+      return state;
+    }
     _bind(
       'audio-device-list',
       state,
@@ -714,13 +719,17 @@ final class Player {
   void _onEvent(MpvEventData e) {
     switch (e) {
       case EndFileEvent(reason: EndFileReason.error):
-        _errors.add(
-          MpvPlaybackError(
-            error: MpvError.fromCode(e.fileError),
-            message: mpv.errorString(e.fileError),
-            playlistEntryId: e.playlistEntryId,
-          ),
-        );
+        // Same late-event guard as the logs branch below: teardown may have
+        // closed the controller while this event was still draining.
+        if (!_errors.isClosed) {
+          _errors.add(
+            MpvPlaybackError(
+              error: MpvError.fromCode(e.fileError),
+              message: mpv.errorString(e.fileError),
+              playlistEntryId: e.playlistEntryId,
+            ),
+          );
+        }
       case LogMessageEvent():
         if (!_logs.isClosed) _logs.add(e);
       case ShutdownEvent():
