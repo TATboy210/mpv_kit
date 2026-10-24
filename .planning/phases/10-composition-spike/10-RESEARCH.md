@@ -484,3 +484,126 @@ Not applicable — this is not a rename/refactor/migration phase. Explicitly: no
 
 **Research date:** 2026-10-24
 **Valid until:** 2026-11-23 (stable engine artifacts; the flutter#191468/#191017 facts are historical and will not drift)
+
+---
+
+## 3.47.8 Delta (supersedes the version-specific facts above)
+
+**Target retargeted 2026-10-24:** D-02/D-03 now fix the target at **Flutter 3.47.8**, already installed at `D:/flutter`. Everything above that names a 3.47.6 download URL, engine revision, DLL/SDK hash, or byte size is **superseded** by this section. The *source-level* conclusions (Impeller default-on, GLES-over-ANGLE, #191017 shape) are **re-validated, not overturned**, because the relevant engine sources are byte-identical at the two tags.
+
+### What changed
+
+| # | Question | 3.47.6 | 3.47.8 | Verdict |
+|---|---|---|---|---|
+| 1 | Anchor-string counts | measured below | measured below | **identical counts**; the old "exactly once" claim was wrong for 2 strings |
+| 2 | ANGLE linkage | no libEGL/libGLESv2 strings; inference "statically linked, confirm" | 24 imports + 2 delay-loads, no libEGL/libGLESv2; same 24 as 3.47.6 | **confirmed compiled-in**, no side-by-side ANGLE DLL |
+| 3a | `bool enable_impeller = true;` | yes | yes, line 197 | **unchanged** |
+| 3b | Impeller backends | gles/metal/vulkan | `BUILD.gn`, `gles/`, `metal/`, `vulkan/` | **unchanged** (still no D3D backend) |
+| 3c | `embedder_external_texture_gl.cc` post-#191017 | yes | yes, lines 67-78 / 135-192 | **unchanged** |
+| 4 | Commits 3.47.6→3.47.8 in windows/backend paths | — | 0 files | **none found** |
+| 5 | Artifact provenance | download 86 MB debug zip | local SDK artifact, no download | **plans' download tasks are obsolete** |
+
+Version ancestry: tag 3.47.8 = framework `737ba8f885`, engine revision `cf636b1dfb`; tag 3.47.6 = `5fc346839b5d`, engine `692136cb`. `gh api compare/3.47.6...3.47.8` → status `ahead`, `ahead_by: 7`, `behind_by: 0`, 7 commits, 13 files. The only engine file changed is `engine/src/flutter/shell/platform/darwin/ios/framework/Source/SemanticsObject.mm` (iOS semantics). The other six commits are iOS tests, CHANGELOG, DEPS/Dart, `engine.version` sync, and two `flutter_tools` fixes (plugin symlink handling; a `resident_runner` null guard) — none touch the Windows embedder, Impeller backends, or external-texture code. [VERIFIED: GitHub compare API, this session]
+
+### Verified anchors and hashes (3.47.8)
+
+**Artifact (no download performed; local install):**
+
+| Property | Value |
+|---|---|
+| Path | `D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll` |
+| Size | 46,636,544 B |
+| sha256 | `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170` |
+| PDB | `flutter_windows.dll.pdb`, 278,859,776 B (same directory) |
+| SDK | Flutter 3.47.8 stable, framework `737ba8f885`, engine hash `dfd2e6cb…`, engine revision `cf636b1dfb`, Dart 3.13.7 |
+
+[VERIFIED: `sha256sum`, `stat`, `flutter --version`, this session. Matches D-02a exactly.]
+
+`bin/cache/artifacts/engine/windows-x64-debug/` is empty (given); the debug DLL/PDB used by Windows builds live in `windows-x64/`, which is where the REA should point.
+
+**Anchor counts** — `grep -a -o -F "<anchor>" <dll> | wc -l`, run against both DLLs this session:
+
+| Anchor | 3.47.6 | 3.47.8 | Old research claim |
+|---|---|---|---|
+| `Only support GL_RGBA8 format now` | 1 | 1 | 1 |
+| `Could not create external texture` | 2 | 2 | 1 |
+| `Could not register destruction callback` | 1 | 1 | 1 |
+| `Binding D3D surface failed.` | 1 | 1 | 1 |
+| `Using the Impeller rendering backend` | 4 | 4 | 1 |
+| `OpenGLESSDF` | 1 | 1 | 1 |
+| `EmbedderExternalTextureGL` | 2 | 2 | "present" |
+| `ExternalTextureD3d` | 0 | 0 | 0 (correctly absent) |
+
+**3.47.8 does not differ from 3.47.6 on any anchor.** The old "exactly once" expectation is a measurement error, not a version difference: the extra hits are distinct literals — `Using the Impeller rendering backend (OpenGLESSDF)`, `(OpenGLES)`, `(VulkanSDF)`, `(Vulkan)` (each duplicated in the literal pool), plus the two `Could not create external texture` messages (`embedder_external_texture_gl.cc:127` Skia path with `->`, `:170` Impeller path). Consequence: the smoke's `grep -c` gate must be `>= 1` (it already is in 10-02), but the **plan's `-eq 1` gate (10-01:90) fails for `Could not create external texture` (2) and `Using the Impeller rendering backend` (4) — and would also have failed against the 3.47.6 DLL.**
+
+**Import table / ANGLE.** `dumpbin -dependents` reports 24 regular imports and delay-load `dwmapi.dll`, `dbghelp.dll`. Neither `libEGL.dll` nor `libGLESv2.dll` appears in either list, nor as a string (ASCII or UTF-16LE) — same as 3.47.6. Regular imports include `OPENGL32.dll`, `d3d9.dll`, `dxgi.dll`; `d3d11.dll` is **not** an import — ANGLE's D3D11 backend resolves it at runtime (`"Could not load D3D11 library"`, `"Could not retrieve D3D11CreateDevice address"` sit beside `rx::Renderer11::initializeD3DDevice`). [VERIFIED: `dumpbin -dependents` + `tools/rea_abi_audit/pe_audit.py`; identical 24-name list at 3.47.6.] Conclusion: **ANGLE's EGL/GLES implementation is compiled into `flutter_windows.dll`**; Open Question 3's "REA must confirm" caveat is settled for linkage (fence/device-ownership semantics inside ANGLE remain review work).
+
+### Engine-source findings re-checked at 3.47.8
+
+**1a — Impeller still default-on.** `flutter_windows_engine.cc:195-211` at tag 3.47.8 is byte-identical to 3.47.6 and still reads:
+
+```cpp
+  // Check for impeller support.
+  auto& switches = project_->GetSwitches();
+  bool enable_impeller = true;
+  if (project_->impeller_switch() == FlutterImpellerSwitch::Enabled) {
+    enable_impeller = true;
+  } else if (project_->impeller_switch() == FlutterImpellerSwitch::Disabled) {
+    enable_impeller = false;
+  }
+```
+
+The local 3.47.8 C++ wrapper still defaults `ImpellerSwitch impeller_switch_ = ImpellerSwitch::Default;` (`cpp_client_wrapper/include/flutter/dart_project.h:197`), and `flutter_windows.h:77-82` still declares `DefaultImpeller, EnabledImpeller, DisabledImpeller`. [VERIFIED: raw `.../3.47.8/engine/src/flutter/shell/platform/windows/flutter_windows_engine.cc:195-211`; local 3.47.8 headers]
+
+**1b — Backends unchanged.** GitHub contents at `ref=3.47.8` for `engine/src/flutter/impeller/renderer/backend` lists `BUILD.gn` (file), `gles/`, `metal/`, `vulkan/` — identical to 3.47.6, still no D3D backend. [VERIFIED: GitHub contents API]
+
+**1c — Post-#191017 shape unchanged.** `embedder_external_texture_gl.cc:67-78` still reads:
+
+```cpp
+  if (!!aiks_context) {
+    return ResolveTextureImpeller(texture_id, aiks_context, size);
+  } else if (context) {
+    return ResolveTextureSkia(texture_id, context, size);
+  }
+  return nullptr;
+```
+
+`ResolveTextureImpeller` (`:135-192`) still checks `if (texture->format != GL_RGBA8)` (`:153`), casts `impeller::ContextGLES::Cast(*aiks_context->GetContext())` (`:162-163`), calls `TextureGLES::WrapTexture(...)` (`:167`), and registers `RegisterCleanupCallback` (`:185`). `external_texture_d3d.cc` is byte-identical too (`GL_RGBA8_OES` at `:45`, `Binding D3D surface failed.` at `:107`). [VERIFIED: raw at tag 3.47.8; `cmp` against the 3.47.6 raw files → identical for all three files]
+
+**Caveat (marked unverified):** these are the sources *in the tag tree*. The shipped DLL was built at engine revision `cf636b1dfb`; `flutter/engine` does not resolve that SHA (`422 No commit found`), so the binary↔source mapping for that revision is **unverified**. The anchor counts and import tables are identical to 3.47.6 and the source at both tags is identical, so the behavioural conclusions are not at risk; only the provenance chain is one link short.
+
+### Assumptions in the current plans that are now wrong
+
+Every item below must be edited before execution; both plans were written for 3.47.6.
+
+| Plan location | Stale assumption | 3.47.8 fact |
+|---|---|---|
+| `10-01-PLAN.md:71,80-82` | task name and download of `windows-x64-debug/windows-x64-flutter.zip` at engine `692136cb…`, expect 86,256,529 B | no download; use local `D:/flutter/.../windows-x64/` |
+| `10-01-PLAN.md:82,88,96` | DLL 46,621,696 B, sha256 `e25ba971…70ac5`; PDB 278,671,360 B | 46,636,544 B, sha256 `9a3a09ca…b7d170`; PDB 278,859,776 B |
+| `10-01-PLAN.md:83,90-91,97` | six anchors each `-eq 1` | measured 1/2/1/1/4/1; gate must use per-anchor expected counts |
+| `10-01-PLAN.md:92` | gate requires the literal `libEGL` in the imports evidence | not wrong, but evidence must explicitly write `libEGL.dll: ABSENT` (and `libGLESv2.dll: ABSENT`) |
+| `10-01-PLAN.md:78` | precondition: network to storage.googleapis.com, 1.5 GB free | neither needed |
+| `10-01-PLAN.md:10-12,181-183` | evidence files named `engine-3.47.6.*` | rename to `engine-3.47.8.*` |
+| `10-01-PLAN.md:24,122,127,172` | report/review pins `e25ba971…` and `692136cb…`; #191017 footnote says "content in 3.47.6" | pin `9a3a09ca…` and `cf636b1dfb…`; say content in 3.47.8 (identical source) |
+| `10-01-PLAN.md:151,159` | risk: local SDK is 3.47.7, wrong binary | local SDK **is** the 3.47.8 target; wrong-binary risk shifts to the stale copy in `example/windows/flutter/ephemeral/` (46,621,696 B, sha256 `b60f6940…`, **not** the target) |
+| `10-02-PLAN.md:75,86-89,106-107,112-113` | download/install 3.47.6 SDK (1.93 GB, sha256 `a01bb0d2…`), verify `3.47.6` + `692136cb` | use installed 3.47.8; verify `3.47.8` + `cf636b1dfb` (or hash the DLL) |
+| `10-02-PLAN.md:103` | use local 3.47.7 for `dart analyze`; `pub get` with 3.47.6; restore with 3.47.7 | single local SDK 3.47.8 for everything; the restore note is obsolete |
+| `10-02-PLAN.md:137-138,154` | run `<sdk>/bin/flutter` from a 3.47.6 install | run `D:/flutter/bin/flutter` (3.47.8) |
+| `10-02-PLAN.md:10,24,76,227,245` | evidence `sdk-3.47.6.txt`; "both runs use 3.47.6 SDK" | rename/reword to 3.47.8 |
+| `10-02-PLAN.md:188` | ADR gate greps `e25ba971…` | grep `9a3a09ca…` |
+| `10-02-PLAN.md:176,180` | ADR prose keyed to 3.47.6 | reword version, keep both required section titles (conclusions still hold) |
+| `.github/workflows/flutter-plugin.yml:17` | `FLUTTER_VERSION: 3.47.6` | must become `3.47.8` (D-02: "CI 的 FLUTTER_VERSION: 3.47.6 需同步升级") |
+
+Unchanged and still valid: smoke harness shape, one-`testWidgets` rule, `--enable-impeller` / `--no-enable-impeller` pair, engine log-line proof, `resolvedPath` assertion, four-bucket classification, quarantine deferral, and the ANGLE-still-present conclusion.
+
+### Delta confidence
+
+| Item | Confidence | Settled by |
+|---|---|---|
+| DLL hash/size/PDB size | **HIGH** | `sha256sum`/`stat` this session; matches D-02a |
+| Anchor counts | **HIGH** | same command run against both the 3.47.6 and 3.47.8 DLLs; counts identical |
+| ANGLE compiled into the PE | **HIGH** | `dumpbin -dependents` + `pe_audit.py`: no EGL/GLES DLL imports, ANGLE `rx::Renderer11` code present |
+| 3a/3b/3c source facts at 3.47.8 | **HIGH** | raw sources at the tag + contents API; `cmp` vs 3.47.6 → identical |
+| No 3.47.6→3.47.8 commit affects this phase | **HIGH** | compare API: 7 commits / 13 files, none in the requested paths |
+| Shipped DLL ↔ tag-tree source correspondence | **MEDIUM / unverified** | engine revision `cf636b1dfb` not resolvable in `flutter/engine`; inferred from the tag sync plus identical anchors/imports |
+| Runtime renderer identity (Impeller live) | **UNVERIFIED** | unchanged — only the smoke can settle it (Open Question 2) |
