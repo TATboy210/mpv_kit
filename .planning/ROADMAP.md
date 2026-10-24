@@ -41,7 +41,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 01-02-PLAN.md — Post-dispose `StateError` guard on every public `Mpv` method
-- [ ] 01-05-PLAN.md — Gap closure: seek/read proof (WR-03), CI soak isolation (WR-04), analyzer exclusion + review ledger (IN-01)
+- [x] 01-05-PLAN.md — Gap closure: seek/read proof (WR-03), CI soak isolation (WR-04), analyzer exclusion + review ledger (IN-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 01-03-PLAN.md — Failure-injection suite, 1000-cycle soak, and CI wiring
@@ -117,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 4/5 | In Progress | - |
+| 1. Player Lifetime & Dispose Safety | 5/5 | In Progress | - |
 | 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
