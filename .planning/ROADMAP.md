@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错 (completed 2026-10-24)
 - [x] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件 (completed 2026-10-24)
-- [ ] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默
+- [x] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默 (completed 2026-10-24)
 - [ ] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，4K/8K 长播无积压
 - [ ] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行
 - [ ] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行
@@ -78,7 +78,16 @@ Plans:
   3. Vulkan→software 回退与 D3D11 设备创建失败产生带可读 `reason` 的事件（Windows/Linux/macOS）。
   4. 不支持的选项或拼写错误会被记录/暴露，同时 create 保持向后兼容（不抛错）。
 
-**Plans**: TBD
+**Plans:** 4/4 executed
+
+Plans:
+**Wave 1**
+- [x] 03-01-PLAN.md — Stream source failures on Player.errors with original identity; WR-02 contract amendment
+- [x] 03-03-PLAN.md — Honest interop fallback reasons (D3D11 HRESULT, Metal probe, CreateImage guard)
+
+**Wave 2** *(executed sequentially after Wave 1)*
+- [x] 03-02-PLAN.md — Observation/parse failures → Player.errors, failure-proof drain, IN-02 rebaseline
+- [x] 03-04-PLAN.md — Option/library resolution observability (OBS-04)
 
 ### Phase 4: Measured Performance & UHD Endurance
 
@@ -127,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Player Lifetime & Dispose Safety | 5/5 | Complete    | 2026-10-24 |
 | 2. Video Controller Lifecycle & Resize Safety | 3/3 | Complete | 2026-10-24 |
-| 3. Error Surfacing | 0/TBD | Not started | - |
+| 3. Error Surfacing | 4/4 | Complete | 2026-10-24 |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
 | 5. Build Provenance & Repository Hygiene | 0/TBD | Not started | - |
 | 6. Cross-Platform Verification | 0/TBD | Not started | - |

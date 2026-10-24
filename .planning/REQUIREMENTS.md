@@ -17,10 +17,10 @@
 
 ### Observability (OBS)
 
-- [ ] **OBS-01**: 流源 open/read/seek 失败经 `Player.errors` 暴露，并保留原始异常信息
-- [ ] **OBS-02**: 属性观察失败进入 `Player.errors`，不产生未捕获异步错误
-- [ ] **OBS-03**: Vulkan→software 回退与 D3D11 设备失败给出可读 `reason` 与对应事件
-- [ ] **OBS-04**: 不支持的选项或拼写错误不再完全静默（保持向后兼容地记录或暴露）
+- [x] **OBS-01**: 流源 open/read/seek 失败经 `Player.errors` 暴露，并保留原始异常信息
+- [x] **OBS-02**: 属性观察失败进入 `Player.errors`，不产生未捕获异步错误
+- [x] **OBS-03**: Vulkan→software 回退与 D3D11 设备失败给出可读 `reason` 与对应事件
+- [x] **OBS-04**: 不支持的选项或拼写错误不再完全静默（保持向后兼容地记录或暴露）
 
 ### Performance (PERF)
 
@@ -86,10 +86,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | STAB-03 | Phase 1 | Complete |
 | STAB-04 | Phase 2 | Complete |
 | STAB-05 | Phase 2 | Complete |
-| OBS-01 | Phase 3 | Pending |
-| OBS-02 | Phase 3 | Pending |
-| OBS-03 | Phase 3 | Pending |
-| OBS-04 | Phase 3 | Pending |
+| OBS-01 | Phase 3 | Complete |
+| OBS-02 | Phase 3 | Complete |
+| OBS-03 | Phase 3 | Complete |
+| OBS-04 | Phase 3 | Complete |
 | PERF-01 | Phase 4 | Pending |
 | PERF-02 | Phase 4 | Pending |
 | PERF-03 | Phase 4 | Pending |

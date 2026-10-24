@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 3
-current_phase_name: Error Surfacing
+current_phase: 4
+current_phase_name: Measured Performance & UHD Endurance
 status: planning
-stopped_at: Phase 02 complete, ready to plan Phase 3
-last_updated: "2026-10-24T12:30:00.000Z"
+stopped_at: Phase 03 complete, ready to plan Phase 4
+last_updated: "2026-10-24T15:00:00.000Z"
 last_activity: 2026-10-24
-last_activity_desc: Phase 02 complete, transitioned to Phase 3
-state_head: 39b7213942f640f48b2407f083ffa2d2eb8e9193
+last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: 6c621ea2a4c971b73cb63b0571b278504ad66ba9
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 33
+  completed_phases: 3
+  total_plans: 12
+  completed_plans: 12
+  percent: 50
 ---
 
 # Project State
@@ -23,23 +23,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 3 — Error Surfacing
+**Current focus:** Phase 4 — Measured Performance & UHD Endurance
 
 ## Current Position
 
-Phase: 3 — Error Surfacing
+Phase: 4 — Measured Performance & UHD Endurance
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-24 — Phase 02 complete, transitioned to Phase 3
+Last activity: 2026-10-24 — Phase 03 complete, transitioned to Phase 4
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~10 min
-- Total execution time: ~1.7 hours
+- Total plans completed: 12
+- Average duration: ~14 min
+- Total execution time: ~2.8 hours
 
 **By Phase:**
 
@@ -47,9 +47,10 @@ Progress: [███░░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
 | 02 | 3 | ~47 min | ~16 min |
+| 03 | 4 | ~78 min | ~20 min |
 
 **Recent Trend:**
-- Last 5 plans: 14 min, 9 min, 24 min(3 tasks), 9 min
+- Last 5 plans: 9 min, 26 min, 12 min, 22 min, 18 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -65,6 +66,10 @@ Progress: [███░░░░░░░] 33%
 | Phase 02 P01 | 14 min | 2 tasks | 2 files |
 | Phase 02 P02 | 24 min | 3 tasks | 4 files |
 | Phase 02 P03 | 9 min | 2 tasks | 1 file |
+| Phase 03 P01 | 26 min | 2 tasks | 5 files |
+| Phase 03 P02 | 22 min | 1 task | 3 files |
+| Phase 03 P03 | 12 min | 1 task | 6 files |
+| Phase 03 P04 | 18 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -93,6 +98,11 @@ Recent decisions affecting current work:
 - [Phase 02]: 重入与并发 dispose 在调用时刻不可区分,teardown 进行中一律共享 future;完成后幂等成功;hook 内 await dispose 是文档化禁止模式(unawaited 重入安全)。
 - [Phase 02]: 覆盖率任务消费 linux 构建的 libmpv 构件(prefix/lib + deps/lib,后者承载 dlopen 的 libplacebo/dav1d),不重复构建;运行库 ABI 用与构建一致的 apt -dev 列表,缺失时 dlopen 响亮失败而非静默 skip。
 - [Phase 02]: 控制器 soak 测试不设 dart_test.yaml tag,进默认 suite——mock channel 下 100 轮很快,且 02-03 的 CI 覆盖率任务会执行它们。
+- [Phase 03]: Mpv.onSourceError 是公共字段(freeze 基线 +1)而非 create 参数——Player.wrap 也要路由,且每个 Mpv 独立持有 sink 保证多 Player 安全。
+- [Phase 03]: seek 失败上抛但不终止播放(mpv 语义允许瞬时失败);open/read 保持"播放以明确错误结束",源级与播放级条目共存于 Player.errors。
+- [Phase 03]: Dart 同步控制器的用户监听器抛错直接进 zone、add() 正常返回——这是标准平台语义,mpv_kit 不吞;真正要钉的是排空存活与 Player 自身监听器的 containment。
+- [Phase 03]: future.ignore() 必须布满全部 5 个错误完成点(含 commandAsync 等同步候选校验路径),只护 _complete 会漏。
+- [Phase 03]: library_test 的回落测试必须拥有冷缓存(文件头注明顺序约束)——同 isolate 内其他 open() 先行会预热缓存使候选循环不跑。
 
 ### Pending Todos
 
@@ -112,11 +122,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| Native | Linux 运行期 GL 导入失败黑屏仅有 g_warning,无 Dart 事件(gl_interop.cc:296-321) | needs EventFn plumbing;超出 criterion 3 范围 | 2026-10-24 (Phase 3 close) | current |
 | Visual | 重建控制器后首帧非黑帧(视觉属性) | owned by Phase 6 UAT/VERIFY-01 | 2026-10-24 (Phase 2 close) | current |
 | Native evidence | 控制器 create/dispose 循环的 native 侧泄漏证据 | owned by Phase 6 real-plugin tests | 2026-10-24 (Phase 2 close) | current |
 
 ## Session Continuity
 
-Last session: 2026-10-24T12:30:00Z
-Stopped at: Phase 02 complete (12/12 must-haves, 2 deferred items owned by Phase 6), ready to plan Phase 3
+Last session: 2026-10-24T15:00:00Z
+Stopped at: Phase 03 complete (13/14 must-haves, 1 defensive mechanism verified by source gate), ready to plan Phase 4
 Resume file: None

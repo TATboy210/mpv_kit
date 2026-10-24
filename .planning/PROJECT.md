@@ -29,13 +29,15 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 控制器 dispose 异常安全：native 通道抛错时事件流仍关闭（监听器收到 done）且错误可见；dispose 竞态中的在途 resize/ICC 失败被丢弃，活控制器上同等失败仍抛出 — Phase 2
 - ✓ 100 轮 resize/dispose 交错与 100 次 create/dispose 循环 soak：Dart 记账层零泄漏（STAB-01 分句），并发 `Player.dispose` 单次 teardown、双调用方共享同一结果（IN-05 关闭） — Phase 2
 - ✓ 三个 Dart 包全部纳入 80% 行覆盖率门禁；`flutter-video-coverage` 任务用 linux 任务构建的 libmpv 构件跑通 channel 测试（单一构建来源） — Phase 2
+- ✓ 流源 open/read/seek/close 失败经 `Player.errors` 暴露并保留原始异常类型与消息；seek 失败不终止播放；demuxer 语义不变 — Phase 3
+- ✓ 属性观察/解析失败路由 `Player.errors`；事件排空故障免疫（坏事件/抛错监听器不中断后续事件）；被弃 reply future 不再产生未处理异步错误 — Phase 3
+- ✓ Windows/macOS 回退原因诚实化（D3D11 HRESULT、Metal 探测、CreateImage 空引用守卫） — Phase 3
+- ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
 ### Active
 
 <!-- 本里程碑要达成的目标；全部保持公共 API 不变。 -->
 
-- [ ] 让错误可见：不再静默吞掉流源、属性观察与原生回退失败
-- [ ] `MpvLibrary.open()` 在显式 `MPV_KIT_LIBMPV_PATH` 加载失败时静默回退到平台默认库，调用方无法得知实际加载的是哪份 libmpv — 2026-10-24 在 Phase 1 收尾时发现（归 OBS-04）
 - [ ] 修复每个属性事件重复解码等热路径浪费，并以基准数据证明收益
 - [ ] 建立可复现的性能/稳定性验证（create/dispose 循环、resize、长时播放）
 - [ ] 六目标（Windows/Linux/macOS × x64/arm64）构建与冒烟一致、可复现
@@ -84,6 +86,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | create 响应的 backend 字段严格校验（garbage 抛错而非静默 software 降级） | 同仓库插件/Dart 对里任何其他值都是协议断裂,STAB-04 要求它可见 | ✓ Phase 2 |
 | 重入 dispose 与并发 dispose 在调用时刻不可区分,一律共享 in-flight future;hook 内 await dispose 列为禁止模式 | 死锁不可恢复,而早返回语义可恢复;unawaited 重入模式(Phase 1 固化)不受影响 | ✓ Phase 2 |
 | 覆盖率任务消费 linux 构建的 libmpv 构件,不重复构建 | 单一构建来源(BUILD-01 方向);构件缺失时 download 步骤先响亮失败 | ✓ Phase 2 |
+| seek 失败上抛但不终止播放 | mpv 语义允许瞬时 seek 失败;只有 open/read 终止播放 | ✓ Phase 3 |
+| 用户监听器抛错仍进 zone(不吞用户代码),只保证排空存活 | Dart 同步控制器标准语义;Player 自身监听器已全 containment | ✓ Phase 3 |
+| errorString/eventName 移除 post-dispose 守卫(IN-02) | 纯查找不触 handle;处置文件明确授权 Phase 3 重定基线 | ✓ Phase 3 |
 
 ## Evolution
 
@@ -103,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 2*
+*Last updated: 2026-10-24 after Phase 3*
