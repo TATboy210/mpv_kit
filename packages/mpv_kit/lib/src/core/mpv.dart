@@ -213,10 +213,10 @@ final class Mpv {
     // entry from `_observers`; iterate a snapshot so that mutation cannot
     // corrupt the iteration.
     for (final c in _observers.values.toList()) {
-      unawaited(c.close());
+      _closeIfOpen(c);
     }
     _observers.clear();
-    unawaited(_events.close());
+    _closeIfOpen(_events);
   }
 
   // ---------------------------------------------------------------------
@@ -670,6 +670,25 @@ final class Mpv {
     Object? value,
   ) {
     if (observer != null && !observer.isClosed) observer.add(value);
+  }
+
+  /// Closes [controller] unless it is already closed.
+  ///
+  /// [dispose] may be re-entered from a synchronous [events] listener, i.e.
+  /// while the sync broadcast controller is still firing. Dart rejects
+  /// `close()` at that moment with a [StateError] and leaves the controller
+  /// open — and because `_disposed` is already true, a second [dispose] cannot
+  /// retry. Catch only that error and retry once on the next microtask, after
+  /// the dispatch has unwound; this is the single close path allowed to retry.
+  static void _closeIfOpen<T>(StreamController<T> controller) {
+    if (controller.isClosed) return;
+    try {
+      unawaited(controller.close());
+    } on StateError {
+      scheduleMicrotask(() {
+        if (!controller.isClosed) unawaited(controller.close());
+      });
+    }
   }
 
   void _complete(int id, int err, Object? value, String op) {
