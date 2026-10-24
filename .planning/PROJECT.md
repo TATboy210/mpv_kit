@@ -8,6 +8,17 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
+## Current Milestone: v2.0 GPU-Next Optimization & Full-Rate UHD
+
+**Goal:** 基于 mpv-master 最新源码与社区反馈（gpu-next bug、media-kit 反馈），优化 gpu-next 渲染路径与自定义渲染桥接（绕过 Windows ANGLE），配调试友好的示例应用（HUD 参数/拖拽播放），真正流畅支持 4K/8K 满血视频。
+
+**Target features:**
+- 社区调研驱动：gpu-next 社区 bug/反馈 + media-kit 社区反馈 → 设计方向（research 阶段产出）
+- 调试体验：example 窗口 HUD 显示更多运行参数（延迟/丢帧/后端/缓存等）+ 拖拽视频到窗口播放
+- 渲染桥接升级：研究/设计/执行绕过 ANGLE 的 Windows 桥接路径，提升桥接效率
+- 4K/8K 满血：流畅满帧（含 v1 发现的 8K 提交内存耗尽问题 docs/perf/2026-10-24-uhd-endurance.md）
+- 资源：允许读取 `C:\Users\35490\Downloads\mpv-master\mpv-master` 源码与 REA 工具
+
 ## Requirements
 
 ### Validated
@@ -47,9 +58,11 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 ### Active
 
-<!-- 里程碑完成：无进行中的需求。v2（FEAT/GPU/PLAT）保持推迟。 -->
+<!-- v2.0 需求在研究完成后定义（REQUIREMENTS.md v2 节）。 -->
 
-- （无 —— 里程碑 v1 于 2026-10-24 完成，21/21 需求落地）
+- [ ] gpu-next 社区反馈修复与优化升级（待需求定义）
+- [ ] example 调试 HUD + 拖拽播放（待需求定义）
+- [ ] 渲染桥接绕过 ANGLE + 4K/8K 满血（待需求定义）
 
 
 ### Out of Scope
@@ -122,4 +135,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 6 (milestone complete)*
+*Last updated: 2026-10-24 — milestone v2.0 started*
