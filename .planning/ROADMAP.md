@@ -12,7 +12,7 @@
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错
+- [x] **Phase 1: Player Lifetime & Dispose Safety** - 反复创建销毁不泄漏，dispose 异常安全，dispose 后调用明确报错 (completed 2026-10-24)
 - [ ] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件
 - [ ] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默
 - [ ] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，4K/8K 长播无积压
@@ -117,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Player Lifetime & Dispose Safety | 5/5 | In Progress | - |
+| 1. Player Lifetime & Dispose Safety | 5/5 | Complete    | 2026-10-24 |
 | 2. Video Controller Lifecycle & Resize Safety | 0/TBD | Not started | - |
 | 3. Error Surfacing | 0/TBD | Not started | - |
 | 4. Measured Performance & UHD Endurance | 0/TBD | Not started | - |
