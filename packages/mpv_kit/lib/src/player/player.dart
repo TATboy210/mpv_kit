@@ -633,49 +633,67 @@ final class Player {
 
   /// 释放 mpv 与全部状态流。Idempotent.
   ///
-  /// 各阶段相互隔离：某个 dispose hook、订阅取消或流关闭抛错时，后续阶段
-  /// 仍然执行，原生核心（`mpv_terminate_destroy`）一定会被销毁。全部阶段
-  /// 跑完后才把收集到的错误抛给调用方：单个错误原样重抛，多个错误合并为
-  /// [StateError]。
-  Future<void> dispose() async {
-    if (_disposed) return;
-    _disposed = true;
-    final errors = <Object>[];
-    Future<void> stage(Future<void> Function() body) async {
-      try {
-        await body();
-      } on Object catch (error) {
-        errors.add(error);
-      }
-    }
+  /// 并发调用共享同一个 teardown future（IN-05）：每个调用方都观察到同一
+  /// 结果——包括 hook 抛错时的同一个错误对象。teardown 结束后，它的错误
+  /// 已经抛给参与竞速的调用方，之后的幂等调用正常完成。从 teardown 内部
+  /// （hook 或事件监听器里）重入的调用拿到的是同一个共享 future：不要
+  /// await 它——teardown 正在等待那个 hook,await 自己会死锁（Phase 1 固化
+  /// 的重入模式是 `unawaited(dispose())`,不受影响）。各阶段相互隔离：某个
+  /// dispose hook、订阅取消或流关闭抛错时，后续阶段仍然执行，原生核心
+  /// （`mpv_terminate_destroy`）一定会被销毁。全部阶段跑完后才把收集到的
+  /// 错误抛给调用方：单个错误原样重抛，多个错误合并为 [StateError]。
+  Future<void> dispose() {
+    final inFlight = _disposeFuture;
+    if (inFlight == null) return _disposeFuture = _dispose();
+    return _disposeDone ? Future<void>.value() : inFlight;
+  }
 
-    // Copy: hooks may remove themselves while running.
-    final hooks = List.of(_disposeHooks);
-    _disposeHooks.clear();
-    for (final hook in hooks) {
-      // A render context hook must still free the context before the core,
-      // so hooks stay first even though they are individually isolated.
-      await stage(hook);
+  Future<void>? _disposeFuture;
+  var _disposeDone = false;
+
+  Future<void> _dispose() async {
+    try {
+      if (_disposed) return;
+      _disposed = true;
+      final errors = <Object>[];
+      Future<void> stage(Future<void> Function() body) async {
+        try {
+          await body();
+        } on Object catch (error) {
+          errors.add(error);
+        }
+      }
+
+      // Copy: hooks may remove themselves while running.
+      final hooks = List.of(_disposeHooks);
+      _disposeHooks.clear();
+      for (final hook in hooks) {
+        // A render context hook must still free the context before the core,
+        // so hooks stay first even though they are individually isolated.
+        await stage(hook);
+      }
+      for (final s in _subs) {
+        await stage(s.cancel);
+      }
+      await stage(() async {
+        mpv.dispose();
+      });
+      await stage(_errors.close);
+      await stage(_logs.close);
+      // Registered states — including position/decodeWarning — close here, so
+      // every listener receives `done`.
+      for (final state in _states) {
+        await stage(state._close);
+      }
+      if (errors.isEmpty) return;
+      if (errors.length == 1) throw errors.single;
+      throw StateError(
+        'Player.dispose() failed in ${errors.length} teardown stages:\n'
+        '${errors.map((error) => '  $error').join('\n')}',
+      );
+    } finally {
+      _disposeDone = true;
     }
-    for (final s in _subs) {
-      await stage(s.cancel);
-    }
-    await stage(() async {
-      mpv.dispose();
-    });
-    await stage(_errors.close);
-    await stage(_logs.close);
-    // Registered states — including position/decodeWarning — close here, so
-    // every listener receives `done`.
-    for (final state in _states) {
-      await stage(state._close);
-    }
-    if (errors.isEmpty) return;
-    if (errors.length == 1) throw errors.single;
-    throw StateError(
-      'Player.dispose() failed in ${errors.length} teardown stages:\n'
-      '${errors.map((error) => '  $error').join('\n')}',
-    );
   }
 
   // --- Internals ---------------------------------------------------------
