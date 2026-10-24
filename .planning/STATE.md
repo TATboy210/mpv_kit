@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: GPU-Next Optimization & Full-Rate UHD
 status: planning
-stopped_at: Phase 07 complete (4K re-verify env-blocked: host disk 100%), ready to plan Phase 8
-last_updated: "2026-10-24T23:59:00.000Z"
+stopped_at: Phase 08 complete, ready to plan Phase 9
+last_updated: "2026-10-25T00:30:00.000Z"
 last_activity: 2026-10-24
-last_activity_desc: Phase 07 complete, transitioned to Phase 8
-state_head: d1931730a6d8a687c88f8227bfc54a9187c99c80
+last_activity_desc: Phase 08 complete, transitioned to Phase 9
+state_head: 8a34297f462e16f78de2ddfcc32b72e3034eb609
 progress:
   total_phases: 11
-  completed_phases: 7
-  total_plans: 23
-  completed_plans: 23
-  percent: 64
+  completed_phases: 8
+  total_plans: 24
+  completed_plans: 24
+  percent: 73
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** v2.0 — Phase 8 Debug HUD & Drag-and-Drop（阶段 1-6 属 v1，已归档）
+**Current focus:** v2.0 — Phase 9 8K Full-Rate（阶段 1-6 属 v1，已归档）
 
 ## Current Position
 
-Phase: 8 — Debug HUD & Drag-and-Drop
+Phase: 9 — 8K Full-Rate
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-24 — Phase 07 complete, transitioned to Phase 8
+Last activity: 2026-10-25 — Phase 08 complete, transitioned to Phase 9
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: ~15 min
-- Total execution time: ~5.5 hours
+- Total execution time: ~6 hours
 
 **By Phase:**
 
@@ -50,9 +50,10 @@ Last activity: 2026-10-24 — Phase 07 complete, transitioned to Phase 8
 | 05 | 3 | ~135 min | ~45 min |
 | 06 | 3 | ~67 min | ~22 min |
 | 07 | 2 | ~135 min | ~68 min |
+| 08 | 1 | ~35 min | ~35 min |
 
 **Recent Trend:**
-- Last 5 plans: 18 min, 18 min, 42 min, 40 min, 95 min
+- Last 5 plans: 42 min, 40 min, 95 min, 35 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -83,6 +84,7 @@ Last activity: 2026-10-24 — Phase 07 complete, transitioned to Phase 8
 | Phase 06 P03 | 20 min | 1 task | 3 files |
 | Phase 07 P01 | 40 min | 2 tasks | 5 files |
 | Phase 07 P02 | 95 min | 2 tasks | 2 files |
+| Phase 08 P01 | 35 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -130,6 +132,7 @@ Recent decisions affecting current work:
 - [Phase 07]: lavfi 生成源仅支持前进/近终点 seek（精确落位），后退/归零为空操作——源属性；测试顺序 near-end 最后；MPV_KIT_SEEK_MEDIA 真实媒体双向覆盖。
 - [Phase 07]: 宿主磁盘 100% 满的故障签名：进程无声死亡（无 WER）+ CMakeCache 截断 parse error + 增量构建 MSB8066；与提交耗尽（WER 有记录）可区分。
 - [Phase 07]: 回归二进制 = dev.3（字节等同论证）；本地无 MSYS2/meson，新树构建依赖 CI。
+- [Phase 08]: HUD 数据层/组件层分离（HudSnapshot.capture 是唯一触 mpv 的缝隙，测试用 fabricated 快照）；合成路径行静态至 Phase 11 接真实值；拖放白名单 isVideoPlayable 独立纯函数。
 
 ### Pending Todos
 
@@ -137,7 +140,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- **宿主磁盘 D: 100% 满（0GB）/C: 99%**：阻塞 4K 30 分钟复验与本地重建（需 ≥10GB）——后续所有本地构建/长播的硬前提；解除程序在 docs/perf/2026-10-24-vendor-advance-regression.md。
+- （已缓解）宿主磁盘回升 ~6.3GB：本地构建恢复；4K 复验可执行。
 - 本地无 MSYS2/meson 工具链；新树构建依赖 CI（push 后六目标）或 dev.4 发布流（对外发布，需用户决定）。
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化（用户撤下 8K 分句）。

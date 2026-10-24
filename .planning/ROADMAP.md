@@ -9,7 +9,7 @@
 ## Phases
 
 - [x] **Phase 7: mpv-master Vendor Advance & gpu-next Regression** - vendor 推进到快照点，补丁重放门禁通过，新基线回归全绿 (completed 2026-10-24; 4K 30-min re-verify environment-blocked: host disk 100%)
-- [ ] **Phase 8: Debug HUD & Drag-and-Drop** - 可切换调试 overlay（五组属性+事件流+合成路径）与拖拽播放
+- [x] **Phase 8: Debug HUD & Drag-and-Drop** - 可切换调试 overlay（五组属性+事件流+合成路径）与拖拽播放 (completed 2026-10-25; drag gesture itself left as 30 s manual UAT)
 - [ ] **Phase 9: 8K Full-Rate** - demuxer 队列按帧尺寸推导，8K 30 分钟门禁通过
 - [ ] **Phase 10: Composition Spike** - REA 实证引擎纹理消费路径 + Impeller 冒烟，决策落盘
 - [ ] **Phase 11: Native Composition Path** - 依 spike 实施原生合成（ANGLE 回退），延迟预算实测参数化
@@ -42,7 +42,10 @@ Plans:
   2. 拖拽视频文件到窗口播放首个视频；非视频忽略且 HUD 提示；播放器交互不冲突。
   3. HUD 显示当前合成路径（ANGLE 阶段为实际后端+reason；11 完成后含 compositor 信息）。
 
-**Plans**: TBD
+**Plans:** 1/1 executed
+
+Plans:
+- [x] 08-01-PLAN.md — hud.dart (HudSnapshot 1 Hz capture / HudEventLog 8-ring / DebugHud five-group panel / isVideoPlayable allowlist), main.dart rewiring (F9/H toggle, DropTarget, transient notice), desktop_drop ^0.7.1, 6 widget tests green, Windows build compiles, smoke on real mp4 + lavfi (Vulkan path logs + screenshot).
 
 ### Phase 9: 8K Full-Rate
 
@@ -88,7 +91,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. mpv-master Vendor Advance & gpu-next Regression | 2/2 | Complete | 2026-10-24 |
-| 8. Debug HUD & Drag-and-Drop | 0/TBD | Not started | - |
+| 8. Debug HUD & Drag-and-Drop | 1/1 | Complete | 2026-10-25 |
 | 9. 8K Full-Rate | 0/TBD | Not started | - |
 | 10. Composition Spike | 0/TBD | Not started | - |
 | 11. Native Composition Path | 0/TBD | Not started | - |

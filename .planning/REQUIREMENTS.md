@@ -31,12 +31,12 @@
 
 ### Debug HUD (HUD)
 
-- [ ] **HUD-01**: example 可切换调试 overlay——同步/缓存/解码/渲染/音频五组属性（stats.lua 同源集合，已对目录核对）+ 控制器事件流实时叠加
-- [ ] **HUD-02**: HUD 显示实际合成路径与后端信息（backend/reason/compositor）
+- [x] **HUD-01**: example 可切换调试 overlay——同步/缓存/解码/渲染/音频五组属性（stats.lua 同源集合，已对目录核对）+ 控制器事件流实时叠加
+- [x] **HUD-02**: HUD 显示实际合成路径与后端信息（backend/reason/compositor）
 
 ### Drag-and-Drop (DND)
 
-- [ ] **DND-01**: 拖拽视频文件到 example 窗口即播放首个视频（desktop_drop）；非视频文件忽略并 HUD 提示；与播放器手势不冲突
+- [x] **DND-01**: 拖拽视频文件到 example 窗口即播放首个视频（desktop_drop）；非视频文件忽略并 HUD 提示；与播放器手势不冲突
 
 ## Deferred（未来里程碑）
 
@@ -68,9 +68,9 @@
 |-------------|-------|--------|
 | REBASE-01 | Phase 7 | Complete |
 | REBASE-02 | Phase 7 | Complete (4K re-verify env-blocked, documented) |
-| HUD-01 | Phase 8 | Pending |
-| HUD-02 | Phase 8 | Pending |
-| DND-01 | Phase 8 | Pending |
+| HUD-01 | Phase 8 | Complete |
+| HUD-02 | Phase 8 | Complete |
+| DND-01 | Phase 8 | Complete |
 | UHD-01 | Phase 9 | Pending |
 | UHD-02 | Phase 9 | Pending |
 | COMP-01 | Phase 10 | Pending |
