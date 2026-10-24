@@ -21,8 +21,8 @@ created: "2026-10-24"
 | **Framework** | `dart test` (mpv_kit) + `flutter test -d windows` (example integration_test) + shell evidence gates |
 | **Config file** | `packages/mpv_kit/dart_test.yaml`, `example/integration_test/` |
 | **Quick run command** | `cd packages/mpv_kit && dart analyze --fatal-infos` |
-| **Full suite command** | `cd example && flutter test integration_test/impeller_smoke_test.dart -d windows` (plus `--enable-impeller=false` control) |
-| **Estimated runtime** | ~60–120 s quick; the smoke adds roughly 2–4 min per run (30 s continuous + 100 recycles + engine startup) |
+| **Full suite command** | `cd example && MPV_KIT_LIBMPV_PATH=<lib>/libmpv-2.dll PATH="$PATH:<lib>" D:/flutter/bin/flutter test integration_test/impeller_smoke_test.dart -d windows --enable-impeller`, then the control with `--no-enable-impeller` |
+| **Estimated runtime** | per-task gates: seconds. Full suite: roughly 2–4 min per smoke run (30 s continuous + 100 recycles + engine startup) |
 
 This phase's primary verification is **evidence artifacts** (hashes, anchor counts, decompiled pseudocode, bench lines), not a unit-test suite. The shell gates below are the contract.
 
@@ -57,7 +57,7 @@ This phase's primary verification is **evidence artifacts** (hashes, anchor coun
 - [ ] `docs/reverse-engineering/03-flutter-windows-texture-consumption.md` — created by 10-01 Task 2
 - [ ] `docs/adr/0003-windows-composition-path.md` — created by 10-03 Task 2
 - [ ] `evidence/` directory under the phase dir — created by 10-01 Task 1
-- [ ] Local libmpv on PATH (`bt/`) plus `MPV_KIT_LIBMPV_PATH`, asserted by the harness preflight
+- [ ] Hook-built libmpv from `.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib` on PATH plus `MPV_KIT_LIBMPV_PATH`, asserted by the harness preflight. **`bt/libmpv-2.dll` is forbidden** — it has no working Vulkan path and silently falls back to software, which would make the whole measurement point at the wrong backend.
 
 *The three deliverables ARE the Wave 0 gaps; there is no pre-existing harness to extend.*
 
@@ -80,7 +80,7 @@ This phase's primary verification is **evidence artifacts** (hashes, anchor coun
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
-- [x] Feedback latency < 180s
+- [x] Per-task feedback latency < 180s (the full smoke suite runs ~2–4 min per run and is sampled per wave, not per task)
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
