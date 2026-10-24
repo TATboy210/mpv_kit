@@ -3,7 +3,7 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Build Provenance & Repository Hygiene
 status: planning
-stopped_at: Phase 04 complete (8K crash deferred), ready to plan Phase 5
+stopped_at: Phase 04 complete (4K done; 8K withdrawn by user — no test material), ready to plan Phase 5
 last_updated: "2026-10-24T17:30:00.000Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 04 complete, transitioned to Phase 5
@@ -124,7 +124,6 @@ None yet.
 - 本地跑 `mpv_kit` 测试需要 `PATH` 同时包含 `bt/`，否则 `MPV_KIT_LIBMPV_PATH` 会静默回落到 stock libmpv（见 PROJECT.md Context）。CI 若同样漏掉依赖搜索路径，会在不知情的情况下测错库。
 - `flutter-video-coverage` 与 mpv_kit_libs 覆盖率门禁的首次真实 CI 运行待下一次 push;apt 运行库闭包如缺 DT_NEEDED 依赖会以 dlopen 失败响亮报错(非静默)。
 - WR-01(createClient 挂起)经 Phase 2 triage 保持 deferred:不属控制器生命周期,缺复现;Phase 3(错误可观测性)或专门稳定性插入认领。
-- **8K 提交内存耗尽崩溃(Phase 4 发现)**:PERF-03 的 8K 分句未达成;需要专门的 stability insertion(候选修复已列)——推荐在 Phase 5 之前或并行处理。
 - 50-cycle Vulkan create/dispose RSS +45.1 MiB 距 64 MiB 门禁不远,值得后续观察。
 
 ## Deferred Items
@@ -133,7 +132,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| Stability | **8K 提交内存耗尽进程死亡**(可复现,WER 证据;修复候选见 docs/perf/2026-10-24-uhd-endurance.md) | new finding — 8K stability insertion recommended | 2026-10-24 (Phase 4 close) | current |
+| Documentation | 8K 提交内存耗尽进程死亡(可复现,WER 证据)——用户确认暂无 8K 测试条件,撤下 PERF-03 的 8K 分句;记录保留供将来支持 8K 时参考 | documented, no action planned | 2026-10-24 (user decision) | — |
 | Native | Linux 运行期 GL 导入失败黑屏仅有 g_warning,无 Dart 事件(gl_interop.cc:296-321) | needs EventFn plumbing;超出 criterion 3 范围 | 2026-10-24 (Phase 3 close) | current |
 | Visual | 重建控制器后首帧非黑帧(视觉属性) | owned by Phase 6 UAT/VERIFY-01 | 2026-10-24 (Phase 2 close) | current |
 | Native evidence | 控制器 create/dispose 循环的 native 侧泄漏证据 | owned by Phase 6 real-plugin tests | 2026-10-24 (Phase 2 close) | current |
@@ -141,5 +140,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-24T17:30:00Z
-Stopped at: Phase 04 complete (PERF-01/02/04 done; PERF-03 4K done, 8K crash deferred), ready to plan Phase 5
+Stopped at: Phase 04 complete (PERF-01/02/04 done; PERF-03 4K done, 8K withdrawn by user), ready to plan Phase 5
 Resume file: None

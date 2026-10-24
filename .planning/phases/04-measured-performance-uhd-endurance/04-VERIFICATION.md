@@ -29,7 +29,7 @@ re_verification:
   regressions: []
 deferred:
   - truth: "8K 7680x4320 连续播放 30 分钟无积压"
-    addressed_in: "8K stability insertion (next work; candidates recorded in docs/perf/2026-10-24-uhd-endurance.md)"
+    addressed_in: "Withdrawn by user decision (no 8K video test material available); the crash documentation stays in docs/perf/2026-10-24-uhd-endurance.md and CONCERNS.md for any future 8K support work"
     evidence: "PERF-03 的 8K 分句失败:可复现的提交内存耗尽进程死亡(3 次,WER RADAR_PRE_LEAK_64);4K 分句已达成"
 advisory:
   - finding: "50 次 controller create/dispose 循环 RSS 增长 45.1 MiB,距 64 MiB 门禁不远(Vulkan 资源churn)"
@@ -67,14 +67,14 @@ Phase 4 的四条 ROADMAP criteria:**criterion 1(基准+基线)✓、criterion 2
 
 1. **可重复基准 + 改动前基线** — ✓(truths 1-3)。
 2. **单次解码(测试断言)+ time-pos 前后对比数据** — ✓(truths 4-7)。
-3. **4K 与 8K 30 分钟无积压** — 4K ✓(truth 10);8K ✗(truth 11,新稳定性缺陷,deferred)。
+3. **4K 与 8K 30 分钟无积压** — 4K ✓(truth 10);8K 经用户确认撤下(无测试条件;truth 11 的崩溃发现已记录供将来参考)。
 4. **API 无变化 + 热路径分配下降** — ✓(truths 7-8)。
 
 ### Requirements Coverage
 
 - PERF-01: Complete(04-02)
 - PERF-02: Complete(04-01)
-- PERF-03: **Partial** — 4K clause delivered;8K clause FAIL(crash)→ deferred to a stability insertion
+- PERF-03: Complete (4K clause delivered;8K clause withdrawn by user decision — no test material, crash documented)
 - PERF-04: Complete(04-02)
 
 ### Prohibitions (must-NOT)

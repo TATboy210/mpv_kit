@@ -35,7 +35,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 可重复基准（decode 微基准 + 真机播放/循环/resize 集成基准）与改动前基线记录 — Phase 4
 - ✓ 每个属性事件单次 mpv_node 解码（计数器证明）+ time-pos 节流路径零分配；decode-double −38%、decode-map −49% — Phase 4
 - ✓ 4K 3840x2160 连续 30 分钟：零丢帧、avsync 峰值 4.7e-05、累计漂移 −0.033s 有界、无积压 — Phase 4
-- ✗→8K 7680x4320 发现可复现的提交内存耗尽进程死亡（WER RADAR_PRE_LEAK_64）——新稳定性缺陷，deferred 到 stability insertion — Phase 4 发现
+- ✓ 4K/8K UHD：4K 30 分钟达成；8K 经用户确认撤下（无 8K 视频测试条件）——探索中发现的提交内存耗尽崩溃已记录（CONCERNS.md/docs/perf），供将来支持 8K 时参考 — Phase 4
 - ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
 ### Active
