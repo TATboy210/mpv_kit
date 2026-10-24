@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 7: mpv-master Vendor Advance & gpu-next Regression** - vendor 推进到快照点，补丁重放门禁通过，新基线回归全绿
+- [x] **Phase 7: mpv-master Vendor Advance & gpu-next Regression** - vendor 推进到快照点，补丁重放门禁通过，新基线回归全绿 (completed 2026-10-24; 4K 30-min re-verify environment-blocked: host disk 100%)
 - [ ] **Phase 8: Debug HUD & Drag-and-Drop** - 可切换调试 overlay（五组属性+事件流+合成路径）与拖拽播放
 - [ ] **Phase 9: 8K Full-Rate** - demuxer 队列按帧尺寸推导，8K 30 分钟门禁通过
 - [ ] **Phase 10: Composition Spike** - REA 实证引擎纹理消费路径 + Impeller 冒烟，决策落盘
@@ -26,7 +26,11 @@
   2. 一致性门禁（CONSISTENCY）通过——README/ARCHITECTURE/ADR 的版本提及与 MPV_VERSION 联动更新。
   3. 新基线回归：seek 后画面恢复显式测试（mpv#17258 类）、4K 基准对照（对比 docs/perf 基线无退步）、六目标 CI + 三平台 integration test 全绿。
 
-**Plans**: TBD
+**Plans:** 2/2 executed
+
+Plans:
+- [x] 07-01-PLAN.md — Snapshot identified as exactly b2c255c13e8e (blob walk + full-tree diff=0); vendor advanced; patches replayed (0001..0007 zero rejects, 0008 -> version stamp); PATCH-DRIFT OK at the new base. The advance doubles as a provenance correction: v1's 0008 deltas were the two separating upstream commits, already in the old tree.
+- [x] 07-02-PLAN.md — Build source recorded (dev.3 byte-identical justification); seek_recovery_test green (RED-proven; lavfi forward-only semantics pinned, MPV_KIT_SEEK_MEDIA hook); suites/api_freeze/decode-bench green; 4K 30-min blocked by host disk 100% (not a code regression — same binary passed the same day; evidence in docs/perf/2026-10-24-vendor-advance-regression.md)
 
 ### Phase 8: Debug HUD & Drag-and-Drop
 
@@ -83,7 +87,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. mpv-master Vendor Advance & gpu-next Regression | 0/TBD | Not started | - |
+| 7. mpv-master Vendor Advance & gpu-next Regression | 2/2 | Complete | 2026-10-24 |
 | 8. Debug HUD & Drag-and-Drop | 0/TBD | Not started | - |
 | 9. 8K Full-Rate | 0/TBD | Not started | - |
 | 10. Composition Spike | 0/TBD | Not started | - |

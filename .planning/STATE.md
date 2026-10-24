@@ -3,14 +3,17 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: GPU-Next Optimization & Full-Rate UHD
 status: planning
-last_updated: "2026-10-24T09:58:43.214Z"
+stopped_at: Phase 07 complete (4K re-verify env-blocked: host disk 100%), ready to plan Phase 8
+last_updated: "2026-10-24T23:59:00.000Z"
 last_activity: 2026-10-24
+last_activity_desc: Phase 07 complete, transitioned to Phase 8
+state_head: d1931730a6d8a687c88f8227bfc54a9187c99c80
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 11
+  completed_phases: 7
+  total_plans: 23
+  completed_plans: 23
+  percent: 64
 ---
 
 # Project State
@@ -20,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** v2.0 — Phase 7 mpv-master Vendor Advance(阶段 1-6 属 v1,已归档)
+**Current focus:** v2.0 — Phase 8 Debug HUD & Drag-and-Drop（阶段 1-6 属 v1，已归档）
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-24 — Milestone v2.0 started
+Phase: 8 — Debug HUD & Drag-and-Drop
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-24 — Phase 07 complete, transitioned to Phase 8
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 23
 - Average duration: ~15 min
-- Total execution time: ~5 hours
+- Total execution time: ~5.5 hours
 
 **By Phase:**
 
@@ -46,9 +49,10 @@ Last activity: 2026-10-24 — Milestone v2.0 started
 | 04 | 3 | ~169 min | ~56 min (long runs) |
 | 05 | 3 | ~135 min | ~45 min |
 | 06 | 3 | ~67 min | ~22 min |
+| 07 | 2 | ~135 min | ~68 min |
 
 **Recent Trend:**
-- Last 5 plans: 18 min, 58 min, 16 min, 18 min, 42 min
+- Last 5 plans: 18 min, 18 min, 42 min, 40 min, 95 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -77,6 +81,8 @@ Last activity: 2026-10-24 — Milestone v2.0 started
 | Phase 06 P01 | 12 min | 1 task | 1 file |
 | Phase 06 P02 | 35 min | 2 tasks | 4 files |
 | Phase 06 P03 | 20 min | 1 task | 3 files |
+| Phase 07 P01 | 40 min | 2 tasks | 5 files |
+| Phase 07 P02 | 95 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,18 +125,22 @@ Recent decisions affecting current work:
 - [Phase 05]: git -c core.autocrlf=false clone 不持久——新仓库必须再 config 一次,否则后续 checkout 全树 CRLF 化(575k 行幻影 diff)。
 - [Phase 05]: Git Bash 下 PATH 条目必须 POSIX 形式(/d/...);D:/... 不被转换导致依赖解析失败、MpvLibrary 静默回落(已写入 README)。
 
+- [Phase 07]: 快照精确识别 = 多文件 blob 归因 + 正反双向全匹配走查 + 全树 diff 验证（b2c255c13e8e）；单向前向走查会停在最新探针匹配而漏掉真实提交。
+- [Phase 07]: v1 vendoring 已把上游 io.c/wayland 两提交混入树中（0008 错误归因）——"vendor≠base+patches" 的疑点常是 base 标签错，不是补丁错；本次推进实为来源修正（新 vendor 与旧 vendor 仅 MPV_VERSION 一行差异）。
+- [Phase 07]: lavfi 生成源仅支持前进/近终点 seek（精确落位），后退/归零为空操作——源属性；测试顺序 near-end 最后；MPV_KIT_SEEK_MEDIA 真实媒体双向覆盖。
+- [Phase 07]: 宿主磁盘 100% 满的故障签名：进程无声死亡（无 WER）+ CMakeCache 截断 parse error + 增量构建 MSB8066；与提交耗尽（WER 有记录）可区分。
+- [Phase 07]: 回归二进制 = dev.3（字节等同论证）；本地无 MSYS2/meson，新树构建依赖 CI。
+
 ### Pending Todos
 
 None yet.
 
 ### Blockers/Concerns
 
-- 真机验证目前只有 Windows x64（RTX 4060）；Linux/macOS 覆盖依赖 Phase 6 的 CI runner 与 lavapipe/MoltenVK 环境。
-- 4K/8K 30 分钟指标（PERF-03）需要可用的真实 GPU runner，Phase 4 开始前需确认测试机。
-- 本地跑 `mpv_kit` 测试需要 `PATH` 同时包含 `bt/`，否则 `MPV_KIT_LIBMPV_PATH` 会静默回落到 stock libmpv（见 PROJECT.md Context）。CI 若同样漏掉依赖搜索路径，会在不知情的情况下测错库。
-- `flutter-video-coverage` 与 mpv_kit_libs 覆盖率门禁的首次真实 CI 运行待下一次 push;apt 运行库闭包如缺 DT_NEEDED 依赖会以 dlopen 失败响亮报错(非静默)。
-- WR-01(createClient 挂起)经 Phase 2 triage 保持 deferred:不属控制器生命周期,缺复现;Phase 3(错误可观测性)或专门稳定性插入认领。
-- 50-cycle Vulkan create/dispose RSS +45.1 MiB 距 64 MiB 门禁不远,值得后续观察。
+- **宿主磁盘 D: 100% 满（0GB）/C: 99%**：阻塞 4K 30 分钟复验与本地重建（需 ≥10GB）——后续所有本地构建/长播的硬前提；解除程序在 docs/perf/2026-10-24-vendor-advance-regression.md。
+- 本地无 MSYS2/meson 工具链；新树构建依赖 CI（push 后六目标）或 dev.4 发布流（对外发布，需用户决定）。
+- 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
+- （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化（用户撤下 8K 分句）。
 
 ## Deferred Items
 

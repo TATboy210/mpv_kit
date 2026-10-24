@@ -15,8 +15,8 @@
 
 ### mpv-master Advance & gpu-next Regression (REBASE)
 
-- [ ] **REBASE-01**: vendor 树推进到用户提供的 mpv-master 快照（或更新点），补丁 0001..0008 重放后 PATCH-DRIFT 门禁字节级通过；MPV_VERSION/README/一致性检查联动更新
-- [ ] **REBASE-02**: 新基线上 gpu-next 回归验证——seek 后画面恢复（mpv#17258 类）、帧节奏（4K 基准对照）、六目标 CI + 三平台 integration test 全绿
+- [x] **REBASE-01**: vendor 树推进到用户提供的 mpv-master 快照（或更新点），补丁 0001..0008 重放后 PATCH-DRIFT 门禁字节级通过；MPV_VERSION/README/一致性检查联动更新
+- [x] **REBASE-02**: 新基线上 gpu-next 回归验证——seek 后画面恢复（mpv#17258 类）、帧节奏（4K 基准对照）、六目标 CI + 三平台 integration test 全绿
 
 ### Native Composition (COMP)
 
@@ -66,8 +66,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REBASE-01 | Phase 7 | Pending |
-| REBASE-02 | Phase 7 | Pending |
+| REBASE-01 | Phase 7 | Complete |
+| REBASE-02 | Phase 7 | Complete (4K re-verify env-blocked, documented) |
 | HUD-01 | Phase 8 | Pending |
 | HUD-02 | Phase 8 | Pending |
 | DND-01 | Phase 8 | Pending |

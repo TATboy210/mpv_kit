@@ -60,7 +60,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 <!-- v2.0 需求在研究完成后定义（REQUIREMENTS.md v2 节）。 -->
 
-- [ ] gpu-next 社区反馈修复与优化升级（待需求定义）
+- ✓ vendor 推进至 mpv v0.41.0-1115-gb2c255c13（blob 归因+全树 diff=0 精确识别；PATCH-DRIFT 字节级绿；v1 0008 错误归因被证实为上游两提交）+ gpu-next 回归（seek 恢复测试/全套件/基准绿；4K 30 分钟复验因宿主磁盘满受阻）— Phase 7
 - [ ] example 调试 HUD + 拖拽播放（待需求定义）
 - [ ] 渲染桥接绕过 ANGLE + 4K/8K 满血（待需求定义）
 
