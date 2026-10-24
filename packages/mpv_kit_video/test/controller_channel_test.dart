@@ -170,6 +170,63 @@ void main() {
     expect(calls.where((m) => m.method == 'setSize'), hasLength(1));
   }, skip: skip);
 
+  test('dispose closes events even when the native call throws', () async {
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'dispose') {
+        throw PlatformException(code: 'render_init', message: 'gone');
+      }
+      if (call.method == 'create') {
+        return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+      }
+      return null;
+    });
+    final c = await MpvVideoController.create(player);
+    final done = Completer<void>();
+    c.events.listen((_) {}, onDone: done.complete);
+    await expectLater(c.dispose(), throwsA(isA<PlatformException>()));
+    await done.future.timeout(const Duration(seconds: 5));
+    await c.dispose();
+  }, skip: skip);
+
+  test('resize during dispose does not surface an uncaught error', () async {
+    final gate = Completer<void>();
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'setSize') {
+        await gate.future;
+        throw PlatformException(code: 'no_texture', message: 'gone');
+      }
+      if (call.method == 'create') {
+        return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+      }
+      return null;
+    });
+    final c = await MpvVideoController.create(player);
+    // MpvVideo issues resize through unawaited(...), so a post-dispose
+    // failure must be dropped by the controller, not reach the zone.
+    unawaited(c.setSize(640, 360));
+    await c.dispose();
+    gate.complete();
+    await pumpEventQueue();
+  }, skip: skip);
+
+  test('resize failure on a live controller still throws', () async {
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call);
+      if (call.method == 'setSize') {
+        throw PlatformException(code: 'no_texture', message: 'unknown');
+      }
+      if (call.method == 'create') {
+        return {'textureId': 7, 'backend': 'vulkan', 'reason': 'vulkan (x)'};
+      }
+      return null;
+    });
+    final c = await MpvVideoController.create(player);
+    await expectLater(c.setSize(640, 360), throwsA(isA<PlatformException>()));
+    await c.dispose();
+  }, skip: skip);
+
   test('native events are routed and deviceLost marks it broken', () async {
     final c = await MpvVideoController.create(player);
     final got = <MpvVideoEvent>[];

@@ -386,11 +386,20 @@ final class MpvVideoController {
     if (_disposed || width <= 0 || height <= 0) return;
     if (_size == (width, height)) return;
     _size = (width, height);
-    await _channel.invokeMethod<void>('setSize', {
-      'textureId': textureId,
-      'width': width,
-      'height': height,
-    });
+    try {
+      await _channel.invokeMethod<void>('setSize', {
+        'textureId': textureId,
+        'width': width,
+        'height': height,
+      });
+    } on Object {
+      // dispose won the race while this call was in flight: the plugin is
+      // gone and nobody can consume the failure (MpvVideo issues resize
+      // through unawaited). While the controller is live, rethrow — real
+      // errors must reach the caller.
+      if (_disposed) return;
+      rethrow;
+    }
   }
 
   /// Color-manages output for the display described by [profile] (the raw
@@ -404,20 +413,47 @@ final class MpvVideoController {
     if (_disposed) return;
     final enable = profile != null && profile.isNotEmpty;
     player.mpv.setProperty('icc-profile-auto', enable);
-    await _channel.invokeMethod<void>('setIccProfile', {
-      'textureId': textureId,
-      'profile': enable ? profile : Uint8List(0),
-    });
+    try {
+      await _channel.invokeMethod<void>('setIccProfile', {
+        'textureId': textureId,
+        'profile': enable ? profile : Uint8List(0),
+      });
+    } on Object {
+      // Same dispose-won-the-race rule as [setSize].
+      if (_disposed) return;
+      rethrow;
+    }
   }
 
   /// Releases the texture and render context (the [player] stays alive).
   /// Idempotent.
+  ///
+  /// The events stream closes even when the native call throws — a listener
+  /// must always observe `done` — and the channel error is still surfaced to
+  /// the caller.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _live.remove(textureId);
     player.removeDisposeHook(dispose);
-    await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
-    await _events.close();
+    try {
+      await _channel.invokeMethod<void>('dispose', {'textureId': textureId});
+    } finally {
+      _closeEvents();
+    }
+  }
+
+  /// Closes [_events] unless already closed, retrying once in a microtask if
+  /// a dispatch was still unwinding (mirrors Mpv's `_closeIfOpen`; dispose
+  /// is re-enterable from a synchronous events listener).
+  void _closeEvents() {
+    if (_events.isClosed) return;
+    try {
+      unawaited(_events.close());
+    } on StateError {
+      scheduleMicrotask(() {
+        if (!_events.isClosed) unawaited(_events.close());
+      });
+    }
   }
 }
