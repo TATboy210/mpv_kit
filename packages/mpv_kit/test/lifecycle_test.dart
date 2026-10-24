@@ -1,11 +1,11 @@
 // 1000 create/dispose cycles: every Player stream closes and RSS stays bounded.
 //
 // `ProcessInfo.currentRss` is process-wide, so this soak is only meaningful
-// when no other suite shares the process. `dart_test.yaml` skips the
-// `lifecycle` tag by default, which keeps plain `dart test` and the coverage
-// step from running it alongside another suite; it runs alone, explicitly:
+// when it is the only suite loaded in the invocation. `dart_test.yaml` skips
+// the `lifecycle` tag by default, which keeps plain `dart test` and the
+// coverage step from executing it; run it explicitly, naming this file:
 //
-//   dart test -t lifecycle --run-skipped
+//   dart test test/lifecycle_test.dart -t lifecycle --run-skipped
 //
 // Requires libmpv: set MPV_KIT_LIBMPV_PATH or have it on the loader path.
 @TestOn('vm')

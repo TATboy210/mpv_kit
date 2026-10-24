@@ -2,7 +2,8 @@ tags:
   format:
   failure-injection:
   lifecycle:
-    # Process-wide RSS delta only means something when this suite runs alone,
-    # so it is excluded from the default concurrent run and from the coverage
-    # step. Re-enable it explicitly: dart test -t lifecycle --run-skipped.
-    skip: "RSS soak: run explicitly with dart test -t lifecycle --run-skipped"
+    # Process-wide RSS delta only means something when this suite is the only
+    # one loaded, so the tag default keeps plain `dart test` and the coverage
+    # step from executing the soak. Run it explicitly, naming the file:
+    #   dart test test/lifecycle_test.dart -t lifecycle --run-skipped
+    skip: "RSS soak: run explicitly with dart test test/lifecycle_test.dart -t lifecycle --run-skipped"
