@@ -61,19 +61,20 @@ Plans:
 
 ### Phase 10: Composition Spike
 
-**Goal**: 以证据决定合成路径：REA 逆向本机 flutter_windows.dll（3.47.6）的外部纹理消费实现 + Impeller 开关冒烟。
+**Goal**: 以证据决定合成路径：REA 逆向本机 flutter_windows.dll（3.47.8）的外部纹理消费实现 + Impeller 开关冒烟。
 **Depends on**: Phase 7（在最终 vendor 点上做渲染实验）
 **Requirements**: COMP-01
 **Success Criteria** (what must be TRUE):
-  1. REA 报告：两种表面类型在 3.47.6 二进制中的实际绑定路径（ANGLE 与否、fence 语义、设备归属），证据（反汇编/符号）落盘 docs/reverse-engineering/。
+  1. REA 报告：两种表面类型在 3.47.8 二进制中的实际绑定路径（ANGLE 与否、fence 语义、设备归属），证据（反汇编/符号）落盘 docs/reverse-engineering/。
   2. Impeller 冒烟：示例应用开启 Impeller 后 create→渲染一帧→dispose 的结果记录（成功/崩溃，对照 flutter#191468 与 #191017）。
-  3. 决策文档：选定的路径、依据、回退条件、quarantine 预算假设；若结论是"3.47.6 不可行"，记录所需 Flutter 版本与升级条件，Phase 11 依此调整（允许缩为记录性收口）。
+  3. 决策文档：选定的路径、依据、回退条件、quarantine 预算假设；若结论是"3.47.8 不可行"，记录所需 Flutter 版本与升级条件，Phase 11 依此调整（允许缩为记录性收口）。
 
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — 取得并钉死 3.47.6 引擎工件（sha256/PDB/锚点/导入表），逐路径反编译注册、ANGLE 绑定、Impeller/Skia 消费，落盘 03 号逆向报告。
-- [ ] 10-02-PLAN.md — 安装 3.47.6 SDK，单 testWidgets 跑 D-04 三段（最小链路 / 4K 帧 / 30 秒 + 100 轮），Impeller 与 `--no-enable-impeller` 对照，落盘 ADR 0003 决策。
+- [ ] 10-01-PLAN.md — 钉死本机 3.47.8 引擎工件（sha256/PDB/锚点/导入表），逐路径反编译注册、ANGLE 绑定、Impeller/Skia 消费，落盘 03 号逆向报告。
+- [ ] 10-02-PLAN.md — 钉死 3.47.8 SDK 与 CI 版本锁，写单 testWidgets 的 D-04 三段 harness（含非黑断言与 idle 分类），analyze 干净。
+- [ ] 10-03-PLAN.md — Impeller 与 `--no-enable-impeller` 对照双运行，带 identity 的四桶分类，落盘 ADR 0003 决策。
 
 ### Phase 11: Native Composition Path
 
