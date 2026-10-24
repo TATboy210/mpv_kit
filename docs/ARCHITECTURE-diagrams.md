@@ -29,9 +29,8 @@ D:\mpv_kit\
 │   ├── tests/                     ← render_vk_smoke.c、stream_bridge_test.c(C 冒烟)
 │   └── out/                       ← 本地构建产物(gitignore)
 │
-├── bt/                            ← 预编译 22 个 DLL 的本地解包(libmpv-2.dll 2.1MB、avcodec-62、
-│                                    libplacebo-360、vulkan-1.dll、libass、dav1d…)
-│                                    对应 pin: GitHub Release TATboy210/mpv_kit v0.1.0-dev.3
+├── (bt/ retired)                  ← 旧预编译 DLL 目录已从仓库移除;本地测试用 mpv_kit_libs
+│                                    hook bundle 或 MPV_KIT_LIBMPV_PATH(见 README)
 ├── tools/                         ← bundle_report.sh / gen_catalog.dart / gen_options.dart /
 │                                    pin_bundles.dart / make_format_samples.sh /
 │                                    rea_abi_audit/(54 符号清单 PE 审计)

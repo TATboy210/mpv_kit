@@ -32,5 +32,5 @@ Now the throttle path is allocation-free: microsecond integer comparison against
 
 ```sh
 cd D:/mpv_kit && dart run tools/bench_decode.dart
-cd packages/mpv_kit && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/bt/libmpv-2.dll PATH="$PATH:D:/mpv_kit/bt" dart test
+cd packages/mpv_kit && MPV_KIT_LIBMPV_PATH="D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll" PATH="$PATH:D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" dart test
 ```

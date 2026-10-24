@@ -71,7 +71,32 @@ class _VideoPageState extends State<VideoPage> {
 ```
 
 Requirements: Dart 3.10 / Flutter 3.38 or newer (the build hook of
-`mpv_kit_libs` uses native assets).
+`mpv_kit_libs` uses native assets). All package `sdk:` constraints in this
+repository are pinned to the same floor and checked by
+`tools/check_consistency.dart`.
+
+### Dependency locking
+
+The workspace `pubspec.lock` is **committed**: CI and fresh clones resolve
+against the same pinned dependency set. Update it deliberately
+(`dart pub upgrade`) and commit it together with any `pubspec.yaml` change.
+
+### Local libmpv for tests and benches
+
+The tests need a real libmpv unless they are pure-Dart. Two supported ways:
+
+1. **Default — nothing to do.** `dart pub get`/`flutter pub get` triggers the
+   `mpv_kit_libs` build hook, which downloads the pinned, sha256-verified
+   libmpv bundle for your platform.
+2. **Explicit — `MPV_KIT_LIBMPV_PATH`.** Point it at a `libmpv-2.dll` /
+   `libmpv.so.2` (e.g. from the hook cache under
+   `.dart_tool/hooks_runner/shared/mpv_kit_libs/build/`) **and put that
+   directory on `PATH`** — on Windows the dependency DLLs must be reachable
+   or loading silently falls back to another libmpv.
+
+The old `bt/` directory of prebuilt DLLs was retired and removed from the
+repository (stale pre-rebase binaries without the working Vulkan render
+path, ~44 MB); use the hook bundle instead.
 
 The low-level client API is always available, standalone or as
 `player.mpv`:

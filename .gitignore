@@ -3,7 +3,10 @@ build/
 *.iml
 .idea/
 coverage/
-pubspec.lock
 native/out/
 !native/build/
 .ffmpeg-build/
+
+# Stale local libmpv DLLs (Oct 15, pre-rebase): superseded by the
+# mpv_kit_libs hook bundle — see README "Local libmpv for tests".
+bt/
