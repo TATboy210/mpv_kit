@@ -1,10 +1,15 @@
-// mpv_kit example: open a file (path as first argument or the text field),
-// show it through MpvVideo and display live render/decode statistics.
+// mpv_kit example: open a file (drag-and-drop, path argument, or the text
+// field), show it through MpvVideo, and carry a toggleable debug HUD
+// (F9) with five property groups and the live renderer-event overlay.
 import 'dart:async';
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
+
+import 'hud.dart';
 
 void main(List<String> args) {
   runApp(ExampleApp(initialPath: args.isNotEmpty ? args.first : null));
@@ -51,10 +56,13 @@ class _PlayerPageState extends State<PlayerPage> {
   Object? error;
   late final TextEditingController path =
       TextEditingController(text: widget.initialPath ?? '');
-  Timer? statsTimer;
-  String stats = '';
+  Timer? hudTimer;
+  Timer? noticeTimer;
+  bool hudVisible = true;
+  bool dropHovering = false;
+  HudSnapshot hud = HudSnapshot.fabricated();
+  final hudEvents = HudEventLog();
   StreamSubscription<MpvVideoEvent>? videoEvents;
-  final recentEvents = <String>[];
 
   @override
   void initState() {
@@ -68,40 +76,65 @@ class _PlayerPageState extends State<PlayerPage> {
       if (!mounted) return;
       setState(() => video = v);
       videoEvents = v.events.listen((e) {
-        // Keep the last few renderer events on screen for diagnostics.
-        recentEvents.add('$e');
-        if (recentEvents.length > 3) recentEvents.removeAt(0);
+        hudEvents.add(e.kind.name, e.message);
       });
       if (path.text.isNotEmpty) await player.open(path.text);
     } on Object catch (e) {
       if (mounted) setState(() => error = e);
     }
-    statsTimer = Timer.periodic(const Duration(seconds: 1), (_) => _stats());
+    hudTimer = Timer.periodic(const Duration(seconds: 1), (_) => _hudTick());
   }
 
-  void _stats() {
-    final m = player.mpv;
-    String p(String name) => '${m.tryGetProperty(name) ?? '-'}';
-    final line = 'hwdec=${p('hwdec-current')} size=${p('width')}x${p('height')} '
-        'fps=${p('container-fps')} display-fps=${p('display-fps')} '
-        'vsync=${p('video-sync')} dropped=${p('frame-drop-count')} '
-        'dec-drop=${p('decoder-frame-drop-count')} '
-        'delayed=${p('vo-delayed-frame-count')} '
-        'avdiff=${p('avsync')}';
-    debugPrint(line);
-    setState(() {
-      stats = 'backend ${video?.backend.name} (${video?.reason})\n'
-          'hwdec ${p('hwdec-current')}  codec ${p('video-codec')}\n'
-          'size ${p('width')}x${p('height')}  fps ${p('container-fps')}\n'
-          'dropped ${p('frame-drop-count')}  decoder-dropped '
-          '${p('decoder-frame-drop-count')}  delayed ${p('vo-delayed-frame-count')}'
-          '${recentEvents.isEmpty ? '' : '\nevents ${recentEvents.join(' | ')}'}';
+  void _hudTick() {
+    // The debugPrint line doubles as a CI-friendly one-line summary.
+    debugPrint('mpv_kit_example: ${hud.sync['dropped']} dropped, '
+        'avdiff=${hud.sync['avsync']}');
+    if (!mounted) return;
+    setState(() => hud = HudSnapshot.capture(player, video));
+  }
+
+  /// Shows [text] on the HUD for three seconds (non-video drops etc.).
+  void showNotice(String text) {
+    noticeTimer?.cancel();
+    setState(() => hud = HudSnapshot(
+          sync: hud.sync,
+          cache: hud.cache,
+          decode: hud.decode,
+          render: hud.render,
+          audio: hud.audio,
+          notice: text,
+        ));
+    noticeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => hud = HudSnapshot(
+              sync: hud.sync,
+              cache: hud.cache,
+              decode: hud.decode,
+              render: hud.render,
+              audio: hud.audio,
+            ));
+      }
     });
+  }
+
+  void _openDropped(List<dynamic> files) {
+    // desktop_drop hands us XFile-like objects with a .path.
+    for (final f in files) {
+      final p = f.path as String;
+      if (isVideoPlayable(p)) {
+        path.text = p;
+        unawaited(player.open(p));
+        return;
+      }
+    }
+    final first = files.isEmpty ? '?' : (files.first.path as String);
+    showNotice('ignored non-video file: ${first.split('/').last}');
   }
 
   @override
   void dispose() {
-    statsTimer?.cancel();
+    hudTimer?.cancel();
+    noticeTimer?.cancel();
     unawaited(videoEvents?.cancel());
     // Player.dispose frees the render context first (dispose hook).
     unawaited(player.dispose());
@@ -112,29 +145,52 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final v = video;
-    return Scaffold(
-      body: Column(children: [
-        Expanded(
-          child: ColoredBox(
-            color: Colors.black,
-            child: Stack(children: [
-              if (v != null) Positioned.fill(child: MpvVideo(controller: v)),
-              if (error != null)
-                Center(
-                    child: Text('$error',
-                        style: const TextStyle(color: Colors.red))),
-              Positioned(
-                left: 8,
-                top: 8,
-                child: Text(stats,
-                    style: const TextStyle(
-                        fontFamily: 'monospace', fontSize: 12)),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f9): () =>
+            setState(() => hudVisible = !hudVisible),
+        const SingleActivator(LogicalKeyboardKey.keyH): () =>
+            setState(() => hudVisible = !hudVisible),
+      },
+      child: Scaffold(
+        body: Column(children: [
+          Expanded(
+            child: DropTarget(
+              onDragEntered: (_) => setState(() => dropHovering = true),
+              onDragExited: (_) => setState(() => dropHovering = false),
+              onDragDone: (details) {
+                setState(() => dropHovering = false);
+                _openDropped(details.files);
+              },
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: dropHovering
+                      ? Border.all(color: const Color(0xFF7EC8E3), width: 3)
+                      : null,
+                ),
+                child: ColoredBox(
+                  color: Colors.black,
+                  child: Stack(children: [
+                    if (v != null)
+                      Positioned.fill(child: MpvVideo(controller: v)),
+                    if (error != null)
+                      Center(
+                          child: Text('$error',
+                              style:
+                                  const TextStyle(color: Colors.red))),
+                    DebugHud(
+                      visible: hudVisible,
+                      snapshot: hud,
+                      events: hudEvents.items,
+                    ),
+                  ]),
+                ),
               ),
-            ]),
+            ),
           ),
-        ),
-        _Controls(player: player, path: path),
-      ]),
+          _Controls(player: player, path: path),
+        ]),
+      ),
     );
   }
 }

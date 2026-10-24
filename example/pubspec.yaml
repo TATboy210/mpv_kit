@@ -38,6 +38,8 @@ dependencies:
   mpv_kit_video: ^0.1.0-dev.3
   mpv_kit_libs: ^0.1.0-dev.3
   cupertino_icons: ^1.0.8
+  # Drag a video file onto the window to play it (DND-01).
+  desktop_drop: ^0.7.1
 
 dev_dependencies:
   flutter_test:
