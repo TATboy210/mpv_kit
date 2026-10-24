@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默 (completed 2026-10-24)
 - [x] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，长播验证 (completed 2026-10-24; 4K 30 分钟全门禁通过；8K 分句经用户确认撤下——无 8K 测试条件，崩溃发现已记录)
 - [x] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行 (completed 2026-10-24)
-- [ ] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行
+- [x] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行 (completed 2026-10-24)
 
 ## Phase Details
 
@@ -139,7 +139,15 @@ Plans:
   2. 六目标矩阵（Windows/Linux/macOS × x64/arm64）构建与冒烟全部通过，受支持目标没有 `continue-on-error`。
   3. 集成测试失败会阻断合并，且因缺少 libmpv 而跳过的测试改为显式失败或真实运行。
 
-**Plans**: TBD
+**Plans:** 3/3 executed
+
+Plans:
+**Wave 1**
+- [x] 06-01-PLAN.md — Real-plugin integration test (no mocks), local proof + RED proof
+
+**Wave 2**
+- [x] 06-02-PLAN.md — CI wiring: integration-test matrix job on 3 OS; MPV_KIT_REQUIRE_LIBMPV fail-loud guards; flutter-plugin runs channel tests on the hook bundle
+- [x] 06-03-PLAN.md — Six-target matrix audit; Intel-VM continue-on-error converted to explicit if-skips
 
 ## Progress
 
@@ -153,4 +161,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Error Surfacing | 4/4 | Complete | 2026-10-24 |
 | 4. Measured Performance & UHD Endurance | 3/3 | Complete | 2026-10-24 |
 | 5. Build Provenance & Repository Hygiene | 3/3 | Complete | 2026-10-24 |
-| 6. Cross-Platform Verification | 0/TBD | Not started | - |
+| 6. Cross-Platform Verification | 3/3 | Complete | 2026-10-24 |

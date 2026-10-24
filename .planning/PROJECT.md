@@ -40,17 +40,17 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 仓库卫生：bt/ 22 个 DLL 出库、pubspec.lock 入库并有文档化政策 — Phase 5
 - ✓ 版本/部署目标/SDK 一致性检查器 + 全部漂移修复（podspec 12.0、sdk ^3.10.0 ×5、README 精确版本、ADR-0002 重写）— Phase 5
 - ✓ 发布自证（SHA256SUMS ↔ tar ↔ MANIFEST）+ pin 新鲜度 CI 检查 — Phase 5
+- ✓ 真实插件 integration test（无 mock，create→渲染一帧→dispose）本地真机通过并接入三平台 CI runner（Linux xvfb/Windows/macOS，构件复用不重建）— Phase 6
+- ✓ MPV_KIT_REQUIRE_LIBMPV 显式失败守卫：CI 中缺库/错库响亮失败，静默 skip 消灭 — Phase 6
+- ✓ 六目标矩阵完整且无未授权 continue-on-error（审计脚本守卫防削减）— Phase 6
 - ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
 ### Active
 
-<!-- 本里程碑要达成的目标；全部保持公共 API 不变。 -->
+<!-- 里程碑完成：无进行中的需求。v2（FEAT/GPU/PLAT）保持推迟。 -->
 
-- [ ] 修复每个属性事件重复解码等热路径浪费，并以基准数据证明收益
-- [ ] 建立可复现的性能/稳定性验证（create/dispose 循环、resize、长时播放）
-- [ ] 六目标（Windows/Linux/macOS × x64/arm64）构建与冒烟一致、可复现
-- [ ] 4K/8K UHD 长时间播放：`delayed≈0`、`avdiff` 有界、无帧积压
-- [ ] 补丁与构建单一来源，README/ADR 与实际 vendor 版本一致
+- （无 —— 里程碑 v1 于 2026-10-24 完成，21/21 需求落地）
+
 
 ### Out of Scope
 
@@ -122,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 5*
+*Last updated: 2026-10-24 after Phase 6 (milestone complete)*

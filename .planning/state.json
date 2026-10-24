@@ -31,13 +31,13 @@
     {
       "number": "6",
       "name": "Cross-Platform Verification",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 6)",
-    "reason": "Phase 6 of 6 — needs a plan"
+    "command": "/gsd-complete-milestone",
+    "label": "Close the milestone (all 6 phases complete)",
+    "reason": "Milestone v1 complete: 21/21 requirements delivered"
   },
-  "updated_at": "2026-10-24T19:00:00.000Z"
+  "updated_at": "2026-10-24T21:00:00.000Z"
 }

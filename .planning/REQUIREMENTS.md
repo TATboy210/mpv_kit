@@ -38,8 +38,8 @@
 
 ### Cross-platform Verification (VERIFY)
 
-- [ ] **VERIFY-01**: 真实插件 integration test 在 Windows/Linux/macOS CI 跑通（create、渲染一帧、dispose）
-- [ ] **VERIFY-02**: 六目标（x64/arm64 × 三 OS）构建与冒烟全部通过
+- [x] **VERIFY-01**: 真实插件 integration test 在 Windows/Linux/macOS CI 跑通（create、渲染一帧、dispose）
+- [x] **VERIFY-02**: 六目标（x64/arm64 × 三 OS）构建与冒烟全部通过
 - [x] **VERIFY-03**: 关键失败路径有回归测试（失败注入、抛错监听器/dispose hook、异常流源）
 - [x] **VERIFY-04**: 覆盖率门禁覆盖 `mpv_kit_video` 与 `mpv_kit_libs`
 
@@ -98,8 +98,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BUILD-02 | Phase 5 | Complete |
 | BUILD-03 | Phase 5 | Complete |
 | BUILD-04 | Phase 5 | Complete |
-| VERIFY-01 | Phase 6 | Pending |
-| VERIFY-02 | Phase 6 | Pending |
+| VERIFY-01 | Phase 6 | Complete |
+| VERIFY-02 | Phase 6 | Complete |
 | VERIFY-03 | Phase 1 | Complete |
 | VERIFY-04 | Phase 2 | Complete |
 
