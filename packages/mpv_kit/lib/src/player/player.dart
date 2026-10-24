@@ -122,15 +122,23 @@ final class Player {
     // `time-pos` 按渲染帧粒度通知（60Hz 片源即 60 事件/秒），每个事件
     // 都要 node 解码 + broadcast；UI 进度条不需要帧级精度——100ms 节流，
     // 位移 >250ms（seek/拖动）时直通保持跟手。其余 state 保持即时。
-    var lastPosEmitMs = 0;
+    //
+    // 节流路径全程零分配（PERF-04）：微秒整数比较替代 Duration 算术，
+    // 单调 Stopwatch 替代 DateTime.now()；Duration 只在真正 emit 时构造。
+    final posThrottleClock = Stopwatch()..start();
+    var lastPosEmitUs = 0;
     _subs.add(mpv.observeProperty('time-pos').listen((v) {
-      final d = secondsToDuration(v) ?? Duration.zero;
-      final ms = DateTime.now().millisecondsSinceEpoch;
-      final jumped =
-          (d - position._value).abs() > const Duration(milliseconds: 250);
-      if (!jumped && ms - lastPosEmitMs < 100) return;
-      lastPosEmitMs = ms;
-      position._set(d);
+      final seconds = v is num ? v.toDouble() : null;
+      // 属性不可用（idle/无文件）视作位置 0,与旧行为一致；NaN/Inf 会令
+      // 旧路径 round() 抛错,现归零（Phase 3 解析容错的语义）。
+      final us = seconds == null || !seconds.isFinite
+          ? 0
+          : (seconds * 1e6).round();
+      final nowUs = posThrottleClock.elapsedMicroseconds;
+      final jumped = (us - position._value.inMicroseconds).abs() > 250000;
+      if (!jumped && nowUs - lastPosEmitUs < 100000) return;
+      lastPosEmitUs = nowUs;
+      position._set(Duration(microseconds: us));
     }));
     _bind('duration', duration, (v) => secondsToDuration(v) ?? Duration.zero);
     _bind(
