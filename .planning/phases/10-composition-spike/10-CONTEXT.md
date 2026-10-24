@@ -14,6 +14,10 @@
 
 **不做**：实现原生合成路径（Phase 11 的 COMP-02/COMP-03）；不做移动端；不改公共 API。
 
+> **前提更正（2026-10-24，来自 `10-RESEARCH.md`）：** 本 CONTEXT.md 成稿时沿用了里程碑研究的说法「真正的绕过是 Impeller」。调研推翻了它：3.47.6 的 Windows Impeller 是 **GLES-over-ANGLE**，`impeller/renderer/backend/` 只有 gles/metal/vulkan，`EmbedderExternalTextureGL::ResolveTextureImpeller` 消费的仍是 ANGLE 绑定的 GL 纹理。启用 Impeller 去掉的是 Skia/Ganesh 与每次 resolve 的 `flushAndSubmit()`，**并未移除外部纹理交接中的 ANGLE**。
+>
+> 因此 Phase 10 的决策文档必须回答的是：**还能不能更短、更便宜**，而不是「能不能无 ANGLE」。Phase 11 的目标已据此在 `ROADMAP.md` 重写为「缩短渲染链路（升级绕过 / 上推 issue / 自改 ANGLE）」。
+
 </domain>
 
 <decisions>
