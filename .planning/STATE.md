@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 ## Current Position
 
 Phase: 9 — 8K Full-Rate
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-25 — Phase 08 complete, transitioned to Phase 9
+Plan: 1 of 2 complete (09-01 done; 09-02 blocked)
+Status: Partial — UHD-02 unproven, moved on to Phase 10 by operator decision
+Last activity: 2026-10-24 — 09-02 endurance attempted 3× (8K) + 1× (4K); all harness-side failures, no `BENCH uhd` line. Paused; evidence in `phases/09-8k-full-rate/evidence/`.
 
 ## Performance Metrics
 
