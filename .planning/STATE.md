@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 5
-current_phase_name: Build Provenance & Repository Hygiene
+current_phase: 6
+current_phase_name: Cross-Platform Verification
 status: planning
-stopped_at: Phase 04 complete (4K done; 8K withdrawn by user — no test material), ready to plan Phase 5
-last_updated: "2026-10-24T17:30:00.000Z"
+stopped_at: Phase 05 complete, ready to plan Phase 6
+last_updated: "2026-10-24T19:00:00.000Z"
 last_activity: 2026-10-24
-last_activity_desc: Phase 04 complete, transitioned to Phase 5
-state_head: 353533f59499c94a42a2c6f5b22d769d36958cca
+last_activity_desc: Phase 05 complete, transitioned to Phase 6
+state_head: eca866692da2829ae866530f3788a60e32f3fadd
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 67
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
+  percent: 83
 ---
 
 # Project State
@@ -23,23 +23,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 5 — Build Provenance & Repository Hygiene
+**Current focus:** Phase 6 — Cross-Platform Verification
 
 ## Current Position
 
-Phase: 5 — Build Provenance & Repository Hygiene
+Phase: 6 — Cross-Platform Verification
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-24 — Phase 04 complete, transitioned to Phase 5
+Last activity: 2026-10-24 — Phase 05 complete, transitioned to Phase 6
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 18
 - Average duration: ~15 min
-- Total execution time: ~4 hours
+- Total execution time: ~4.5 hours
 
 **By Phase:**
 
@@ -49,9 +49,10 @@ Progress: [███████░░░] 67%
 | 02 | 3 | ~47 min | ~16 min |
 | 03 | 4 | ~78 min | ~20 min |
 | 04 | 3 | ~169 min | ~56 min (long runs) |
+| 05 | 3 | ~135 min | ~45 min |
 
 **Recent Trend:**
-- Last 5 plans: 12 min, 22 min, 18 min, 58 min, 16 min
+- Last 5 plans: 18 min, 58 min, 16 min, 18 min, 42 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -74,6 +75,9 @@ Progress: [███████░░░] 67%
 | Phase 04 P01 | 58 min | 2 tasks | 4 files |
 | Phase 04 P02 | 16 min | 2 tasks | 4 files |
 | Phase 04 P03 | 95 min | 2 tasks | 2 files (long runs) |
+| Phase 05 P01 | 75 min | 2 tasks | 5 files |
+| Phase 05 P02 | 18 min | 1 task | 6 files |
+| Phase 05 P03 | 42 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -112,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 集成测试文件内多个 testWidgets 会挂(第二个起 "did not complete")——一个 testWidgets 多 section;同一 mpv handle 同时只允许一个 render context。
 - [Phase 04]: resize 扫描必须在播放中跑——停止但已渲染的状态下,渲染线程重分配会在未消费的退休图像上阻塞(停止态 58 个事件 vs 播放态 1 个合并事件)。
 - [Phase 04]: 8K 提交内存耗尽崩溃(WER RADAR_PRE_LEAK_64)= 产品稳定性缺陷;8K YUV420P ≈124 MiB/帧,系统队列 + 633 MiB 共享内存环压爆提交额度;4K 不受影响。
+- [Phase 05]: vendor 树并非 base+旧补丁——0004 的 5 个手工重排 hunk 仅存在于 vendor,io.c 模式改动与 wayland 旧快照无主;补丁集从 vendor 重生成(0004+0005 合并、0008 新增)使字节级 provenance 成立。
+- [Phase 05]: git -c core.autocrlf=false clone 不持久——新仓库必须再 config 一次,否则后续 checkout 全树 CRLF 化(575k 行幻影 diff)。
+- [Phase 05]: Git Bash 下 PATH 条目必须 POSIX 形式(/d/...);D:/... 不被转换导致依赖解析失败、MpvLibrary 静默回落(已写入 README)。
 
 ### Pending Todos
 

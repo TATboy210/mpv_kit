@@ -36,6 +36,10 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 每个属性事件单次 mpv_node 解码（计数器证明）+ time-pos 节流路径零分配；decode-double −38%、decode-map −49% — Phase 4
 - ✓ 4K 3840x2160 连续 30 分钟：零丢帧、avsync 峰值 4.7e-05、累计漂移 −0.033s 有界、无积压 — Phase 4
 - ✓ 4K/8K UHD：4K 30 分钟达成；8K 经用户确认撤下（无 8K 视频测试条件）——探索中发现的提交内存耗尽崩溃已记录（CONCERNS.md/docs/perf），供将来支持 8K 时参考 — Phase 4
+- ✓ 补丁漂移 CI 门禁：base+patches == vendor 字节级成立（补丁集重生成：0004+0005 合并、0008 集成修正新增）— Phase 5
+- ✓ 仓库卫生：bt/ 22 个 DLL 出库、pubspec.lock 入库并有文档化政策 — Phase 5
+- ✓ 版本/部署目标/SDK 一致性检查器 + 全部漂移修复（podspec 12.0、sdk ^3.10.0 ×5、README 精确版本、ADR-0002 重写）— Phase 5
+- ✓ 发布自证（SHA256SUMS ↔ tar ↔ MANIFEST）+ pin 新鲜度 CI 检查 — Phase 5
 - ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
 ### Active
@@ -96,6 +100,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | 基线必须先于一切优化提交 | ROADMAP criterion 1 的"改动前基线";计划顺序强制 | ✓ Phase 4 |
 | 8K 崩溃是数据不是环境噪声,门禁不放松 | 可复现 3 次 + WER 证据;放松门禁等于隐藏稳定性缺陷 | ✓ Phase 4 |
 | 基准 libmpv 用 hook 构建(dev.3),bt/ 旧 DLL 不可用于渲染基准 | bt/(10 月 15 日预重基)的 render_context_create 报 not implemented,静默落 software | ✓ Phase 4 |
+| 补丁集从 vendor 树重生成而非接受语义门禁 | 旧 0004 含 5 个仅存在于 vendor 的手工重排 hunk,逐字应用永不等于 vendor;排除列表会掩盖真实漂移 | ✓ Phase 5 |
+| pubspec.lock 提交(非忽略) | workspace + 应用 + BUILD-02 复现性;CI 解析可重现 | ✓ Phase 5 |
+| Git Bash 下 PATH 条目必须 POSIX 形式 | D:/... 条目不被转换,依赖解析失败静默回落(实测) | ✓ Phase 5 |
 
 ## Evolution
 
@@ -115,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after Phase 4*
+*Last updated: 2026-10-24 after Phase 5*

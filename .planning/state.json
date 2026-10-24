@@ -26,7 +26,7 @@
     {
       "number": "5",
       "name": "Build Provenance & Repository Hygiene",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "6",
@@ -36,8 +36,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 5)",
-    "reason": "Phase 5 of 6 — needs a plan (8K stability insertion recommended as its own work item)"
+    "label": "Advance to the next step (plan phase 6)",
+    "reason": "Phase 6 of 6 — needs a plan"
   },
-  "updated_at": "2026-10-24T17:30:00.000Z"
+  "updated_at": "2026-10-24T19:00:00.000Z"
 }

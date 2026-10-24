@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Video Controller Lifecycle & Resize Safety** - create 失败可回滚，resize/dispose 并发不崩溃，覆盖率门禁覆盖插件 (completed 2026-10-24)
 - [x] **Phase 3: Error Surfacing** - 流源、属性观察、渲染回退与选项错误不再静默 (completed 2026-10-24)
 - [x] **Phase 4: Measured Performance & UHD Endurance** - 属性事件单次解码，基准可重复，长播验证 (completed 2026-10-24; 4K 30 分钟全门禁通过；8K 分句经用户确认撤下——无 8K 测试条件，崩溃发现已记录)
-- [ ] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行
+- [x] **Phase 5: Build Provenance & Repository Hygiene** - 补丁/版本/bundle 单一来源，仓库卫生可执行 (completed 2026-10-24)
 - [ ] **Phase 6: Cross-Platform Verification** - 真实插件 integration test 与六目标矩阵在 CI 常态运行
 
 ## Phase Details
@@ -114,12 +114,20 @@ Plans:
 **Depends on**: Phase 4
 **Requirements**: BUILD-01, BUILD-02, BUILD-03, BUILD-04
 **Success Criteria** (what must be TRUE):
-  1. CI 在干净树上应用 `native/patches/`（0004+0005 已合并、0008 集成修正补丁加入，共 7 个），vendor 树与补丁不一致时任务失败。
+  1. CI 在干净树上应用 `native/patches/`（0004+0005 已合并、0008 集成修正补丁加入，共 7 个），vendor 树与补丁不一致时任务失败。✓ PATCH-DRIFT OK 本地实跑;CI 首跑待 push。
   2. 六个桌面目标的 bundle 可由当前树重建，并通过 sha256/MANIFEST 校验。
   3. README、ADR 与版本常量同 `native/mpv/MPV_VERSION`、macOS 部署目标、SDK 下限一致，并有一致性检查。
   4. `bt/` 不再被跟踪（保留文档化的替代方式），`pubspec.lock` 策略明确并被执行。
 
-**Plans**: TBD
+**Plans:** 3/3 executed
+
+Plans:
+**Wave 1**
+- [x] 05-01-PLAN.md — Patch-drift gate (script + CI first job; patch set regenerated 0004+0005 merged, 0008 added)
+- [x] 05-02-PLAN.md — Repo hygiene: bt/ untracked, pubspec.lock committed with policy, docs updated
+
+**Wave 2**
+- [x] 05-03-PLAN.md — Consistency checker with drift fixes; pin freshness + release self-verification
 
 ### Phase 6: Cross-Platform Verification
 
@@ -144,5 +152,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Video Controller Lifecycle & Resize Safety | 3/3 | Complete | 2026-10-24 |
 | 3. Error Surfacing | 4/4 | Complete | 2026-10-24 |
 | 4. Measured Performance & UHD Endurance | 3/3 | Complete | 2026-10-24 |
-| 5. Build Provenance & Repository Hygiene | 0/TBD | Not started | - |
+| 5. Build Provenance & Repository Hygiene | 3/3 | Complete | 2026-10-24 |
 | 6. Cross-Platform Verification | 0/TBD | Not started | - |

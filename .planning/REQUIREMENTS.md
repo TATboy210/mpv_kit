@@ -31,10 +31,10 @@
 
 ### Build & Provenance (BUILD)
 
-- [ ] **BUILD-01**: 补丁单一来源，CI 能检测 vendor 树与 `native/patches/` 的漂移
-- [ ] **BUILD-02**: 六个桌面目标的 bundle 可由当前树可复现重建，并通过 sha256/MANIFEST 校验
-- [ ] **BUILD-03**: 文档与版本一致（vendor commit、macOS 部署目标、SDK 约束）
-- [ ] **BUILD-04**: 仓库卫生（`bt/` 不再跟踪、`pubspec.lock` 策略明确）
+- [x] **BUILD-01**: 补丁单一来源，CI 能检测 vendor 树与 `native/patches/` 的漂移
+- [x] **BUILD-02**: 六个桌面目标的 bundle 可由当前树可复现重建，并通过 sha256/MANIFEST 校验
+- [x] **BUILD-03**: 文档与版本一致（vendor commit、macOS 部署目标、SDK 约束）
+- [x] **BUILD-04**: 仓库卫生（`bt/` 不再跟踪、`pubspec.lock` 策略明确）
 
 ### Cross-platform Verification (VERIFY)
 
@@ -94,10 +94,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Complete (4K; 8K withdrawn — no test material, crash documented) |
 | PERF-04 | Phase 4 | Complete |
-| BUILD-01 | Phase 5 | Pending |
-| BUILD-02 | Phase 5 | Pending |
-| BUILD-03 | Phase 5 | Pending |
-| BUILD-04 | Phase 5 | Pending |
+| BUILD-01 | Phase 5 | Complete |
+| BUILD-02 | Phase 5 | Complete |
+| BUILD-03 | Phase 5 | Complete |
+| BUILD-04 | Phase 5 | Complete |
 | VERIFY-01 | Phase 6 | Pending |
 | VERIFY-02 | Phase 6 | Pending |
 | VERIFY-03 | Phase 1 | Complete |
