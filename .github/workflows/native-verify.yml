@@ -88,9 +88,12 @@ jobs:
           # concurrent coverage run above never executes the soak. The explicit
           # file-scoped invocation below loads only lifecycle_test.dart, so no
           # other suite's tests execute in that invocation and the process-wide
-          # RSS delta contains no other suite's allocations. A skipped or
-          # uncollected run exits non-zero and fails this job instead of
-          # passing silently.
+          # RSS delta contains no other suite's allocations.
+          #
+          # `--run-skipped` is load-bearing: without it the same invocation
+          # reports "All tests skipped" and still exits 0, so dropping the flag
+          # would leave this job green with zero soak cycles. Only a missing or
+          # uncollected suite exits non-zero.
           dart test -t failure-injection
           dart test test/lifecycle_test.dart -t lifecycle --run-skipped
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
