@@ -8,6 +8,18 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
+## Current Milestone: v3.0 统一渲染生命周期与平台原生图形后端
+
+**Goal:** 把渲染链路收敛到统一的 `RenderBackend` 生命周期接口，各平台使用适合自身生态的图形后端并尽量做到硬件解码零拷贝；Flutter 只需拿到可采样纹理、可靠帧通知与确定的资源释放。
+
+**Target features:**
+- 统一 `RenderBackend` 接口（Create / AllocTarget / Render / FrameReady / Release / Destroy），现有 Vulkan 与软件后端先迁移且行为不变
+- Windows 原生 D3D11：基于 libplacebo `pl_d3d11` 的新 libmpv D3D11 render 后端（新下游补丁），DXGI 共享句柄交给 `GpuSurfaceTexture`，d3d11va 零拷贝；**mpv_kit 渲染链路中禁止 ANGLE/EGL**（media_kit 只读参考）
+- Linux OpenGL：mpv OpenGL render API + `FlTextureGL`，vaapi（EGL dma-buf）/ nvdec 零拷贝；Vulkan 后续扩展
+- macOS Metal：方案由调研决定（MoltenVK→IOSurface / OpenGL+IOSurface / 自写 Metal 后端的成本对比）
+- auto 回退：平台原生 → Vulkan → 软件，经现有 `MpvVideoRenderer` 枚举接入，不新增公共 API
+- 软件解码与硬件解码两条路径在 CI runner 上真实插件验证，外加 UHD 长时间回归
+
 ## Current State (after v2.0 close-out, 2026-10-25)
 
 **Milestone v2.0 closed by user decision as a simple close-out.** 2 of 5 phases
@@ -76,11 +88,20 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 
 ### Active
 
-<!-- v2.0 已按用户决定收尾；以下为未交付项，等下一里程碑重新定义。 -->
+<!-- v3.0 范围；REQ-ID 见 REQUIREMENTS.md。 -->
 
-- [ ] UHD-02：8K 7680x4320 × 30 分钟门禁（仅跑到 60 s 全绿）
-- [ ] COMP-02：原生合成路径实施 + ANGLE 运行时回退 + `backend`/`reason`/HUD 上报
-- [ ] COMP-03：compositor 延迟预算实测参数化（现为 `CompositorLatency() == 4`）+ 100 轮交错 soak
+- [ ] 统一 `RenderBackend` 生命周期接口，现有 Vulkan/软件后端迁移且无回归
+- [ ] Windows 原生 D3D11 后端（无 ANGLE）+ d3d11va 零拷贝
+- [ ] Linux OpenGL 后端 + vaapi/nvdec 零拷贝
+- [ ] macOS Metal 路线决策与实施
+- [ ] 平台原生 → Vulkan → 软件的 auto 回退与诚实的 backend/reason 上报
+- [ ] 软硬解码 × 各后端的 CI 真实插件验证与 UHD 长时间回归
+
+### Deferred from v2.0（继续延后，用户 2026-10-26 决定）
+
+- UHD-02：8K 7680x4320 × 30 分钟门禁（仅跑到 60 s 全绿）
+- COMP-02：原生合成路径实施 + ANGLE 运行时回退 + `backend`/`reason`/HUD 上报
+- COMP-03：compositor 延迟预算实测参数化（现为 `CompositorLatency() == 4`）+ 100 轮交错 soak
 
 ### Deferred (v2.0 close-out)
 
@@ -95,7 +116,8 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 - **新增或破坏性公共 API** — 本里程碑 API 冻结，所有改动必须向后兼容。
 - **版本发布节点、CHANGELOG、pub 发布流程** — 用户明确不着急，专注源码健康度。
 - **新功能（display-sync/vsync 回报、HDR、播放列表、字幕等）** — 暂缓到后续里程碑。
-- **大规模渲染架构重写** — 违反"小改动大收益"原则；只做有数据支撑的局部优化。
+- **推倒重写现有渲染路径** — v3.0 允许新增平台后端与统一接口，但现有 Vulkan/软件路径行为不变、每个新后端可独立回滚（2026-10-26 修订，原为「大规模渲染架构重写」）。
+- **Windows ANGLE 路线** — 用户明确禁止：mpv_kit 自己的渲染链路不得经 ANGLE/EGL（Flutter 引擎内部消费 DXGI 句柄时使用 ANGLE 不在我们控制范围内）。
 
 ## Context
 
@@ -163,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-25 after v2.0 milestone close-out*
+*Last updated: 2026-10-26 after starting milestone v3.0*

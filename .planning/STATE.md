@@ -1,21 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.0
-status: Awaiting next milestone
-stopped_at: "Milestone v2.0 closed (override_closeout: phases 9-11 not delivered)"
-last_updated: "2026-10-25T06:00:00.000Z"
-last_activity: 2026-10-25
-last_activity_desc: Milestone v2.0 closed and archived; 4 requirements deferred
-state_head: 1ac80300592298f2a2a874fd018f196e8590f611
+milestone: v3.0
+milestone_name: 统一渲染生命周期与平台原生图形后端
+status: planning
+last_updated: "2026-10-25T17:30:25.869Z"
+last_activity: 2026-10-26
 progress:
-  total_phases: 5
-  completed_phases: 2
-  total_plans: 14
-  completed_plans: 10
-  percent: 40
-milestone_name: GPU-Next Optimization & Full-Rate UHD
-current_phase: 10
-current_phase_name: Composition Spike (halted)
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -29,11 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-25)
 
 ## Current Position
 
-Phase: — (milestone v2.0 closed; no active phase)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-25 — Milestone v2.0 closed via override_closeout and archived
-Delivery at close: 2/5 phases complete (7, 8), Phase 9 partial (UHD-01), Phase 10 halted (6/9), Phase 11 not started
+Status: Defining requirements
+Last activity: 2026-10-26 — Milestone v3.0 started
 
 ## Performance Metrics
 
