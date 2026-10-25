@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v2.0
 current_phase: 10
 current_phase_name: Composition Spike
-status: ready
-stopped_at: Planning complete — 9 plans; next is 10-07 (soak abort diagnosis)
-last_updated: "2026-10-25T04:59:47.246Z"
+status: executing
+stopped_at: "Completed 10-07-PLAN.md (halted: soak abort not-reproduced)"
+last_updated: "2026-10-25T05:14:39.953Z"
 last_activity: 2026-10-25
 last_activity_desc: "Gap replanned: 10-07 soak-abort diagnosis, 10-08 probe-surface explanation, 10-09 rerun under the preserved (A)/(B) gate; 10-06 re-pointed to 10-09"
-state_head: 595c209f2e1d7bde8e1d46664a054d5042042d6e
+state_head: e198d528b842bfa0e3eee0e24ec464fd64925995
 progress:
   total_phases: 5
   completed_phases: 8
   total_plans: 14
   completed_plans: 25
-  percent: 40
+  percent: 100
 milestone_name: GPU-Next Optimization & Full-Rate UHD
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 
 ## Current Position
 
-Phase: 10 (Composition Spike) — READY TO EXECUTE
-Plan: 5 of 9 (next: 10-07)
-Status: ready
+Phase: 10 (Composition Spike) — EXECUTING
+Plan: 7 of 9
+Status: Ready to execute
 Last activity: 2026-10-25 — Phase 10 execution started
 
 ## Performance Metrics
@@ -90,6 +90,7 @@ Last activity: 2026-10-25 — Phase 10 execution started
 | Phase 10 P01 | 2h 10m | 2 tasks | 6 files |
 | Phase 10 P02 | 7 min | 1 task | 4 files |
 | Phase 10 P03 | 14 min | 2 tasks | 11 files |
+| Phase 10 P07 | 10 min | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,8 @@ Recent decisions affecting current work:
 - [Phase 10]: result=pass requires a supported non-black pixel probe (nonBlackRatio >= 0.01); a missing probe is inconclusive and a black frame is failed. Idle counts as a soak failure only after 500 ms of continuous texture mount.
 - [Phase 10]: 10-03: Smoke classification is inconclusive (the 10-02 harness part-1 gate requires a resize event that only setSize produces), identity proven from the engine log; D-05 is unsettled and Phase 11 must settle it first.
 - [Phase 10]: 10-03: ADR 0003 rejects the 'no ANGLE' slogan on 3.47.8; Phase 11 primary route is upstreaming the requirement, with the upgrade bypass as delivery vehicle and modified ANGLE as fallback.
+- [Phase 10]: 10-07: soak abort is not-reproduced across soak-after-4k (5/5), soak (5/5) and a 25-round after-4k retry (all exit 0 with DIAG soak complete); Task 1 fails, Task 2 is not entered, and no speculative fix is applied
+- [Phase 10]: 10-07: diag trace proven independently: writeAsStringSync flush:true, 25/25 and 5/5 round-end markers, 0 stage:complete lines in all diag logs, _classify untouched
 
 ### Pending Todos
 
@@ -156,6 +159,7 @@ None yet.
 - 本地无 MSYS2/meson 工具链；新树构建依赖 CI（push 后六目标）或 dev.4 发布流（对外发布，需用户决定）。
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化（用户撤下 8K 分句）。
+- 10-07 halted: the 10-05 soak-window abort did not reproduce (3 runs: 5/5, 5/5, 25/25, exit 0, no WER); 10-08 and 10-09 depend on 10-07 and must not assume the soak abort is fixed
 
 ## Deferred Items
 
@@ -170,6 +174,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T17:52:19.033Z
-Stopped at: Planning complete — 9 plans; next is 10-07 (soak abort diagnosis)
+Last session: 2026-10-25T05:14:39.830Z
+Stopped at: Completed 10-07-PLAN.md (halted: soak abort not-reproduced)
 Resume file: None
