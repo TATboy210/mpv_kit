@@ -67,6 +67,7 @@ struct osd_entry {
     pl_tex tex;
     struct pl_overlay_part *parts;
     int num_parts;
+    int change_id;
 };
 
 struct osd_state {
@@ -154,6 +155,8 @@ struct priv {
     bool flush_cache;
     bool frame_pending;
     bool paused;
+    int last_ref_white;
+    int last_srgb_power22;
 
     pl_options pars;
     struct m_config_cache *opts_cache;
@@ -337,19 +340,31 @@ static bool upload_overlay_tex(struct vo *vo, struct osd_entry *entry,
                                const struct sub_bitmaps *item)
 {
     struct priv *p = vo->priv;
+    pl_fmt tex_fmt = p->osd_fmt[item->format];
     if (!entry->tex)
         MP_TARRAY_POP(p->sub_tex, p->num_sub_tex, &entry->tex);
-    bool ok = pl_tex_recreate(p->gpu, &entry->tex, &(struct pl_tex_params) {
-        .format = p->osd_fmt[item->format],
-        .w = MPMAX(item->packed_w, entry->tex ? entry->tex->params.w : 0),
-        .h = MPMAX(item->packed_h, entry->tex ? entry->tex->params.h : 0),
-        .host_writable = true,
-        .sampleable = true,
-    });
-    if (!ok) {
-        MP_ERR(vo, "Failed recreating OSD texture!\n");
-        return false;
+    // pl_tex_recreate() invalidates the texture even when it keeps it, so
+    // only call it when the size or format has to change. Textures only
+    // ever grow, so a size mismatch means the texture is too small.
+    pl_tex tex = entry->tex;
+    if (!tex || tex->params.w < item->packed_w ||
+        tex->params.h < item->packed_h || tex->params.format != tex_fmt)
+    {
+        entry->change_id = 0;
+        bool ok = pl_tex_recreate(p->gpu, &entry->tex, &(struct pl_tex_params) {
+            .format = tex_fmt,
+            .w = MPMAX(item->packed_w, tex ? tex->params.w : 0),
+            .h = MPMAX(item->packed_h, tex ? tex->params.h : 0),
+            .host_writable = true,
+            .sampleable = true,
+        });
+        if (!ok) {
+            MP_ERR(vo, "Failed recreating OSD texture!\n");
+            return false;
+        }
     }
+    if (entry->change_id == item->change_id)
+        return true;
     struct pl_tex_transfer_params upload_params = {
         .tex        = entry->tex,
         .rc         = { .x1 = item->packed_w, .y1 = item->packed_h, },
@@ -364,8 +379,10 @@ static bool upload_overlay_tex(struct vo *vo, struct osd_entry *entry,
     if (!pl_tex_upload(p->gpu, &upload_params)) {
         MP_ERR(vo, "Failed uploading OSD texture!\n");
         talloc_free(upload_params.priv);
+        entry->change_id = 0;
         return false;
     }
+    entry->change_id = item->change_id;
     return true;
 }
 
@@ -3051,6 +3068,13 @@ AV_NOWARN_DEPRECATED(
 
     MP_DBG(p, "Render options updated, flushing renderer cache.\n");
     p->flush_cache = p->paused || !p->next_opts->inter_preserve;
+
+    // These options are baked into mapped frames. Reset the queue to map the
+    // queued frames again.
+    p->want_reset = p->want_reset || p->last_ref_white != opts->hdr_reference_white;
+    p->want_reset = p->want_reset || ((p->last_srgb_power22 ^ opts->treat_srgb_as_power22) & 1);
+    p->last_ref_white = opts->hdr_reference_white;
+    p->last_srgb_power22 = opts->treat_srgb_as_power22;
 }
 
 const struct vo_driver video_out_gpu_next = {

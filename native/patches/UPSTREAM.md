@@ -56,6 +56,7 @@ byte-identity at the new base.
 | 0004 gpu-next render backend + active renderer via get_info | This is step (1) the maintainers asked for; 0005's tiny API addition is folded in (it depends on 0004 and shares its files). | First PR to propose (split 0005 back out for review). |
 | 0006 asynchronous stream bridge | mpv-specific glue for hosts that cannot answer stream_cb synchronously (Dart). Upstream's view so far is that stream_cb is enough. | Keep downstream. |
 | 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
+| 0009 upstream backports | Verbatim upstream mpv master commits after the base: 270367e8af7e (ta_talloc: MP_TARRAY_REMOVE_AT assert), 1f7ad6d31270 (vo_gpu_next: map queued frames again when baked-in options change), b6cab8fa0cc1 (vo_gpu_next: re-upload OSD textures only when they change), 5ce308b5730e (keep the scalers across frames with dynamic HDR metadata). Only offsets on this base, no fuzz. | Drop each hunk when rebasing onto a base that contains it. |
 | 0008 vendor integration fixes | The MPV_VERSION vendor stamp only — upstream commits `06ee185d3`+`b2c255c13` superseded the old io.c/wayland deltas in the 2026-10-24 rebase. | N/A (re-generated at each rebase). |
 
 ## Rebase onto mpv 0.41.0-1113 (2026-10-22)
@@ -172,3 +173,10 @@ the bundle stays on FFmpeg 8.1.3.
   `p->last_id`.
 - 0004: mpv PR #16818 (partially uninitialised `pl_color_adjustment`)
   does not apply: vo_gpu_next.c on this base has no `pl_color_adjustment`.
+- 0009 (upstream mpv backports): not taken 691a86bfb8d0 + 228e02c2cd5e
+  (fall back to the next track when a decoder fails to initialize; needs
+  earlier player refactors, hunks in player/audio.c and player/video.c
+  fail), c1a7e4b42c4b (maintenance11; AMD Windows performance regression),
+  6a262d11f637 (only meaningful with FFmpeg 9), 4dfee616d0fd (0007 is a
+  superset). 1f7ad6d sets `want_reset` on the first options update after
+  init (`last_ref_white` starts at 0): one harmless extra reset.

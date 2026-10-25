@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Patch-drift gate (BUILD-01): proves the vendored mpv tree is exactly
-# upstream-base + native/patches/0001..0007.
+# upstream-base + native/patches/0*.patch (applied in name order).
 #
 # Run from the repo root:
 #   bash tools/check_patches.sh
