@@ -69,6 +69,9 @@ class VulkanContext {
 
   /// Reserves the next timeline value for a render into ring[i].
   uint64_t NextSignalValue(int i);
+  /// Restores ring[i]'s ready value after a render that signalled nothing,
+  /// so WaitImage(i) does not wait for a value that never arrives.
+  void RollbackSignalValue(int i, uint64_t previous);
   /// Waits until rendering into ring[i] has completed on the GPU:
   /// VK_SUCCESS, VK_TIMEOUT (1 s) or an error such as VK_ERROR_DEVICE_LOST.
   VkResult WaitImage(int i);

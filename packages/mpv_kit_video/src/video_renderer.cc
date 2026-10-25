@@ -570,6 +570,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         img.initialized ? VK_QUEUE_FAMILY_EXTERNAL : VK_QUEUE_FAMILY_IGNORED;
     target.final_layout = VK_IMAGE_LAYOUT_GENERAL;
     target.signal_semaphore = vulkan_->timeline();
+    const uint64_t previous_ready = img.ready_value;
     target.signal_value = vulkan_->NextSignalValue(back);
     int flip = 0;
     mpv_render_param params[] = {
@@ -578,6 +579,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
     err = api_.render_context_render(render_ctx_, params);
+    // A failed render signals nothing: without the rollback the next
+    // WaitImage(back) would wait 1 s and report a false "gpu timeout".
+    if (err < 0) vulkan_->RollbackSignalValue(back, previous_ready);
     // Only a successful render transitions the image out of UNDEFINED.
     if (err >= 0) img.initialized = true;
     // The compositor reads without GPU sync, so the frame must be finished

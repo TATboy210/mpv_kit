@@ -397,6 +397,11 @@ uint64_t VulkanContext::NextSignalValue(int i) {
   return ring_[i].ready_value;
 }
 
+void VulkanContext::RollbackSignalValue(int i, uint64_t previous) {
+  // timeline_value_ stays monotonic; skipping a value is fine for a timeline.
+  ring_[i].ready_value = previous;
+}
+
 VkResult VulkanContext::WaitImage(int i) {
   const SharedImage& img = ring_[i];
   if (img.ready_value == 0) return VK_SUCCESS;
