@@ -1,0 +1,16 @@
+Upstream f89d3224a2 (renderer: bound blur passes), regenerated against
+v7.360.1: the upstream context differs by one line (rect-sized FBOs).
+
+diff --git a/src/renderer.c b/src/renderer.c
+index 576528b..146bdb6 100644
+--- a/src/renderer.c
++++ b/src/renderer.c
+@@ -2354,7 +2354,7 @@ static pl_tex pass_blur(struct pass_state *pass, pl_tex src_tex, int comps,
+     float offset = radius / sqrtf(powf(4, passes) - 1.0f);
+     if (offset < a_min && passes > 2)
+         offset = radius / sqrtf(powf(4, --passes) - 1.0f);
+-    if (offset > a_max)
++    if (offset > a_max && passes < MAX_BLUR_PASSES)
+         offset = radius / sqrtf(powf(4, ++passes) - 1.0f);
+ 
+     int w = rect ? ceilf(fabsf(pl_rect_w(*rect))) : src_tex->params.w;

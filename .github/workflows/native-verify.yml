@@ -57,7 +57,7 @@ jobs:
         id: deps
         with:
           path: deps
-          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh') }}
+          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
       - name: Build libplacebo stack (deps.sh)
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -253,7 +253,7 @@ jobs:
         id: deps
         with:
           path: deps
-          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh') }}
+          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
       - name: Build libplacebo stack (deps.sh)
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"

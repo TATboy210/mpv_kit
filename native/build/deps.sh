@@ -17,6 +17,8 @@
 set -euo pipefail
 
 prefix=${1:?usage: deps.sh PREFIX}
+# Resolved before anything changes directory.
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 mkdir -p "$prefix/lib/pkgconfig" "$prefix/include"
 prefix=$(cd "$prefix" && pwd)
 # Native Windows tools (meson, clang) need drive-letter paths (X:/...) in
@@ -202,6 +204,34 @@ license lcms2 LICENSE
 # --- libplacebo ---------------------------------------------------------
 fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.1/libplacebo-v7.360.1.tar.gz \
   14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39
+# Upstream fixes after 7.360.1 (Vulkan command races, external image
+# hand-off, pl_queue lifetime, memory safety, color metadata), applied in
+# order; see native/deps/libplacebo/ and native/patches/UPSTREAM.md.
+# GNU patch only (BSD patch differs on fuzz and exit codes), no fuzz, and
+# every patch must match its pinned sha256.
+placebo_patches="$here/../deps/libplacebo"
+gpatch=$(command -v gpatch || command -v patch || true)
+if [ -z "$gpatch" ] || ! "$gpatch" --version 2>/dev/null | grep -q 'GNU patch'; then
+  echo "libplacebo: GNU patch is required (install gpatch)" >&2
+  exit 1
+fi
+n_patches=0
+while read -r want name; do
+  [ -n "$name" ] || continue
+  f="$placebo_patches/$name"
+  got=$(sha256 "$f")
+  if [ "$got" != "$want" ]; then
+    echo "libplacebo: $name sha256 mismatch ($got)" >&2
+    exit 1
+  fi
+  "$gpatch" -p1 --batch --forward --fuzz=0 --no-backup-if-mismatch -s     -d "$work/src/libplacebo" -i "$f"
+  n_patches=$((n_patches + 1))
+done < "$placebo_patches/SHA256SUMS"
+n_files=$(find "$placebo_patches" -name '0*.patch' | wc -l)
+if [ "$n_patches" -ne 14 ] || [ "$n_files" -ne 14 ]; then
+  echo "libplacebo: expected 14 pinned patches, applied $n_patches of $n_files" >&2
+  exit 1
+fi
 # Vulkan only: mpv_kit renders through the Vulkan render API (OpenGL and
 # D3D11 backends would only add size). Dolby Vision metadata is handled
 # by libplacebo itself (libdovi is optional).

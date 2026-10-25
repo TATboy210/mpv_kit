@@ -1,0 +1,26 @@
+diff --git a/src/include/libplacebo/utils/dav1d_internal.h b/src/include/libplacebo/utils/dav1d_internal.h
+index 496d8c38e2..759922003a 100644
+--- a/src/include/libplacebo/utils/dav1d_internal.h
++++ b/src/include/libplacebo/utils/dav1d_internal.h
+@@ -321,6 +321,8 @@ PL_DAV1D_API void pl_frame_from_dav1dpicture(struct pl_frame *out,
+             .white.x = pl_fixed0_16(md->white_point[0]),
+             .white.y = pl_fixed0_16(md->white_point[1]),
+         };
++        if (!pl_primaries_valid(&out->color.hdr.prim))
++            out->color.hdr.prim = (struct pl_raw_primaries) {0}; /* sanity */
+     }
+ 
+     if (picture->frame_hdr->film_grain.present) {
+diff --git a/src/include/libplacebo/utils/libav_internal.h b/src/include/libplacebo/utils/libav_internal.h
+index 59795946f8..74ee578d6e 100644
+--- a/src/include/libplacebo/utils/libav_internal.h
++++ b/src/include/libplacebo/utils/libav_internal.h
+@@ -336,6 +336,8 @@ PL_LIBAV_API void pl_map_hdr_metadata(struct pl_hdr_metadata *out,
+                 .white.x = av_q2d(data->mdm->white_point[0]),
+                 .white.y = av_q2d(data->mdm->white_point[1]),
+             };
++            if (!pl_primaries_valid(&out->prim))
++                out->prim = (struct pl_raw_primaries) {0}; /* sanity */
+         }
+     }
+ 

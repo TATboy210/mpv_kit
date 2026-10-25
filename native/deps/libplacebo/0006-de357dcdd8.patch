@@ -1,0 +1,75 @@
+diff --git a/src/vulkan/gpu.c b/src/vulkan/gpu.c
+index b43693c93a..57bd49a288 100644
+--- a/src/vulkan/gpu.c
++++ b/src/vulkan/gpu.c
+@@ -772,25 +772,6 @@ static bool vk_gpu_is_failed(pl_gpu gpu)
+     return vk->failed;
+ }
+ 
+-struct vk_cmd *pl_vk_steal_cmd(pl_gpu gpu)
+-{
+-    struct pl_vk *p = PL_PRIV(gpu);
+-    struct vk_ctx *vk = p->vk;
+-
+-    pl_mutex_lock(&p->recording);
+-    struct vk_cmd *cmd = p->cmd;
+-    p->cmd = NULL;
+-    pl_mutex_unlock(&p->recording);
+-
+-    struct vk_cmdpool *pool = vk->pool_graphics;
+-    if (!cmd || cmd->pool != pool) {
+-        vk_cmd_submit(&cmd);
+-        cmd = vk_cmd_begin(pool, NULL);
+-    }
+-
+-    return cmd;
+-}
+-
+ void pl_vk_print_heap(pl_gpu gpu, enum pl_log_level lev)
+ {
+     struct pl_vk *p = PL_PRIV(gpu);
+diff --git a/src/vulkan/gpu.h b/src/vulkan/gpu.h
+index 0318eaeaff..90d6e1dffd 100644
+--- a/src/vulkan/gpu.h
++++ b/src/vulkan/gpu.h
+@@ -29,11 +29,6 @@
+ 
+ pl_gpu pl_gpu_create_vk(struct vk_ctx *vk);
+ 
+-// This function takes the current graphics command and steals it from the
+-// GPU, so the caller can do custom vk_cmd_ calls on it. The caller should
+-// submit it as well.
+-struct vk_cmd *pl_vk_steal_cmd(pl_gpu gpu);
+-
+ // Print memory usage statistics
+ void pl_vk_print_heap(pl_gpu, enum pl_log_level);
+ 
+diff --git a/src/vulkan/swapchain.c b/src/vulkan/swapchain.c
+index 90f5da3101..c4b69522a4 100644
+--- a/src/vulkan/swapchain.c
++++ b/src/vulkan/swapchain.c
+@@ -975,7 +975,7 @@ static bool vk_sw_submit_frame(pl_swapchain sw)
+         return false;
+     }
+ 
+-    struct vk_cmd *cmd = pl_vk_steal_cmd(gpu);
++    struct vk_cmd *cmd = CMD_BEGIN(GRAPHICS);
+     if (!cmd) {
+         pl_mutex_unlock(&p->lock);
+         return false;
+@@ -983,13 +983,13 @@ static bool vk_sw_submit_frame(pl_swapchain sw)
+ 
+     pl_rc_ref(&p->frames_in_flight);
+     vk_cmd_callback(cmd, VK_CB_FUNC(present_cb), p, NULL);
+-    if (!vk_cmd_submit(&cmd)) {
++    int qidx = cmd->qindex;
++    if (!CMD_SUBMIT(&cmd)) {
+         pl_mutex_unlock(&p->lock);
+         return false;
+     }
+ 
+     struct vk_cmdpool *pool = vk->pool_graphics;
+-    int qidx = pool->idx_queues;
+     VkQueue queue = pool->queues[qidx];
+ 
+     vk_rotate_queues(p->vk);

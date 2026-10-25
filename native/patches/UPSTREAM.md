@@ -132,3 +132,31 @@ in mpv_kit, not upstream acceptability.
   cookie); upstream covers hotplug only. At the next rebase onto a base
   containing 4dfee61, drop 0007's hotplug MTA lines in favour of upstream's
   `hotplug_mta` and keep the playback-path half.
+
+## libplacebo backports onto v7.360.1 (2026-10-25)
+
+`native/build/deps.sh` applies `native/deps/libplacebo/NNNN-<sha>.patch`
+after unpacking the pinned tarball: GNU patch only (`gpatch` on macOS),
+`--fuzz=0`, every file pinned in `SHA256SUMS` (exactly 14). The deps cache
+keys hash this directory, so changing a patch rebuilds the stack.
+
+Taken (upstream haasn/libplacebo, commit-date order): f89d3224a2 (renderer
+blur-pass bound; regenerated, upstream context differs by one line),
+b1e1ea4f5e (vk_pool UAF), c4e054a044 (pl_calloc overflow), 2ba21c07c0
+(hold_ex signals after reads on other queues: our zero-copy hand-off),
+b9484d2852 (wait for all commands at sync points), de357dcdd8 (present
+under the recording lock; the swapchain part is unused by mpv_kit),
+3330a515d6 (poll pending through sync copy), 1937beef3a (do not reuse a
+command a thread waits on), 285d1cc8af (pl_queue init leak), 3ef51741f8
+(partial-init command cleanup), 13d0b79827 (pl_queue init UAF; must follow
+285d1cc8af), ca33bdacfd (release cached textures on pl_queue_reset),
+4aa872a15b (drop invalid mastering primaries), 1532bf6893 (reject a white
+point on the gamut boundary, mpv #18417).
+
+Not taken: b6c62d4f04 and d5a5b4abbe (timer pending bitmask) sit on an
+intermediate `uint_fast8_t pending` refactor absent from 7.360.1
+(`uint64_t pending`); timers only feed performance statistics.
+
+FFmpeg 9 prerequisite (mpv #18588): moving past FFmpeg 8.x needs
+libplacebo 409c9a8 and mpv 6a262d11f637 together; neither is taken while
+the bundle stays on FFmpeg 8.1.3.
