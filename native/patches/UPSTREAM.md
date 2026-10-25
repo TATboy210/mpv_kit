@@ -121,3 +121,14 @@ in mpv_kit, not upstream acceptability.
 - 0001: a pending wrapper reused by `wrap_fbo` takes the signal semaphore,
   value, final layout and queue family of the current call, so a wrapper
   left over from an aborted frame signals the value the host waits for now.
+- 0007: CoreAudio NULL guards. `ca_select_device` fails cleanly when
+  `cfstr_from_cstr` returns NULL (device name not valid UTF-8) instead of
+  passing NULL to `AudioObjectGetPropertyData` and `CFRelease`;
+  `ca_get_str` returns an error when a property reports success without a
+  string (callers assume a string on `noErr`).
+- 0007 vs upstream 4dfee616d0fd ("ao_wasapi: hold an MTA reference for the
+  hotplug instance"): not taken. 0007 already covers both the hotplug and
+  the playback instance (`wasapi_com_init/uninit` with an MTA usage
+  cookie); upstream covers hotplug only. At the next rebase onto a base
+  containing 4dfee61, drop 0007's hotplug MTA lines in favour of upstream's
+  `hotplug_mta` and keep the playback-path half.

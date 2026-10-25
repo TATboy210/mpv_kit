@@ -1,3 +1,34 @@
+diff --git a/audio/out/ao_coreaudio_properties.c b/audio/out/ao_coreaudio_properties.c
+index 1786602..b9374b8 100644
+--- a/audio/out/ao_coreaudio_properties.c
++++ b/audio/out/ao_coreaudio_properties.c
+@@ -83,6 +83,10 @@ OSStatus ca_get_str(AudioObjectID id, ca_scope scope, ca_sel selector,
+     OSStatus err =
+         ca_get(id, scope, selector, sizeof(CFStringRef), (void **)&string);
+     CHECK_CA_ERROR_SILENT_L(coreaudio_error);
++    // A property may report success without a string; callers expect a
++    // string on noErr and CFRelease(NULL) crashes.
++    if (!string)
++        return kAudioHardwareUnspecifiedError;
+ 
+     *data = cfstr_get_cstr(string);
+     CFRelease(string);
+diff --git a/audio/out/ao_coreaudio_utils.c b/audio/out/ao_coreaudio_utils.c
+index 8ff76a8..f397c3a 100644
+--- a/audio/out/ao_coreaudio_utils.c
++++ b/audio/out/ao_coreaudio_utils.c
+@@ -88,6 +88,11 @@ OSStatus ca_select_device(struct ao *ao, char* name, AudioDeviceID *device)
+ 
+     if (name && name[0]) {
+         CFStringRef uid = cfstr_from_cstr(name);
++        // NULL for a name that is not valid UTF-8; CFRelease(NULL) crashes.
++        if (!uid) {
++            err = kAudioHardwareBadDeviceError;
++            CHECK_CA_ERROR("invalid device UID");
++        }
+         AudioValueTranslation v = (AudioValueTranslation) {
+             .mInputData = &uid,
+             .mInputDataSize = sizeof(CFStringRef),
 diff --git a/audio/out/ao_wasapi.c b/audio/out/ao_wasapi.c
 index 7ad1e64..29f3c48 100644
 --- a/audio/out/ao_wasapi.c
