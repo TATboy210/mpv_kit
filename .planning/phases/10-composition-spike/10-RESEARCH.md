@@ -364,29 +364,34 @@ This phase has three verifiable artifacts (REA report, smoke result, decision do
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is the engine renderer log line forwarded by `flutter test -d windows`?**
    What we know: it appears in `flutter run` console output (issue #191468's log), and the strings exist in the 3.47.6 DLL.
    What's unclear: whether the integration-test runner surfaces the app process's stderr the same way.
    What settles it: task (c) executes once and greps the captured log. Fallback if absent: run the same three parts under `flutter run -d windows --enable-impeller` for the log line, or compare behaviour between the two switch settings as weaker evidence.
+   **Status: RESOLVED — no.** Neither `evidence/impeller-on.log` nor `evidence/impeller-off.log` contains an engine line; identity is carried by the labelled `flutter-run` fallback (`evidence/impeller-run-on.log` = 1 match, `evidence/impeller-run-off.log` = 0). Recorded in 10-05 Task 2 and ADR Q1.
 
 2. **Is the example app in fact running Impeller today?**
    What we know: the engine default is `true`; `DartProject::impeller_switch_` defaults to `Default`; the runner never overrides it.
    What's unclear: runtime confirmation — and, if Impeller has been live all along, whether previous Phase 7–9 benchmark numbers were measured under Impeller (which would make the "Skia baseline" in docs an artefact of the analysis, not of the runtime).
    What settles it: the log grep in task (c), plus a note in the decision doc that historical bench numbers' renderer is unrecorded.
+   **Status: RESOLVED for the pinned 3.47.8 build.** The `flutter-run` capture shows the `Using the Impeller rendering backend (OpenGLESSDF)` line under `--enable-impeller` and none under the control (`evidence/impeller-run-on.log` / `evidence/impeller-run-off.log`). Historical Phase 7–9 benchmark numbers are recorded as renderer-unrecorded. ADR Q2.
 
 3. **Is ANGLE statically linked into `flutter_windows.dll`?**
    What we know: `libEGL.dll` / `libGLESv2.dll` strings are absent; `eglBindTexImage` / `eglCreatePbufferSurface` are present; `dxgi.dll` is imported while `d3d11.dll` did not match a grep.
    What's unclear: whether the D3D11 interop code (and its synchronization) lives inside this PE, which determines how much of the fence question the REA can answer from this single artifact.
    What settles it: the REA's import-table dump and xref walk (task a). If ANGLE is statically linked, budget extra effort and cite ANGLE's public source for the `DisplayD3D`/`SurfaceD3D` semantics rather than fully decompiling it.
+   **Status: RESOLVED.** The 3.47.8 REA finds no `libEGL.dll` / `libGLESv2.dll` imports and traces `DisplayD3D::createPbufferFromClientBuffer` / `SurfaceD3D` inside the PE: ANGLE is compiled into `flutter_windows.dll`. Evidence: `docs/reverse-engineering/03-flutter-windows-texture-consumption.md`; ADR Q3.
 
 4. **Does Impeller's GLES backend defer submission enough to invalidate `quarantine = 4`?**
    Explicitly a Phase 11 measurement (Finding 6). Phase 10 records the hypothesis and the values; it must not spend effort measuring latency.
+   **Status: DEFERRED to Phase 11.** Phase 10 records the hypothesis and the current `quarantine = 4` / ring values without measuring latency. ADR Q4.
 
 5. **Which commit carried #191017 into 3.47.6?**
    What we know: the merge commit is not an ancestor; the code is present at the tag.
    What's unclear: the cherry-pick SHA. Not needed for the decision, only for the REA report's provenance footnote. `git log --all --oneline -- <file>` in a Flutter checkout would settle it if the report wants to be exhaustive.
+   **Status: DEFERRED (not needed for the decision).** The code is present in 3.47.8; the cherry-pick SHA remains a provenance footnote only. ADR Q5.
 
 ---
 
