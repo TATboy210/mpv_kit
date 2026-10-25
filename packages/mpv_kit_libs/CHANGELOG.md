@@ -1,3 +1,14 @@
+## 0.1.0-dev.4
+
+- libmpv: stream-bridge use-after-free on cancel after close, a host-source
+  leak and seek desynchronisation fixed (patch 0006); render failures are
+  reported instead of silently succeeding (0001/0004); CoreAudio NULL-string
+  crashes fixed (0007); four upstream mpv fixes backported (0009).
+- libplacebo 7.360.1 with 14 upstream fixes (Vulkan command races,
+  external-image hand-off, pl_queue lifetime, memory safety).
+- The bundle is still the 0.1.0-dev.3 release until a new release is built
+  and pinned (`bundleTag`).
+
 ## 0.1.0-dev.3
 
 - Windows: the bundled libmpv now includes the Vulkan render API. The

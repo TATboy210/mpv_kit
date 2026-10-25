@@ -1,3 +1,12 @@
+## 0.1.0-dev.4
+
+- Fixed: a failed render no longer causes a false `gpuTimeout` on the next
+  frame (the unsignalled timeline value is rolled back).
+- Fixed: shared images use the external queue family from the first frame,
+  pairing every Vulkan ownership transfer.
+- Fixed: a host ICC profile set on the controller survives option changes
+  with the gpu-next renderer.
+
 ## 0.1.0-dev.3
 
 - Requires mpv_kit / mpv_kit_libs 0.1.0-dev.3: zero-copy Vulkan rendering

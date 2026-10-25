@@ -1,3 +1,15 @@
+## 0.1.0-dev.4
+
+- Fixed: disposing an `Mpv` while clients created from it were still alive
+  hung forever; `dispose()` now disposes those clients first.
+- Fixed: custom stream protocols always answer a claimed request: a source
+  whose `size` getter throws, or a URI that is not valid UTF-8, fails the
+  load instead of freezing it, and an opener that does not complete within
+  30 s fails with `loadingFailed` (a source arriving later is closed).
+- Changed: `Player` no longer hardware-decodes FFV1 by default
+  (`hwdec-codecs` excludes `ffv1`, mpv #18255); override it through
+  `options`.
+
 ## 0.1.0-dev.3
 
 - No API changes; released together with mpv_kit_libs 0.1.0-dev.3.
