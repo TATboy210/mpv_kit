@@ -72,7 +72,21 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
   5. Dart 侧严格校验私有 wire 名 `d3d11`/`opengl`/`vulkan`/`software`（其他值仍抛 `PlatformException(code: render_init)`），公共 `MpvVideoBackend` 枚举与 API-freeze 反射测试不变；`reason` 符合 `<api> (<renderer>) on <device>[; <api>/<renderer> unavailable: <why>]*`，该决定写入 ADR；设置原生环境变量 `MPV_KIT_VIDEO_API=vulkan|software` 时只尝试该 API，不新增任何 Dart 公共 API。
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
-**Plans**: TBD
+**Plans:** 12 plans（9 waves）
+
+Plans:
+- [ ] 12-01-PLAN.md — 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
+- [ ] 12-02-PLAN.md — soak harness 修复：探针三方对照、resize-front 复现器、100 次 create/dispose 段、真正渲染的 4K 变体
+- [ ] 12-03-PLAN.md — Dart 私有 wire 名严格校验 + 枚举冻结守卫 + ADR 0004（reason 语法、MPV_KIT_VIDEO_API）+ README
+- [ ] 12-04-PLAN.md — RTX 4060 重构前基线（D-05 / cycles / resize-front × Impeller 开关）+ 人工确认
+- [ ] 12-05-PLAN.md — fake-libmpv golden 工装 + 软件路径 golden（三平台 + sanitizer）
+- [ ] 12-06-PLAN.md — 原生 reason 语法（先于搬迁）
+- [ ] 12-07-PLAN.md — Vulkan 路径 golden + AllocateRing 退役槽双重销毁先红后绿修复 + golden 冻结
+- [ ] 12-08-PLAN.md — RTX 4060 修复后、搬迁前参照 + 人工确认
+- [ ] 12-09-PLAN.md — RenderBackend 纯搬迁（SoftwareBackend → VulkanRenderBackend → 候选链数据化）
+- [ ] 12-10-PLAN.md — 插件 wire_name 出口 + 原生 MPV_KIT_VIDEO_API 严格开关
+- [ ] 12-11-PLAN.md — report_swap / render_context_free 渲染线程亲和性 + 释放契约文档 + 真实插件 soak 段
+- [ ] 12-12-PLAN.md — 收口：最终 CI 全量门与审计、RTX 4060 4K 30 分钟与 harness 对照 + 人工确认
 
 ### Phase 13: macOS Metal Route Decision
 **Goal**: macOS 的 Metal 承载路线由 ADR 定案；现有 MoltenVK→IOSurface 路径以 `RenderBackend` 形式运行并如实上报；VideoToolbox 零拷贝要么得到验证，要么留下不可达的证据。
@@ -147,7 +161,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. RenderBackend Seam | v3.0 | 0/TBD | Not started | - |
+| 12. RenderBackend Seam | v3.0 | 0/12 | Planned | - |
 | 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |

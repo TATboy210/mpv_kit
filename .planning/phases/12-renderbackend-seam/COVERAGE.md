@@ -1,0 +1,1 @@
+No external API integration: Phase 12 refactors mpv_kit's own native render seam (RenderBackend, fake-libmpv golden tests over the internal MpvApi table, private method-channel wire names and a native env switch) and integrates no external API, SDK or service.
