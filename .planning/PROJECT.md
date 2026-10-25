@@ -8,16 +8,25 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
-## Current Milestone: v2.0 GPU-Next Optimization & Full-Rate UHD
+## Current State (after v2.0 close-out, 2026-10-25)
 
-**Goal:** 基于 mpv-master 最新源码与社区反馈（gpu-next bug、media-kit 反馈），优化 gpu-next 渲染路径与自定义渲染桥接（绕过 Windows ANGLE），配调试友好的示例应用（HUD 参数/拖拽播放），真正流畅支持 4K/8K 满血视频。
+**Milestone v2.0 closed by user decision as a simple close-out.** 2 of 5 phases
+complete (7, 8), Phase 9 partially delivered, Phase 10 halted with evidence
+landed, Phase 11 never started. 6 of 10 requirements delivered; 4 explicitly
+deferred. Nothing was rewritten to look complete.
 
-**Target features:**
-- 社区调研驱动：gpu-next 社区 bug/反馈 + media-kit 社区反馈 → 设计方向（research 阶段产出）
-- 调试体验：example 窗口 HUD 显示更多运行参数（延迟/丢帧/后端/缓存等）+ 拖拽视频到窗口播放
-- 渲染桥接升级：研究/设计/执行绕过 ANGLE 的 Windows 桥接路径，提升桥接效率
-- 4K/8K 满血：流畅满帧（含 v1 发现的 8K 提交内存耗尽问题 docs/perf/2026-10-24-uhd-endurance.md）
-- 资源：允许读取 `C:\Users\35490\Downloads\mpv-master\mpv-master` 源码与 REA 工具
+**What shipped:** vendor advance to mpv 0.41.0-1115 with exact provenance and a
+green gpu-next regression; the example debug cockpit (five-group HUD, event
+overlay, drag-and-drop); frame-size-derived demuxer budgets with runtime
+auto-tune (UHD-01); a per-path REA of Flutter 3.47.8's external-texture
+consumption plus ADR 0003.
+
+**What did not:** 8K 30-minute endurance (UHD-02), the native composition path
+(COMP-02) and its latency-budget parameterisation (COMP-03). D-05 — whether the
+Impeller consumption path survives the 30 s + 100-round workload — is still
+unsettled: an unexplained soak abort was observed once and never reproduced.
+
+**Next milestone:** not yet defined; see Deferred above and `/gsd-new-milestone`.
 
 ## Requirements
 
@@ -56,13 +65,28 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - ✓ 六目标矩阵完整且无未授权 continue-on-error（审计脚本守卫防削减）— Phase 6
 - ✓ 未知选项记录可见化（`ignoredOptionsForTesting` + developer.log）、库解析回落可观测（`MpvLibrary.resolvedPath`/`lastOpenAttempts`）、shader-cache 容忍精简构建 — Phase 3
 
+### Validated in v2.0
+
+- ✓ vendor 推进至 mpv v0.41.0-1115-gb2c255c13（blob 归因+全树 diff=0 精确识别；PATCH-DRIFT 字节级绿；v1 0008 错误归因被证实为上游两提交）— REBASE-01 / Phase 7
+- ✓ gpu-next 回归：seek 恢复显式测试、全套件、基准绿；4K 30 分钟复验因宿主磁盘满受阻（环境，非代码回归）— REBASE-02 / Phase 7
+- ✓ example 调试座舱：五组属性 HUD（F9 切换、事件流叠加、合成路径行）+ 拖拽播放（视频白名单、非视频提示）— HUD-01/02、DND-01 / Phase 8
+- ✓ demuxer 队列按帧尺寸推导 + 运行时自动调参（1080p/4K/8K 公式矩阵有单测；8K 60 s 全 v1 门禁绿，v1 曾在 ≤40 s 崩溃）— UHD-01 / Phase 9
+- ✓ Windows 外部纹理消费路径的静态取证：两种表面类型都经 ANGLE，DXGI 资源归 mpv_kit 自己的 D3D11 设备，无 fence/keyed mutex；Impeller 仅去掉 Ganesh 每次 resolve 的 flush/reset — COMP-01 / Phase 10
+- ✓ ADR 0003 记录路线判定：3.47.8 上「无 ANGLE」不可验证；Impeller 不等于绕过 — Phase 10
+
 ### Active
 
-<!-- v2.0 需求在研究完成后定义（REQUIREMENTS.md v2 节）。 -->
+<!-- v2.0 已按用户决定收尾；以下为未交付项，等下一里程碑重新定义。 -->
 
-- ✓ vendor 推进至 mpv v0.41.0-1115-gb2c255c13（blob 归因+全树 diff=0 精确识别；PATCH-DRIFT 字节级绿；v1 0008 错误归因被证实为上游两提交）+ gpu-next 回归（seek 恢复测试/全套件/基准绿；4K 30 分钟复验因宿主磁盘满受阻）— Phase 7
-- ✓ example 调试座舱：五组属性 HUD（F9 切换、事件流叠加、合成路径行）+ 拖拽播放（视频白名单、非视频提示）— Phase 8
-- [ ] 渲染桥接绕过 ANGLE + 4K/8K 满血（待需求定义）
+- [ ] UHD-02：8K 7680x4320 × 30 分钟门禁（仅跑到 60 s 全绿）
+- [ ] COMP-02：原生合成路径实施 + ANGLE 运行时回退 + `backend`/`reason`/HUD 上报
+- [ ] COMP-03：compositor 延迟预算实测参数化（现为 `CompositorLatency() == 4`）+ 100 轮交错 soak
+
+### Deferred (v2.0 close-out)
+
+- **D-05 未 settle**：Impeller 在 30 s + 100 轮负载下是否可行从未被证伪也从未被证实；10-05 的 soak 中止未复现、未解释。
+- **Phase 10 未完成**：10-08/10-09/10-06 放弃；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
+- **Phase 11 未开始**：路线（上推 issue / 升级绕过 / 自改 ANGLE）只有记录，没有实施。
 
 
 ### Out of Scope
@@ -75,9 +99,10 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 ## Context
 
-- 仓库当前在 `feat/mpv-master-upgrade` 分支，已把 vendored mpv 从 0.41.0 重基到 `v0.41.0-1113-gfd9265a905` 并重做七项补丁；首方改动仅 14 个文件（+899/−70）。
+- 仓库当前在 `feat/mpv-master-upgrade` 分支。v2.0 期间 vendored mpv 进一步推进到 `v0.41.0-1115-gb2c255c13`（REBASE-01，含 v1 `0008` 归因修正）。
+- 里程碑 v2.0 以 `override_closeout` 关闭：Phase 9/10/11 未完成部分写入 `MILESTONES.md` 的 Known Gaps / Deferred，不回填为绿。
+- 现有文档：`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE-diagrams.md`、`docs/adr/0001`、`docs/adr/0002`、`docs/adr/0003`、`docs/reverse-engineering/`（01/02/03）。
 - 代码库映射位于 `.planning/codebase/`（STACK、ARCHITECTURE、STRUCTURE、CONVENTIONS、TESTING、INTEGRATIONS、CONCERNS），缺陷与脆弱点以 `CONCERNS.md` 为准。
-- 现有文档：`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE-diagrams.md`、`docs/adr/0001`、`docs/adr/0002`、`docs/reverse-engineering/`。
 - 真机验证目前只有 Windows x64（RTX 4060）；Linux/macOS 仅编译与 lavapipe/MoltenVK 冒烟。
 - 本地 `bt/` 下的 `libmpv-2.dll` **带 patch 0006**（导出 `mpv_kit_stream_*`）。Windows 没有 rpath，直接把它设为 `MPV_KIT_LIBMPV_PATH` 会因依赖 DLL 不在搜索路径而静默回落到 PATH 上的 stock 库；要跑流源测试必须同时把 `bt/` 加进 PATH。Phase 1 曾因此错误地把 3 条可执行测试记为「环境受限」。
 - 已知问题集中在：`Player.dispose` 非异常安全、`Mpv` 方法在 dispose 后仍可调用、属性事件重复解码、`MpvVideoController.create` 解析失败无回滚、流源错误被吞、`bt/` 38MB DLL 入库、`pubspec.lock` 被忽略、SDK 约束不一致。
@@ -116,6 +141,9 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 | 补丁集从 vendor 树重生成而非接受语义门禁 | 旧 0004 含 5 个仅存在于 vendor 的手工重排 hunk,逐字应用永不等于 vendor;排除列表会掩盖真实漂移 | ✓ Phase 5 |
 | pubspec.lock 提交(非忽略) | workspace + 应用 + BUILD-02 复现性;CI 解析可重现 | ✓ Phase 5 |
 | Git Bash 下 PATH 条目必须 POSIX 形式 | D:/... 条目不被转换,依赖解析失败静默回落(实测) | ✓ Phase 5 |
+| 合成问题用证据改写,不用口号 | 3.47.8 的 Windows Impeller 是 GLES-over-ANGLE;「启用 Impeller = 无 ANGLE」被二进制证据证伪 | ✓ Phase 10 |
+| `inconclusive` 不得写成「不可行」 | D-05 未跑完时,失败归因于 harness 缺陷而渲染器;结论必须与证据强度匹配 | ✓ Phase 10 |
+| 里程碑收尾允许 `override_closeout` | 用户决定简单收尾;未完成阶段记为未交付,不补跑、不改写已有验证结论 | ✓ v2.0 close |
 
 ## Evolution
 
@@ -135,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 — milestone v2.0 started*
+*Last updated: 2026-10-25 after v2.0 milestone close-out*

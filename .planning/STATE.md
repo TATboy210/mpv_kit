@@ -1,38 +1,39 @@
 ---
 gsd_state_version: "1.0"
 milestone: v2.0
-current_phase: 10
-current_phase_name: Composition Spike
-status: executing
-stopped_at: "Completed 10-07-PLAN.md (halted: soak abort not-reproduced)"
-last_updated: "2026-10-25T05:14:39.953Z"
+status: Awaiting next milestone
+stopped_at: "Milestone v2.0 closed (override_closeout: phases 9-11 not delivered)"
+last_updated: "2026-10-25T06:00:00.000Z"
 last_activity: 2026-10-25
-last_activity_desc: "Gap replanned: 10-07 soak-abort diagnosis, 10-08 probe-surface explanation, 10-09 rerun under the preserved (A)/(B) gate; 10-06 re-pointed to 10-09"
-state_head: e198d528b842bfa0e3eee0e24ec464fd64925995
+last_activity_desc: Milestone v2.0 closed and archived; 4 requirements deferred
+state_head: 1ac80300592298f2a2a874fd018f196e8590f611
 progress:
   total_phases: 5
-  completed_phases: 8
+  completed_phases: 2
   total_plans: 14
-  completed_plans: 25
-  percent: 100
+  completed_plans: 10
+  percent: 40
 milestone_name: GPU-Next Optimization & Full-Rate UHD
+current_phase: 10
+current_phase_name: Composition Spike (halted)
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-24)
+See: .planning/PROJECT.md (updated 2026-10-25)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 10 — Composition Spike
+**Current focus:** Next milestone not yet defined
 
 ## Current Position
 
-Phase: 10 (Composition Spike) — EXECUTING
-Plan: 7 of 9
-Status: Ready to execute
-Last activity: 2026-10-25 — Phase 10 execution started
+Phase: — (milestone v2.0 closed; no active phase)
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-25 — Milestone v2.0 closed via override_closeout and archived
+Delivery at close: 2/5 phases complete (7, 8), Phase 9 partial (UHD-01), Phase 10 halted (6/9), Phase 11 not started
 
 ## Performance Metrics
 
@@ -158,8 +159,8 @@ None yet.
 - （已缓解）宿主磁盘回升 ~6.3GB：本地构建恢复；4K 复验可执行。
 - 本地无 MSYS2/meson 工具链；新树构建依赖 CI（push 后六目标）或 dev.4 发布流（对外发布，需用户决定）。
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
-- （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化（用户撤下 8K 分句）。
-- 10-07 halted: the 10-05 soak-window abort did not reproduce (3 runs: 5/5, 5/5, 25/25, exit 0, no WER); 10-08 and 10-09 depend on 10-07 and must not assume the soak abort is fixed
+- （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
+- **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。下一里程碑若重启合成工作，必须从这里接着做，不得假设中止已修复。
 
 ## Deferred Items
 
@@ -167,6 +168,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| verification_gaps | 10/10-VERIFICATION.md | gaps_found (acknowledged, not resolved) | 2026-10-25 | v2.0 |
 | Documentation | 8K 提交内存耗尽进程死亡(可复现,WER 证据)——用户确认暂无 8K 测试条件,撤下 PERF-03 的 8K 分句;记录保留供将来支持 8K 时参考 | documented, no action planned | 2026-10-24 (user decision) | — |
 | Native | Linux 运行期 GL 导入失败黑屏仅有 g_warning,无 Dart 事件(gl_interop.cc:296-321) | needs EventFn plumbing;超出 criterion 3 范围 | 2026-10-24 (Phase 3 close) | current |
 | Visual | 重建控制器后首帧非黑帧(视觉属性) | owned by Phase 6 UAT/VERIFY-01 | 2026-10-24 (Phase 2 close) | current |
@@ -174,6 +176,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T05:14:39.830Z
-Stopped at: Completed 10-07-PLAN.md (halted: soak abort not-reproduced)
+Last session: 2026-10-25T06:00:00.000Z
+Stopped at: Milestone v2.0 closed (override_closeout) and archived
 Resume file: None
+Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
