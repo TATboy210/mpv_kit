@@ -61,6 +61,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 **执行顺序：** 12 → {13, 14, 15} → 16 → 17。13 体量小，可以先做；14 与 15 没有文件重叠，可以并行（串行时 14 在前：未知最多，也是唯一有真机验证的平台）；16 需要 13/14/15 的后端就绪；17 收口。
 
 ### Phase 12: RenderBackend Seam
+
 **Goal**: 现有 Vulkan 与软件渲染运行在统一的 `RenderBackend` 生命周期之后，行为与重构前基线逐项一致；之后任何平台后端都只需新增一个候选项即可接入或回滚。
 **Depends on**: Nothing（v3.0 首个阶段；基于 v2.0 收尾时的代码树）
 **Requirements**: RBE-01, RBE-02, RBE-03, RBE-04, RBE-05, RBE-06, RBE-07, RBE-08
@@ -70,25 +71,44 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
   3. Vulkan 与软件后端经 `RenderBackend`（Create / AllocTargets / FrameFor / Render / Wait / BindThread·UnbindThread / Release / Destroy）运行，`FrameReady` 留在平台侧；搬迁 diff 中没有任何常量（ring 5/7、quarantine 2/4、50 ms present 超时、退避）或 reason 字符串改动；`render_vk_smoke`（gpu-next 与 gpu）、Phase 2/3 套件与三平台真实插件测试全绿；RTX 4060 上 4K 30 分钟与 Phase 4 基线持平，用同一 harness 重跑基线不出现新失败。
   4. 调试断言证明 `report_swap` 与 `mpv_render_context_free` 只在渲染线程（后端 context 已绑定）上执行，光栅线程不再调用；所有后端共用同一延迟释放契约（Flutter 注销完成且出隔离期后才释放纹理），create/dispose 与 resize/dispose soak 中无光栅线程崩溃，sanitizer 任务下的 golden 测试无 use-after-free。
   5. Dart 侧严格校验私有 wire 名 `d3d11`/`opengl`/`vulkan`/`software`（其他值仍抛 `PlatformException(code: render_init)`），公共 `MpvVideoBackend` 枚举与 API-freeze 反射测试不变；`reason` 符合 `<api> (<renderer>) on <device>[; <api>/<renderer> unavailable: <why>]*`，该决定写入 ADR；设置原生环境变量 `MPV_KIT_VIDEO_API=vulkan|software` 时只尝试该 API，不新增任何 Dart 公共 API。
+
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
 **Plans:** 12 plans（9 waves）
 
 Plans:
+**Wave 1**
 - [ ] 12-01-PLAN.md — 推送授权检查点 + 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
 - [ ] 12-02-PLAN.md — soak harness 修复：探针三方对照、resize-front 复现器、100 次 create/dispose 段、真正渲染的 4K 变体
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 12-03-PLAN.md — Dart 私有 wire 名严格校验 + 枚举冻结守卫 + ADR 0004（reason 语法、MPV_KIT_VIDEO_API）+ README
 - [ ] 12-04-PLAN.md — RTX 4060 重构前基线（D-05 / cycles / resize-front × Impeller 开关）+ 人工确认
 - [ ] 12-05-PLAN.md — fake-libmpv golden 工装 + 软件路径 golden（三平台 + sanitizer）
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 12-06-PLAN.md — 原生 reason 语法（先于搬迁）
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 12-07-PLAN.md — Vulkan 路径 golden + AllocateRing 退役槽双重销毁先红后绿修复 + golden 冻结
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 12-08-PLAN.md — RTX 4060 修复后、搬迁前参照 + 人工确认
+
+**Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 12-09-PLAN.md — RenderBackend 纯搬迁（SoftwareBackend → VulkanRenderBackend → 候选链数据化）
+
+**Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 12-10-PLAN.md — 插件 wire_name 出口 + 原生 MPV_KIT_VIDEO_API 严格开关
+
+**Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 12-11-PLAN.md — report_swap / render_context_free 渲染线程亲和性 + 释放契约文档 + 真实插件 soak 段
+
+**Wave 9** *(blocked on Wave 8 completion)*
 - [ ] 12-12-PLAN.md — 收口：最终 CI 全量门与审计、RTX 4060 4K 30 分钟与 harness 对照 + 人工确认
 
 ### Phase 13: macOS Metal Route Decision
+
 **Goal**: macOS 的 Metal 承载路线由 ADR 定案；现有 MoltenVK→IOSurface 路径以 `RenderBackend` 形式运行并如实上报；VideoToolbox 零拷贝要么得到验证，要么留下不可达的证据。
 **Depends on**: Phase 12（需要 `RenderBackend` 与 reason 语法）
 **Requirements**: MAC-01, MAC-02, HWD-04
@@ -96,11 +116,13 @@ Plans:
   1. ADR 比较 MoltenVK→IOSurface、CGL+IOSurface、自写 Metal 后端三条路线（成本、可用渲染器 gpu-next/gpu、弃用风险），给出决定，并写明重新评估的触发条件（例如 libplacebo 合入 Metal `pl_gpu`）。
   2. macOS runner 上真实插件测试经 `RenderBackend` 通过，非黑像素探针结果与 Phase 12 之前一致，`reason` 标明实际 Metal 承载（形如 `vulkan (gpu-next) on <device> via MoltenVK`）。
   3. VideoToolbox 在 MoltenVK 路径上：`hwdec-current=videotoolbox` 且无 copy-back，8-bit 与 P010/10-bit 样本都没有绿帧或黑帧；如果托管 VM 无法硬解，验证记录写出具体的不可达证据并标为未验证，不写成通过。
+
 **验证分层**: hosted macOS runner（Apple Silicon VM，Metal 可用）证明渲染路径与 reason；VideoToolbox 在 VM 内能否硬解未经证实，项目也没有本地 macOS 硬件，HWD-04 允许以证据收口；RTX 4060 不涉及。
 **Research**: 标准模式（三条路线已在研究中比较），无需阶段研究。
 **Plans**: TBD
 
 ### Phase 14: Windows Native D3D11 Backend
+
 **Goal**: Windows 上 mpv 通过上游 D3D11 render API 直接渲染进 mpv_kit 自有 `ID3D11Device` 的共享纹理（gpu-next 与 gpu 两档），mpv_kit 自身链路全程不经 ANGLE/EGL；失败时按 auto 链回退并如实上报。
 **Depends on**: Phase 12（与 Phase 15 互相独立，可并行）
 **Requirements**: D3D-01, D3D-02, D3D-03, D3D-04, D3D-05, D3D-06, D3D-07, D3D-08
@@ -110,12 +132,14 @@ Plans:
   3. `MPV_KIT_VIDEO_API=d3d11` 时，windows runner（WARP）与 RTX 4060 上的真实插件测试都渲染出非黑帧，`reason` 为 `d3d11 (gpu-next) on <adapter>`；设备建在 Flutter 适配器 LUID 上（`BGRA_SUPPORT|VIDEO_SUPPORT`、多线程保护、非 SINGLETHREADED），KMT `MISC_SHARED` 纹理环经 `GpuSurfaceTexture` 交付，每帧在 `ID3D11Fence`（回落 `D3D11_QUERY_EVENT`）完成后才发布；resize 不换 texture id、不闪黑；隔离期保持 4，Impeller 开/关下的消费延迟只测量、不重新参数化（COMP-03 仍延后）。
   4. 注入 D3D11 设备移除时 Dart 收到 `device_lost` 事件且进程不崩溃；D3D11 创建失败时自动落到 Vulkan，`reason` 写明 `d3d11/<renderer> unavailable: <why>`。
   5. Windows auto 链改为 d3d11/gpu-next → vulkan/gpu-next → d3d11/gpu → vulkan/gpu → software，以独立、可单独回滚的提交落地，且只在 CI 与 RTX 4060 均绿之后合入；`MPV_KIT_VIDEO_API=vulkan` 仍能强制旧路径，结果与 Phase 12 基线一致。
+
 **阶段内顺序**: 构建与 ANGLE 禁令门禁（D3D-01/02）→ 0010 backport + 0004 gpu-next D3D11 分支 + smoke（D3D-03/04/05）→ `D3D11Backend` 与设备丢失/回退（D3D-06/07）→ auto 链切换提交（D3D-08）。构建计划必须先于渲染计划。
 **验证分层**: hosted windows runner（无 GPU，Flutter 适配器为 WARP）证明构建、PE 审计、PATCH-DRIFT、两种 smoke 变体与强制 d3d11 的真实插件测试；RTX 4060 证明真实适配器上的渲染与性能，并作为 auto 链切换的前提。
 **Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。
 **Plans**: TBD
 
 ### Phase 15: Linux OpenGL Backend
+
 **Goal**: Linux 上 mpv 经上游 OpenGL render API 在渲染线程的独立 EGL context 中渲染，画面经独立导出纹理与 `EGLImage` 交给 `FlTextureGL`，作为 Vulkan gpu-next 之后的渲染档位，并如实上报实际渲染器。
 **Depends on**: Phase 12（与 Phase 14 互相独立，可并行）
 **Requirements**: GLX-01, GLX-02, GLX-03, GLX-04
@@ -124,11 +148,13 @@ Plans:
   2. `MPV_KIT_VIDEO_API=opengl` 时，ubuntu runner（xvfb + llvmpipe）上的真实插件测试渲染出非黑帧：mpv 渲染到私有纹理，再 blit 到独立导出纹理交给 `FlTextureGL`，`EGLSync` 完成后才发布；`populate` 回调内不发生 mpv 渲染；resize 不换 texture id。
   3. GL context 建在 Flutter 的 `EGLDisplay` 上、不加入 Flutter share group，所有 `mpv_render_*` 调用都在渲染线程且 mpv 的 context 为当前；create/dispose 与 resize/dispose soak 中没有 epoxy abort 或 `EGL_BAD_ACCESS`。
   4. Linux auto 链为 vulkan/gpu-next → opengl/gpu → vulkan/gpu → software；由 vo_gpu 服务时 `reason` 写 `opengl (gpu) on <device>`，从不冒称 gpu-next；Vulkan 不可用时自动落到 GL，并在 `reason` 中写明原因。
+
 **验证分层**: hosted ubuntu runner（xvfb + Mesa llvmpipe）证明全部渲染路径；项目没有 Linux GPU 硬件，NVIDIA/AMD/Intel 真驱动行为（包括 Mesa Xe2 的 EGLImage 黑帧问题）在验证记录中明确标为未验证；RTX 4060 不涉及。
 **Research**: 需要阶段研究（`/gsd-plan-phase 15 --research-phase`）：Flutter 3.47 Linux 光栅线程身份、EGL 与 GLX 下的 `EGL_BAD_ACCESS`、FLIP_Y、隔离 context 用 GLES 还是桌面 GL。gpu-next over GL（patch 0011，GLX-F1）不在本阶段核心范围。
 **Plans**: TBD
 
 ### Phase 16: Hardware-Decode Zero-Copy
+
 **Goal**: 硬件解码在每个原生后端上优先走零拷贝，默认值不再静默选中 copy-back；每次测试都能说清当前是零拷贝、copy-back 还是软件解码。
 **Depends on**: Phase 13, Phase 14, Phase 15（零拷贝依赖各后端的 `ra`；macOS 的结论来自 13）
 **Requirements**: HWD-01, HWD-02, HWD-03, HWD-05
@@ -137,11 +163,13 @@ Plans:
   2. RTX 4060 + D3D11 后端：`hwdec-current=d3d11va`（不是 `d3d11va-copy`），4K HEVC 10-bit 样本播放画面正确，没有绿帧或黑帧。
   3. Linux 宿主向 mpv 传入 `MPV_RENDER_PARAM_DRM_DISPLAY_V2`（render node 与 EGL 设备匹配），GL 与 Vulkan gpu-next 后端都能加载 vaapi interop（日志可见）；没有 `/dev/dri` 的 runner 上安全回落到软件解码且不崩溃；真实 vaapi 零拷贝因无硬件标为未验证。
   4. 每个 soak/集成测试都输出并断言 `hwdec-current` 与零拷贝是/否；`hwdec=no` 的软件解码路径在 d3d11、opengl、vulkan、software 每个后端上都通过。
+
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
 **Research**: 需要阶段研究（`/gsd-plan-phase 16 --research-phase`）：混合 GPU 上的 vaapi render node 选择、P010 dma-buf modifier、Vulkan gpu-next 侧 vaapi 所需的 0004 native-resource 补充、`d3d11va-zero-copy` 的取舍（8K 门禁本身仍延后）。
 **Plans**: TBD
 
 ### Phase 17: Fallback Hardening & UHD Regression
+
 **Goal**: auto 回退的每一级都被强制演练过并留下带原因的事件；每个后端都在 CI 与 RTX 4060 上通过真实插件、硬解与 UHD 长时门禁。
 **Depends on**: Phase 14, Phase 15, Phase 16
 **Requirements**: VER-01, VER-02, VER-03, VER-04
@@ -150,6 +178,7 @@ Plans:
   2. 每个平台的 CI 矩阵用 `MPV_KIT_VIDEO_API` 强制每个可用后端（Windows d3d11/vulkan/software，Linux vulkan/opengl/software，macOS vulkan/software）跑真实插件 integration test，hosted runner 上 `hwdec=no` + 非黑像素探针全绿；D3D-02 的 ANGLE 禁令门禁仍在矩阵中且为绿。
   3. RTX 4060 上的硬解层在 `MPV_KIT_REQUIRE_HWDEC` 守卫下运行：没有可用硬解，或 `hwdec-current` 不是期望的零拷贝值时，测试响亮失败而不是静默 skip。
   4. RTX 4060 上 D3D11 与 Vulkan 后端各自 4K 30 分钟零丢帧、无积压；100 轮 resize/dispose soak 在 RTX 4060 的 d3d11/vulkan/software 后端上通过，专用显存曲线平稳、没有单调增长；opengl 后端的同一 soak 在 ubuntu runner（llvmpipe）上通过、进程内存平稳，由于没有 Linux GPU，真实显存曲线标为未验证。
+
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。
 **Plans**: TBD
