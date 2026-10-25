@@ -60,6 +60,10 @@ behavior_unverified_items:
     test: "让纹理连续挂载超过 500 ms，再卸载并继续播放，观察 idle 事件落在哪个桶。"
     expected: "正常轮次 idleSoak 保持 0；卸载窗口内的 idle 计入 idleDuringUnmount，不进入渲染器失败判据。"
     why_human: "工作负载从未执行（part-1 门），因此没有任何运行真正触发该分类器；WR-05 还指出正常轮次的挂载窗约 250-350 ms，达不到 500 ms，指标在常规情况下为空。"
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-10-25
+  status: gaps_found
 ---
 
 # Phase 10: Composition Spike 验证报告
