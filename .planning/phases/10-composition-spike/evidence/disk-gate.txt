@@ -26,3 +26,11 @@ run-gate: avail_bytes=8183009280 threshold_bytes=5905580032 status=ok
 
 Filesystem        1B-blocks         Used  Available Use% Mounted on
 D:             326739423232 318556418048 8183005184  98% /d
+
+## Run gate (10-05 Task 1, before the rerun pair)
+# Captured: 2026-10-25T04:10:01Z
+# Command: df -B1 .   (repo root D:/mpv_kit, drive D:)
+run-gate: avail_bytes=7818346496 threshold_bytes=5905580032 run_start_epoch=1792901401 status=ok
+
+Filesystem        1B-blocks         Used  Available Use% Mounted on
+D:             326739423232 318921076736 7818346496  98% /d

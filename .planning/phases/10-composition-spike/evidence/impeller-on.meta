@@ -1,9 +1,9 @@
 run: impeller-on
 switch: --enable-impeller
 command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter test integration_test/impeller_smoke_test.dart -d windows --enable-impeller
-start: 2026-10-24T17:39:18Z
-start_epoch: 1792863558
+start: 2026-10-25T04:10:16Z
+start_epoch: 1792901417
 sdk: Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
-exit_code: 1
-end: 2026-10-24T17:41:18Z
-end_epoch: 1792863678
+exit_code: 79
+end: 2026-10-25T04:11:05Z
+end_epoch: 1792901465
