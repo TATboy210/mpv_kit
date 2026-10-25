@@ -564,10 +564,14 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     target.height = img.height;
     // Images are shared with another API: transfer ownership to/from the
     // external queue family and keep them in GENERAL layout between frames.
+    // Always EXTERNAL, also on first use: an acquire from EXTERNAL with
+    // UNDEFINED (contents discarded) is valid, while IGNORED on an
+    // EXCLUSIVE image with dedicated queue families is not
+    // (VUID-VkImageMemoryBarrier2-image-09117) and leaves the next frame's
+    // acquire without a matching release.
     target.layout = img.initialized ? VK_IMAGE_LAYOUT_GENERAL
                                     : VK_IMAGE_LAYOUT_UNDEFINED;
-    target.queue_family =
-        img.initialized ? VK_QUEUE_FAMILY_EXTERNAL : VK_QUEUE_FAMILY_IGNORED;
+    target.queue_family = VK_QUEUE_FAMILY_EXTERNAL;
     target.final_layout = VK_IMAGE_LAYOUT_GENERAL;
     target.signal_semaphore = vulkan_->timeline();
     const uint64_t previous_ready = img.ready_value;

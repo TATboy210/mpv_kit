@@ -209,7 +209,10 @@ int main(int argc, char **argv)
     }, NULL, &buf_mem));
     VK(vkBindBufferMemory(dev, buf, buf_mem, 0));
 
-    VkSemaphore done;
+    // first: frame 1 -> frame 2; done: frame 2 -> read back.
+    VkSemaphore first, done;
+    VK(vkCreateSemaphore(dev, &(VkSemaphoreCreateInfo){
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }, NULL, &first));
     VK(vkCreateSemaphore(dev, &(VkSemaphoreCreateInfo){
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }, NULL, &done));
 
@@ -283,13 +286,18 @@ int main(int argc, char **argv)
                  VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .width = W,
         .height = H,
+        // Like the plugin: the image is always handed over to/from the
+        // external queue family, starting with discardable contents.
         .layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .queue_family = VK_QUEUE_FAMILY_IGNORED,
-        .signal_semaphore = done,
+        .final_layout = VK_IMAGE_LAYOUT_GENERAL,
+        .queue_family = VK_QUEUE_FAMILY_EXTERNAL,
+        .signal_semaphore = first,
     };
+    // Two renders into one image; a redraw must not wait for a vsync report.
+    int no_block = 0;
     mpv_render_param rparams[] = {
         { MPV_RENDER_PARAM_VULKAN_IMAGE, &target },
+        { MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &no_block },
         { 0 },
     };
     // A target without a signal semaphore is rejected up front (libplacebo
@@ -299,12 +307,23 @@ int main(int argc, char **argv)
     err = mpv_render_context_render(rc, rparams);
     if (err != MPV_ERROR_INVALID_PARAMETER)
         FAIL("render without signal_semaphore: got %d (%s)", err, mpv_error_string(err));
-    target.signal_semaphore = done;
+    target.signal_semaphore = first;
 
     step("render");
     err = mpv_render_context_render(rc, rparams);
     if (err < 0)
         FAIL("mpv_render_context_render: %s", mpv_error_string(err));
+
+    // Second frame: acquire from EXTERNAL again (paired with the release of
+    // frame 1), preserving contents, then end in the read-back layout.
+    step("render again into the same image");
+    target.layout = VK_IMAGE_LAYOUT_GENERAL;
+    target.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    target.wait_semaphore = first;
+    target.signal_semaphore = done;
+    err = mpv_render_context_render(rc, rparams);
+    if (err < 0)
+        FAIL("second mpv_render_context_render: %s", mpv_error_string(err));
 
     // --- Read back: copy after mpv's signal --------------------------------
     VkCommandPool pool;
@@ -323,6 +342,19 @@ int main(int argc, char **argv)
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     }));
+    // Acquire the image from the external queue family mpv released it to.
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+            .dstQueueFamilyIndex = qf,
+            .image = img,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        });
     vkCmdCopyImageToBuffer(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1,
         &(VkBufferImageCopy){
             .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
@@ -361,6 +393,7 @@ int main(int argc, char **argv)
     vkDestroyFence(dev, fence, NULL);
     vkDestroyCommandPool(dev, pool, NULL);
     vkDestroySemaphore(dev, done, NULL);
+    vkDestroySemaphore(dev, first, NULL);
     vkDestroyBuffer(dev, buf, NULL);
     vkFreeMemory(dev, buf_mem, NULL);
     vkDestroyImage(dev, img, NULL);
