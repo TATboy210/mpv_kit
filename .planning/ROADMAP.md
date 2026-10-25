@@ -75,7 +75,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 **Plans:** 12 plans（9 waves）
 
 Plans:
-- [ ] 12-01-PLAN.md — 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
+- [ ] 12-01-PLAN.md — 推送授权检查点 + 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
 - [ ] 12-02-PLAN.md — soak harness 修复：探针三方对照、resize-front 复现器、100 次 create/dispose 段、真正渲染的 4K 变体
 - [ ] 12-03-PLAN.md — Dart 私有 wire 名严格校验 + 枚举冻结守卫 + ADR 0004（reason 语法、MPV_KIT_VIDEO_API）+ README
 - [ ] 12-04-PLAN.md — RTX 4060 重构前基线（D-05 / cycles / resize-front × Impeller 开关）+ 人工确认
