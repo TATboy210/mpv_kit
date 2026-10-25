@@ -35,10 +35,20 @@ index 02efefb101..37fa4f64db 100644
  extern const struct render_backend_fns render_backend_gpu;
  extern const struct render_backend_fns render_backend_sw;
 diff --git a/video/out/vo_gpu_next.c b/video/out/vo_gpu_next.c
-index bd3d1aa1ec..d20889ef6e 100644
+index bd3d1aa1ec..f731dbd207 100644
 --- a/video/out/vo_gpu_next.c
 +++ b/video/out/vo_gpu_next.c
-@@ -178,6 +178,14 @@ struct priv {
+@@ -168,6 +168,9 @@ struct priv {
+     struct pl_icc_params icc_params;
+     char *icc_path;
+     pl_icc_object icc_profile;
++    // libmpv: host profile from MPV_RENDER_PARAM_ICC_PROFILE, kept so that
++    // option updates re-apply it instead of unloading it.
++    struct bstr libmpv_icc;
+ 
+     // Cached shaders, preserved across options updates
+     struct user_hook *user_hooks;
+@@ -178,6 +181,14 @@ struct priv {
      struct frame_info perf_redraw;
  
      struct mp_image_params target_params;
@@ -53,7 +63,7 @@ index bd3d1aa1ec..d20889ef6e 100644
  };
  
  static void update_render_options(struct vo *vo);
-@@ -498,10 +506,14 @@ static void update_overlays(struct vo *vo, struct mp_osd_res res,
+@@ -498,10 +509,14 @@ static void update_overlays(struct vo *vo, struct mp_osd_res res,
      mp_get_3d_side_by_side(stereo_mode, div);
      res.w /= div[0];
      res.h /= div[1];
@@ -70,7 +80,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      for (int n = 0; n < subs->num_items; n++) {
          const struct sub_bitmaps *item = subs->items[n];
          if (!item->num_parts || !item->packed)
-@@ -905,7 +917,7 @@ static float get_ref_luma(struct priv *p)
+@@ -905,7 +920,7 @@ static float get_ref_luma(struct priv *p)
      // on SDR->SDR in some corner cases. User override is still respected, to
      // preserve previous behavior.
      struct ra_swapchain *sw = p->ra_ctx->swapchain;
@@ -79,7 +89,7 @@ index bd3d1aa1ec..d20889ef6e 100644
          return sw->fns->target_ref_luma(sw);
  #endif
  
-@@ -1241,7 +1253,7 @@ static void apply_target_options(struct priv *p, struct pl_frame *target,
+@@ -1241,7 +1256,7 @@ static void apply_target_options(struct priv *p, struct pl_frame *target,
      int dither_depth = opts->dither_depth;
      if (dither_depth == 0) {
          struct ra_swapchain *sw = p->ra_ctx->swapchain;
@@ -88,7 +98,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      }
  #if PL_API_VER >= 362
      // Don't dither scRGB, assume downstream will handle quantization properly.
-@@ -1294,6 +1306,11 @@ static void apply_crop(struct pl_frame *frame, struct mp_rect crop,
+@@ -1294,6 +1309,11 @@ static void apply_crop(struct pl_frame *frame, struct mp_rect crop,
  
  static bool set_colorspace_hint(struct priv *p, struct pl_color_space *hint)
  {
@@ -100,7 +110,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      struct ra_swapchain *sw = p->ra_ctx->swapchain;
  
      struct mp_image_params params = {
-@@ -1437,7 +1454,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
+@@ -1437,7 +1457,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
  
      struct pl_color_space target_csp = {0};
      // TODO: Implement this for all backends
@@ -109,7 +119,7 @@ index bd3d1aa1ec..d20889ef6e 100644
          target_csp = sw->fns->target_csp(sw);
      if (target_csp.primaries == PL_COLOR_PRIM_UNKNOWN)
          target_csp.primaries = mp_get_best_prim_container(&target_csp.hdr.prim);
-@@ -1451,9 +1468,13 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
+@@ -1451,9 +1471,13 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
      target_csp.hdr.max_fall = 0;
  
      struct pl_color_space hint = {0};
@@ -126,7 +136,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      // Assume HDR is supported, if target_csp() is not available
      // TODO: Remove this fallback when all backends support target_csp()
      bool target_unknown = target_csp.transfer == PL_COLOR_TRC_UNKNOWN;
-@@ -1568,8 +1589,17 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
+@@ -1568,8 +1592,17 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
      }
  
      struct pl_swapchain_frame swframe;
@@ -146,7 +156,7 @@ index bd3d1aa1ec..d20889ef6e 100644
          if (frame->current) {
              // Advance the queue state to the current PTS to discard unused frames
              struct pl_queue_params qparams = *pl_queue_params(
-@@ -1825,17 +1855,9 @@ static int query_format(struct vo *vo, int format)
+@@ -1825,17 +1858,9 @@ static int query_format(struct vo *vo, int format)
      return supported;
  }
  
@@ -166,7 +176,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      if (mp_rect_equals(&p->src, &src) &&
          mp_rect_equals(&p->dst, &dst) &&
          osd_res_equals(p->osd_res, osd))
-@@ -1847,6 +1869,19 @@ static void resize(struct vo *vo)
+@@ -1847,6 +1872,19 @@ static void resize(struct vo *vo)
      p->dst = dst;
  }
  
@@ -186,7 +196,29 @@ index bd3d1aa1ec..d20889ef6e 100644
  static int reconfig(struct vo *vo, struct mp_image_params *params)
  {
      struct priv *p = vo->priv;
-@@ -2525,17 +2560,20 @@ static int preinit(struct vo *vo)
+@@ -1875,11 +1913,20 @@ static bool update_icc(struct priv *p, struct bstr icc)
+     return ok;
+ }
+ 
++// Whether a host-supplied libmpv ICC profile is in effect.
++static bool has_host_icc(struct priv *p)
++{
++    return p->libmpv && p->libmpv_icc.len;
++}
++
+ // Returns whether the ICC profile was updated (even on failure)
+ static bool update_auto_profile(struct priv *p, int *events)
+ {
+     const struct gl_video_opts *opts = p->opts_cache->opts;
+-    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path)
++    // The host profile stands in for the auto profile; libmpv has no window
++    // to query, so querying would only unload it.
++    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path ||
++        has_host_icc(p))
+         return false;
+ 
+     MP_VERBOSE(p, "Querying ICC profile...\n");
+@@ -2525,17 +2572,20 @@ static int preinit(struct vo *vo)
      p->stats = stats_ctx_create(p, vo->global, "vo/gpu-next");
  
      struct gl_video_opts *gl_opts = p->opts_cache->opts;
@@ -218,7 +250,7 @@ index bd3d1aa1ec..d20889ef6e 100644
      p->hwdec_ctx = (struct ra_hwdec_ctx) {
          .log = p->log,
          .global = p->global,
-@@ -2543,16 +2581,25 @@ static int preinit(struct vo *vo)
+@@ -2543,16 +2593,25 @@ static int preinit(struct vo *vo)
      };
  
      vo->hwdec_devs = hwdec_devices_create();
@@ -248,7 +280,28 @@ index bd3d1aa1ec..d20889ef6e 100644
      p->rr = pl_renderer_create(p->pllog, p->gpu);
      p->queue = pl_queue_create(p->gpu);
      p->osd_fmt[SUBBITMAP_LIBASS] = pl_find_named_fmt(p->gpu, "r8");
-@@ -2886,8 +2933,11 @@ static void update_render_options(struct vo *vo)
+@@ -2688,7 +2747,7 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
+     if (!opts)
+         return;
+ 
+-    if (!opts->profile_auto && !p->icc_path) {
++    if (!opts->profile_auto && !p->icc_path && !has_host_icc(p)) {
+         // Un-set any auto-loaded profiles if icc-profile-auto was disabled
+         update_icc(p, (bstr) {0});
+     }
+@@ -2703,8 +2762,9 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
+     p->icc_params.cache = p->icc_cache.cache;
+ 
+     if (!opts->profile || !opts->profile[0]) {
+-        // No profile enabled, un-load any existing profiles
+-        update_icc(p, (bstr) {0});
++        // No profile enabled, un-load any existing profiles; a host profile
++        // is re-applied with the new parameters instead.
++        update_icc(p, has_host_icc(p) ? bstrdup(NULL, p->libmpv_icc) : (bstr) {0});
+         TA_FREEP(&p->icc_path);
+         return;
+     }
+@@ -2886,8 +2946,11 @@ static void update_render_options(struct vo *vo)
                        (pars->params.skip_anti_aliasing ? 1 : 2);
      }
      req_frames = MPMIN(VO_MAX_REQ_FRAMES, req_frames);
@@ -261,7 +314,7 @@ index bd3d1aa1ec..d20889ef6e 100644
  
      pars->params.deband_params = opts->deband ? &pars->deband_params : NULL;
      pars->deband_params.iterations = opts->deband_opts->iterations;
-@@ -3010,3 +3060,262 @@ const struct vo_driver video_out_gpu_next = {
+@@ -3010,3 +3073,272 @@ const struct vo_driver video_out_gpu_next = {
      .uninit = uninit,
      .priv_size = sizeof(struct priv),
  };
@@ -362,8 +415,16 @@ index bd3d1aa1ec..d20889ef6e 100644
 +    switch (param.type) {
 +    case MPV_RENDER_PARAM_ICC_PROFILE: {
 +        mpv_byte_array *data = param.data;
-+        // update_icc() takes ownership of the copy.
-+        update_icc(p, bstrdup(NULL, (bstr){data->data, data->size}));
++        // Runs on the render thread, like draw: no lock needed. An empty
++        // profile clears the host profile.
++        talloc_free(p->libmpv_icc.start);
++        p->libmpv_icc = data && data->size
++            ? bstrdup(p, (bstr){data->data, data->size}) : (bstr) {0};
++        // A user --icc-profile wins; the host profile returns if it is cleared.
++        if (!p->icc_path) {
++            // update_icc() takes ownership of the copy.
++            update_icc(p, bstrdup(NULL, p->libmpv_icc));
++        }
 +        return 0;
 +    }
 +    default:
@@ -388,7 +449,9 @@ index bd3d1aa1ec..d20889ef6e 100644
 +{
 +    struct libmpv_priv *lp = ctx->priv;
 +    struct priv *p = lp->vo->priv;
-+    // Same as VOCTRL_RESET: defer until the next new frame arrives.
++    // Immediate, unlike VOCTRL_RESET's deferred want_seek_reset: vo_libmpv
++    // also resets on VO uninit/recreate, where the new VO restarts frame ids
++    // below p->last_id and a deferred reset would keep the old file's frames.
 +    p->want_reset = true;
 +}
 +

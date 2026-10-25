@@ -160,3 +160,15 @@ intermediate `uint_fast8_t pending` refactor absent from 7.360.1
 FFmpeg 9 prerequisite (mpv #18588): moving past FFmpeg 8.x needs
 libplacebo 409c9a8 and mpv 6a262d11f637 together; neither is taken while
 the bundle stays on FFmpeg 8.1.3.
+- 0004: the host ICC profile (`MPV_RENDER_PARAM_ICC_PROFILE`) is kept in
+  `priv->libmpv_icc` and re-applied on option updates; previously any
+  option change (`update_icc_opts`, and `update_auto_profile` with
+  `--icc-profile-auto`, which libmpv cannot query) unloaded it. A user
+  `--icc-profile` wins; clearing it falls back to the host profile; an
+  empty host profile clears it.
+- 0004: `libmpv_reset` stays an immediate `want_reset` (comment fixed). A
+  deferred `want_seek_reset` would keep the previous file's frames queued
+  after VO recreation, because the new VO restarts frame ids below
+  `p->last_id`.
+- 0004: mpv PR #16818 (partially uninitialised `pl_color_adjustment`)
+  does not apply: vo_gpu_next.c on this base has no `pl_color_adjustment`.

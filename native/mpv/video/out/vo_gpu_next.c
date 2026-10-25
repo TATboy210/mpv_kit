@@ -168,6 +168,9 @@ struct priv {
     struct pl_icc_params icc_params;
     char *icc_path;
     pl_icc_object icc_profile;
+    // libmpv: host profile from MPV_RENDER_PARAM_ICC_PROFILE, kept so that
+    // option updates re-apply it instead of unloading it.
+    struct bstr libmpv_icc;
 
     // Cached shaders, preserved across options updates
     struct user_hook *user_hooks;
@@ -1910,11 +1913,20 @@ static bool update_icc(struct priv *p, struct bstr icc)
     return ok;
 }
 
+// Whether a host-supplied libmpv ICC profile is in effect.
+static bool has_host_icc(struct priv *p)
+{
+    return p->libmpv && p->libmpv_icc.len;
+}
+
 // Returns whether the ICC profile was updated (even on failure)
 static bool update_auto_profile(struct priv *p, int *events)
 {
     const struct gl_video_opts *opts = p->opts_cache->opts;
-    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path)
+    // The host profile stands in for the auto profile; libmpv has no window
+    // to query, so querying would only unload it.
+    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path ||
+        has_host_icc(p))
         return false;
 
     MP_VERBOSE(p, "Querying ICC profile...\n");
@@ -2735,7 +2747,7 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
     if (!opts)
         return;
 
-    if (!opts->profile_auto && !p->icc_path) {
+    if (!opts->profile_auto && !p->icc_path && !has_host_icc(p)) {
         // Un-set any auto-loaded profiles if icc-profile-auto was disabled
         update_icc(p, (bstr) {0});
     }
@@ -2750,8 +2762,9 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
     p->icc_params.cache = p->icc_cache.cache;
 
     if (!opts->profile || !opts->profile[0]) {
-        // No profile enabled, un-load any existing profiles
-        update_icc(p, (bstr) {0});
+        // No profile enabled, un-load any existing profiles; a host profile
+        // is re-applied with the new parameters instead.
+        update_icc(p, has_host_icc(p) ? bstrdup(NULL, p->libmpv_icc) : (bstr) {0});
         TA_FREEP(&p->icc_path);
         return;
     }
@@ -3157,8 +3170,16 @@ static int libmpv_set_parameter(struct render_backend *ctx, mpv_render_param par
     switch (param.type) {
     case MPV_RENDER_PARAM_ICC_PROFILE: {
         mpv_byte_array *data = param.data;
-        // update_icc() takes ownership of the copy.
-        update_icc(p, bstrdup(NULL, (bstr){data->data, data->size}));
+        // Runs on the render thread, like draw: no lock needed. An empty
+        // profile clears the host profile.
+        talloc_free(p->libmpv_icc.start);
+        p->libmpv_icc = data && data->size
+            ? bstrdup(p, (bstr){data->data, data->size}) : (bstr) {0};
+        // A user --icc-profile wins; the host profile returns if it is cleared.
+        if (!p->icc_path) {
+            // update_icc() takes ownership of the copy.
+            update_icc(p, bstrdup(NULL, p->libmpv_icc));
+        }
         return 0;
     }
     default:
@@ -3183,7 +3204,9 @@ static void libmpv_reset(struct render_backend *ctx)
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
-    // Same as VOCTRL_RESET: defer until the next new frame arrives.
+    // Immediate, unlike VOCTRL_RESET's deferred want_seek_reset: vo_libmpv
+    // also resets on VO uninit/recreate, where the new VO restarts frame ids
+    // below p->last_id and a deferred reset would keep the old file's frames.
     p->want_reset = true;
 }
 
