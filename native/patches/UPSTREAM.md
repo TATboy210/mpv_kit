@@ -92,3 +92,18 @@ upstream submission is planned. The table stays as the record of how each
 patch relates to mpv master, which matters when rebasing onto a new mpv
 release. Priorities for the patches are runtime efficiency and stability
 in mpv_kit, not upstream acceptability.
+
+## Stability fixes (2026-10-25)
+
+- 0006: `stream_cb.c s_close` detaches the cancel callback before
+  `close_fn`. `p->cancel` is freed with the stream, after `close_fn`, so a
+  cancel arriving in between called `cancel_fn` on a closed cookie
+  (use-after-free in the bridge). Generic upstream bug: any `stream_cb`
+  host that sets `cancel_fn` and frees its cookie in `close_fn` is exposed.
+- 0006: `bridge_open` sends `MPV_KIT_STREAM_CLOSE` to the host and returns
+  `MPV_ERROR_LOADING_FAILED` when allocating the bridge stream fails after
+  the host opened its side (the host source leaked until shutdown).
+- 0006: `bridge_seek` fails (`MPV_ERROR_GENERIC`) when the host lands on a
+  different offset than requested. Behaviour change: a host that clamps an
+  out-of-range seek (e.g. past EOF) now fails the seek instead of silently
+  desynchronising mpv's stream position.

@@ -120,10 +120,10 @@ index c6ff0a4..175125b 100644
      endif
 diff --git a/player/stream_bridge.c b/player/stream_bridge.c
 new file mode 100644
-index 0000000..a4bdd9a
+index 0000000..987fb81
 --- /dev/null
 +++ b/player/stream_bridge.c
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,298 @@
 +/*
 + * Asynchronous custom stream bridge (mpv_kit extension), see
 + * include/mpv/stream_bridge.h.
@@ -282,8 +282,11 @@ index 0000000..a4bdd9a
 +{
 +    struct bridge_stream *s = cookie;
 +    int64_t pos = call_host(s->reg, s, MPV_KIT_STREAM_SEEK, NULL, offset, NULL);
-+    return pos < 0 ? (pos == MPV_ERROR_UNSUPPORTED ? pos : MPV_ERROR_GENERIC)
-+                   : pos;
++    if (pos < 0)
++        return pos == MPV_ERROR_UNSUPPORTED ? pos : MPV_ERROR_GENERIC;
++    // mpv assumes the stream is now at offset; a host that landed elsewhere
++    // (e.g. clamped to its size) would silently desynchronise reads.
++    return pos == offset ? pos : MPV_ERROR_GENERIC;
 +}
 +
 +static int64_t bridge_size(void *cookie)
@@ -301,21 +304,26 @@ index 0000000..a4bdd9a
 +    mp_mutex_unlock(&lock);
 +}
 +
-+static void bridge_close(void *cookie)
++// Tells the host that its stream [id] is gone (no reply expected).
++static void notify_close(struct registration *reg, uint64_t id)
 +{
-+    struct bridge_stream *s = cookie;
-+    struct registration *reg = s->reg;
 +    mp_mutex_lock(&lock);
 +    const bool notify = !reg->shutdown;
 +    if (notify)
 +        reg->calls++; // keeps shutdown from returning during the call
 +    mp_mutex_unlock(&lock);
 +    if (notify) {
-+        reg->fn(reg->user_data, 0, MPV_KIT_STREAM_CLOSE, s->id, NULL, 0);
++        reg->fn(reg->user_data, 0, MPV_KIT_STREAM_CLOSE, id, NULL, 0);
 +        mp_mutex_lock(&lock);
 +        end_call(reg);
 +        mp_mutex_unlock(&lock);
 +    }
++}
++
++static void bridge_close(void *cookie)
++{
++    struct bridge_stream *s = cookie;
++    notify_close(s->reg, s->id);
 +    free(s);
 +}
 +
@@ -327,8 +335,12 @@ index 0000000..a4bdd9a
 +    if (id <= 0)
 +        return MPV_ERROR_LOADING_FAILED;
 +    struct bridge_stream *s = calloc(1, sizeof(*s));
-+    if (!s)
-+        return MPV_ERROR_NOMEM;
++    if (!s) {
++        // The host already opened its side: tell it, or the source leaks
++        // until shutdown.
++        notify_close(reg, (uint64_t)id);
++        return MPV_ERROR_LOADING_FAILED;
++    }
 +    s->reg = reg;
 +    s->id = (uint64_t)id;
 +    s->size = size;
@@ -410,3 +422,19 @@ index 0000000..a4bdd9a
 +    }
 +    mp_mutex_unlock(&lock);
 +}
+diff --git a/stream/stream_cb.c b/stream/stream_cb.c
+index 27e04a9..8c03bca 100644
+--- a/stream/stream_cb.c
++++ b/stream/stream_cb.c
+@@ -48,6 +48,11 @@ static int64_t get_size(stream_t *s)
+ static void s_close(stream_t *s)
+ {
+     struct priv *p = s->priv;
++    // p->cancel outlives close_fn (it is freed with the stream), so a cancel
++    // arriving in between would call cancel_fn on a closed cookie. Detaching
++    // takes the cancel lock, which also waits out a callback in progress.
++    if (p->cancel)
++        mp_cancel_set_cb(p->cancel, NULL, NULL);
+     p->info.close_fn(p->info.cookie);
+ }
+ 
