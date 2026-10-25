@@ -50,6 +50,12 @@ const Duration _idleTimeout = Duration(milliseconds: 500);
 /// silent black texture, not a crash).
 const double _minNonBlackRatio = 0.01;
 
+/// The D-04 source. Shared by the measured part 1 and the diagnostic replay so
+/// both execute the identical prelude shape.
+const _lavfiSource =
+    'av://lavfi:testsrc2=size=1920x1080:rate=30:duration=120[out0];'
+    'sine=frequency=440:sample_rate=48000:duration=120[out1]';
+
 /// One BENCH line on stdout. Integration tests have no console logger;
 /// `print` is the only channel `flutter test -d windows` forwards (the sibling
 /// harnesses use the same one).
@@ -71,6 +77,54 @@ void main() {
   testWidgets('Impeller composition smoke (3 parts)', (tester) async {
     await _SmokeHarness().run(tester);
   });
+}
+
+/// Synchronously flushed step trace for the soak abort.
+///
+/// 10-05 lost the console tail when the process disappeared, so the only
+/// trustworthy record is a line that is already on disk before the next
+/// await. Every marker is appended with `flush: true`; the `DIAG soak` print
+/// is a secondary copy, never the only one.
+final class _Trace {
+  _Trace(this._path, this._snapshot) {
+    final path = _path;
+    if (path == null || path.isEmpty) return;
+    // Truncate first: a stale trace from an earlier run must never be read
+    // as this run's last marker.
+    File(path).writeAsStringSync(
+      'trace-start utc=${DateTime.now().toUtc().toIso8601String()}\n',
+      flush: true,
+    );
+  }
+
+  final String? _path;
+
+  /// Builds the token values for one marker (see [mark]).
+  final Map<String, Object?> Function(String step, int? round) _snapshot;
+
+  /// Appends one marker line.
+  ///
+  /// Tokens are space separated and ordered `t round step rss resizeEvents
+  /// idleSoak renderErrors deviceLost controllers`. `step=` and `round=` stay
+  /// independent tokens because the abort diagnosis greps them separately;
+  /// they must never be folded into JSON or a comma-separated field.
+  void mark(String step, {int? round}) {
+    final path = _path;
+    if (path == null || path.isEmpty) return;
+    final values = _snapshot(step, round);
+    final line = 't=${values['t']} round=${values['round']} step=$step '
+        'rss=${values['rss']} resizeEvents=${values['resizeEvents']} '
+        'idleSoak=${values['idleSoak']} '
+        'renderErrors=${values['renderErrors']} '
+        'deviceLost=${values['deviceLost']} '
+        'controllers=${values['controllers']}';
+    File(path).writeAsStringSync(
+      '$line\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+    print('DIAG soak ${jsonEncode(values)}');
+  }
 }
 
 /// D-04 workload. Private to this file: the smoke is a one-off evidence
@@ -110,6 +164,19 @@ final class _SmokeHarness {
   int _idleDuringUnmount = 0;
   int _longestMountMs = 0;
   bool _saw4kResize = false;
+
+  /// Every controller this process created (part 1 / part 2 / soak / diag).
+  /// Counted only: it is never a classification input.
+  int _controllersCreated = 0;
+
+  /// Completed soak rounds of the last [_runSoakRounds] call.
+  int _soakRoundsDone = 0;
+
+  /// Step trace; disabled unless `MPV_KIT_SMOKE_TRACE` names a file.
+  late final _Trace _trace = _Trace(
+    Platform.environment['MPV_KIT_SMOKE_TRACE'],
+    _traceSnapshot,
+  );
 
   int _rssStart = 0;
   Map<String, Object?> _pixelProbe = const {
@@ -201,6 +268,7 @@ final class _SmokeHarness {
       },
     );
     final controller = _controller = await MpvVideoController.create(player);
+    _controllersCreated++;
     _watch(controller);
 
     // Identity gate before any measurement: a silently substituted libmpv
@@ -224,14 +292,25 @@ final class _SmokeHarness {
     }
     _rssStart = ProcessInfo.currentRss;
 
+    // --- Diagnostic branch (evidence only, never a classification) --------
+    // Placed after the identity gate and before any part: it replays the
+    // measured prelude and then only writes a trace. It never reaches
+    // _classify, never emits a `stage: complete` line and never touches the
+    // classification evidence file.
+    final diagMode = Platform.environment['MPV_KIT_SMOKE_DIAG'] ?? '';
+    if (diagMode == 'soak' || diagMode == 'soak-after-4k') {
+      final diagRounds =
+          int.tryParse(Platform.environment['MPV_KIT_SMOKE_ROUNDS'] ?? '') ??
+          5;
+      await _runDiag(player, diagMode, diagRounds);
+      return;
+    }
+
     // --- Part 1: minimal chain, 1920x1080 source --------------------------
     _stage = 'part1';
     _setTexture(controller.textureId);
     final part1Watch = Stopwatch()..start();
-    await player.open(
-      'av://lavfi:testsrc2=size=1920x1080:rate=30:duration=120[out0];'
-      'sine=frequency=440:sample_rate=48000:duration=120[out1]',
-    );
+    await player.open(_lavfiSource);
     // Readiness 1: the decoder reports the requested source size (the same
     // shape real_plugin_test.dart:55-70 uses).
     final paramsReady = await _waitUntil(() {
@@ -284,6 +363,7 @@ final class _SmokeHarness {
     // --- Part 2: one 4K render target -------------------------------------
     _stage = 'part2';
     final uhdController = _controller = await MpvVideoController.create(player);
+    _controllersCreated++;
     _watch(uhdController);
     _setTexture(uhdController.textureId);
     await _nextFrame();
@@ -319,30 +399,8 @@ final class _SmokeHarness {
     _soakStarted = true;
     _soakStart = DateTime.now();
 
-    var rounds = 0;
-    for (var i = 0; i < 100; i++) {
-      _setTexture(null);
-      await _nextFrame();
-      final (width, height) = i.isEven ? (1280, 720) : (640, 360);
-      await _controller!.setSize(width, height);
-      await _controller!.dispose();
-      _controller = null;
-      final next = _controller = await MpvVideoController.create(player);
-      _watch(next);
-      _setTexture(next.textureId);
-      await _nextFrame();
-      rounds = i + 1;
-      if (rounds % 10 == 0) {
-        _emitBench({
-          'stage': 'soak-progress',
-          'rounds': rounds,
-          'seconds': _soakSeconds(),
-          'resizeEvents': _resizeEvents,
-          'idleSoak': _idleSoak,
-        });
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    }
+    await _runSoakRounds(100, emitDiag: false);
+    final rounds = _soakRoundsDone;
 
     // D-05 requires both conditions: 100 rounds AND >= 30 s.
     if (_soakSeconds() < 30) {
@@ -395,6 +453,203 @@ final class _SmokeHarness {
     );
 
     await _disposeQuietly();
+  }
+
+  /// Token values for one trace marker. Ordered keys, numeric `deviceLost`,
+  /// and `round` present for every line so the diagnosis can grep it.
+  Map<String, Object?> _traceSnapshot(String step, int? round) => {
+    't': _clock.elapsedMilliseconds,
+    'round': round ?? 0,
+    'step': step,
+    'rss': ProcessInfo.currentRss,
+    'resizeEvents': _resizeEvents,
+    'idleSoak': _idleSoak,
+    'renderErrors': _renderErrors,
+    'deviceLost': _deviceLost ? 1 : 0,
+    'controllers': _controllersCreated,
+  };
+
+  /// The soak loop body, shared by the measured part 3 and both diag modes.
+  ///
+  /// The state that feeds [_classify] (`_soakRoundsDone`, `_soakSeconds()`,
+  /// `_parts`) is produced identically here; [emitDiag] only selects the
+  /// progress channel — diag runs print `DIAG soak progress`, the measured run
+  /// keeps the original `soak-progress` BENCH line.
+  Future<void> _runSoakRounds(int count, {required bool emitDiag}) async {
+    for (var i = 0; i < count; i++) {
+      final round = i + 1;
+      _trace.mark('round-start', round: round);
+      final (width, height) = i.isEven ? (1280, 720) : (640, 360);
+      await _remountCycle(round: round, nextSize: (width, height));
+      _soakRoundsDone = round;
+      if (round % 10 == 0) {
+        if (emitDiag) {
+          print('DIAG soak progress ${jsonEncode({
+                'rounds': round,
+                'seconds': _soakSeconds(),
+                'resizeEvents': _resizeEvents,
+                'idleSoak': _idleSoak,
+              })}');
+        } else {
+          _emitBench({
+            'stage': 'soak-progress',
+            'rounds': round,
+            'seconds': _soakSeconds(),
+            'resizeEvents': _resizeEvents,
+            'idleSoak': _idleSoak,
+          });
+        }
+      }
+      _trace.mark('round-end', round: round);
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+  }
+
+  /// One unmount -> frame -> (optional resize) -> dispose -> create -> mount
+  /// -> frame cycle, with a marker immediately before and after every await.
+  ///
+  /// [nextSize] is applied after the unmount frame, which is the part-3 order;
+  /// the `soak-after-4k` prelude calls it without a size to reproduce the
+  /// exact entry state 10-05 reached.
+  Future<void> _remountCycle({
+    required int round,
+    (int, int)? nextSize,
+  }) async {
+    _trace.mark('unmount-begin', round: round);
+    _setTexture(null);
+    _trace.mark('unmount-done', round: round);
+
+    _trace.mark('frame-after-unmount-begin', round: round);
+    await _nextFrame();
+    _trace.mark('frame-after-unmount-done', round: round);
+
+    final size = nextSize;
+    if (size != null) {
+      _trace.mark('set-size-begin', round: round);
+      await _controller!.setSize(size.$1, size.$2);
+      _trace.mark('set-size-done', round: round);
+    }
+
+    _trace.mark('dispose-begin', round: round);
+    await _controller!.dispose();
+    _trace.mark('dispose-done', round: round);
+    _controller = null;
+
+    _trace.mark('create-begin', round: round);
+    final next = _controller = await MpvVideoController.create(_player!);
+    _controllersCreated++;
+    _trace.mark('create-done', round: round);
+    _watch(next);
+
+    _trace.mark('mount-begin', round: round);
+    _setTexture(next.textureId);
+    _trace.mark('mount-done', round: round);
+
+    _trace.mark('frame-after-mount-begin', round: round);
+    await _nextFrame();
+    _trace.mark('frame-after-mount-done', round: round);
+  }
+
+  /// Evidence-only reproducer: replays the measured part-1 lifecycle, applies
+  /// the mode prelude, then runs [rounds] soak rounds through the same
+  /// [_runSoakRounds].
+  ///
+  /// It never calls [_classify], never emits a `stage: complete` payload and
+  /// never writes the classification evidence file, so no diag run can be
+  /// mistaken for a D-05 measurement.
+  Future<void> _runDiag(Player player, String mode, int rounds) async {
+    _stage = 'diag-$mode';
+
+    // --- part 1 replay: the prelude 10-05 actually executed ---------------
+    var controller = _controller;
+    if (controller == null) {
+      throw StateError('diag requires the preflight controller');
+    }
+    _trace.mark('mount-begin', round: 0);
+    _setTexture(controller.textureId);
+    _trace.mark('mount-done', round: 0);
+
+    await player.open(_lavfiSource);
+    final paramsReady = await _waitUntil(() {
+      final params = player.videoParams.value;
+      return params?.width == 1920 && params?.height == 1080;
+    }, timeout: const Duration(seconds: 30));
+    if (!paramsReady) {
+      throw StateError('diag part-1 replay: video params timeout');
+    }
+    final resizeBaseline = _resizeEvents;
+    _trace.mark('set-size-begin', round: 0);
+    await controller.setSize(1920, 1080);
+    _trace.mark('set-size-done', round: 0);
+    final part1Ready = await _waitUntil(() {
+      final fps = player.mpv.tryGetProperty('estimated-vf-fps');
+      return fps is num && fps > 0 && _resizeEvents > resizeBaseline;
+    }, timeout: const Duration(seconds: 30));
+    if (!part1Ready) {
+      throw StateError('diag part-1 replay: readiness timeout');
+    }
+
+    _trace.mark('unmount-begin', round: 0);
+    _setTexture(null);
+    _trace.mark('unmount-done', round: 0);
+    _trace.mark('frame-after-unmount-begin', round: 0);
+    await _nextFrame();
+    _trace.mark('frame-after-unmount-done', round: 0);
+    _trace.mark('dispose-begin', round: 0);
+    await controller.dispose();
+    _trace.mark('dispose-done', round: 0);
+    _controller = null;
+
+    _trace.mark('create-begin', round: 0);
+    final remounted = _controller = await MpvVideoController.create(player);
+    _controllersCreated++;
+    _trace.mark('create-done', round: 0);
+    _watch(remounted);
+    _trace.mark('mount-begin', round: 0);
+    _setTexture(remounted.textureId);
+    _trace.mark('mount-done', round: 0);
+    _trace.mark('frame-after-mount-begin', round: 0);
+    await _nextFrame();
+    _trace.mark('frame-after-mount-done', round: 0);
+    print('DIAG soak part1_replay yes');
+
+    // --- mode prelude ------------------------------------------------------
+    if (mode == 'soak-after-4k') {
+      final uhdBaseline = _resizeEvents;
+      _saw4kResize = false;
+      _trace.mark('set-size-begin', round: 0);
+      await remounted.setSize(3840, 2160);
+      _trace.mark('set-size-done', round: 0);
+      final uhdReady = await _waitUntil(
+        () => _saw4kResize && _resizeEvents > uhdBaseline,
+        timeout: const Duration(seconds: 30),
+      );
+      if (!uhdReady) {
+        throw StateError('diag prelude: no 3840x2160 resize');
+      }
+      // Hold the 4K target so the compositor samples it repeatedly, exactly
+      // like part 2.
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await _remountCycle(round: 0);
+    } else {
+      final loopBaseline = _resizeEvents;
+      _trace.mark('set-size-begin', round: 0);
+      await remounted.setSize(1280, 720);
+      _trace.mark('set-size-done', round: 0);
+      await _waitUntil(
+        () => _resizeEvents > loopBaseline,
+        timeout: const Duration(seconds: 30),
+      );
+    }
+
+    // --- measured soak rounds, trace only ---------------------------------
+    _soakStarted = true;
+    _soakStart = DateTime.now();
+    await _runSoakRounds(rounds, emitDiag: true);
+    print('DIAG soak complete ${jsonEncode({
+          'rounds': rounds,
+          'mode': mode,
+        })}');
   }
 
   void _watch(MpvVideoController controller) {
