@@ -85,12 +85,44 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| RBE-01 | Phase 12 | Pending |
+| RBE-02 | Phase 12 | Pending |
+| RBE-03 | Phase 12 | Pending |
+| RBE-04 | Phase 12 | Pending |
+| RBE-05 | Phase 12 | Pending |
+| RBE-06 | Phase 12 | Pending |
+| RBE-07 | Phase 12 | Pending |
+| RBE-08 | Phase 12 | Pending |
+| D3D-01 | Phase 14 | Pending |
+| D3D-02 | Phase 14 | Pending |
+| D3D-03 | Phase 14 | Pending |
+| D3D-04 | Phase 14 | Pending |
+| D3D-05 | Phase 14 | Pending |
+| D3D-06 | Phase 14 | Pending |
+| D3D-07 | Phase 14 | Pending |
+| D3D-08 | Phase 14 | Pending |
+| GLX-01 | Phase 15 | Pending |
+| GLX-02 | Phase 15 | Pending |
+| GLX-03 | Phase 15 | Pending |
+| GLX-04 | Phase 15 | Pending |
+| MAC-01 | Phase 13 | Pending |
+| MAC-02 | Phase 13 | Pending |
+| HWD-01 | Phase 16 | Pending |
+| HWD-02 | Phase 16 | Pending |
+| HWD-03 | Phase 16 | Pending |
+| HWD-04 | Phase 13 | Pending |
+| HWD-05 | Phase 16 | Pending |
+| VER-01 | Phase 17 | Pending |
+| VER-02 | Phase 17 | Pending |
+| VER-03 | Phase 17 | Pending |
+| VER-04 | Phase 17 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 31 total
-- Mapped to phases: 0（由 roadmap 填写）
-- Unmapped: 31 ⚠️
+- Mapped to phases: 31
+- Unmapped: 0 ✓
+- 分布：Phase 12 = 8（RBE）· Phase 13 = 3（MAC-01/02、HWD-04）· Phase 14 = 8（D3D）· Phase 15 = 4（GLX）· Phase 16 = 4（HWD-01/02/03/05）· Phase 17 = 4（VER）
 
 ---
 *Requirements defined: 2026-10-26*
-*Last updated: 2026-10-26 after initial definition*
+*Last updated: 2026-10-26 after v3.0 roadmap creation (traceability filled)*

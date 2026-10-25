@@ -2,11 +2,13 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
+current_phase: "12"
+current_phase_name: RenderBackend Seam
 status: planning
-last_updated: "2026-10-25T17:30:25.869Z"
+last_updated: "2026-10-26T00:00:00.000Z"
 last_activity: 2026-10-26
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +19,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-25)
+See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Next milestone not yet defined
+**Current focus:** Phase 12 — RenderBackend Seam（基线先行的纯重构）
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-26 — Milestone v3.0 started
+Phase: 12 of 17 (RenderBackend Seam)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-26 — v3.0 roadmap created (Phases 12-17, 31/31 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -94,6 +98,11 @@ Last activity: 2026-10-26 — Milestone v3.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [v3.0 Roadmap]: 阶段 12-17：12 RenderBackend 接缝（基线先行、纯重构）→ 13 macOS 路线 ADR → 14 Windows D3D11 ∥ 15 Linux OpenGL → 16 硬解零拷贝 → 17 回退加固 + UHD 回归；31/31 需求映射，无孤儿、无重复。
+- [v3.0 Roadmap]: 硬约束——Windows 上 mpv_kit 自己的渲染链路禁止 ANGLE/EGL；D3D-02（Phase 14）把它变成 `pe_audit.py` CI 门禁，此后每个阶段都要保持为绿。
+- [v3.0 Roadmap]: HWD-04（VideoToolbox 零拷贝）放在 Phase 13，使 macOS 成为完整切片；HWD-01/02/03/05 留在 Phase 16，HWD-05 是 Phase 17 CI 矩阵所用的断言基础。
+- [v3.0 Roadmap]: auto 顺序「渲染器质量优先、图形 API 其次」；Windows auto 切到 D3D11 是 Phase 14 内的独立提交，CI 与 RTX 4060 均绿后才落地。
+- [v3.0 Roadmap]: Phase 14/15/16 需要阶段研究（`--research-phase`）；12/13/17 为标准模式。
 - [Milestone]: API 冻结，只做小改动大收益的稳定性/性能优化。
 - [Roadmap]: 阶段按技术域划分，顺序为生命周期 → 可观测性 → 性能 → 构建 → 跨平台验证。
 - [Roadmap]: 失败路径回归测试随 Phase 1/2 落地，真实插件 integration test 与六目标矩阵由 Phase 6 拥有。
@@ -150,11 +159,13 @@ None yet.
 
 ### Blockers/Concerns
 
+- [v3.0] 唯一真机是 Windows x64 RTX 4060：硬解零拷贝、性能、4K 30 分钟、D-05 基线只能在本机证明；Linux GPU 与 macOS 硬件不可用，HWD-03/HWD-04 与 Linux 真驱动行为须如实标为「未验证」。
+- [v3.0] 本地无 MSYS2/meson 工具链：Phase 14（SPIRV-Cross/shaderc/`-Dd3d11`、0010）与 Phase 15（`-Dgl -Degl`）的 bundle 改动只能经 CI 构建验证，规划时要把 CI 往返计入。
+- [v3.0] D-05（10-05 soak 中止）仍未解释：Phase 12 第一个计划必须先修 harness 并在当前 Vulkan 路径取基线，不得假设中止已修复。
 - （已缓解）宿主磁盘回升 ~6.3GB：本地构建恢复；4K 复验可执行。
-- 本地无 MSYS2/meson 工具链；新树构建依赖 CI（push 后六目标）或 dev.4 发布流（对外发布，需用户决定）。
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
-- **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。下一里程碑若重启合成工作，必须从这里接着做，不得假设中止已修复。
+- **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
 
 ## Deferred Items
 
@@ -185,11 +196,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T06:00:00.000Z
-Stopped at: Milestone v2.0 closed (override_closeout) and archived
+Last session: 2026-10-26
+Stopped at: v3.0 roadmap created (Phases 12-17); awaiting roadmap approval, then Phase 12 discussion/planning
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Review the v3.0 roadmap (`.planning/ROADMAP.md`), then start Phase 12 with `/gsd-discuss-phase 12` (or `/gsd-plan-phase 12`)
+- Phases 14/15/16 should be planned with `--research-phase`
