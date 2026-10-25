@@ -174,6 +174,21 @@ Items acknowledged and deferred at milestone close, most recent first:
 | Visual | 重建控制器后首帧非黑帧(视觉属性) | owned by Phase 6 UAT/VERIFY-01 | 2026-10-24 (Phase 2 close) | current |
 | Native evidence | 控制器 create/dispose 循环的 native 侧泄漏证据 | owned by Phase 6 real-plugin tests | 2026-10-24 (Phase 2 close) | current |
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|---|---|---|---|
+| 261025-rkd | stream bridge cancel-after-close UAF, open leak, seek desync (0006) | 2026-10-25 | 5b58792 | .planning/quick\\261025-rkd-fix-0006-stream-bridge-native-bugs-in-native-mpv-stream-stre |
+| 261025-rki | Mpv.dispose disposes child clients before terminating the core | 2026-10-25 | 609c6e9 | .planning/quick\\261025-rki-fix-dart-deadlock-when-the-main-mpv-is-disposed-while-child |
+| 261025-rkj | stream bridge answers every claimed request; bounded open | 2026-10-25 | 7962c3f | .planning/quick\\261025-rkj-fix-dart-stream-bridge-requests-that-may-never-be-answered-p |
+| 261025-rkm | hwdec-codecs default excludes ffv1 (mpv #18255) | 2026-10-25 | c126862 | .planning/quick\\261025-rkm-adjust-gpu-next-defaults-from-community-issues-without-publi |
+| 261025-rke | propagate render target failures; validate render_vk; roll back timeline value | 2026-10-25 | ddbf2a8 | .planning/quick\\261025-rke-propagate-render-target-return-failures-and-validate-render |
+| 261025-rkg | CoreAudio NULL guards (0007); WASAPI note vs upstream 4dfee61 | 2026-10-25 | ebf5a6e | .planning/quick\\261025-rkg-audio-patch-0007-fixes-add-null-guards-before-cfrelease-uid |
+| 261025-rkl | 14 libplacebo backports onto v7.360.1 | 2026-10-25 | a7ba508 | .planning/quick\\261025-rkl-backport-libplacebo-fixes-onto-v7-360-1-in-native-build-deps |
+| 261025-rkh | always use VK_QUEUE_FAMILY_EXTERNAL for shared images | 2026-10-25 | 12b5009 | .planning/quick\\261025-rkh-fix-unbalanced-vulkan-queue-family-ownership-transfer-on-eac |
+| 261025-rkf | keep host ICC across option changes in gpu-next libmpv | 2026-10-25 | 13c130b | .planning/quick\\261025-rkf-fix-gpu-next-libmpv-state-bugs-in-vo-gpu-next-c-patch-0004-k |
+| 261025-rkk | 0009 upstream backports (4 mpv commits) | 2026-10-25 | a2f7c0d | .planning/quick\\261025-rkk-add-native-patches-0009-upstream-backports-patch-with-upstre |
+
 ## Session Continuity
 
 Last session: 2026-10-25T06:00:00.000Z
