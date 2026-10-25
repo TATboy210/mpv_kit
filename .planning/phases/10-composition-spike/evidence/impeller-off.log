@@ -20,47 +20,26 @@ Got dependencies in `D:\mpv_kit`!
 16 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 00:00 +0: loading D:/mpv_kit/example/integration_test/impeller_smoke_test.dart
-Building Windows application...                                    36.8s
+Building Windows application...                                    36.1s
 ✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
 00:00 +0: Impeller composition smoke (3 parts)
+BENCH impeller {"stage":"preflight","dart":"3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"windows_x64\"","releaseMode":false,"profileMode":false,"mpvKitPath":"D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll"}
 mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
-══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
-The following StateError was thrown while running async test code:
-Bad state: part 1 readiness timeout: params=1920x1080 fps=30.000000000000018 resizeEvents=0
-
-When the exception was thrown, this was the stack:
-#0      _SmokeHarness._execute (file:///D:/mpv_kit/example/integration_test/impeller_smoke_test.dart:229:7)
-<asynchronous suspension>
-#1      _SmokeHarness.run.<anonymous closure> (file:///D:/mpv_kit/example/integration_test/impeller_smoke_test.dart:152:9)
-<asynchronous suspension>
-#2      LiveTestWidgetsFlutterBinding.runAsync (package:flutter_test/src/binding.dart:3035:14)
-<asynchronous suspension>
-#3      _SmokeHarness.run (file:///D:/mpv_kit/example/integration_test/impeller_smoke_test.dart:150:5)
-<asynchronous suspension>
-#4      main.<anonymous closure> (file:///D:/mpv_kit/example/integration_test/impeller_smoke_test.dart:68:5)
-<asynchronous suspension>
-#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
-<asynchronous suspension>
-#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
-<asynchronous suspension>
-<asynchronous suspension>
-(elided one frame from package:stack_trace)
-════════════════════════════════════════════════════════════════════════════════════════════════════
-00:31 +0 -1: Impeller composition smoke (3 parts) [E]
-  Test failed. See exception logs above.
-  The test description was: Impeller composition smoke (3 parts)
-  
-00:31 +0 -1: (tearDownAll)
-00:31 +0 -1: Some tests failed.
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+BENCH impeller {"stage":"soak-start","parts":{"oneFrame":"ok","uhd4k":"ok","soak":"inconclusive"},"rssBytes":435990528,"pixelProbe":{"supported":true,"nonBlackRatio":0.0,"width":1266,"height":683}}
+00:03 +0: Impeller composition smoke (3 parts) - did not complete [E]
+00:03 +0: (tearDownAll) - did not complete [E]
+00:03 +0: Some tests failed.
 
 Failing tests:
-  D:/mpv_kit/example/integration_test/impeller_smoke_test.dart: Impeller composition smoke (3 parts)
+  D:/mpv_kit/example/integration_test/impeller_smoke_test.dart: (tearDownAll) (did not complete)
+  D:/mpv_kit/example/integration_test/impeller_smoke_test.dart: Impeller composition smoke (3 parts) (did not complete)
+No tests were found.
 
-============================================================================
-## Identity fallback control (10-03 Task 1, Open Question 1)
-## `flutter test -d windows` did NOT forward the engine log. The control was
-## captured the same way as the positive (flutter run -d windows with
-## --no-enable-impeller, same SDK/env). Source: flutter-run.
-## Full fallback log: evidence/impeller-run-off.log
-## Renderer-identity line matches in that log: 0
-============================================================================
+# --- Identity section (labelled fallback control, appended by 10-05 Task 2) --
+# identity-source: flutter-run
+# Captured: 2026-10-24T17:46:26Z..17:47:41Z (off_rc 124 = timeout after capture)
+# Source file: .planning/phases/10-composition-spike/evidence/impeller-run-off.log
+# Command: cd example && MPV_KIT_LIBMPV_PATH=... D:/flutter/bin/flutter run -d windows --no-enable-impeller   (timeout 75s)
+# identity-off: 0 matches for the engine backend line in impeller-run-off.log.
+# No positive engine identity line exists under the control switch.

@@ -50,3 +50,11 @@ PathNotFoundException: Deletion failed, path = 'C:\Users\35490\AppData\Local\Tem
 #8      FlutterPlatform._startTest (package:flutter_tools/src/test/flutter_platform.dart:762:7)
 <asynchronous suspension>
 
+
+# --- Identity section (labelled fallback, appended by 10-05 Task 2) ---------
+# identity-source: flutter-run
+# Captured: 2026-10-24T17:45:07Z..17:46:22Z (on_rc 124 = timeout after capture)
+# Source file: .planning/phases/10-composition-spike/evidence/impeller-run-on.log
+# Command: cd example && MPV_KIT_LIBMPV_PATH=... D:/flutter/bin/flutter run -d windows --enable-impeller   (timeout 75s)
+# The engine's own line, copied verbatim; `flutter test -d windows` does not forward it:
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
