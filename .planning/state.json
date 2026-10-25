@@ -30,9 +30,9 @@
     }
   ],
   "next": {
-    "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 4 of 5 · 100% · executing"
+    "command": "/gsd-verify-work",
+    "label": "Re-verify work",
+    "reason": "Recent verification failed — re-verify or debug"
   },
-  "updated_at": "2026-10-25T03:55:31.372Z"
+  "updated_at": "2026-10-25T04:58:44.535Z"
 }

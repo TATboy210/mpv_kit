@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v2.0
 current_phase: 10
 current_phase_name: Composition Spike
-status: blocked
-stopped_at: Halted at 10-05 — (A)/(B) gate failed; 10-06 blocked by 10-05
-last_updated: "2026-10-25T04:22:21.829Z"
+status: ready
+stopped_at: Planning complete — 9 plans; next is 10-07 (soak abort diagnosis)
+last_updated: "2026-10-25T04:59:47.246Z"
 last_activity: 2026-10-25
-last_activity_desc: "10-05 halted: (A)/(B) gate failed — both runs abort inside the soak window (exit 79 = noTests), 10-06 blocked"
-state_head: d6839a71b3611e4c80d2c70f5d125a33fa60cdd2
+last_activity_desc: "Gap replanned: 10-07 soak-abort diagnosis, 10-08 probe-surface explanation, 10-09 rerun under the preserved (A)/(B) gate; 10-06 re-pointed to 10-09"
+state_head: 595c209f2e1d7bde8e1d46664a054d5042042d6e
 progress:
   total_phases: 5
   completed_phases: 8
-  total_plans: 11
+  total_plans: 14
   completed_plans: 25
-  percent: 100
+  percent: 40
 milestone_name: GPU-Next Optimization & Full-Rate UHD
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-24)
 
 ## Current Position
 
-Phase: 10 (Composition Spike) — EXECUTING
-Plan: 4 of 6
-Status: blocked
+Phase: 10 (Composition Spike) — READY TO EXECUTE
+Plan: 5 of 9 (next: 10-07)
+Status: ready
 Last activity: 2026-10-25 — Phase 10 execution started
 
 ## Performance Metrics
@@ -171,5 +171,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-24T17:52:19.033Z
-Stopped at: Halted at 10-05 — (A)/(B) gate failed; 10-06 blocked by 10-05
+Stopped at: Planning complete — 9 plans; next is 10-07 (soak abort diagnosis)
 Resume file: None

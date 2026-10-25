@@ -69,19 +69,24 @@ Plans:
   2. Impeller 冒烟：示例应用开启 Impeller 后 create→渲染一帧→dispose 的结果记录（成功/崩溃，对照 flutter#191468 与 #191017）。
   3. 决策文档：选定的路径、依据、回退条件、quarantine 预算假设；若结论是"3.47.8 不可行"，记录所需 Flutter 版本与升级条件，Phase 11 依此调整（允许缩为记录性收口）。
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/9 plans executed (10-05 halted; 10-06 blocked on 10-09)
 
 Plans:
 **Wave 1**
 - [x] 10-01-PLAN.md — 钉死本机 3.47.8 引擎工件（sha256/PDB/锚点/导入表），逐路径反编译注册、ANGLE 绑定、Impeller/Skia 消费，落盘 03 号逆向报告。
 - [x] 10-02-PLAN.md — 钉死 3.47.8 SDK 与 CI 版本锁，写单 testWidgets 的 D-04 三段 harness（含非黑断言与 idle 分类），analyze 干净。
 - [x] 10-04-PLAN.md — 收口 gap：报告通道改 `print` 并端到端证明 preflight BENCH 可达；part-1 就绪门改为 setSize + resize 证据；像素切片与失败上报补齐（CR-01/CR-02/WR-02/IN-06）。
+- [ ] 10-07-PLAN.md — 定位 soak 窗口中止：同步 trace + 两种有界复现器，按 `abort_step` 做单点修复并用 10 轮 diag 复跑证明。
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 10-03-PLAN.md — Impeller 与 `--no-enable-impeller` 对照双运行，带 identity 的四桶分类，落盘 ADR 0003 决策。
-- [ ] 10-05-PLAN.md — 在修好的 harness 上重跑 `--enable-impeller` / `--no-enable-impeller`，独立推导四桶分类并重写 `impeller-bench.txt` 与日志。
+- [x] 10-05-PLAN.md — 已执行但 halted：soak 窗口中止，(A)/(B) 门失败，证据缺口记录与日志保留（不得改写）。
+- [ ] 10-08-PLAN.md — 红色 control / 绿色背景 / 纹理区三方对照，解释 part 2 的 0.0 与 1266x683，判定像素证据是否可用。
 
 **Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 10-09-PLAN.md — 在修复后的 harness 上重跑双开关，独立推导四桶分类；门成立时写 `closure: accepted` 与 `unblocks: 10-06`。
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 10-06-PLAN.md — 依分类文件更新 ADR `verdict` 与 Runtime smoke，补 reporting-channel 前置（WR-07）、evidence 路径（WR-06）、行号（IN-03）与 03 号报告 Q1（IN-02）。
 
 ### Phase 11: Native Composition Path
