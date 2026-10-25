@@ -21,6 +21,8 @@
 // Reporting channel: one `BENCH impeller {json}` line per stage on stdout.
 // A harness-side failure emits `result=inconclusive`, never silence and never
 // a fabricated pass.
+// Printing is the report channel:
+// ignore_for_file: avoid_print
 @TestOn('windows')
 library;
 
@@ -48,9 +50,11 @@ const Duration _idleTimeout = Duration(milliseconds: 500);
 /// silent black texture, not a crash).
 const double _minNonBlackRatio = 0.01;
 
-/// One BENCH line on stdout. Integration tests have no console logger.
+/// One BENCH line on stdout. Integration tests have no console logger;
+/// `print` is the only channel `flutter test -d windows` forwards (the sibling
+/// harnesses use the same one).
 void _emitBench(Map<String, Object?> payload) {
-  stdout.writeln('BENCH impeller ${jsonEncode(payload)}');
+  print('BENCH impeller ${jsonEncode(payload)}');
 }
 
 /// Waits for the next real frame, bounded so a live binding without a frame
@@ -115,13 +119,6 @@ final class _SmokeHarness {
   Future<void> run(WidgetTester tester) async {
     _clock.start();
     final mpvKitPath = Platform.environment['MPV_KIT_LIBMPV_PATH'];
-    _emitBench({
-      'stage': 'preflight',
-      'dart': Platform.version,
-      'releaseMode': kReleaseMode,
-      'profileMode': kProfileMode,
-      'mpvKitPath': mpvKitPath,
-    });
 
     // Minimal tree: the Texture is the only thing this harness needs to
     // compose. MpvVideo is deliberately not used — it calls setSize itself,
@@ -149,6 +146,17 @@ final class _SmokeHarness {
 
     await tester.runAsync(() async {
       try {
+        // The sibling harnesses print from inside runAsync; that is the
+        // channel proven to reach the captured console. Emitting here (rather
+        // than before pumpWidget) also puts the preflight line under the
+        // failure-reporting catch below.
+        _emitBench({
+          'stage': 'preflight',
+          'dart': Platform.version,
+          'releaseMode': kReleaseMode,
+          'profileMode': kProfileMode,
+          'mpvKitPath': mpvKitPath,
+        });
         await _execute(mpvKitPath);
       } on Object catch (error) {
         _emitBench({
