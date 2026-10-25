@@ -8,11 +8,13 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 
 import '../ffi/bindings.dart';
 import 'errors.dart';
@@ -45,6 +47,10 @@ abstract interface class MpvStreamSource {
 }
 
 /// Opens [uri] (including the `protocol://` prefix); null rejects it.
+///
+/// An opener that has not answered after 30 s fails the load with
+/// `loadingFailed` (libmpv cannot cancel a pending open); a source it
+/// returns afterwards is closed unused.
 typedef MpvStreamOpener = FutureOr<MpvStreamSource?> Function(String uri);
 
 /// [MpvStreamSource] over bytes already in memory.
@@ -168,6 +174,29 @@ final class StreamBridge {
     return bridge;
   }
 
+  /// How long an OPEN may wait for the opener before it fails with
+  /// `loading_failed`; a source that arrives later is closed unused.
+  ///
+  /// libmpv cannot cancel an OPEN (no stream exists yet), so without a bound
+  /// an opener that never answers freezes `stop`/`loadfile` until dispose.
+  /// Costs of the bound: `stop` can still wait up to this long, and a
+  /// legitimately slower opener (e.g. a network handshake) now fails. A hung
+  /// READ still blocks `stop`: it must stay claimed while mpv owns the
+  /// buffer it writes into.
+  @visibleForTesting
+  static Duration openTimeout = const Duration(seconds: 30);
+
+  /// Decodes the NUL-terminated OPEN URI. Never throws, so a request that was
+  /// already claimed is always answered: invalid UTF-8 becomes U+FFFD (the
+  /// opener then simply rejects the URI) and nullptr the empty string.
+  @visibleForTesting
+  static String decodeUri(Pointer<Utf8> data) => data == nullptr
+      ? ''
+      : utf8.decode(
+          data.cast<Uint8>().asTypedList(data.length),
+          allowMalformed: true,
+        );
+
   final _BridgeBindings _b;
   final MpvStreamOpener _open;
   late final NativeCallable<_RequestFn> _callable;
@@ -240,7 +269,7 @@ final class StreamBridge {
     if (_b.begin(request) == 0) return;
     switch (op) {
       case _opOpen:
-        unawaited(_handleOpen(request, data.cast<Utf8>().toDartString()));
+        unawaited(_handleOpen(request, decodeUri(data.cast<Utf8>())));
       case _opRead:
         unawaited(_handleRead(request, stream, data.cast<Uint8>(), arg));
       case _opSeek:
@@ -252,33 +281,79 @@ final class StreamBridge {
 
   Future<void> _handleOpen(int request, String uri) async {
     MpvStreamSource? source;
+    // Set once mpv has its stream id; any other exit answers loading_failed.
+    var answered = false;
     try {
-      source = await _open(uri);
-    } on Object catch (e, s) {
-      // Null rejects the URI; a throw is a real source failure — report it
-      // (OBS-01) and keep the mpv-facing loading_failed semantics.
-      source = null;
-      _report('open', e, s);
-    }
-    if (_shutdown) {
-      // `_onRequest` runs this method under `unawaited`, so a throwing close
-      // would escape as an unhandled async error after `dispose()` returned.
-      // Contain it exactly like the `shutdown()` sweep.
-      if (source != null) {
-        await Future.sync(source.close).catchError(
-          (Object e, StackTrace st) => _report('close', e, st),
-        );
+      try {
+        source = await _openBounded(uri);
+      } on Object catch (e, s) {
+        // Null rejects the URI; a throw (or the open timeout) is a real
+        // source failure — report it (OBS-01) and keep the mpv-facing
+        // loading_failed semantics.
+        source = null;
+        _report('open', e, s);
       }
-      return;
+      if (_shutdown) {
+        // `_onRequest` runs this method under `unawaited`, so a throwing close
+        // would escape as an unhandled async error after `dispose()` returned.
+        // Contain it exactly like the `shutdown()` sweep.
+        if (source != null) {
+          await Future.sync(source.close).catchError(
+            (Object e, StackTrace st) => _report('close', e, st),
+          );
+        }
+        return;
+      }
+      if (source == null) return;
+      // Read before registering: a throwing getter must not leave a stream
+      // id behind that mpv never learns about.
+      final size = source.size;
+      final id = _nextStream++;
+      _sources[id] = source;
+      answered = true;
+      _b.complete(request, id, size ?? -1);
+    } on Object catch (e, s) {
+      // Only `source.size` can get here; report it like an open failure.
+      _report('open', e, s);
+    } finally {
+      // The request was claimed in `_onRequest`, so mpv's demuxer thread
+      // waits for this answer (OPEN cannot be cancelled natively). After
+      // shutdown native has already released it: complete nothing then.
+      if (!answered && !_shutdown) {
+        _b.complete(request, MpvError.loadingFailed.code, -1);
+        if (source != null) unawaited(_closeContained(source));
+      }
     }
-    if (source == null) {
-      _b.complete(request, MpvError.loadingFailed.code, -1);
-      return;
-    }
-    final id = _nextStream++;
-    _sources[id] = source;
-    _b.complete(request, id, source.size ?? -1);
   }
+
+  /// Runs the opener bounded by [openTimeout]; on timeout the returned future
+  /// fails with [TimeoutException]. Nobody waits for the opener after that,
+  /// so a source it yields later is closed and a later error is reported.
+  Future<MpvStreamSource?> _openBounded(String uri) {
+    final opening = Future.sync(() => _open(uri));
+    final timeout = openTimeout;
+    return opening.timeout(
+      timeout,
+      onTimeout: () {
+        unawaited(
+          opening.then<void>(
+            (lateSource) async {
+              if (lateSource != null) await _closeContained(lateSource);
+            },
+            onError: (Object e, StackTrace s) => _report('open', e, s),
+          ),
+        );
+        throw TimeoutException('stream opener did not answer', timeout);
+      },
+    );
+  }
+
+  /// Closes [source], reporting instead of throwing a close failure: callers
+  /// run under `unawaited`, where a throw would be an unhandled async error.
+  Future<void> _closeContained(MpvStreamSource source) =>
+      Future.sync(source.close).catchError(
+        (Object e, StackTrace st) => _report('close', e, st),
+      );
 
   Future<void> _handleRead(
     int request,

@@ -223,9 +223,9 @@ void main() {
       final vp = await _until(player.videoParams, (v) => v != null);
       expect(vp!.width, 320);
 
-      final late = _LateSource();
-      pending.complete(late);
-      await _poll('the late source to be closed', () => late.closes > 0);
+      final lateSource = _LateSource();
+      pending.complete(lateSource);
+      await _poll('the late source to be closed', () => lateSource.closes > 0);
     });
   });
 
