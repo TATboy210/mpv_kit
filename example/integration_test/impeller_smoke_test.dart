@@ -108,6 +108,7 @@ final class _SmokeHarness {
   bool _deviceLost = false;
   int _idleSoak = 0;
   int _idleDuringUnmount = 0;
+  int _longestMountMs = 0;
   bool _saw4kResize = false;
 
   int _rssStart = 0;
@@ -123,26 +124,35 @@ final class _SmokeHarness {
     // Minimal tree: the Texture is the only thing this harness needs to
     // compose. MpvVideo is deliberately not used — it calls setSize itself,
     // which would fight D-04's direct size control.
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Center(
-          child: ValueListenableBuilder<int?>(
-            valueListenable: _textureId,
-            builder: (context, textureId, child) => textureId == null
-                ? const SizedBox.shrink()
-                : RepaintBoundary(
-                    key: _probeKey,
-                    child: SizedBox(
-                      width: 1280,
-                      height: 720,
-                      child: Texture(textureId: textureId),
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ValueListenableBuilder<int?>(
+              valueListenable: _textureId,
+              builder: (context, textureId, child) => textureId == null
+                  ? const SizedBox.shrink()
+                  : RepaintBoundary(
+                      key: _probeKey,
+                      child: SizedBox(
+                        width: 1280,
+                        height: 720,
+                        child: Texture(textureId: textureId),
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } on Object catch (error) {
+      _emitBench({
+        'stage': 'preflight',
+        'result': 'inconclusive',
+        'error': '${error.runtimeType}: $error',
+      });
+      rethrow;
+    }
 
     await tester.runAsync(() async {
       try {
@@ -222,15 +232,36 @@ final class _SmokeHarness {
       'av://lavfi:testsrc2=size=1920x1080:rate=30:duration=120[out0];'
       'sine=frequency=440:sample_rate=48000:duration=120[out1]',
     );
-    final resizeBaseline = _resizeEvents;
-    final part1Ready = await _waitUntil(() {
+    // Readiness 1: the decoder reports the requested source size (the same
+    // shape real_plugin_test.dart:55-70 uses).
+    final paramsReady = await _waitUntil(() {
       final params = player.videoParams.value;
+      return params?.width == 1920 && params?.height == 1080;
+    }, timeout: const Duration(seconds: 30));
+    if (!paramsReady) {
+      final params = player.videoParams.value;
+      throw StateError(
+        'part 1 video params timeout: ${params?.width}x${params?.height}',
+      );
+    }
+
+    // VideoRenderer::SetSize is the only writer of width_/height_
+    // (video_renderer.cc:166-176) and `resize` is emitted only after a
+    // successful ring (re)allocation (:500-541). Starting from a 0x0 ring,
+    // this first setSize must produce the event, so the baseline is taken
+    // BEFORE it.
+    final resizeBaseline = _resizeEvents;
+    await controller.setSize(1920, 1080);
+
+    // Readiness 2: the VO consumed and presented frames. The gate is
+    // deliberately NOT fps-only: a resize forces idle_ = false
+    // (video_renderer.cc:342-346), only `sized && visible && !backing_off`
+    // reaches RenderOnce (:335-357), and a resize event is positive proof
+    // that the ring was allocated. The pre-fix logs showed fps=30 with
+    // resizeEvents=0, so fps alone is not render evidence.
+    final part1Ready = await _waitUntil(() {
       final fps = player.mpv.tryGetProperty('estimated-vf-fps');
-      return params?.width == 1920 &&
-          params?.height == 1080 &&
-          fps is num &&
-          fps > 0 &&
-          _resizeEvents > resizeBaseline;
+      return fps is num && fps > 0 && _resizeEvents > resizeBaseline;
     }, timeout: const Duration(seconds: 30));
     part1Watch.stop();
     if (!part1Ready) {
@@ -238,7 +269,7 @@ final class _SmokeHarness {
         'part 1 readiness timeout: params=${player.videoParams.value?.width}'
         'x${player.videoParams.value?.height} '
         'fps=${player.mpv.tryGetProperty('estimated-vf-fps')} '
-        'resizeEvents=$_resizeEvents',
+        'resizeEvents=$_resizeEvents baseline=$resizeBaseline',
       );
     }
     _parts['oneFrame'] = 'ok';
@@ -321,6 +352,12 @@ final class _SmokeHarness {
     final seconds = _soakSeconds();
     _parts['soak'] = 'ok';
 
+    // Descriptive evidence only (WR-04/WR-05): recorded, never used by
+    // _classify.
+    final fpsAtSoakEnd = player.mpv.tryGetProperty('estimated-vf-fps');
+    final timePosAtSoakEnd = player.mpv.tryGetProperty('time-pos');
+    final longestMountMs = _longestMountMsSnapshot();
+
     _stage = 'complete';
     final result = _classify(rounds: rounds, seconds: seconds);
     _emitBench({
@@ -345,6 +382,9 @@ final class _SmokeHarness {
       'part1Ms': part1Ms,
       'part2Ms': part2Ms,
       'fps4k': fps4k,
+      'fpsAtSoakEnd': fpsAtSoakEnd,
+      'timePosAtSoakEnd': timePosAtSoakEnd,
+      'longestMountMs': longestMountMs,
       'result': result,
     });
 
@@ -406,8 +446,33 @@ final class _SmokeHarness {
   }
 
   void _setTexture(int? id) {
+    _recordMountDuration();
     _textureId.value = id;
     _mountedAt = id == null ? null : _clock.elapsed;
+  }
+
+  /// Folds the mount window that just ended into [_longestMountMs]. This is
+  /// descriptive evidence (WR-05): a normal round mounts the texture for
+  /// ~250-350 ms, below the 500 ms idle window, so `idleSoak == 0` can be
+  /// trivially true and the longest mount is what shows whether the idle
+  /// bucket could fire at all.
+  void _recordMountDuration() {
+    final mountedAt = _mountedAt;
+    if (mountedAt == null) return;
+    final duration = (_clock.elapsed - mountedAt).inMilliseconds;
+    if (duration > _longestMountMs) _longestMountMs = duration;
+  }
+
+  /// Longest continuous mount seen so far, including the mount still open at
+  /// snapshot time.
+  int _longestMountMsSnapshot() {
+    var longest = _longestMountMs;
+    final mountedAt = _mountedAt;
+    if (mountedAt != null) {
+      final ongoing = (_clock.elapsed - mountedAt).inMilliseconds;
+      if (ongoing > longest) longest = ongoing;
+    }
+    return longest;
   }
 
   double _soakSeconds() {
@@ -416,6 +481,12 @@ final class _SmokeHarness {
     return DateTime.now().difference(start).inMilliseconds / 1000.0;
   }
 
+  // `fpsAtSoakEnd`, `timePosAtSoakEnd` and `longestMountMs` are descriptive
+  // evidence (WR-04/WR-05) and deliberately do NOT participate in the pass
+  // decision. A normal round mounts the texture for ~250-350 ms, below the
+  // 500 ms idle window, so `idleSoak == 0` can be trivially true; the
+  // longest-mount figure is what shows whether the idle bucket could fire at
+  // all. No additional pass condition is introduced here.
   String _classify({required int rounds, required double seconds}) {
     final probeSupported = _pixelProbe['supported'] == true;
     final ratio = _pixelProbe['nonBlackRatio'];
@@ -450,6 +521,13 @@ final class _SmokeHarness {
     return predicate();
   }
 
+  /// Samples the composed texture through a [RenderRepaintBoundary].
+  ///
+  /// Known limitation (WR-03): the probe has no independent black control, so
+  /// `nonBlackRatio < 0.01` cannot distinguish a genuinely black frame from a
+  /// texture that was never composited. Classification keeps the 10-03 rule
+  /// (`failed`, with `reason` naming the probe) and the ambiguity is recorded
+  /// in the 10-06 ADR's known-limitations section.
   Future<Map<String, Object?>> _probePixels() async {
     try {
       final boundary = _probeKey.currentContext?.findRenderObject();
@@ -464,7 +542,20 @@ final class _SmokeHarness {
         if (bytes == null) {
           return {'supported': false, 'reason': 'toByteData returned null'};
         }
-        final data = bytes.buffer.asUint8List();
+        // `bytes.buffer` is the whole backing buffer: reading it without the
+        // view's offset/length would count unrelated memory as pixels
+        // (WR-02).
+        final data = bytes.buffer.asUint8List(
+          bytes.offsetInBytes,
+          bytes.lengthInBytes,
+        );
+        final expected = image.width * image.height * 4;
+        if (data.length < expected) {
+          return {
+            'supported': false,
+            'reason': 'short pixel buffer: ${data.length} < $expected',
+          };
+        }
         final pixels = image.width * image.height;
         var nonBlack = 0;
         for (var i = 0; i + 3 < data.length; i += 4) {
