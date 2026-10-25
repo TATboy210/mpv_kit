@@ -61,6 +61,14 @@ final class Player {
   /// 没有这档，interop 不匹配会让 mpv 静默落回纯软解，4K 必卡。
   /// 最后 `auto-safe` 兜底（无硬解能力时交回 mpv 的保守选择）。
   ///
+  /// `hwdec-codecs` 从 mpv 默认列表里去掉 `ffv1`（mpv #18255）：FFmpeg
+  /// 的 Vulkan FFV1 hwaccel 生成非法 SPIR-V，驱动复位后 mpv 得到
+  /// `VK_ERROR_DEVICE_LOST`。ffv1 是纯帧内无损编码，多线程软解足够。
+  /// 其余编码与顺序照抄 native/mpv/video/decode/vd_lavc.c 的
+  /// `hwdec_conf` 默认值，player_test 对照运行中 libmpv 的默认值钉住
+  /// 这份列表。上游修好该 hwaccel 后删掉此项即回到 mpv 默认；用户可经
+  /// [options] 覆盖（例如 `all`）。
+  ///
   /// 其余默认项面向 4K/8K 满帧播放（各项含义见行内注释），全部可被
   /// [options] 覆盖：
   /// - `video-sync=audio`（mpv 默认，显式固定）：实测对照中 display-*
@@ -78,7 +86,10 @@ final class Player {
   ///   免受 req_frames 推导影响，4K HEVC/AV1 池稳定。
   /// - `dither=no` / `hdr-compute-peak=no`：目标固定是 SDR 8bit 纹理，
   ///   8bit 蓝噪声抖动视觉无损、HDR peak 检测 pass 无意义（HDR→SDR
-  ///   tone-map 仍照做，只是省掉逐帧峰值统计）。
+  ///   tone-map 仍照做，只是省掉逐帧峰值统计）。mpv #17626 的 gpu-next
+  ///   8K HDR 渲染尖峰与掉帧正出在逐帧峰值检测上，这个全局默认已覆盖
+  ///   8K；按宽度的逐文件规则只会重写已设好的值（且不得动用户的值），
+  ///   故不另加。
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
@@ -88,6 +99,10 @@ final class Player {
       options: {
         'vo': 'libmpv',
         'hwdec': 'vulkan,d3d11va-copy,auto-safe',
+        // mpv #18255：FFmpeg Vulkan FFV1 hwaccel 的着色器让 GPU 掉成
+        // VK_ERROR_DEVICE_LOST；ffv1 纯帧内无损，多线程软解足够。其余照抄
+        // vd_lavc.c 的 hwdec_conf 默认值。
+        'hwdec-codecs': 'h264,vc1,hevc,vp8,vp9,av1,prores,prores_raw,dpx,apv',
         'keep-open': 'yes',
         'idle': 'yes',
         'terminal': 'no',
@@ -100,6 +115,8 @@ final class Player {
         'stream-buffer-size': '4MiB',
         'hwdec-extra-frames': '6',
         'dither': 'no',
+        // mpv #17626：gpu-next 逐帧 HDR 峰值检测在 8K HDR 上造成渲染尖峰
+        // 与掉帧；这个全局 no 已覆盖 7680 宽以上的源，无需按分辨率另设。
         'hdr-compute-peak': 'no',
         'deband': 'no',
         ...options,

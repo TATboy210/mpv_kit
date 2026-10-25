@@ -406,6 +406,58 @@ void main() {
     });
   }, skip: _libmpvMissing ? 'libmpv not available' : null);
 
+  group('community gpu-next defaults (real libmpv)', () {
+    // Compares against the running libmpv's own default, so an mpv upgrade
+    // that changes the list fails here instead of silently losing hwdec.
+    test('default hwdec-codecs is the mpv default list without ffv1 '
+        '(mpv #18255)', () async {
+      final raw = Mpv.create(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(raw.dispose);
+      final mpvDefault =
+          (raw.getPropertyString('hwdec-codecs') ?? '').split(',');
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      final codecs =
+          (p.mpv.getPropertyString('hwdec-codecs') ?? '').split(',');
+      expect(codecs, isNot(contains('ffv1')));
+      expect(
+        codecs,
+        mpvDefault.where((c) => c != 'ffv1').toList(),
+        reason: 'resync the Player hwdec-codecs default with hwdec_conf '
+            'in native/mpv/video/decode/vd_lavc.c',
+      );
+    });
+
+    test('an explicit hwdec-codecs option overrides the default', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hwdec-codecs': 'all',
+      });
+      addTearDown(p.dispose);
+      expect(p.mpv.getPropertyString('hwdec-codecs'), 'all');
+    });
+
+    // A 7680x16 source exercises the width condition without 8K frames.
+    test('a 7680-wide source plays with hdr-compute-peak=no by default '
+        '(mpv #17626)', () async {
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=7680x16:rate=30:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(p.mpv.getPropertyString('hdr-compute-peak'), 'no');
+    });
+
+    test('an explicit hdr-compute-peak option survives a 7680-wide source',
+        () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hdr-compute-peak': 'auto',
+      });
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=7680x16:rate=30:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(p.mpv.getPropertyString('hdr-compute-peak'), 'auto');
+    });
+  }, skip: _libmpvMissing ? 'libmpv not available' : null);
+
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));
     expect(mpvOptions.map((e) => e.name), containsAll(['hwdec', 'vo']));
