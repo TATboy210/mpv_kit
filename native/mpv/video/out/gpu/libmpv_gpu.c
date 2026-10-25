@@ -191,7 +191,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
 
     struct ra_fbo target = {.tex = tex, .flip = flip};
     gl_video_render_frame(p->renderer, frame, &target, RENDER_FRAME_DEF);
-    p->context->fns->done_frame(p->context, frame->display_synced);
+    if (!p->context->fns->done_frame(p->context, frame->display_synced))
+        return MPV_ERROR_GENERIC;
 
     return 0;
 }

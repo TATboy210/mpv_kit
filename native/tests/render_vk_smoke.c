@@ -292,6 +292,15 @@ int main(int argc, char **argv)
         { MPV_RENDER_PARAM_VULKAN_IMAGE, &target },
         { 0 },
     };
+    // A target without a signal semaphore is rejected up front (libplacebo
+    // would assert when handing the image back); the frame stays queued.
+    step("render without signal_semaphore is rejected");
+    target.signal_semaphore = VK_NULL_HANDLE;
+    err = mpv_render_context_render(rc, rparams);
+    if (err != MPV_ERROR_INVALID_PARAMETER)
+        FAIL("render without signal_semaphore: got %d (%s)", err, mpv_error_string(err));
+    target.signal_semaphore = done;
+
     step("render");
     err = mpv_render_context_render(rc, rparams);
     if (err < 0)

@@ -112,7 +112,10 @@ typedef struct mpv_vulkan_init_params {
  * call, so the host may destroy it once signal_semaphore has been reached.
  *
  * Semaphores may be binary (value ignored, use 0) or timeline (value used).
- * VK_NULL_HANDLE disables the corresponding wait/signal.
+ * wait_semaphore may be VK_NULL_HANDLE (no wait). signal_semaphore is
+ * required: rendering fails with MPV_ERROR_INVALID_PARAMETER without one.
+ * It is signalled only when mpv_render_context_render() succeeds; on failure
+ * the host must not wait for signal_value.
  */
 typedef struct mpv_vulkan_image {
     VkImage image;

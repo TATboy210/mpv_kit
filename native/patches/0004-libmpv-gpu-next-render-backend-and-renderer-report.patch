@@ -35,7 +35,7 @@ index 02efefb101..37fa4f64db 100644
  extern const struct render_backend_fns render_backend_gpu;
  extern const struct render_backend_fns render_backend_sw;
 diff --git a/video/out/vo_gpu_next.c b/video/out/vo_gpu_next.c
-index bd3d1aa1ec..3e7163696f 100644
+index bd3d1aa1ec..d20889ef6e 100644
 --- a/video/out/vo_gpu_next.c
 +++ b/video/out/vo_gpu_next.c
 @@ -178,6 +178,14 @@ struct priv {
@@ -261,7 +261,7 @@ index bd3d1aa1ec..3e7163696f 100644
  
      pars->params.deband_params = opts->deband ? &pars->deband_params : NULL;
      pars->deband_params.iterations = opts->deband_opts->iterations;
-@@ -3010,3 +3060,261 @@ const struct vo_driver video_out_gpu_next = {
+@@ -3010,3 +3060,262 @@ const struct vo_driver video_out_gpu_next = {
      .uninit = uninit,
      .priv_size = sizeof(struct priv),
  };
@@ -453,7 +453,8 @@ index bd3d1aa1ec..3e7163696f 100644
 +    draw_frame(lp->vo, frame);
 +    p->libmpv_target = (struct pl_swapchain_frame) {0};
 +
-+    lp->context->fns->done_frame(lp->context, frame->display_synced);
++    if (!lp->context->fns->done_frame(lp->context, frame->display_synced))
++        return MPV_ERROR_GENERIC;
 +    return 0;
 +}
 +

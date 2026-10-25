@@ -107,3 +107,17 @@ in mpv_kit, not upstream acceptability.
   different offset than requested. Behaviour change: a host that clamps an
   out-of-range seek (e.g. past EOF) now fails the seek instead of silently
   desynchronising mpv's stream position.
+- 0001/0004: `libmpv_gpu_context_fns.done_frame` returns `bool`; when
+  `pl_vulkan_hold_ex` fails to hand the target back, `render()` (gpu) and
+  `libmpv_render()` (gpu-next) return `MPV_ERROR_GENERIC` instead of
+  reporting success for a frame whose host semaphore is never signalled.
+- 0001: `render_vk` rejects `num_extensions < 0` or a NULL extension list
+  with a positive count, and a NULL `signal_semaphore`
+  (`MPV_ERROR_INVALID_PARAMETER`). Contract clarification, not a
+  narrowing: a NULL signal semaphore already hit
+  `pl_assert(params->semaphore.sem)` in `pl_vulkan_hold_ex` (libplacebo
+  7.360.1), so this replaces an abort; render_vk.h now says the signal is
+  required and only signalled on success.
+- 0001: a pending wrapper reused by `wrap_fbo` takes the signal semaphore,
+  value, final layout and queue family of the current call, so a wrapper
+  left over from an aborted frame signals the value the host waits for now.

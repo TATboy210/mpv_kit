@@ -3248,7 +3248,8 @@ static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
     draw_frame(lp->vo, frame);
     p->libmpv_target = (struct pl_swapchain_frame) {0};
 
-    lp->context->fns->done_frame(lp->context, frame->display_synced);
+    if (!lp->context->fns->done_frame(lp->context, frame->display_synced))
+        return MPV_ERROR_GENERIC;
     return 0;
 }
 
