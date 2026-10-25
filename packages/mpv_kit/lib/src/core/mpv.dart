@@ -23,7 +23,9 @@ import 'stream_bridge.dart';
 
 /// 一个 mpv 客户端（主句柄或通过 [createClient] 派生的子客户端）。
 final class Mpv {
-  Mpv._(this.bindings, this.handle, {required bool owner}) : _owner = owner {
+  Mpv._(this.bindings, this.handle, {required bool owner, Mpv? parent})
+    : _owner = owner,
+      _parent = parent {
     _wakeup = NativeCallable<MpvWakeupFn>.listener(_onWakeup);
     bindings.setWakeupCallback(handle, _wakeup.nativeFunction, nullptr);
   }
@@ -104,6 +106,18 @@ final class Mpv {
   final Pointer<MpvHandle> handle;
 
   final bool _owner;
+
+  /// The client this one was derived from via [createClient]; null for the
+  /// owner, and cleared once this client is disposed.
+  Mpv? _parent;
+
+  /// Live clients derived from this one via [createClient].
+  ///
+  /// `mpv_terminate_destroy` waits until the core has no clients left (weak
+  /// ones included, `mp_shutdown_clients` in client.c), and only this isolate
+  /// can destroy them — so [dispose] must take them down first or it blocks
+  /// forever.
+  final _children = <Mpv>{};
   late final NativeCallable<MpvWakeupFn> _wakeup;
   final _events = StreamController<MpvEventData>.broadcast(sync: true);
   final _pending = <int, Completer<Object?>>{};
@@ -179,7 +193,9 @@ final class Mpv {
         operation: 'create_client',
       );
     }
-    return Mpv._(bindings, h, owner: false);
+    final child = Mpv._(bindings, h, owner: false, parent: this);
+    _children.add(child);
+    return child;
   }
 
   /// `mpv_load_config_file`。
@@ -196,10 +212,20 @@ final class Mpv {
   /// 销毁句柄。主句柄使用 `mpv_terminate_destroy` 终止核心。
   ///
   /// Idempotent. Pending futures complete with an error and observer streams
-  /// are closed.
+  /// are closed. Disposing a client also disposes every client created from
+  /// it with [createClient], recursively, before its own handle is destroyed.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    // Children first: the core cannot terminate while any client is alive,
+    // and each child's dispose shuts down its own stream bridges and calls
+    // `mpv_destroy`. `_disposed` is already set, so no child can be added
+    // meanwhile; iterate a snapshot because each child unlinks itself.
+    for (final c in _children.toList()) {
+      c.dispose();
+    }
+    _parent?._children.remove(this);
+    _parent = null;
     // Order matters: null the wakeup callback while the handle is still alive
     // (calling it after `mpv_terminate_destroy` would be a use-after-free),
     // then let mpv threads blocked on Dart stream sources return, then destroy

@@ -6,7 +6,9 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -19,6 +21,13 @@ const _lavfi = 'av://lavfi:testsrc2=size=320x240:rate=30:duration=2';
 Mpv _create() => Mpv.create(
   options: const {'vo': 'null', 'ao': 'null', 'idle': 'yes', 'terminal': 'no'},
 );
+
+/// Upper bound for the child-process dispose scenario (VM start + compile +
+/// mpv init + dispose). A hang in `mpv_terminate_destroy` never returns, so
+/// past this the child is killed and the test fails instead of blocking CI.
+/// A healthy run measured 4-13 s on a loaded Windows host (mostly `dart run`
+/// startup), so 15 s would be flaky; the generous bound only delays a failure.
+const _childProcessTimeout = Duration(seconds: 60);
 
 Future<T> _firstWhere<T extends MpvEventData>(
   Mpv mpv, [
@@ -427,5 +436,37 @@ void main() {
       expect(mpv.errorString(0), isNotEmpty);
       expect(mpv.eventName(1), isNotEmpty);
     });
+  });
+
+  group('dispose with live child clients', () {
+    // mp_shutdown_clients (client.c) waits until the core has no clients
+    // left, weak ones included. If the owner's dispose does not destroy the
+    // children first, the synchronous FFI call blocks this isolate forever —
+    // no Dart timeout can fire — so the scenario runs in a child process.
+    test('owner dispose destroys child, weak and grandchild clients', () async {
+      final proc = await Process.start(Platform.resolvedExecutable, [
+        'run',
+        'test/fixtures/dispose_with_children.dart',
+      ]);
+      final out = StringBuffer();
+      final drained = Future.wait([
+        proc.stdout.transform(utf8.decoder).forEach(out.write),
+        proc.stderr.transform(utf8.decoder).forEach(out.write),
+      ]);
+      var timedOut = false;
+      final code = await proc.exitCode.timeout(
+        _childProcessTimeout,
+        onTimeout: () {
+          timedOut = true;
+          proc.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
+      // A killed child may leave its pipes open briefly; never wait unbounded.
+      await drained.timeout(const Duration(seconds: 5), onTimeout: () => []);
+      expect(timedOut, isFalse, reason: 'dispose hung; output:\n$out');
+      expect(code, 0, reason: '$out');
+      expect(out.toString(), contains('ok'));
+    }, timeout: const Timeout(Duration(seconds: 90)));
   });
 }
