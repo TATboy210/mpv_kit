@@ -8,3 +8,5 @@ integration platform=linux line={"backend":"vulkan","reason":"vulkan (gpu-next) 
 integration platform=windows line={"backend":"software","reason":"software (vkCreateInstance failed)","elapsedMs":211,"fps":30.0,"events":[]}
 integration platform=macos line={"backend":"vulkan","reason":"vulkan (gpu-next) on Apple Paravirtual device","elapsedMs":210,"fps":30.0,"events":[]}
 coverage mpv_kit_video=91.4%
+sha=1227b93d2d64ccc061a150f5fa9c4e8f5c79def5 workflow=native-verify.yml run=40281585616 conclusion=success
+sha=1227b93d2d64ccc061a150f5fa9c4e8f5c79def5 workflow=flutter-plugin.yml run=40281585561 conclusion=success

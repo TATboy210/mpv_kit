@@ -74,7 +74,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
-**Plans:** 2/12 plans executed（9 waves）
+**Plans:** 3/12 plans executed（9 waves）
 
 Plans:
 **Wave 1**
@@ -82,7 +82,7 @@ Plans:
 - [x] 12-02-PLAN.md — soak harness 修复：探针三方对照、resize-front 复现器、100 次 create/dispose 段、真正渲染的 4K 变体
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 12-03-PLAN.md — Dart 私有 wire 名严格校验 + 枚举冻结守卫 + ADR 0004（reason 语法、MPV_KIT_VIDEO_API）+ README
+- [x] 12-03-PLAN.md — Dart 私有 wire 名严格校验 + 枚举冻结守卫 + ADR 0004（reason 语法、MPV_KIT_VIDEO_API）+ README
 - [ ] 12-04-PLAN.md — RTX 4060 重构前基线（D-05 / cycles / resize-front × Impeller 开关）+ 人工确认
 - [ ] 12-05-PLAN.md — fake-libmpv golden 工装 + 软件路径 golden（三平台 + sanitizer）
 
@@ -190,7 +190,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. RenderBackend Seam | v3.0 | 2/12 | In Progress | - |
+| 12. RenderBackend Seam | v3.0 | 3/12 | In Progress | - |
 | 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |

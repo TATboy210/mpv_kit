@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-10-26T06:39:07.231Z"
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-10-26T07:05:23.230Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: fa11735a28de7d944b530aba6af15f19a5868235
+state_head: c0548e747a736139d3ace8b16c2645ac78aa34f3
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -95,6 +95,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 10 P07 | 10 min | 1 tasks | 7 files |
 | Phase 12 P01 | 42 min | 3 tasks | 5 files |
 | Phase 12 P02 | 21min | 2 tasks | 6 files |
+| Phase 12 P03 | 33min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,10 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-01: hosted CI gate is .planning/phases/12-renderbackend-seam/tools/ci_gate.sh; Flutter 3.47.8 prints 'N tests passed.' (no 'All tests passed!'), use 'tests passed\.[[:space:]]*$' for zero-skip success
 - [Phase 12]: 12-02: probe_decision readiness-gate - toImage sees the external texture with Impeller on/off; part 2 gates on presented frames, pass rule unchanged
 - [Phase 12]: 12-02: resize-front self-check lost the process in round 1 right after setSize on a controller with a published front (keep_front candidate); 12-04 records it formally, 12-07 fixes
+- [Phase 12]: MpvVideoBackend stays {vulkan, software}; vulkan = GPU zero-copy backend, real API is reason's first token (ADR 0004)
+- [Phase 12]: Private wire set is exactly d3d11|opengl|vulkan|software, case-sensitive; anything else stays render_init
+- [Phase 12]: reason grammar: head = api (renderer) on device; trail = api/renderer unavailable: why; ';'->',' and control chars->space in device/why
+- [Phase 12]: MPV_KIT_VIDEO_API: native, per-create, ^[a-z0-9-]{1,16}$, no fallback (software included), intersects renderer selection
 
 ### Pending Todos
 
@@ -205,8 +210,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T06:39:07.187Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-10-26T07:05:23.182Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
