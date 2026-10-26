@@ -519,13 +519,18 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
           // documented tearing constraint beats dropping to software.
           const int fallback_quarantine = 2;
           const int fallback_ring = fallback_quarantine + 3;
+          // The failed attempt freed everything, the image it had just
+          // retired included: nothing is left to keep (the slot keep points
+          // at is gone with the old ring), and the old front must never be
+          // handed out again, as on the plain-failure branch below.
+          retired_front_ = Frame{};
           if (ring_size_ > fallback_ring &&
-              vulkan_->AllocateRing(fallback_ring, w, h, keep, error)) {
-            ring_size_ = fallback_ring;
-            quarantine_count_ = fallback_quarantine;
+              vulkan_->AllocateRing(fallback_ring, w, h, nullptr, error)) {
             log_("mpv_kit: shared-image allocation failed at ring " +
                  std::to_string(ring_size_) + ", retried with a ring of " +
                  std::to_string(fallback_ring));
+            ring_size_ = fallback_ring;
+            quarantine_count_ = fallback_quarantine;
           } else {
             ring_w_ = ring_h_ = 0;
             retired_front_ = Frame{};  // AllocateRing freed everything
