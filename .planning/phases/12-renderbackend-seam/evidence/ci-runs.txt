@@ -1,2 +1,10 @@
 sha=b9779d685da84fb5a031d8621fd1eaba1144c9fd workflow=native-verify.yml run=40275120925 conclusion=failure
 sha=b9779d685da84fb5a031d8621fd1eaba1144c9fd workflow=flutter-plugin.yml run=40275120977 conclusion=failure
+sha=bbb071e6d8038acbf06c1c0487fece33d13254fa workflow=native-verify.yml run=40276446631 conclusion=success
+sha=bbb071e6d8038acbf06c1c0487fece33d13254fa workflow=flutter-plugin.yml run=40276446702 conclusion=success
+sha=bbb071e6d8038acbf06c1c0487fece33d13254fa workflow=native-verify.yml run=40276446631 conclusion=success
+sha=bbb071e6d8038acbf06c1c0487fece33d13254fa workflow=flutter-plugin.yml run=40276446702 conclusion=success
+integration platform=linux line={"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)","elapsedMs":283,"fps":30.0,"events":[]}
+integration platform=windows line={"backend":"software","reason":"software (vkCreateInstance failed)","elapsedMs":211,"fps":30.0,"events":[]}
+integration platform=macos line={"backend":"vulkan","reason":"vulkan (gpu-next) on Apple Paravirtual device","elapsedMs":210,"fps":30.0,"events":[]}
+coverage mpv_kit_video=91.4%
