@@ -132,3 +132,17 @@ golden_sw_retire_twice = executable('video_renderer_golden_sw_retire_twice',
 test('video_renderer_golden_sw_retire_twice', golden_sw_retire_twice,
      args: [files('golden/sw_retire_twice.txt'), '--slack-ms=' + slack],
      timeout: 120)
+
+# MPV_KIT_VIDEO_API (ADR 0004 Decision 4): a separate binary because the
+# golden set above is frozen. Its scenarios run everywhere except
+# api-vulkan, which needs golden_vk's Vulkan 1.3 device and is skipped on
+# its own (the binary still passes) without one.
+api_test = executable('video_renderer_api_test',
+                      'video_renderer_api_test.cc',
+                      include_directories: [renderer_inc, vulkan_inc],
+                      cpp_args: renderer_defines,
+                      link_with: renderer,
+                      dependencies: threads)
+test('video_renderer_api_test', api_test,
+     args: [files('golden/api_override.txt'), '--slack-ms=' + slack],
+     env: golden_vk_env, timeout: 120)
