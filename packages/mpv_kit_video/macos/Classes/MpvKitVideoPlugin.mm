@@ -2,7 +2,12 @@
 //
 // Method channel "mpv_kit_video" (same contract as Windows/Linux):
 //   create  {symbols: List<int>, handle: int, renderer: String}
-//           -> {textureId: int, backend: "vulkan"|"software", reason: String}
+//           -> {textureId: int, backend: "d3d11"|"opengl"|"vulkan"|"software",
+//               reason: String}
+//           backend is the winning backend's own wire name
+//           (VideoRenderer::wire_name(), ADR 0004 Decision 2). When no
+//           backend works: error render_init / "no usable render backend",
+//           details: String, the reason trails (why each candidate failed).
 //   setSize {textureId: int, width: int, height: int}
 //   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
@@ -243,12 +248,14 @@ using mpv_kit::VideoRenderer;
         });
       });
   if (!renderer->Start(choice)) {
+    // The trails say why every candidate was unavailable.
+    NSString* trails = [NSString stringWithUTF8String:renderer->backend_reason().c_str()];
     result([FlutterError errorWithCode:@"render_init"
                                message:@"no usable render backend"
-                               details:nil]);
+                               details:trails ?: @""]);
     return;
   }
-  const bool vk = renderer->backend() == Backend::kVulkan;
+  NSString* wire = [NSString stringWithUTF8String:renderer->wire_name()];
   NSString* reason = [NSString stringWithUTF8String:renderer->backend_reason().c_str()];
 
   MpvKitTexture* texture = [[MpvKitTexture alloc] initWithInterop:std::move(interop)
@@ -258,7 +265,7 @@ using mpv_kit::VideoRenderer;
   _instances[@(tid)] = texture;
   result(@{
     @"textureId" : @(tid),
-    @"backend" : vk ? @"vulkan" : @"software",
+    @"backend" : wire,
     @"reason" : reason ?: @"",
   });
 }

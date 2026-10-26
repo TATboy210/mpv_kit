@@ -122,6 +122,11 @@ class VideoRenderer {
     return render_backend_ ? render_backend_->frame_kind() : Backend::kSoftware;
   }
   const std::string& backend_reason() const { return backend_reason_; }
+  /// Private wire name of the winning backend for the create response
+  /// ("vulkan", "software"; Phase 14/15 add "d3d11", "opengl"), see
+  /// docs/adr/0004-render-backend-reporting.md, Decision 2. Only valid
+  /// after Start() returned true: before that there is no backend.
+  const char* wire_name() const { return render_backend_->wire_name(); }
 
  private:
   static void OnMpvUpdate(void* self);

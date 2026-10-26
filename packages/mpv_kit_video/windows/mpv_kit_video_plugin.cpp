@@ -3,7 +3,12 @@
 // Method channel "mpv_kit_video" (same contract on every platform):
 //   create  {symbols: List<int>, handle: int, renderer: String}
 //           renderer: "auto" | "gpu-next" | "gpu" | "software"
-//           -> {textureId: int, backend: "vulkan"|"software", reason: String}
+//           -> {textureId: int, backend: "d3d11"|"opengl"|"vulkan"|"software",
+//               reason: String}
+//           backend is the winning backend's own wire name
+//           (VideoRenderer::wire_name(), ADR 0004 Decision 2). When no
+//           backend works: error render_init / "no usable render backend",
+//           details: String, the reason trails (why each candidate failed).
 //   setSize {textureId: int, width: int, height: int}
 //   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
@@ -211,7 +216,8 @@ class MpvKitVideoPlugin : public flutter::Plugin {
           PostEvent(raw->texture_id.load(), kind, msg);
         });
     if (!inst->renderer->Start(choice))
-      return result->Error("render_init", "no usable render backend");
+      return result->Error("render_init", "no usable render backend",
+                           EncodableValue(inst->renderer->backend_reason()));
 
     if (inst->renderer->backend() == Backend::kVulkan) {
       inst->texture = std::make_unique<flutter::TextureVariant>(
@@ -235,12 +241,12 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     }
     const int64_t id = textures_->RegisterTexture(inst->texture.get());
     inst->texture_id = id;
-    const bool vk = inst->renderer->backend() == Backend::kVulkan;
+    const std::string wire = inst->renderer->wire_name();
     const std::string reason = inst->renderer->backend_reason();
     instances_.emplace(id, std::move(inst));
     result->Success(EncodableValue(EncodableMap{
         {EncodableValue("textureId"), EncodableValue(id)},
-        {EncodableValue("backend"), EncodableValue(vk ? "vulkan" : "software")},
+        {EncodableValue("backend"), EncodableValue(wire)},
         {EncodableValue("reason"), EncodableValue(reason)},
     }));
   }
