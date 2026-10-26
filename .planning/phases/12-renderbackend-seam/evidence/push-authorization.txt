@@ -1,2 +1,3 @@
 push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none granted_at=2026-10-26T05:32:03Z head_at_grant=2ed9c803f4774d56b98d8ae58f674d73377488d8
 user_reply=push-green-only
+red_evidence=local-only scope=12-07-task2,12-07-publish-gate,12-11-task1 decided=2026-10-26 reply="只在本地跑 golden 测试拿到红色结果作为证据，不推送" (RED commits are never pushed alone and never CI-run; pre-fix red evidence comes from a local golden run)
