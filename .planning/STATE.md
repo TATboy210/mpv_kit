@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-10-26T08:09:38.136Z"
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-10-26T11:18:23.758Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 87a7a2970d70abcfc5f366ebb5344d8e56467082
+state_head: 9b8aa6fb9317a816514bae1e0fd1bae01676e219
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -97,6 +97,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P02 | 21min | 2 tasks | 6 files |
 | Phase 12 P03 | 33min | 2 tasks | 6 files |
 | Phase 12 P05 | 53min | 2 tasks | 4 files |
+| Phase 12 P04 | 61min | 3 tasks | 39 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,9 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-05: software golden expectations derived from reading video_renderer.cc matched the renderer on the first run (MSVC local + six CI jobs); no expectation adjusted
 - [Phase 12]: 12-05: sw-resize-retries-at-once resizes after 5 failures (1600 ms) so immediate retry is distinguishable under the 1000 ms sanitizer slack
 - [Phase 12]: 12-05: RBE-02 stays Pending until 12-07 adds the Vulkan publish-gating scenarios
+- [Phase 12]: 12-04: pre-refactor RTX 4060 baseline measured record = latest valid attempt per group (d05 on/off + cycles-on a3, cycles-off + resize-front on/off a2); attempt 1 and three attempt-2 runs invalidated by the user with reasons in baseline-runs.txt
+- [Phase 12]: 12-04: D-05 and resize-front abort reproduced identically with Impeller on and off (round 1, last marker dispose-begin / set-size-640-done, exit 79, forensics none); recorded as unexplained, not re-run to green; cycles 100/100 both switches
+- [Phase 12]: 12-04: TaskBarHero (+UnityCrashHandler64, <=2.1% GPU engine) accepted as permitted background for RTX 4060 runs; nvidia-smi 22-24% at gates unexplained; RBE-01 stays Pending until 12-08/12-12
 
 ### Pending Todos
 
@@ -214,8 +218,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T08:09:38.086Z
-Stopped at: Completed 12-05-PLAN.md
+Last session: 2026-10-26T11:17:47.135Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
