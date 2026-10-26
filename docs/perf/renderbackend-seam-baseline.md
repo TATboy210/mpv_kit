@@ -196,3 +196,105 @@ This is the planning-time code-reading conclusion from the 12-02 objective, rest
 > 10-05's measured path calls `setSize(1280, 720)` in soak round 1 on part 2's 4K controller, which has already published frames. That triggers the `keep_front` reallocation in `RenderOnce`. `VulkanContext::AllocateRing` keeps the old front with `retired_.push_back(std::move(*keep_retired))`. But `SharedImage` is an aggregate, so the move is a copy and the source slot stays non-empty. `DestroyAll(ring_)` then destroys it immediately, and `FreeRetired` or the destructor destroys it a second time (a double destroy). If the compositor picks up `retired_front_` in the meantime, `RetainFrame` also retains a platform object that has already been released. Neither 10-07 diag mode reached this shape. `soak-after-4k`'s preceding `_remountCycle(round: 0)` passes no size, and every later round is the first allocation of a fresh controller that has never been sized. That is consistent with those modes not reproducing it. (Source: `video_renderer.cc:478-509` keep_front path, `vulkan_backend.cc:363-384` `AllocateRing`.)
 
 This baseline only records where each run's last trace marker sits relative to that path. No crash evidence ties the abort to it.
+
+## pre-move reference (after fix)
+
+**12-12 compares its post-move runs against this section, not against the pre-fix section above.**
+
+**Code state:**
+
+- `postfix_sha` = `59281b332a5ff0158be95b4083b0099df38c1600`.
+- `native_diff_vs_baseline` (`git diff --name-only 5de4f8f… 59281b3… -- packages/mpv_kit_video/src packages/mpv_kit_video/windows`) = `packages/mpv_kit_video/src/video_renderer.cc`, `packages/mpv_kit_video/src/video_renderer.h`, `packages/mpv_kit_video/src/vulkan_backend.cc`.
+- Those three files changed in four places: 12-06 (reason grammar) and three 12-07 commits. `f77378f` is the publish gate: a Vulkan frame now waits for its GPU work before publish, and the pipeline depth went from 2 to 1. `e3ef12b` is the AllocateRing retired-slot fix. `de9dcc5` is the 8K ring fallback after a resize.
+- Every run was preceded by a passing gate with `native_equal_to_postfix=yes`. After the last run, `native_unchanged_during_runs=yes`.
+- Runs after the first two were started at HEAD `c22efef`, which differs from `postfix_sha` only in `.planning/` evidence files.
+- golden freeze: 5/5 OK before the runs (19:23:29Z) and after them (19:58:22Z).
+
+**Machine, toolchain, bundle:** identical to the pre-fix section (`same_as_baseline=` in `postfix-runs.txt`): RTX 4060 Laptop GPU with driver 617.42, Flutter 3.47.8 with engine cf636b1dfb, Dart 3.13.7, and `libmpv-2.dll` sha256 `a21d4797…6376c`. Every harness log prints `mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)`.
+
+**Machine-readable record:** `.planning/phases/12-renderbackend-seam/evidence/postfix-runs.txt`. Raw files are `postfix-*.log`, `postfix-*.trace` and `postfix-*.fg.txt` in the same directory.
+
+**Method:** the Reproduce commands above, verbatim, with `postfix-` in place of `baseline-` in every output path. Every group ran attempt 1 only, strictly serially, on 2026-10-26 from 19:24:05Z to 19:56:50Z. Each run had the 12-04 gate before it and sampler v2 running during it.
+
+There was one interruption. The gate before identity-off (19:29:33Z) failed on `Deskrawl.exe`, a new executable under `steamapps\common`, running in the foreground at 9.4% GPU engine. The remaining runs were halted (`halt=` line). They resumed after the user replied "continue" (`resume=` line). The d05-on run before the failed gate was unaffected: all 47 of its samples showed only `TaskBarHero+UnityCrashHandler64`, and its post-run gate was ok.
+
+TaskBarHero and `UnityCrashHandler64` were the only `games=` entries in every sample of every run. The user accepted them as known background in 12-04.
+
+### Engine renderer identity (after fix)
+
+| Switch | rc | `Using the Impeller rendering backend` lines | Note |
+|--------|----|---------------------------------------------|------|
+| on  | 124 (timeout end, normal) | **1** | `embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).`; 55 stats lines |
+| off | 124 (timeout end, normal) | **0** | app ran (56 `mpv_kit_example:` stats lines, `mpv_kit_video: vulkan (gpu-next)`), so 0 is not a launch failure |
+
+### Results (after fix, attempt 1 per group)
+
+| group | switch | attempt | engine renderer lines | exit | result | key values | fg_during (2 s samples) | example window (sampler v2) |
+|-------|--------|---------|-----------------------|------|--------|------------|-------------------------|-----------------------------|
+| d05 | on  | 1 | 1 | 0 | failed | parts oneFrame=ok, uhd4k=ok, **soak=ok**; **100 rounds in 41.898 s**; failed only on pixelProbe nonBlackRatio 0.0 (1266x683, before-first-frame, fpsAtProbe null, timePosDelta 0.0); renderErrors 0, gpuTimeouts 0, deviceLost false; RSS 288473088 → 505192448 (+206.7 MiB); last_marker `t=74677 round=100 step=round-end … controllers=102`; forensics none | mpv_kit_example:34, TaskBarHero:13 | 35 running: visible and not iconic 34, iconic 0, foreground 34/35 (19:26:28Z–19:27:40Z); rect `1280x720@10,10`, 1 distinct |
+| d05 | off | 1 | 0 | 0 | failed | parts oneFrame=ok, uhd4k=ok, **soak=ok**; **100 rounds in 41.873 s**; failed only on pixelProbe nonBlackRatio 0.0 (1266x683, before-first-frame, fpsAtProbe null, timePosDelta 0.0); renderErrors 0, gpuTimeouts 0, deviceLost false; RSS 271773696 → 472760320 (+191.7 MiB); last_marker `t=74578 round=100 step=round-end … controllers=102`; forensics none | mpv_kit_example:35, WindowsTerminal:12 | 36 running: visible and not iconic 35, iconic 0, foreground 35/36 (19:36:44Z–19:37:57Z); rect `1280x720@10,10`, 1 distinct |
+| cycles | on  | 1 | 1 | 0 | complete | completed 100/100, failures 0, controllers 101, renderErrors 0, deviceLost false; RSS 288800768 → 358887424 (+70086656 B, +66.8 MiB) | WindowsTerminal:12, mpv_kit_example:9 | 10 running: visible and not iconic 8, iconic 0, foreground 8/10; rect `1280x720@10,10`, 1 distinct |
+| cycles | off | 1 | 0 | 0 | complete | completed 100/100, failures 0, controllers 101, renderErrors 0, deviceLost false; RSS 271347712 → 356110336 (+84762624 B, +80.8 MiB) | WindowsTerminal:11, mpv_kit_example:9 | 9 running: visible and not iconic 8, iconic 0, foreground 8/9; rect `1280x720@10,10`, 1 distinct |
+| resize-front | on  | 1 | 1 | 1 | inconclusive | **1 of 5 rounds complete**; round 1 passed `set-size-640-done` (t=1279), `second-resize-wait-done` (t=1385, resizeEvents=2), the 500 ms hold and `dispose-done` (t=2143); round 2 `set-size-1280-done` t=2244, then `first-resize-wait-done` t=32290 after the 30 s timeout and `StateError: resize-front: no 1280x720 resize in round 2`; no `DIAG resize-front complete`; process did not vanish (`Some tests failed.`); forensics none | mpv_kit_example:15, WindowsTerminal:12 | 16 running: visible and not iconic 15, iconic 0, foreground 15/16; rect `1280x720@10,10`, 1 distinct |
+| resize-front | off | 1 | 0 | 1 | inconclusive | **1 of 5 rounds complete**; round 1 passed `set-size-640-done` (t=1122), `second-resize-wait-done` (t=1131, resizeEvents=2) and `dispose-done` (t=1907); round 2 `set-size-1280-done` t=2016, then `first-resize-wait-done` t=32107 after the 30 s timeout and the same StateError; process did not vanish; forensics none | mpv_kit_example:15, WindowsTerminal:12 | 16 running: visible and not iconic 15, iconic 0, foreground 15/16; rect `1280x720@10,10`, 1 distinct |
+
+The d05 `result: failed` comes from `_classify`, which these runs now reach. Its only unmet condition is the pixel probe. The probe reading is the same as in every pre-fix run: the readiness gate saw no presented frame for 30 s in part 2, and the probe that followed read 0.0. The pre-fix runs recorded that reading at `soak-start` and then aborted before `_classify`. The exit code is 0 because the test asserts only that `result` is one of pass, inconclusive or failed.
+
+The round-2 resize-front wait needs `estimated-vf-fps > 0` **and** a resize event newer than the baseline count. At the marker written right after the final check, `resizeEvents` was 3, above the baseline of 2. So the condition that was not met within 30 s was most likely `estimated-vf-fps > 0`. The marker cannot rule out a resize event that arrived in the few milliseconds between the last check and the marker. Round 2 is the first `setSize` on a fresh, never-sized controller. Round 1 had opened the source on its own controller.
+
+### Rendered 4K reference (600 s)
+
+Phase 4's 4K gate never calls `setSize`, so it never rendered a frame into a shared image. **This table is Phase 12's first rendered 4K reference.**
+
+Command (default switches, from `example/`):
+
+```sh
+MPV_KIT_BENCH_RENDER=1 MPV_KIT_BENCH_SIZE=3840x2160 MPV_KIT_BENCH_SECONDS=600 MPV_KIT_BENCH_LABEL=4k-rendered \
+  MPV_KIT_LIBMPV_PATH="$LIB/libmpv-2.dll" PATH="$PATH:$LIB" $F test integration_test/uhd_endurance_test.dart -d windows | tee "$E/postfix-uhd4k-rendered.log"
+```
+
+| exit | result | rendered | frameDropCountFinal | decoderFrameDropCountFinal | voDelayedFrameCount avg / max | avsyncPeakAbs | totalAvsyncChangeFinal | estimatedVfFpsFinal | renderErrors | deviceLost | rssBytes |
+|------|--------|----------|---------------------|----------------------------|-------------------------------|---------------|------------------------|---------------------|--------------|------------|----------|
+| 0 | pass (`All tests passed!`) | **true** | 0 | 0 | 0.0 / 0 | 1.34e-05 s | -0.0333 s | 30.0 | 0 | false | 829779968 |
+
+All 10 per-minute samples (t=11 … 551 s) show frame-drop 0, decoder-drop 0, vo-delayed 0 and estimated-vf-fps 30.0. `displaySyncActive` is false (the Player default `video-sync=audio`), so vo-delayed is recorded with the caveat in the test header.
+
+**Run conditions:**
+
+- **Background:** the gate passed at 19:46:09Z, and all 287 samples showed only `TaskBarHero+UnityCrashHandler64`.
+- **Window visibility:** the window was visible and not iconic in 275 of 276 running samples (the other sample came before the window existed), and was never iconic. It was in the foreground in 78/276 samples (19:46:49Z–19:50:43Z), and TaskBarHero held the foreground from 19:50:45Z to the end. The sampler cannot tell whether another window covered it.
+- **Manual window changes (not the harness):**
+  - The window was **resized by hand** nine times between 19:48:05Z and 19:48:23Z, ending at 1375x747. The intermediate sizes included 357x595 and 1673x595.
+  - It was then **moved** four times between 19:49:00Z and 19:49:07Z, with one sample at `@729,653`, and stayed at `1375x747@40,34` until the end.
+  - The log has four `Some possible finders for the widgets at Offset(…)` blocks, which `LiveTestWidgetsFlutterBinding` prints for pointer taps in the test window.
+  - Neither the harness nor the sampler moves, resizes or focuses a window.
+- **Effect on the result:** the user should decide in Task 3 whether these changes affect the reference. The renderer's `setSize` is the source size (3840x2160), not the window size, and no gate tripped.
+
+### Comparison with the pre-fix measured record
+
+| group | switch | before (12-04 measured record) | after (this section) |
+|-------|--------|--------------------------------|----------------------|
+| d05 | on  | aborted, exit 79; 0 soak rounds done; last_marker `t=32928 round=1 step=dispose-begin` (a3) | failed (pixel probe only), exit 0; **100/100 rounds, 41.898 s**; last_marker `round=100 step=round-end` |
+| d05 | off | aborted, exit 79; 0 soak rounds done; last_marker `t=32779 round=1 step=dispose-begin` (a3) | failed (pixel probe only), exit 0; **100/100 rounds, 41.873 s**; last_marker `round=100 step=round-end` |
+| cycles | on  | complete 100/100, 0 failures, +81.8 MiB (a3) | complete 100/100, 0 failures, +66.8 MiB |
+| cycles | off | complete 100/100, 0 failures, +100.6 MiB (a2) | complete 100/100, 0 failures, +80.8 MiB |
+| resize-front | on  | aborted, exit 79; 0 of 5 rounds; process vanished after `t=1153 round=1 step=set-size-640-done` (a2) | inconclusive, exit 1; 1 of 5 rounds; round 1 went past `set-size-640-done` and completed; round 2 StateError after a 30 s wait; process did not vanish |
+| resize-front | off | aborted, exit 79; 0 of 5 rounds; process vanished after `t=1237 round=1 step=set-size-640-done` (a2) | inconclusive, exit 1; 1 of 5 rounds; same shape as on |
+
+The pixel-probe reading (0.0, before-first-frame, fpsAtProbe null) is unchanged in all d05 runs, before and after.
+
+**Cycles RSS:** after the fix, growth is 66.8 MiB (on) and 80.8 MiB (off) over 100 cycles. Before the fix it was 54.9–81.8 MiB (on, three attempts) and 80.0–100.6 MiB (off, two attempts). The after values fall within or below the pre-fix range. Phase 4 recorded 45.1 MiB over 50 cycles with 5 warm-up cycles (`2026-10-24-baseline.md`), about 0.90 MiB per cycle. These runs give about 0.67 MiB (on) and 0.81 MiB (off) per cycle. That is the same order of magnitude, but the protocols differ, so the figures are not directly comparable.
+
+### Soak abort
+
+**Verdict: `resolved-by-fix`** for the D-05 soak abort.
+
+- Before the fix, the same d05 command aborted in every attempt under both switches: three attempts each, exit 79, and `forensics=none`. Each time the last marker was `round=1 step=dispose-begin`, 16–24 ms after `round-start`, and nothing was written after it.
+- After the fix, the same command completed all 100 rounds under both switches, with exit 0 and no crash forensics.
+- **Scope of "fix":** between the two references, the native render path changed only in 12-06 and 12-07, as listed under Code state. This data shows that the abort stopped across that change set. On its own it does not isolate which change removed it. The 12-07 golden tests (outside this plan) tie the candidate cause to the AllocateRing double destroy.
+
+**resize-front is not counted as `resolved-by-fix`.** The rule requires the same command to complete after the fix, and it did not: 1 of 5 rounds.
+
+- The pre-fix shape no longer reproduced: the process vanishing within 500 ms of `setSize(640, 360)` on a controller with a published front. Round 1 now runs past that step and completes.
+- The run then ended in round 2 with a harness `StateError`. That is a different, unexplained finding, not an abort.
+- For 12-12, the reference for resize-front is therefore `inconclusive`, 1 of 5 rounds, ending in round 2 at `first-resize-wait-done`. If 12-12 records the same ending, it is not a new failure.
