@@ -34,3 +34,4 @@ sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=flutter-plugin.yml run=403
 sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=native-verify.yml run=40327855409 conclusion=success
 sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=flutter-plugin.yml run=40327854823 conclusion=success
 gate plan=12-06 task=2 sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 native-verify=40327855409 attempt=2 flutter-plugin=40327854823 result=CI-GATE-ok gate_rc=0 expectations=jobs-success:integration-test,reason-grammar-regex:ubuntu|windows|macos recorded_by=12-07
+red_local sha=f6df1fa1d9ba409ab7e044e240a0b1b3aace00ed host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 log=.planning/phases/12-renderbackend-seam/evidence/red-local-12-07-publish-gate.log line=GOLDEN invariant scenario=vk-publish-gate: frame 1 was published before its GPU work completed
