@@ -265,6 +265,103 @@ The Flutter unregistration half is left to each platform's existing mechanism: t
 - Commits on this branch: fe47cfe, f6df1fa, 392828d, f77378f, c452ccd, 321c35f, e3ef12b, a0d238d, 2d639ab.
 - `sha256sum -c` gives 5 x OK.
 
+## Follow-up: 8K ring fallback
+
+This section was added after the plan closed. It resolves the "Issues Encountered" finding above. Nothing above this heading was changed.
+
+**User decision (verbatim):** "a", meaning fix it now:
+- add a NEW golden test file, keeping the five frozen files in `evidence/golden-freeze.sha256` byte-identical (`sha256sum -c` must still pass);
+- prove it red locally;
+- then make a small fix in video_renderer.cc and correct the log line.
+
+**Duration:** 2026-10-26T17:57Z to 18:18Z, about 21 min. Ledger base `364357a7693fe3fec1d413a08f721ab8c7e8c161`. The measured count is 3 commits up to the green head `de9dcc50c1553db3ccf3571ce4d2c33b893c1bff`, plus the docs commit that carries this section.
+
+### Commits
+
+| Step | Commit | Content |
+|---|---|---|
+| RED (test only) | `f9b559f` | `native/tests/video_renderer_golden_vk_fallback.cc` (new, 343 lines), `native/tests/golden/vk_fallback.txt` (new), `native/tests/meson.build` (+12) |
+| RED evidence | `828cfa5` | `evidence/red-local-12-07-fallback.log`, `red_local` line in `ci-runs.txt` |
+| GREEN (product only) | `de9dcc5` | `packages/mpv_kit_video/src/video_renderer.cc`, +8/−3 |
+| Docs | this commit | gate, integration and RTX 4060 lines in `ci-runs.txt`; this section; STATE.md |
+
+### The test
+
+`video_renderer_golden_vk_fallback` has one scenario, `vk-fallback-after-resize`:
+- It uses the frozen `renderer_harness.h` unchanged and the same probe and skip semantics as golden_vk: exit 77 on a missing loader, `vkCreateInstance failed` or no Vulkan 1.3 device.
+- Steps: latency 4 (ring 7), four 64x36 frames, `FailCreate(6)`, `SetSize(32,18)` with the first new-size render held in the fake, acquire, release, then three more frames.
+- It asserts:
+  - no `USE AFTER DESTROY` (on acquire or on RetainFrame) and no `DOUBLE DESTROY`;
+  - `live-images=0` after teardown, so every serial is destroyed exactly once;
+  - `acquire index=-1 32x18 serial=none` in the reallocated-but-unpublished window, so the freed old front is never handed out;
+  - the trace line `log mpv_kit: shared-image allocation failed at ring 7, retried with a ring of 5`.
+- `meson.build` was not in the freeze set, which was checked against `golden-freeze.sha256` (5 entries, none of them meson.build). It registers the new binary with golden_vk's env (macOS loader libdir) and slack.
+
+### RED (local only, per `red_evidence=local-only`)
+
+- Built with MSVC `/W4 /WX` on `f9b559f`, with the tree clean under `native/` and `packages/`. Exit 1.
+- `ci-runs.txt` line: `red_local sha=f9b559faedf9987cd4651ef680083375ef39932c host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 log=.planning/phases/12-renderbackend-seam/evidence/red-local-12-07-fallback.log line=GOLDEN invariant scenario=vk-fallback-after-resize: USE AFTER DESTROY serial=4`
+- The run also reported `USE AFTER DESTROY serial=4 (RetainFrame)` and `missing log line: ... at ring 7 ...`; the actual log said `at ring 5`.
+- The first mismatch is at line 44: expected `acquire index=-1 32x18 serial=none`, actual `acquire index=-2 64x36 serial=4 USE AFTER DESTROY`.
+- golden_vk (8) and golden_sw (12) were OK on the same build.
+- **Semantic assessment:** the RED fails on the behaviour under test (the destroyed-image invariant and the log wording), not on a build or fixture problem.
+
+### GREEN (`de9dcc5`)
+
+On the fallback branch of `RenderOnce`:
+- `retired_front_ = Frame{};` now runs before the retry, consistent with the plain-failure branch. A comment explains why: the failed attempt freed everything, including the image it had just retired.
+- The retry passes `nullptr` instead of `keep`. `keep` points into `ring_`'s storage, and the failed attempt had already zeroed that slot and then cleared the vector (its `FreeRing`). Passing it read a destroyed element, which was a no-op only because the slot was zeroed.
+- The log line is emitted before `ring_size_` is reassigned, so it now says `at ring 7, retried with a ring of 5`.
+
+Two alternatives were not taken:
+- **Preserving the retired image across the failed attempt.** That would mean changing `AllocateRing`/`FreeRing` in vulkan_backend.cc, which is larger and keeps 8K VRAM pinned exactly when allocation is failing.
+- **Resetting the retire countdown.** That needs no change: it was already set to −1 above, and with `retired_front_` empty it is never armed.
+
+Local checks on the fix:
+- golden_vk_fallback OK 3/3 runs, golden_vk `GOLDEN ok scenarios=8`, golden_sw `GOLDEN ok scenarios=12`.
+- clang front end (`clang-tidy -Wall -Wextra[-Wpedantic] -Werror`) TIDY rc=0 on the new test, video_renderer.cc and vulkan_backend.cc.
+- `sha256sum -c evidence/golden-freeze.sha256` gives 5 x OK.
+
+### Gate (`de9dcc5`, pushed)
+
+- The push `e3ef12b..de9dcc5` also carried the three earlier docs commits a0d238d, 2d639ab and 364357a.
+- `ci_gate.sh` result: native-verify 40374558485 (attempt 1), flutter-plugin 40374558495, CI-GATE ok, gate_rc=0. There was no apt stall and no rerun.
+- Expectations: `^build \(` and `^integration-test` jobs success, plus `--log` checks for golden_vk_fallback, golden_vk and golden_sw on the jobs below.
+
+| Job | golden_vk_fallback | golden_vk | golden_sw |
+|---|---|---|---|
+| linux (ubuntu-24.04) | OK (`GOLDEN ok scenarios=1`) | OK (8) | OK (12) |
+| linux (ubuntu-24.04-arm) | OK | OK | OK |
+| macos (macos-15) | OK | OK | OK |
+| sanitizers (ASan+UBSan) | OK | OK | OK |
+| windows-2025 x64 | SKIP (exit 77, `vkCreateInstance failed`) | SKIP | OK |
+| windows-11-arm | SKIP (same reason) | SKIP | OK |
+
+- All 12 native-verify jobs succeeded, including integration-test on linux, macos and windows and flutter-video-coverage. All 3 flutter-plugin build jobs succeeded.
+- Integration lines:
+  - linux: `vulkan (gpu-next) on llvmpipe`
+  - macos: `vulkan (gpu-next) on Apple Paravirtual device`
+  - windows-2025: software, as before
+
+### RTX 4060
+
+- Command: `flutter test integration_test/real_plugin_test.dart -d windows` on `de9dcc5`. The example was rebuilt first (`Built build\windows\x64\runner\Debug\mpv_kit_example.exe`).
+- Result: `All tests passed!`, with `{"backend":"vulkan","reason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU","elapsedMs":210,"fps":30.0,"events":[]}`.
+- `cs2.exe` was not running (tasklist count 0).
+- This checks correctness only, not performance.
+
+### Status
+
+- The 12-07 finding "use after destroy in the 8K ring fallback after a resize" is fixed and regression-tested.
+- The golden set stays frozen. 12-08 onward should also keep `video_renderer_golden_vk_fallback` green.
+- The final docs commit (this section) is left unpushed.
+
+### Follow-up Self-Check: PASSED
+
+- Commits f9b559f, 828cfa5 and de9dcc5 are ancestors of HEAD.
+- The new test, the new golden and red-local-12-07-fallback.log exist.
+- golden-freeze.sha256 gives 5 x OK.
+
 ---
 *Phase: 12-renderbackend-seam*
 *Completed: 2026-10-26*

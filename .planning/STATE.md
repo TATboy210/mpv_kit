@@ -181,6 +181,7 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-07: AllocateRing clears the retired slot after the copy (*keep_retired = SharedImage{}); retired front destroyed once after its countdown
 - [Phase 12]: 12-07: windows-2025 golden_vk expectation is OK|SKIP (no lavapipe instance; user decision 2 = a); probe skips on vkCreateInstance failed
 - [Phase 12]: 12-07: RED evidence local-only ("只在本地跑 golden 测试拿到红色结果作为证据，不推送"); golden set frozen at 2d639ab (evidence/golden-freeze.sha256)
+- [Phase 12]: 12-07 follow-up (user decision "a"): ring-7 fallback after a resize clears retired_front_ before the retry and logs the failed ring (7); regression test is the new golden_vk_fallback (frozen five files untouched); RED f9b559f local, GREEN de9dcc5 CI-gated
 
 ### Pending Todos
 
@@ -196,7 +197,7 @@ None yet.
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
 - **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
 - 12-06 Task 2 CI gate on 52341e1 pending (integration-test reason regex); linux x64 apt mirror stall
-- 12-07 finding: use after destroy in the 8K ring-7 fallback after a resize (AllocateRing failure path FreeRetired destroys the retired front; the fallback branch keeps retired_front_). Needs a user decision; evidence/explore-12-07-fallback-after-resize.log
+- （已解决）12-07 finding: use after destroy in the 8K ring-7 fallback after a resize. Fixed in de9dcc5 (user decision "a"), regression golden video_renderer_golden_vk_fallback, CI gate ok on de9dcc5; see 12-07-SUMMARY "Follow-up: 8K ring fallback"
 
 ## Deferred Items
 
