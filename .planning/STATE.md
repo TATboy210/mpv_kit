@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-10-PLAN.md
-last_updated: "2026-10-26T23:08:29.370Z"
+stopped_at: Completed 12-11-PLAN.md
+last_updated: "2026-10-26T23:37:52.340Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 598d2878b84b84f15cd657d3758b1d080cc9ec66
+state_head: c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -103,6 +103,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P08 | 47 min | 3 tasks | 22 files |
 | Phase 12 P09 | 147 min | 4 tasks | 10 files |
 | Phase 12 P10 | 19 min | 2 tasks | 10 files |
+| Phase 12 P11 | 23 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,8 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-10: MPV_KIT_VIDEO_API forced run also drops the software fallback of a gpu-next/gpu request (ADR 0004 example); excluded why unchanged
 - [Phase 12]: 12-10: Windows reads MPV_KIT_VIDEO_API with _dupenv_s (getenv is C4996 under /WX); other platforms std::getenv
 - [Phase 12]: 12-10: both hosted CI gates (eec251c, 598d287) deferred by the user; RBE-07/RBE-08 stay Pending until they are ok
+- [Phase 12]: 12-11: every mpv_render_* call after Start runs on the render thread (AcquireFront counts swaps_to_report_; render thread reports them before update and frees the context via RenderBackend::Release before exit); debug assertions + video_renderer_affinity_test prove it
+- [Phase 12]: 12-11: RBE-05/RBE-06 stay Pending until the deferred 12-11 CI gates (c4019dc, c3edb9e) pass; RBE-06 also needs 12-12; swap-on-render-thread timing judged only by 12-12's real 4K run
 
 ### Pending Todos
 
@@ -244,8 +247,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T23:08:11.150Z
-Stopped at: Completed 12-10-PLAN.md
+Last session: 2026-10-26T23:37:52.265Z
+Stopped at: Completed 12-11-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
