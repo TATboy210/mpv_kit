@@ -135,9 +135,12 @@ bool VideoRenderer::StartVulkan(RendererChoice choice,
                                 std::vector<std::string>* trails) {
   const std::vector<const char*> renderers = VulkanRenderers(choice);
   vulkan_ = std::make_unique<VulkanContext>(interop_->vulkan());
-  if (!vulkan_->Init(&backend_reason_)) {
+  std::string init_error;
+  if (!vulkan_->Init(&init_error)) {
     vulkan_.reset();
-    AddVulkanTrails(renderers, SanitizeReasonField(backend_reason_), trails);
+    // No device, so every Vulkan renderer of this choice is unavailable for
+    // the same reason.
+    AddVulkanTrails(renderers, SanitizeReasonField(init_error), trails);
     return false;
   }
   VulkanContext& vk = *vulkan_;
@@ -156,8 +159,6 @@ bool VideoRenderer::StartVulkan(RendererChoice choice,
                          vk.transfer_queues().count};
 
   int advanced = 1;
-  int err = 0;
-  std::string tried;
   for (const char* renderer : renderers) {
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE,
@@ -167,29 +168,30 @@ bool VideoRenderer::StartVulkan(RendererChoice choice,
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
-    err = api_.render_context_create(&render_ctx_, handle_, params);
+    const int err = api_.render_context_create(&render_ctx_, handle_, params);
     if (err >= 0) {
       // Ask mpv which renderer it really built: a libmpv without the
       // renderer parameter ignores it and always uses its default.
       const char* active = nullptr;
       const int info = api_.render_context_get_info(
           render_ctx_, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
-      const std::string name =
-          info >= 0 && active ? active : "unknown renderer";
+      const std::string name = SanitizeReasonField(
+          info >= 0 && active ? active : "unknown renderer");
       backend_ = Backend::kVulkan;
-      backend_reason_ = "vulkan (" + name + ") on " + vk.device_name();
-      if (!tried.empty()) backend_reason_ += "; " + tried;
+      // The trails so far are exactly the renderers ranked before this one.
+      backend_reason_ = "vulkan (" + name + ") on " +
+                        SanitizeReasonField(vk.device_name());
+      if (!trails->empty()) backend_reason_ += "; " + JoinTrails(*trails);
       return true;
     }
-    const std::string why = std::string(renderer) + " unavailable: " +
-                            api_.error_string(err);
-    log_("mpv_kit: " + why);
-    tried += tried.empty() ? why : ", " + why;
+    log_(std::string("mpv_kit: ") + renderer + " unavailable: " +
+         api_.error_string(err));
+    trails->push_back(std::string("vulkan/") + renderer +
+                      " unavailable: mpv_render_context_create: " +
+                      SanitizeReasonField(api_.error_string(err)));
     render_ctx_ = nullptr;
   }
-  backend_reason_ = "mpv_render_context_create: " + tried;
   vulkan_.reset();
-  AddVulkanTrails(renderers, SanitizeReasonField(backend_reason_), trails);
   return false;
 }
 

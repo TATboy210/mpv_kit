@@ -18,3 +18,12 @@ sha=2daa12da6acbb27d8da380e3bfa651ad03c78c79 workflow=native-verify.yml run=4028
 sha=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5 workflow=native-verify.yml run=40288892406 conclusion=success
 sha=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5 workflow=flutter-plugin.yml run=40288892437 conclusion=success
 note sha=2daa12da6acbb27d8da380e3bfa651ad03c78c79 red=accidental cause=GCC/clang reject deduced-return member used before definition (MSVC-only local check) fixed_by=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 conclusion=cancelled
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=flutter-plugin.yml run=40315269051 conclusion=success
+note sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 run=40315268784 cancelled_by=executor cause=infra job='linux (ubuntu-24.04)' step='Install dependencies' apt mirror azure.archive.ubuntu.com crawling (38 min, prior run 36 s); other 7 native-verify jobs success; rerun via CI_GATE_RERUN_INFRA=1
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 conclusion=cancelled
+rerun sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 attempt=2 reason=infra
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 conclusion=
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=flutter-plugin.yml run=40315269051 conclusion=success
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 conclusion=success
+sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=flutter-plugin.yml run=40315269051 conclusion=success
