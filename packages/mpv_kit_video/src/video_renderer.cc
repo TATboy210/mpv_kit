@@ -483,6 +483,10 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     w = width_;
     h = height_;
     if (w != ring_w_ || h != ring_h_) {
+      // Forget the older survivor first: if the previous generation never
+      // published a frame, retired_front_ still names the one before it,
+      // which the reallocation below frees (golden *_retire_twice).
+      retired_front_ = Frame{};
       // Old images are about to be retired; their last frame stays on
       // screen until a new one exists.
       if (front_ >= 0) {
