@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-06-PLAN.md
-last_updated: "2026-10-26T13:34:19.535Z"
+stopped_at: Completed 12-07-PLAN.md
+last_updated: "2026-10-26T17:20:49.628Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 52341e1dd7af0daae0b3af8aaff18b876c9b6355
+state_head: 2d639ab87f2ee38e37334971d7b8ae8dab88eba9
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 7 of 12
+Plan: 8 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -99,6 +99,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P05 | 53min | 2 tasks | 4 files |
 | Phase 12 P04 | 61min | 3 tasks | 39 files |
 | Phase 12 P06 | 130 min | 2 tasks | 5 files |
+| Phase 12 P07 | 3h 0m | 5 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,10 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-04: D-05 and resize-front abort reproduced identically with Impeller on and off (round 1, last marker dispose-begin / set-size-640-done, exit 79, forensics none); recorded as unexplained, not re-run to green; cycles 100/100 both switches
 - [Phase 12]: 12-04: TaskBarHero (+UnityCrashHandler64, <=2.1% GPU engine) accepted as permitted background for RTX 4060 runs; nvidia-smi 22-24% at gates unexplained; RBE-01 stays Pending until 12-08/12-12
 - [Phase 12]: 12-06: native reason follows ADR 0004 grammar; software failure has no head; renderer name also sanitized
+- [Phase 12]: 12-07: Vulkan publish gate is a synchronous wait right after the render call (user decision 1 = A); pipeline depth 2 -> 1, 12-08 re-measures
+- [Phase 12]: 12-07: AllocateRing clears the retired slot after the copy (*keep_retired = SharedImage{}); retired front destroyed once after its countdown
+- [Phase 12]: 12-07: windows-2025 golden_vk expectation is OK|SKIP (no lavapipe instance; user decision 2 = a); probe skips on vkCreateInstance failed
+- [Phase 12]: 12-07: RED evidence local-only ("只在本地跑 golden 测试拿到红色结果作为证据，不推送"); golden set frozen at 2d639ab (evidence/golden-freeze.sha256)
 
 ### Pending Todos
 
@@ -191,6 +196,7 @@ None yet.
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
 - **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
 - 12-06 Task 2 CI gate on 52341e1 pending (integration-test reason regex); linux x64 apt mirror stall
+- 12-07 finding: use after destroy in the 8K ring-7 fallback after a resize (AllocateRing failure path FreeRetired destroys the retired front; the fallback branch keeps retired_front_). Needs a user decision; evidence/explore-12-07-fallback-after-resize.log
 
 ## Deferred Items
 
@@ -221,8 +227,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T13:34:19.421Z
-Stopped at: Completed 12-06-PLAN.md
+Last session: 2026-10-26T17:20:23.105Z
+Stopped at: Completed 12-07-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

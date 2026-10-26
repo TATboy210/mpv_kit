@@ -13,7 +13,7 @@
 ### 渲染生命周期接口（RBE）
 
 - [ ] **RBE-01**: 重构前在现有 Vulkan 路径上修好 soak harness 并记录基线（D-05 30 s、100 轮 resize/dispose、100 次 create/dispose，Impeller 开/关，含 renderer 行），后续回归均与之对比
-- [ ] **RBE-02**: `VideoRenderer` 状态机有基于 fake libmpv（`MpvApi` 函数表）的 golden 测试，覆盖回退、退避、隔离期、retire-on-resize、发布门控，且在任何代码搬迁前先通过
+- [x] **RBE-02**: `VideoRenderer` 状态机有基于 fake libmpv（`MpvApi` 函数表）的 golden 测试，覆盖回退、退避、隔离期、retire-on-resize、发布门控，且在任何代码搬迁前先通过
 - [ ] **RBE-03**: 抽出 `RenderBackend` 接口（Create / AllocTargets / FrameFor / Render / Wait / BindThread·UnbindThread / Release / Destroy），帧环、隔离期、退避、swap、ICC、display-fps、事件留在通用引擎；`FrameReady` 留在平台侧
 - [ ] **RBE-04**: 现有 Vulkan 与软件后端迁移到该接口，搬迁提交不改任何常量（ring 5/7、quarantine 2/4、50 ms present 超时、100 ms→5 s 退避）与 reason 字符串，RTX 4060 4K 30 分钟与 Phase 4 基线持平
 - [ ] **RBE-05**: `report_swap` 与 `mpv_render_context_free` 只在渲染线程（且后端 context 已绑定）上调用，不再从光栅线程调用
@@ -86,7 +86,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | RBE-01 | Phase 12 | Pending |
-| RBE-02 | Phase 12 | Pending |
+| RBE-02 | Phase 12 | Complete |
 | RBE-03 | Phase 12 | Pending |
 | RBE-04 | Phase 12 | Pending |
 | RBE-05 | Phase 12 | Pending |
