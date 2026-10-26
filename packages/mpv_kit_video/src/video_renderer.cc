@@ -1,6 +1,7 @@
 #include "video_renderer.h"
 
 #include <algorithm>
+#include <cstring>
 
 namespace mpv_kit {
 
@@ -32,25 +33,45 @@ std::string JoinTrails(const std::vector<std::string>& trails) {
   return out;
 }
 
-/// Vulkan renderers [choice] tries, in candidate-chain order: gpu-next
-/// (libplacebo's renderer) first; the older gpu renderer covers devices or
-/// libplacebo builds where it cannot initialise.
-std::vector<const char*> VulkanRenderers(RendererChoice choice) {
-  std::vector<const char*> renderers;
-  if (choice == RendererChoice::kSoftware) return renderers;
-  if (choice != RendererChoice::kGpu) renderers.push_back("gpu-next");
-  if (choice != RendererChoice::kGpuNext) renderers.push_back("gpu");
-  return renderers;
+/// The reason trail of one candidate (ADR 0004).
+std::string Trail(const BackendCandidate& c, const std::string& why) {
+  return std::string(c.api) + "/" + c.renderer + " unavailable: " + why;
 }
 
-/// One trail per Vulkan renderer in [renderers], all for the same [why].
-void AddVulkanTrails(const std::vector<const char*>& renderers,
-                     const std::string& why,
-                     std::vector<std::string>* trails) {
-  for (const char* renderer : renderers) {
-    trails->push_back(std::string("vulkan/") + renderer +
-                      " unavailable: " + why);
+/// Whether a candidate after [i] uses [api] (its backend is kept for it).
+bool UsedLater(const std::vector<BackendCandidate>& candidates, size_t i,
+               const char* api) {
+  for (size_t k = i + 1; k < candidates.size(); k++) {
+    if (std::strcmp(candidates[k].api, api) == 0) return true;
   }
+  return false;
+}
+
+/// Log line of a failed mpv_render_context_create; both spellings predate
+/// the candidate chain and are kept verbatim.
+std::string CreateFailedLog(const BackendCandidate& c, const char* error) {
+  if (std::strcmp(c.api, "software") == 0)
+    return std::string("mpv_kit: software backend failed: ") + error;
+  return std::string("mpv_kit: ") + c.renderer + " unavailable: " + error;
+}
+
+/// One api's backend during Start: created at the api's first candidate
+/// and kept for its later ones (one device initialisation per api).
+struct ApiAttempt {
+  std::string api;
+  std::unique_ptr<RenderBackend> backend;
+  // Non-empty: every remaining candidate of this api fails with this why
+  // (no platform backend, or its device failed to initialise).
+  std::string why;
+  bool asked = false;  // Create was called at least once
+};
+
+ApiAttempt& AttemptFor(std::vector<ApiAttempt>* attempts, const char* api) {
+  for (ApiAttempt& a : *attempts) {
+    if (a.api == api) return a;
+  }
+  attempts->push_back(ApiAttempt{api, nullptr, {}, false});
+  return attempts->back();
 }
 
 /// MPV_RENDER_API_TYPE_SW into a ring of CPU buffers (RenderBackend).
@@ -145,6 +166,18 @@ std::unique_ptr<RenderBackend> CreateSoftwareBackend(bool bgra) {
   return std::make_unique<SoftwareBackend>(bgra);
 }
 
+std::vector<BackendCandidate> DefaultCandidates(RendererChoice choice) {
+  // gpu-next (libplacebo's renderer) first; the older gpu renderer covers
+  // devices or libplacebo builds where it cannot initialise. Software last.
+  std::vector<BackendCandidate> chain;
+  if (choice != RendererChoice::kSoftware) {
+    if (choice != RendererChoice::kGpu) chain.push_back({"vulkan", "gpu-next"});
+    if (choice != RendererChoice::kGpuNext) chain.push_back({"vulkan", "gpu"});
+  }
+  chain.push_back({"software", "sw"});
+  return chain;
+}
+
 RendererChoice ParseRendererChoice(const std::string& name) {
   if (name == "gpu-next") return RendererChoice::kGpuNext;
   if (name == "gpu") return RendererChoice::kGpu;
@@ -180,45 +213,55 @@ bool VideoRenderer::Start(RendererChoice choice) {
   quarantine_count_ =
       std::clamp(interop_->CompositorLatency(), 1, kMaxQuarantine);
   ring_size_ = quarantine_count_ + 3;
+  const std::vector<BackendCandidate> candidates =
+      interop_->BackendCandidates(choice);
   // Every candidate ranked before the winner leaves one trail, in chain
   // order; an explicit software request has none.
   std::vector<std::string> trails;
-  const std::vector<const char*> renderers = VulkanRenderers(choice);
-  bool ok = false;
-  if (renderers.empty()) {
-    // kSoftware: no Vulkan candidate, so nothing to report.
-  } else if (interop_->vulkan()) {
-    ok = StartVulkan(choice, &trails);
-    if (!ok) log_("mpv_kit: Vulkan backend unavailable (" + JoinTrails(trails) +
-                  "), falling back to software rendering");
-  } else if (const char* why = interop_->interopReason()) {
-    AddVulkanTrails(renderers,
-                    "platform interop unavailable: " + SanitizeReasonField(why),
-                    &trails);
-  } else {
-    AddVulkanTrails(renderers, "platform has no Vulkan interop", &trails);
+  std::vector<ApiAttempt> attempts;
+  attempts.reserve(candidates.size());  // AttemptFor's references stay valid
+  for (size_t i = 0; i < candidates.size() && !render_backend_; i++) {
+    const BackendCandidate& c = candidates[i];
+    ApiAttempt& a = AttemptFor(&attempts, c.api);
+    if (!a.backend && a.why.empty()) a.backend = NewBackend(c.api, &a.why);
+    if (!a.why.empty()) {
+      trails.push_back(Trail(c, a.why));
+    } else {
+      std::string why;
+      const int err = a.backend->Create(api_, handle_, c.renderer,
+                                        &render_ctx_, &why);
+      a.asked = true;
+      if (err >= 0) {
+        backend_reason_ =
+            std::string(a.backend->wire_name()) + " (" +
+            SanitizeReasonField(a.backend->RendererName(api_, render_ctx_)) +
+            ") on " + SanitizeReasonField(a.backend->device_name());
+        // The trails so far are exactly the candidates ranked before it.
+        if (!trails.empty()) backend_reason_ += "; " + JoinTrails(trails);
+        render_backend_ = std::move(a.backend);
+        break;
+      }
+      // A device that failed to initialise fails every renderer on it the
+      // same way; only a failed mpv_render_context_create is logged.
+      if (a.backend->device_failed()) {
+        a.why = why;
+      } else {
+        log_(CreateFailedLog(c, api_.error_string(err)));
+      }
+      trails.push_back(Trail(c, why));
+    }
+    if (UsedLater(candidates, i, c.api)) continue;
+    // The api's last candidate failed: its device goes before the next api
+    // is tried.
+    if (a.asked && a.api == "vulkan")
+      log_("mpv_kit: Vulkan backend unavailable (" + JoinTrails(trails) +
+           "), falling back to software rendering");
+    a.backend.reset();
   }
-  if (!ok) {
-    std::unique_ptr<RenderBackend> software =
-        CreateSoftwareBackend(interop_->SoftwareIsBgra());
-    std::string why;
-    const int err = software->Create(api_, handle_, "sw", &render_ctx_, &why);
-    ok = err >= 0;
-    if (ok) {
-      render_backend_ = std::move(software);
-    } else {
-      log_(std::string("mpv_kit: software backend failed: ") +
-           api_.error_string(err));
-      trails.push_back("software/sw unavailable: " + why);
-    }
-    if (ok) {
-      backend_reason_ = "software (sw) on cpu";
-      if (!trails.empty()) backend_reason_ += "; " + JoinTrails(trails);
-    } else {
-      // No head when every candidate failed: the reason is the trails only.
-      backend_reason_ = JoinTrails(trails);
-      return false;
-    }
+  if (!render_backend_) {
+    // No head when every candidate failed: the reason is the trails only.
+    backend_reason_ = JoinTrails(trails);
+    return false;
   }
 
   api_.render_context_set_update_callback(render_ctx_, &OnMpvUpdate, this);
@@ -226,38 +269,25 @@ bool VideoRenderer::Start(RendererChoice choice) {
   return true;
 }
 
-bool VideoRenderer::StartVulkan(RendererChoice choice,
-                                std::vector<std::string>* trails) {
-  const std::vector<const char*> renderers = VulkanRenderers(choice);
-  // One device for every renderer of this choice; destroyed on return
-  // unless a render context was created on it.
-  std::unique_ptr<RenderBackend> vulkan =
-      CreateVulkanBackend(interop_->vulkan());
-  for (const char* renderer : renderers) {
-    std::string why;
-    const int err = vulkan->Create(api_, handle_, renderer, &render_ctx_, &why);
-    if (vulkan->device_failed()) {
-      // No device, so every Vulkan renderer of this choice is unavailable for
-      // the same reason.
-      AddVulkanTrails(renderers, why, trails);
-      return false;
-    }
-    if (err >= 0) {
-      const std::string name =
-          SanitizeReasonField(vulkan->RendererName(api_, render_ctx_));
-      // The trails so far are exactly the renderers ranked before this one.
-      backend_reason_ = "vulkan (" + name + ") on " +
-                        SanitizeReasonField(vulkan->device_name());
-      if (!trails->empty()) backend_reason_ += "; " + JoinTrails(*trails);
-      render_backend_ = std::move(vulkan);
-      return true;
-    }
-    log_(std::string("mpv_kit: ") + renderer + " unavailable: " +
-         api_.error_string(err));
-    trails->push_back(std::string("vulkan/") + renderer + " unavailable: " +
-                      why);
+std::unique_ptr<RenderBackend> VideoRenderer::NewBackend(const char* api,
+                                                         std::string* why) {
+  if (std::unique_ptr<RenderBackend> platform = interop_->CreateBackend(api))
+    return platform;
+  if (std::strcmp(api, "software") == 0)
+    return CreateSoftwareBackend(interop_->SoftwareIsBgra());
+  if (std::strcmp(api, "vulkan") == 0) {
+    if (VulkanInterop* vulkan = interop_->vulkan())
+      return CreateVulkanBackend(vulkan);
+    const char* reason = interop_->interopReason();
+    *why = reason ? "platform interop unavailable: " +
+                        SanitizeReasonField(reason)
+                  : "platform has no Vulkan interop";
+    return nullptr;
   }
-  return false;
+  // A candidate api neither the platform nor the built-ins provide; no
+  // Phase 12 chain names one.
+  *why = std::string("platform has no ") + api + " backend";
+  return nullptr;
 }
 
 void VideoRenderer::OnMpvUpdate(void* self) {

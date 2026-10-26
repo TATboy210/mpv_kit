@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "mpv_api.h"
 
@@ -23,6 +24,31 @@ namespace mpv_kit {
 /// What a frame handed to the platform texture carries: a shared GPU image
 /// (Frame::platform) or CPU pixels (Frame::pixels).
 enum class Backend { kVulkan, kSoftware };
+
+/// Renderer requested by the API user. Every choice except kSoftware falls
+/// back to the software backend when Vulkan cannot be used.
+enum class RendererChoice {
+  kAuto,     // gpu-next, then gpu
+  kGpuNext,  // libplacebo's renderer only
+  kGpu,      // mpv's older gl_video renderer only
+  kSoftware, // MPV_RENDER_API_TYPE_SW
+};
+
+/// One entry of the candidate chain VideoRenderer::Start tries in order
+/// (docs/adr/0004-render-backend-reporting.md, Decision 5): a graphics API
+/// ("vulkan", "software", or a platform backend's wire name) and the mpv
+/// renderer on it ("gpu-next", "gpu", "sw").
+struct BackendCandidate {
+  const char* api;
+  const char* renderer;
+};
+
+/// The chain for [choice] without platform backends:
+///   kAuto     vulkan/gpu-next, vulkan/gpu, software/sw
+///   kGpuNext  vulkan/gpu-next, software/sw
+///   kGpu      vulkan/gpu, software/sw
+///   kSoftware software/sw
+std::vector<BackendCandidate> DefaultCandidates(RendererChoice choice);
 
 /// GPU completion of one render target.
 enum class WaitResult { kOk, kTimeout, kDeviceLost };

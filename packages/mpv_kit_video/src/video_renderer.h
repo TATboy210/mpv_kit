@@ -22,15 +22,6 @@
 
 namespace mpv_kit {
 
-/// Renderer requested by the API user. Every choice except kSoftware falls
-/// back to the software backend when Vulkan cannot be used.
-enum class RendererChoice {
-  kAuto,     // gpu-next, then gpu
-  kGpuNext,  // libplacebo's renderer only
-  kGpu,      // mpv's older gl_video renderer only
-  kSoftware, // MPV_RENDER_API_TYPE_SW
-};
-
 /// Parses the method channel spelling ("auto", "gpu-next", "gpu",
 /// "software"); unknown values mean kAuto.
 RendererChoice ParseRendererChoice(const std::string& name);
@@ -82,6 +73,19 @@ class Interop {
   /// gave back (its GPU queue depth); see VideoRenderer's quarantine.
   /// Clamped to [1, VideoRenderer::kMaxQuarantine].
   virtual int CompositorLatency() const { return 2; }
+  /// Candidates VideoRenderer::Start tries for [choice], in order. A
+  /// platform adds or removes one entry to add or roll back a backend;
+  /// no platform overrides this in Phase 12.
+  virtual std::vector<BackendCandidate> BackendCandidates(
+      RendererChoice choice) const {
+    return DefaultCandidates(choice);
+  }
+  /// The platform's own backend for [api] (a native API of Phase 14/15),
+  /// or nullptr for the built-in "vulkan" and "software" backends.
+  virtual std::unique_ptr<RenderBackend> CreateBackend(const char* api) {
+    (void)api;
+    return nullptr;
+  }
 };
 
 /// Owns rendering for one mpv instance.
@@ -97,7 +101,8 @@ class VideoRenderer {
   VideoRenderer& operator=(const VideoRenderer&) = delete;
 
   /// Creates the render context and starts the render thread. Tries the
-  /// requested Vulkan renderer(s), then software. False if nothing works.
+  /// candidates of Interop::BackendCandidates(choice) in order (requested
+  /// Vulkan renderer(s), then software). False if nothing works.
   bool Start(RendererChoice choice);
 
   /// ICC profile for color management (gpu-next / gpu), applied on the
@@ -127,8 +132,9 @@ class VideoRenderer {
   void ApplyIccProfile();
   void Emit(const char* kind, const std::string& msg = {});
   void SkipFrame();
-  // Appends one reason trail per candidate that failed (ADR 0004).
-  bool StartVulkan(RendererChoice choice, std::vector<std::string>* trails);
+  // The backend for one candidate api, or nullptr with *why (the reason
+  // trail's text) when this platform cannot provide it.
+  std::unique_ptr<RenderBackend> NewBackend(const char* api, std::string* why);
   int PickBackBuffer();
   void FreeRetiredIfDone();
 
