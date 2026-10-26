@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-08-PLAN.md
-last_updated: "2026-10-26T20:09:00.058Z"
+stopped_at: Completed 12-09-PLAN.md
+last_updated: "2026-10-26T22:41:50.869Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 42df617c7a8ed028eca44481ca593db3cf3649d1
+state_head: 0479f4f2b8252eb196c70ea43f2c66a30bd9bbe0
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -101,6 +101,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P06 | 130 min | 2 tasks | 5 files |
 | Phase 12 P07 | 3h 0m | 5 tasks | 13 files |
 | Phase 12 P08 | 47 min | 3 tasks | 22 files |
+| Phase 12 P09 | 147 min | 4 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,10 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-07 follow-up (user decision "a"): ring-7 fallback after a resize clears retired_front_ before the retry and logs the failed ring (7); regression test is the new golden_vk_fallback (frozen five files untouched); RED f9b559f local, GREEN de9dcc5 CI-gated
 - [Phase 12]: 12-08: post-fix pre-move reference on RTX 4060: D-05 soak resolved-by-fix (pre-fix 0/100 exit 79 both switches -> post-fix 100/100 exit 0 both switches), attributed to the 12-06+12-07 change set, not isolated; 12-12 compares against 'pre-move reference (after fix)', never the pre-fix section
 - [Phase 12]: 12-08: resize-front reference is inconclusive 1/5 (round 2 StateError no-1280x720-resize after 30 s, process alive), user-accepted; rendered 4K 600 s pass (drops 0/0) stays the reference despite manual window interaction; cycles RSS +66.8/+80.8 MiB per 100 accepted; go to 12-09
+- [Phase 12]: Retire-twice use after destroy fixed before the RenderBackend move (user decision "a"): retired_front_ reset at the top of the resize block (d63d655), with vk and sw retire-twice goldens
+- [Phase 12]: RenderBackend::Create returns the mpv_render_context_create result; device_failed() gives every remaining candidate of that api the same trail; backend() is frame_kind(), kSoftware without a backend
+- [Phase 12]: Candidate chain is data (DefaultCandidates, Interop::BackendCandidates / CreateBackend); no platform overrides in Phase 12
+- [Phase 12]: 12-09 final hosted CI gate on 0479f4f deferred by the user ("做好推送即可，CI 验收不着急")
 
 ### Pending Todos
 
@@ -233,8 +238,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T20:09:00.001Z
-Stopped at: Completed 12-08-PLAN.md
+Last session: 2026-10-26T22:41:50.820Z
+Stopped at: Completed 12-09-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
