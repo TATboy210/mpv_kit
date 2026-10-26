@@ -74,7 +74,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
-**Plans:** 9/12 plans executed（9 waves）
+**Plans:** 10/12 plans executed（9 waves）
 
 Plans:
 **Wave 1**
@@ -99,7 +99,7 @@ Plans:
 - [x] 12-09-PLAN.md — RenderBackend 纯搬迁（SoftwareBackend → VulkanRenderBackend → 候选链数据化）
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 12-10-PLAN.md — 插件 wire_name 出口 + 原生 MPV_KIT_VIDEO_API 严格开关
+- [x] 12-10-PLAN.md — 插件 wire_name 出口 + 原生 MPV_KIT_VIDEO_API 严格开关
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 12-11-PLAN.md — report_swap / render_context_free 渲染线程亲和性 + 释放契约文档 + 真实插件 soak 段
@@ -190,7 +190,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. RenderBackend Seam | v3.0 | 9/12 | In Progress | - |
+| 12. RenderBackend Seam | v3.0 | 10/12 | In Progress | - |
 | 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |

@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-09-PLAN.md
-last_updated: "2026-10-26T22:41:50.869Z"
+stopped_at: Completed 12-10-PLAN.md
+last_updated: "2026-10-26T23:08:29.370Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 0479f4f2b8252eb196c70ea43f2c66a30bd9bbe0
+state_head: 598d2878b84b84f15cd657d3758b1d080cc9ec66
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 10 of 12
+Plan: 11 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -102,6 +102,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P07 | 3h 0m | 5 tasks | 13 files |
 | Phase 12 P08 | 47 min | 3 tasks | 22 files |
 | Phase 12 P09 | 147 min | 4 tasks | 10 files |
+| Phase 12 P10 | 19 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,10 @@ Recent decisions affecting current work:
 - [Phase 12]: RenderBackend::Create returns the mpv_render_context_create result; device_failed() gives every remaining candidate of that api the same trail; backend() is frame_kind(), kSoftware without a backend
 - [Phase 12]: Candidate chain is data (DefaultCandidates, Interop::BackendCandidates / CreateBackend); no platform overrides in Phase 12
 - [Phase 12]: 12-09 final hosted CI gate on 0479f4f deferred by the user ("做好推送即可，CI 验收不着急")
+- [Phase 12]: 12-10: plugins report backend from VideoRenderer::wire_name(); render_init details carry the trails on all three platforms
+- [Phase 12]: 12-10: MPV_KIT_VIDEO_API forced run also drops the software fallback of a gpu-next/gpu request (ADR 0004 example); excluded why unchanged
+- [Phase 12]: 12-10: Windows reads MPV_KIT_VIDEO_API with _dupenv_s (getenv is C4996 under /WX); other platforms std::getenv
+- [Phase 12]: 12-10: both hosted CI gates (eec251c, 598d287) deferred by the user; RBE-07/RBE-08 stay Pending until they are ok
 
 ### Pending Todos
 
@@ -208,6 +213,7 @@ None yet.
 - （已解决）12-07 finding: use after destroy in the 8K ring-7 fallback after a resize. Fixed in de9dcc5 (user decision "a"), regression golden video_renderer_golden_vk_fallback, CI gate ok on de9dcc5; see 12-07-SUMMARY "Follow-up: 8K ring fallback"
 - 12-08 open finding (route to 12-12 or a separate diagnostic): resize-front round 2 - a fresh second controller never gets a 1280x720 resize within 30 s (likely estimated-vf-fps never > 0); candidate link: d05 part-2 pixel probe always before-first-frame/fpsAtProbe null pre- and post-fix, so a second controller in the process may never receive presented frames
 - 12-09 plan text is stale: it references pending_front_ and a deferred publish gate that 12-07 f77378f removed (publish gate is now a synchronous wait after render, depth 1); 12-09 must move the current gate as-is
+- 12-10 hosted CI gates pending (deferred by user): Task 1 eec251c and Task 2 598d287; commands in 12-10-SUMMARY deviation 6; RBE-07/RBE-08 to be marked complete once both are ok
 
 ## Deferred Items
 
@@ -238,8 +244,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T22:41:50.820Z
-Stopped at: Completed 12-09-PLAN.md
+Last session: 2026-10-26T23:08:11.150Z
+Stopped at: Completed 12-10-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
