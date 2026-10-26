@@ -27,3 +27,10 @@ sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=4031
 sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=flutter-plugin.yml run=40315269051 conclusion=success
 sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=native-verify.yml run=40315268784 conclusion=success
 sha=a9ea9025304d40eb00feefd5b7b03feb74d96541 workflow=flutter-plugin.yml run=40315269051 conclusion=success
+note sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 run=40327855409 cancelled_by=orchestrator cause=infra job='linux (ubuntu-24.04)' step='Install dependencies' stuck 46 min (prior run 36 s); other 7 build jobs success
+rerun sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=native-verify.yml run=40327855409 attempt=2 reason=infra
+sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=native-verify.yml run=40327855409 conclusion=
+sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=flutter-plugin.yml run=40327854823 conclusion=success
+sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=native-verify.yml run=40327855409 conclusion=success
+sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=flutter-plugin.yml run=40327854823 conclusion=success
+gate plan=12-06 task=2 sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 native-verify=40327855409 attempt=2 flutter-plugin=40327854823 result=CI-GATE-ok gate_rc=0 expectations=jobs-success:integration-test,reason-grammar-regex:ubuntu|windows|macos recorded_by=12-07
