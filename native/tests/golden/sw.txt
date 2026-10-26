@@ -1,0 +1,36 @@
+# Golden traces of the software renderer path (video_renderer_golden_sw).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from reading video_renderer.cc;
+# they change only in reviewed commits (see 12-05-PLAN.md prohibitions).
+#
+# Line vocabulary:
+#   start ok backend=<b> reason="<r>"   Start() result, backend(), backend_reason()
+#   create-attempts <api>[,...]         render_context_create calls in order
+#   event <kind> [<msg>]                EventFn (render thread)
+#   render buf=<b> frame=<n> WxH <fmt>  successful software render: buffer ordinal
+#                                       within the size generation, frame number
+#                                       written into its first pixel
+#   render buf=<b> WxH <fmt> err=<e>    failed software render
+#   render skip                         SKIP_RENDERING
+#   acquire index=<i> WxH frame=<n>     AcquireFront() and the frame number read
+#                                       from its pixels
+#   quiesce renders=<n> skips=<n> swaps=<n>  totals once idle (renders include
+#                                       skips and failures; swaps must equal renders)
+#   teardown frees=<n>                  render_context_free calls after destruction
+
+[sw-requested-basic]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+render buf=1 frame=2 64x36 rgb0
+acquire index=1 64x36 frame=2
+render buf=2 frame=3 64x36 rgb0
+acquire index=2 64x36 frame=3
+render buf=3 frame=4 64x36 rgb0
+acquire index=3 64x36 frame=4
+quiesce renders=4 skips=0 swaps=4
+teardown frees=1
