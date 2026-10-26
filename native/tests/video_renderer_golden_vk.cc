@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -49,6 +50,11 @@ constexpr golden::Ms kPastPresentTimeout{60};
 // How long the test lets the render thread sit in a timeline wait before it
 // looks: well inside VulkanContext's 1 s GPU timeout.
 constexpr golden::Ms kGateObserve{100};
+// VulkanContext::WaitImage gives the GPU 1 s before it reports a timeout.
+constexpr long long kGpuTimeoutMs = 1000;
+// Frames each ring-rotation scenario renders: two full turns of a 5 ring,
+// almost two of a 7 ring.
+constexpr int kRotationFrames = 12;
 
 // --- Scenario context --------------------------------------------------------
 
@@ -199,6 +205,55 @@ void Teardown(Run& run, Rig& rig) {
                 " live-images=" + std::to_string(Images().live()));
 }
 
+long long ElapsedMs(golden::Clock::time_point from,
+                    golden::Clock::time_point to) {
+  return std::chrono::duration_cast<golden::Ms>(to - from).count();
+}
+
+/// 64x36, the first frame plus three more, each taken by the compositor.
+void FourFrames(Run& run, Rig& rig) {
+  rig.renderer->SetSize(64, 36);
+  rig.interop.WaitFrameReady(1);
+  Sync(run);
+  Acquire(run, rig);
+  for (int i = 0; i < 3; i++) {
+    NextFrame(rig);
+    Sync(run);
+    Acquire(run, rig);
+  }
+}
+
+/// Renders kRotationFrames frames at 64x36 that complete at once, each
+/// taken by the compositor right after it was published, and checks every
+/// render against a model of the compositor: it may still sample the frame
+/// it holds and the `quarantine` frames it held before, so a render never
+/// targets one of the last `quarantine` + 1 acquired images.
+void Rotate(Run& run, Rig& rig, int quarantine) {
+  std::deque<int> acquired;  // serials, newest first
+  auto check = [&](const std::vector<std::string>& lines) {
+    static const std::string kRender = "render serial=";
+    for (const std::string& l : lines) {
+      if (l.compare(0, kRender.size(), kRender) != 0) continue;
+      const int serial = std::atoi(l.c_str() + kRender.size());
+      for (size_t i = 0; i < acquired.size() && i <= size_t(quarantine); i++)
+        if (acquired[i] == serial)
+          run.Invariant("render into serial=" + std::to_string(serial) +
+                        ", acquired " + std::to_string(i) +
+                        " acquisition(s) ago (quarantine " +
+                        std::to_string(quarantine) + ")");
+    }
+  };
+  rig.renderer->SetSize(64, 36);
+  rig.interop.WaitFrameReady(1);
+  check(Sync(run));
+  acquired.push_front(SerialOf(Acquire(run, rig)));
+  for (int i = 1; i < kRotationFrames; i++) {
+    NextFrame(rig);
+    check(Sync(run));
+    acquired.push_front(SerialOf(Acquire(run, rig)));
+  }
+}
+
 // --- Scenarios ---------------------------------------------------------------
 
 // Publish gate: a frame becomes the front (what AcquireFront returns) only
@@ -238,6 +293,165 @@ void VkPublishGate(Run& run) {
   Teardown(run, rig);
 }
 
+// Backend reasons on the Vulkan path (ADR 0004 grammar): every candidate
+// ranked before the winner leaves one trail, in chain order.
+void VkReasons(Run& run) {
+  struct Case {
+    const char* name;
+    RendererChoice choice;
+    bool accept_device;  // FakeVulkanInterop::AcceptDevice
+    int gpu_next_err;    // render_context_create result; 0: success
+    int gpu_err;
+    const char* info;    // what get_info(VULKAN_RENDERER) reports
+    int info_err;
+  };
+  const Case cases[] = {
+      {"gpu-next-create-fails", RendererChoice::kAuto, true,
+       MPV_ERROR_UNSUPPORTED, 0, "gpu", 0},
+      {"both-creates-fail", RendererChoice::kAuto, true,
+       MPV_ERROR_UNSUPPORTED, MPV_ERROR_VO_INIT_FAILED, "gpu-next", 0},
+      {"device-not-shareable", RendererChoice::kAuto, false, 0, 0,
+       "gpu-next", 0},
+      {"get-info-fails", RendererChoice::kAuto, true, 0, 0, "gpu-next",
+       MPV_ERROR_NOT_IMPLEMENTED},
+      {"gpu-next-only-fails", RendererChoice::kGpuNext, true,
+       MPV_ERROR_UNSUPPORTED, 0, "gpu-next", 0},
+  };
+  for (const Case& c : cases) {
+    // A fresh renderer per case; none is alive across the reset.
+    Fake().Reset();
+    Images().Reset();
+    run.trace.Add(std::string("case ") + c.name);
+    if (c.gpu_next_err)
+      Fake().SetCreateResult(MPV_RENDER_API_TYPE_VULKAN, "gpu-next",
+                             c.gpu_next_err);
+    if (c.gpu_err)
+      Fake().SetCreateResult(MPV_RENDER_API_TYPE_VULKAN, "gpu", c.gpu_err);
+    Fake().SetInfoRenderer(c.info, c.info_err);
+    Rig rig(2, c.accept_device);
+    Start(run, rig, c.choice);
+    Teardown(run, rig);
+  }
+}
+
+// Ring rotation under the compositor quarantine: latency 2 -> ring 5.
+void VkRingQ2(Run& run) {
+  Rig rig(2);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  Rotate(run, rig, 2);
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
+// Ring rotation under the compositor quarantine: latency 4 -> ring 7.
+void VkRingQ4(Run& run) {
+  Rig rig(4);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  Rotate(run, rig, 4);
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
+// A frame whose GPU work never completes: the render thread gives up after
+// VulkanContext's 1 s timeout, reports gpu_timeout, backs off 100 ms and
+// retries on its own; the GPU is back by then, the retry succeeds and the
+// renderer reports `recovered`. No mpv frame triggers the retry: one that
+// arrived during the backoff would only be skipped.
+void VkGpuTimeout(Run& run) {
+  // Expected render-to-retry interval from the golden (1 s timeout + the
+  // first backoff); the measured one must lie in [expected - 5 ms,
+  // expected + slack] and is only printed on failure.
+  const std::string expected_line =
+      golden::ExpectedLine(run.expected, run.name, "retry-ms ");
+  const long long expected_ms =
+      expected_line.empty() ? -1 : std::atoll(expected_line.c_str() + 9);
+  Rig rig(2);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  Fake().SetSignalMode(SignalMode::kNever);
+  rig.renderer->SetSize(64, 36);
+  Fake().WaitNoted("event gpu_timeout gpu timeout",
+                   golden::Ms(kGpuTimeoutMs + run.slack_ms) +
+                       golden::kWaitTimeout);
+  // The GPU finishes after all; later renders complete at once.
+  Fake().SetSignalMode(SignalMode::kImmediate);
+  Fake().SignalPending();
+  rig.interop.WaitFrameReady(1);
+  Sync(run);
+  const std::vector<golden::Clock::time_point> times = Fake().render_times();
+  const long long measured =
+      times.size() >= 2 ? ElapsedMs(times[0], times[1]) : -1;
+  if (expected_ms > 0 && measured >= expected_ms - 5 &&
+      measured <= expected_ms + run.slack_ms) {
+    run.trace.Add(expected_line);
+  } else {
+    std::printf("GOLDEN timing scenario=%s: expected %s (slack %d ms), "
+                "measured retry-ms %lld\n",
+                run.name.c_str(), expected_line.c_str(), run.slack_ms,
+                measured);
+    run.trace.Add("retry-ms " + std::to_string(measured));
+  }
+  Acquire(run, rig);
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
+// 8K on a small GPU: the full ring (latency 4 -> 7 images) does not fit.
+// The 6th CreateImage fails, the images already created are destroyed,
+// and the renderer retries once with ring 5 / quarantine 2 instead of
+// dropping to software; the rotation then follows quarantine 2.
+void VkRingFallback(Run& run) {
+  Rig rig(4);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  rig.vk.FailCreate(6);
+  Rotate(run, rig, 2);
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
+// Retire-on-resize: after a reallocation the old generation's front image
+// stays on screen (AcquireFront returns it) until the first new-size frame
+// is published, and is destroyed exactly once after quarantine + 1 further
+// acquisitions. The new-size render is held inside the fake to observe the
+// reallocated-but-unpublished window.
+void VkRetireOnResize(Run& run) {
+  Rig rig(2);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  FourFrames(run, rig);
+  Fake().HoldRenders(true);
+  const int want = rig.interop.frame_ready() + 1;
+  rig.renderer->SetSize(32, 18);
+  Fake().WaitRenderHeld();
+  run.trace.Add(Fake().DrainAsync());
+  const mpv_kit::Frame old = Acquire(run, rig);
+  if (old.index != -2) run.Invariant("expected the retired frame (index -2)");
+  Fake().HoldRenders(false);
+  rig.interop.WaitFrameReady(want);
+  Sync(run);
+  Acquire(run, rig);
+  for (int i = 0; i < 3; i++) {
+    NextFrame(rig);
+    Sync(run);
+    Acquire(run, rig);
+  }
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
+// The renderer is destroyed while the old generation's front image is
+// still retired (reallocated, the new size rendered, never acquired):
+// every image is destroyed exactly once.
+void VkTeardownWhileRetired(Run& run) {
+  Rig rig(2);
+  if (!Start(run, rig, RendererChoice::kGpuNext)) return;
+  FourFrames(run, rig);
+  const golden::Counters before = Fake().counters();
+  rig.renderer->SetSize(32, 18);
+  Fake().WaitRenders(before.renders - before.skips + 1);
+  Sync(run);
+  Quiesce(run);
+  Teardown(run, rig);
+}
+
 struct ScenarioDef {
   const char* name;
   void (*fn)(Run&);
@@ -245,6 +459,13 @@ struct ScenarioDef {
 
 const ScenarioDef kScenarios[] = {
     {"vk-publish-gate", VkPublishGate},
+    {"vk-reasons", VkReasons},
+    {"vk-ring-q2", VkRingQ2},
+    {"vk-ring-q4", VkRingQ4},
+    {"vk-gpu-timeout", VkGpuTimeout},
+    {"vk-ring-fallback", VkRingFallback},
+    {"vk-retire-on-resize", VkRetireOnResize},
+    {"vk-teardown-while-retired", VkTeardownWhileRetired},
 };
 
 /// Whether this runner can run the Vulkan scenarios at all: a renderer

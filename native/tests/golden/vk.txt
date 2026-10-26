@@ -40,3 +40,285 @@ destroy serial=3
 destroy serial=4
 destroy serial=5
 teardown frees=1 live-images=0
+
+# ADR 0004 reasons on the Vulkan path: one trail per candidate ranked
+# before the winner, in chain order; get_info failing names the renderer
+# "unknown renderer"; an explicit gpu-next leaves only its own trail.
+[vk-reasons]
+case gpu-next-create-fails
+start ok backend=vulkan reason="vulkan (gpu) on <device>; vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18"
+create-attempts vulkan/gpu-next,vulkan/gpu
+teardown frees=1 live-images=0
+case both-creates-fail
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; vulkan/gpu unavailable: mpv_render_context_create: fake error -15"
+create-attempts vulkan/gpu-next,vulkan/gpu,sw
+teardown frees=1 live-images=0
+case device-not-shareable
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: no Vulkan 1.3 device shareable with the compositor; vulkan/gpu unavailable: no Vulkan 1.3 device shareable with the compositor"
+create-attempts sw
+teardown frees=1 live-images=0
+case get-info-fails
+start ok backend=vulkan reason="vulkan (unknown renderer) on <device>"
+create-attempts vulkan/gpu-next
+teardown frees=1 live-images=0
+case gpu-next-only-fails
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18"
+create-attempts vulkan/gpu-next,sw
+teardown frees=1 live-images=0
+
+# Latency 2 -> ring 5: never render into the front / in-use image or the
+# two quarantined ones; the lowest free slot wins, so four slots rotate.
+[vk-ring-q2]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+event resize 64x36
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+quiesce renders=12 skips=0 swaps=12
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=4
+destroy serial=5
+teardown frees=1 live-images=0
+
+# Latency 4 -> ring 7 (Windows): four quarantined images, six slots rotate.
+[vk-ring-q4]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+create serial=6 64x36
+create serial=7 64x36
+event resize 64x36
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+render serial=5 64x36
+acquire index=4 64x36 serial=5
+render serial=6 64x36
+acquire index=5 64x36 serial=6
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+render serial=5 64x36
+acquire index=4 64x36 serial=5
+render serial=6 64x36
+acquire index=5 64x36 serial=6
+quiesce renders=12 skips=0 swaps=12
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=4
+destroy serial=5
+destroy serial=6
+destroy serial=7
+teardown frees=1 live-images=0
+
+# The GPU never finishes frame 1: after the 1 s timeout gpu_timeout (frame
+# consumed, nothing published), 100 ms backoff, then the automatic retry
+# into the same image succeeds and reports recovered.
+[vk-gpu-timeout]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+event resize 64x36
+render serial=1 64x36
+event gpu_timeout gpu timeout
+render serial=1 64x36
+event recovered
+retry-ms 1100
+acquire index=0 64x36 serial=1
+quiesce renders=2 skips=0 swaps=2
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=4
+destroy serial=5
+teardown frees=1 live-images=0
+
+# Ring 7 does not fit (6th image fails): the five created are destroyed,
+# ring 5 is allocated instead and rotates under quarantine 2.
+[vk-ring-fallback]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+create failed 64x36
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=4
+destroy serial=5
+create serial=6 64x36
+create serial=7 64x36
+create serial=8 64x36
+create serial=9 64x36
+create serial=10 64x36
+event resize 64x36
+render serial=6 64x36
+acquire index=0 64x36 serial=6
+render serial=7 64x36
+acquire index=1 64x36 serial=7
+render serial=8 64x36
+acquire index=2 64x36 serial=8
+render serial=9 64x36
+acquire index=3 64x36 serial=9
+render serial=6 64x36
+acquire index=0 64x36 serial=6
+render serial=7 64x36
+acquire index=1 64x36 serial=7
+render serial=8 64x36
+acquire index=2 64x36 serial=8
+render serial=9 64x36
+acquire index=3 64x36 serial=9
+render serial=6 64x36
+acquire index=0 64x36 serial=6
+render serial=7 64x36
+acquire index=1 64x36 serial=7
+render serial=8 64x36
+acquire index=2 64x36 serial=8
+render serial=9 64x36
+acquire index=3 64x36 serial=9
+quiesce renders=12 skips=0 swaps=12
+destroy serial=6
+destroy serial=7
+destroy serial=8
+destroy serial=9
+destroy serial=10
+teardown frees=1 live-images=0
+
+# Resize 64x36 -> 32x18 after four frames: the old front (serial 4) is the
+# one image that survives the reallocation, AcquireFront keeps returning it
+# until the first 32x18 frame is published, and it is destroyed exactly
+# once after quarantine + 1 (3) acquisitions of the new generation.
+[vk-retire-on-resize]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+event resize 64x36
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=5
+create serial=6 32x18
+create serial=7 32x18
+create serial=8 32x18
+create serial=9 32x18
+create serial=10 32x18
+event resize 32x18
+render serial=6 32x18
+acquire index=-2 64x36 serial=4
+acquire index=0 32x18 serial=6
+render serial=7 32x18
+acquire index=1 32x18 serial=7
+render serial=8 32x18
+acquire index=2 32x18 serial=8
+destroy serial=4
+render serial=9 32x18
+acquire index=3 32x18 serial=9
+quiesce renders=8 skips=0 swaps=8
+destroy serial=6
+destroy serial=7
+destroy serial=8
+destroy serial=9
+destroy serial=10
+teardown frees=1 live-images=0
+
+# Teardown with a retired generation: the new ring, then the retired old
+# front, each image destroyed exactly once.
+[vk-teardown-while-retired]
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+create serial=1 64x36
+create serial=2 64x36
+create serial=3 64x36
+create serial=4 64x36
+create serial=5 64x36
+event resize 64x36
+render serial=1 64x36
+acquire index=0 64x36 serial=1
+render serial=2 64x36
+acquire index=1 64x36 serial=2
+render serial=3 64x36
+acquire index=2 64x36 serial=3
+render serial=4 64x36
+acquire index=3 64x36 serial=4
+destroy serial=1
+destroy serial=2
+destroy serial=3
+destroy serial=5
+create serial=6 32x18
+create serial=7 32x18
+create serial=8 32x18
+create serial=9 32x18
+create serial=10 32x18
+event resize 32x18
+render serial=6 32x18
+quiesce renders=5 skips=0 swaps=5
+destroy serial=6
+destroy serial=7
+destroy serial=8
+destroy serial=9
+destroy serial=10
+destroy serial=4
+teardown frees=1 live-images=0
