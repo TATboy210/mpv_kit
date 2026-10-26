@@ -10,6 +10,11 @@ import 'package:flutter/services.dart';
 import 'package:mpv_kit/mpv_kit.dart';
 
 /// 实际生效的渲染后端。
+///
+/// [vulkan] 表示 GPU 零拷贝后端：Vulkan，或平台原生图形 API（如 D3D11、
+/// OpenGL），真实 API 是 [MpvVideoController.reason] 的第一个 token；
+/// [software] 表示 CPU 渲染。公共 API 冻结，本枚举不增减值（ADR 0004，
+/// docs/adr/0004-render-backend-reporting.md）。
 enum MpvVideoBackend { vulkan, software }
 
 /// Renderer to request from [MpvVideoController.create].
@@ -141,6 +146,12 @@ final class MpvVideoController {
   static final _live = <int, MpvVideoController>{};
   static var _handlerInstalled = false;
 
+  /// Private plugin wire names of the GPU zero-copy backends, all reported
+  /// as [MpvVideoBackend.vulkan]; the real graphics API is the first token
+  /// of [reason] (ADR 0004). Matched exactly — no case folding, no prefix
+  /// match — so any other value stays a protocol break (STAB-04).
+  static const _gpuWireNames = {'d3d11', 'opengl', 'vulkan'};
+
   /// Environment variable that overrides the requested renderer (`auto`,
   /// `gpu-next`, `gpu`, `software`): a way to diagnose driver problems in a
   /// shipped app without code changes.
@@ -180,7 +191,8 @@ final class MpvVideoController {
     // to silently downgrade to software.
     if (textureId is! int ||
         backendName is! String ||
-        (backendName != 'vulkan' && backendName != 'software') ||
+        (!_gpuWireNames.contains(backendName) &&
+            backendName != 'software') ||
         (reason != null && reason is! String)) {
       // The native context already exists. Release it when the response
       // named a texture; without a usable textureId there is no handle to
@@ -197,9 +209,9 @@ final class MpvVideoController {
     final controller = MpvVideoController._(
       player,
       textureId,
-      backendName == 'vulkan'
-          ? MpvVideoBackend.vulkan
-          : MpvVideoBackend.software,
+      backendName == 'software'
+          ? MpvVideoBackend.software
+          : MpvVideoBackend.vulkan,
       reason is String ? reason : '',
     );
     try {
@@ -348,8 +360,12 @@ final class MpvVideoController {
   /// 生效的后端。
   final MpvVideoBackend backend;
 
-  /// Backend description: renderer and device (`vulkan (gpu-next) on ...`)
-  /// or why software rendering is used.
+  /// Backend description in the ADR 0004 grammar:
+  /// `head *( "; " trail )`, where the head is `api (renderer) on device`
+  /// and every trail is `api/renderer unavailable: why` for a candidate that
+  /// was tried before the winner. The first token is the real graphics API,
+  /// for example `vulkan (gpu-next) on <device>` or
+  /// `software (sw) on cpu; vulkan/gpu-next unavailable: <why>`.
   final String reason;
 
   final _events = StreamController<MpvVideoEvent>.broadcast();

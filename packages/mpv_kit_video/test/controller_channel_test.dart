@@ -407,6 +407,106 @@ void main() {
     expect(sizes.single.arguments, containsPair('width', 1200));
   }, skip: skip != null);
 
+  test('create maps every private GPU wire name to MpvVideoBackend.vulkan',
+      () async {
+    // ADR 0004: d3d11/opengl/vulkan are private wire names of the GPU
+    // zero-copy backend; the real API stays visible as reason's first token.
+    for (final name in const ['d3d11', 'opengl', 'vulkan']) {
+      final reason = '$name (gpu-next) on test';
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method == 'create') {
+          return {'textureId': 7, 'backend': name, 'reason': reason};
+        }
+        return null;
+      });
+      final c = await MpvVideoController.create(player);
+      final got = <MpvVideoEventKind>[];
+      final sub = c.events.listen((e) => got.add(e.kind));
+      await nativeEvent('resize', '1x1');
+      await pumpEventQueue();
+      expect(c.backend, MpvVideoBackend.vulkan, reason: name);
+      expect(c.reason, reason);
+      expect(got, isNot(contains(MpvVideoEventKind.softwareFallback)),
+          reason: name);
+      expect(got, contains(MpvVideoEventKind.resize), reason: name);
+      await sub.cancel();
+      await c.dispose();
+    }
+  }, skip: skip);
+
+  test('unknown backend wire names still throw render_init and release the '
+      'texture', () async {
+    // Exact match only: case variants, empty, unknown APIs and garbage are
+    // protocol breaks (STAB-04), never a silent downgrade.
+    for (final name in const ['D3D11', '', 'metal', 'garbage']) {
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method == 'create') {
+          return {'textureId': 7, 'backend': name, 'reason': 'x'};
+        }
+        return null;
+      });
+      await expectLater(
+        MpvVideoController.create(player),
+        throwsA(isA<PlatformException>().having((e) => e.code, 'code',
+            'render_init')),
+        reason: name,
+      );
+    }
+    expect(calls.where((m) => m.method == 'dispose'), hasLength(4));
+  }, skip: skip);
+
+  test('concurrent creates validate their own responses independently',
+      () async {
+    final player2 = Player(options: const {'vo': 'null', 'ao': 'null'});
+    try {
+      final first = player.mpv.handle.address;
+      // Hold both create calls until both are in flight, so the two
+      // validations really overlap.
+      final bothArrived = Completer<void>();
+      var creates = 0;
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method != 'create') return null;
+        if (++creates == 2) bothArrived.complete();
+        await bothArrived.future;
+        final handle = (call.arguments as Map)['handle'];
+        return handle == first
+            ? {
+                'textureId': 7,
+                'backend': 'd3d11',
+                'reason': 'd3d11 (gpu) on test',
+              }
+            : {'textureId': 8, 'backend': 'garbage', 'reason': 'x'};
+      });
+      final goodFuture = MpvVideoController.create(player);
+      final badFuture = MpvVideoController.create(player2);
+      final c = await goodFuture.timeout(const Duration(seconds: 5));
+      await expectLater(
+        badFuture,
+        throwsA(isA<PlatformException>().having((e) => e.code, 'code',
+            'render_init')),
+      );
+      expect(c.textureId, 7);
+      expect(c.backend, MpvVideoBackend.vulkan);
+      expect(c.reason, 'd3d11 (gpu) on test');
+      // Only the malformed response's texture was released.
+      final disposed = calls.where((m) => m.method == 'dispose').toList();
+      expect(disposed, hasLength(1));
+      expect((disposed.single.arguments as Map)['textureId'], 8);
+      // The healthy controller still receives its events.
+      final got = <MpvVideoEventKind>[];
+      final sub = c.events.listen((e) => got.add(e.kind));
+      await nativeEvent('resize', '640x360');
+      await pumpEventQueue();
+      expect(got, [MpvVideoEventKind.resize]);
+      await sub.cancel();
+    } finally {
+      await player2.dispose();
+    }
+  }, skip: skip);
+
   test('renderer names round-trip', () {
     for (final r in MpvVideoRenderer.values) {
       expect(MpvVideoRenderer.tryParse(r.wireName), r);
