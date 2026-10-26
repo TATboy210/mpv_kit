@@ -1,0 +1,31 @@
+# 12-08 RBE-01 post-fix, pre-move reference run ledger (same format as baseline-runs.txt; one run= line per attempt, never overwritten)
+postfix_sha=59281b332a5ff0158be95b4083b0099df38c1600
+baseline_sha=5de4f8f5c3cb6901c048924ef9dd50060802b3d9
+native_diff_vs_baseline=packages/mpv_kit_video/src/video_renderer.cc,packages/mpv_kit_video/src/video_renderer.h,packages/mpv_kit_video/src/vulkan_backend.cc
+native_diff_origin=12-06 (reason grammar), 12-07 f77378f (publish gate: Vulkan frame waits for its GPU work before publish, pipeline depth 2->1), 12-07 e3ef12b (AllocateRing retired-slot fix), 12-07 de9dcc5 (8K ring fallback after resize)
+golden_freeze_pre=5/5 OK at 2026-10-26T19:23:29Z
+ci_gate_postfix=de9dcc50c1553db3ccf3571ce4d2c33b893c1bff CI-GATE-ok (native-verify 40374558485, flutter-plugin 40374558495; ci-runs.txt); HEAD 59281b332a5ff0158be95b4083b0099df38c1600 is docs-only after it
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+flutter_engine=Engine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (3 days ago) • 2026-10-23 02:13:38.000Z
+dart=Tools • Dart 3.13.7 • DevTools 2.60.0
+libmpv=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll
+libmpv_sha256=a21d4797891aa164fbc3477d6ceb8abfac9496818a849b5c67afa80236a6376c
+libmpv_bundle=v0.1.0-dev.3 windows-x64
+host=MINGW64_NT-10.0-26300 3.6.7-fb42d713.x86_64
+same_as_baseline=flutter/engine/dart/libmpv_sha256/gpu+driver identical to baseline-runs.txt header
+method=12-04 commands verbatim (docs/perf/renderbackend-seam-baseline.md Reproduce); 12-04 gate (desktop unlocked, fg not LockApp/LogonUI, no cs2/dota2/csgo or new steamapps\common exe, no non-dwm process >=10% GPU engine, 0 stray example, native path == postfix_sha) before EVERY run; sampler v2 every 2 s (observational only); read-only forensics after every run; TaskBarHero+UnityCrashHandler64 known background (user-accepted in 12-04)
+run_line_format=run=<name> attempt=<n> sha=<sha> start=<UTC> end=<UTC> exit=<code> benches=<n> complete=<n> result=<...> [extra tokens] desktop_pre=<...> desktop_post=<...> last_marker=<verbatim last trace line, rest of line>
+compare_format=compare <run> before=<12-04 measured-record result>/<last_marker or key values> after=<this result>/<rounds>/<seconds or key values>
+gate run=identity-on attempt=1 result=pass at=2026-10-26T19:23:56Z desktop=unlocked(logonui=0,fg=17565508,fg_valid=1,fg_proc=TaskBarHero,fg_title="TaskBarHero",inputdesk=1,lastStandby=507@2026-10-26T19:18:08Z) gpu_gate=ok games=TaskBarHero+UnityCrashHandler64 new_games=none heavy=none gpu_engine_users=TaskBarHero:1.4,dwm:0.5 nvsmi=23 %/2326 MiB stray_example=0 native_equal_to_postfix=yes
+identity_on_command=cd example && MPV_KIT_LIBMPV_PATH=<libmpv> PATH="$PATH:<libdir>" timeout 75 flutter run -d windows --enable-impeller
+identity_on_start=2026-10-26T19:24:05Z
+identity_on_end=2026-10-26T19:25:21Z
+identity_on_rc=124
+identity_on_matches=1
+identity_on_app_ran=55 stats lines; mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+identity_on_stray_example_after=0
+gate run=d05-on attempt=1 result=pass at=2026-10-26T19:25:46Z desktop=unlocked(logonui=0,fg=17565508,fg_valid=1,fg_proc=TaskBarHero,fg_title="TaskBarHero",inputdesk=1,lastStandby=507@2026-10-26T19:18:08Z) gpu_gate=ok games=TaskBarHero+UnityCrashHandler64 new_games=none heavy=none gpu_engine_users=TaskBarHero:1.4 nvsmi=24 %/2346 MiB stray_example=0 native_equal_to_postfix=yes
+run=d05-on attempt=1 sha=59281b332a5ff0158be95b4083b0099df38c1600 start=2026-10-26T19:25:58Z end=2026-10-26T19:27:42Z exit=0 benches=13 complete=1 result=failed switch=--enable-impeller stages=preflight,soak-start,soak-progress(x10),complete soak_rounds_done=100 rounds=100 seconds=41.898 parts=oneFrame:ok,uhd4k:ok,soak:ok result_source=BENCH-complete(_classify) result_reason=pixelProbe-nonBlack-not-met pixelProbe_nonBlackRatio=0.0 pixelProbe_size=1266x683 probeTiming=before-first-frame fpsAtProbe=null timePosDelta=0.0 renderErrors=0 gpuTimeouts=0 recovered=0 deviceLost=false idleSoak=0 resizeEvents=2 rss_start=288473088 rss_end=505192448 part1Ms=231 part2Ms=2011 longestMountMs=32154 timePosAtSoakEnd=74.57 exit_meaning=flutter-test-passed(log:'All tests passed!';the test only asserts result in pass/inconclusive/failed) stray_pre=0 stray_post=0 trace_lines=1601 fg_samples=47 fg_during=mpv_kit_example:34,TaskBarHero:13 games_during=TaskBarHero+UnityCrashHandler64:47 example_running_samples=35 example_window_visible_not_iconic=34 example_iconic=0 example_foreground=34/35 example_first_visible=2026-10-26T19:26:28.770Z example_fg_first=2026-10-26T19:26:28.770Z example_fg_last=2026-10-26T19:27:40.292Z example_rect_first=1280x720@10,10 example_rect_last=1280x720@10,10 example_rect_distinct=1 desktop_pre=unlocked(logonui=0,fg=17565508,fg_valid=1,fg_proc=TaskBarHero,fg_title="TaskBarHero",inputdesk=1,lastStandby=507@2026-10-26T19:18:08Z) desktop_post=unlocked(logonui=0,fg=17565508,fg_valid=1,fg_proc=TaskBarHero,fg_title="TaskBarHero",inputdesk=1,lastStandby=507@2026-10-26T19:18:08Z) post_gpu_gate=ok games=TaskBarHero+UnityCrashHandler64 new_games=none heavy=none gpu_engine_users=TaskBarHero:2.0 last_marker=t=74677 round=100 step=round-end rss=504320000 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=102
+forensics=none run=d05-on attempt=1 checked=2026-10-26T19:27:53Z crashdumps_since_start=0 (newest CrashDumps entry TaskBarHero.exe.15664.dmp 2026-10-18) application_1000_1001_last20min=0 named_mpv_kit_example.exe=no named_flutter_windows.dll=no attribution=n/a(run completed)
+compare d05-on before=aborted/t=32928 round=1 step=dispose-begin (12-04 a3; 0 rounds done, exit 79) after=failed/100/41.898 (exit 0; soak ok, last_marker round=100 step=round-end; failed only on pixelProbe nonBlackRatio 0.0 before-first-frame, the same 0.0 reading 12-04 recorded at soak-start) rss_growth before=n/a(no complete line) after=+216719360 B(+206.7 MiB) over part1+part2+100 rounds
