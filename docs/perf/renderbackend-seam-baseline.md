@@ -7,7 +7,9 @@
 **Code state:** `baseline_sha` = `5de4f8f5c3cb6901c048924ef9dd50060802b3d9`. At this SHA, `packages/mpv_kit_video/src` and `packages/mpv_kit_video/windows` are byte-identical to `3a5f450`, which is the native render path before the refactor and before the 12-07 fix. The paths were still unchanged after the last run (`native_unchanged_during_runs=yes`).
 **Machine-readable record:** `.planning/phases/12-renderbackend-seam/evidence/baseline-runs.txt`. Raw logs and traces are in the same directory under `baseline-*.log` and `baseline-*.trace`.
 
-Every group ran exactly once (`attempt=1`). No group was re-run, because every first attempt printed its preflight BENCH line. Each run was started only after the previous flutter process had exited. Before and after every run, the count of stray `mpv_kit_example.exe` processes was 0 and the desktop probe read `unlocked`: no LogonUI in the session, a non-zero foreground window, an openable input desktop, and no Modern Standby entry after the 10:00:59Z exit. The probe cannot show whether the example window was visible and uncovered; that condition is confirmed manually.
+**Status (2026-10-26T10:47:53Z): attempt 2 incomplete, 3 of 6 groups recorded.** At the Task 3 checkpoint the user invalidated all six `attempt=1` runs as `run-conditions-unverified`. Nobody had watched the example window during the runs, and the desktop probe ran only before and after each run, with the foreground window being TaskBarHero rather than the example. The attempt-1 lines stay in `baseline-runs.txt` unchanged, each followed by an appended `invalid run=… attempt=1` line. Their rows are kept under [Invalidated attempts](#invalidated-attempts-attempt-1). Attempt 2 runs the same commands at HEAD `dcdbc5cd8f15cca1408e6186fe4770cad48b99da`, where the native render path is still byte-identical to `3a5f450`. Its files carry an `-a2` suffix. During each run, a background PowerShell sampler records every 2 s the foreground window's owning process and title, plus whether the `mpv_kit_example` main window is visible, iconic, or foreground (`baseline-*-a2.fg.txt`). The sampler only observes and never moves, resizes or focuses a window. Attempt 2 halted after `cycles-on`: `cs2.exe` (Counter-Strike 2) started at 10:47:02Z, during that run, and was still running afterwards. That breaks the "no other GPU program" condition, so `cycles-off`, `resize-front-on` and `resize-front-off` were not started.
+
+Attempt 1 (invalidated): every group ran once. Each run was started only after the previous flutter process had exited. Before and after every run, the count of stray `mpv_kit_example.exe` processes was 0 and the desktop probe read `unlocked`: no LogonUI in the session, a non-zero foreground window, an openable input desktop, and no Modern Standby entry after the 10:00:59Z exit. The probe cannot show whether the example window was visible and uncovered.
 
 ## Reproduce
 
@@ -36,7 +38,7 @@ MPV_KIT_SMOKE_DIAG=resize-front MPV_KIT_SMOKE_TRACE="$E/baseline-resize-front-on
 MPV_KIT_SMOKE_DIAG=resize-front MPV_KIT_SMOKE_TRACE="$E/baseline-resize-front-off.trace" MPV_KIT_LIBMPV_PATH="$LIB/libmpv-2.dll" PATH="$PATH:$LIB" $F test integration_test/impeller_smoke_test.dart -d windows --no-enable-impeller | tee "$E/baseline-resize-front-off.log"
 ```
 
-The exit code is the flutter `PIPESTATUS[0]`. Every trace file is truncated when its run's first marker is written.
+The exit code is the flutter `PIPESTATUS[0]`. Every trace file is truncated when its run's first marker is written. Attempt 2 runs the same commands, with `-a2` inserted before the extension in every log and trace path (`baseline-d05-on-a2.log` and so on). Its foreground samples go to `baseline-<group>-<switch>-a2.fg.txt`.
 
 ## Engine renderer identity
 
@@ -45,9 +47,26 @@ The exit code is the flutter `PIPESTATUS[0]`. Every trace file is truncated when
 | on  | `flutter run -d windows --enable-impeller`    | 124 (timeout end, normal) | **1** | `embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).` |
 | off | `flutter run -d windows --no-enable-impeller` | 124 (timeout end, normal) | **0** | the app ran (56 `mpv_kit_example:` stats lines, `mpv_kit_video: vulkan (gpu-next)`), so 0 is not a launch failure |
 
-`flutter test` does not forward this engine line. For the six harness runs, the switch is therefore established by the command-line flag, and the identity table above shows that the flag takes effect.
+`flutter test` does not forward this engine line. For the six harness runs, the switch is therefore established by the command-line flag, and the identity table above shows that the flag takes effect. Attempt 2 reuses these attempt-1 identity runs (`attempt2_identity` in `baseline-runs.txt`). The plan requires an identity per switch, not per attempt, and the engine log line does not depend on whether the window is visible.
 
-## Results
+## Results (attempt 2, measured record)
+
+| group | switch | engine renderer lines | exit | result | key values | fg_during (2 s samples) | example window |
+|-------|--------|-----------------------|------|--------|------------|-------------------------|----------------|
+| d05 | on  | 1 | 79 | aborted | parts oneFrame=ok, uhd4k=ok; soak round 1 started, 0 rounds done; pixelProbe nonBlackRatio 0.0 (**872x385**, before-first-frame, fpsAtProbe null, timePosDelta 0.0); renderErrors 0, deviceLost 0; last_marker `t=32939 round=1 step=dispose-begin`; forensics none | TaskBarHero:17, mpv_kit_example:13, steamwebhelper:1 | visible and not iconic in 16/16 samples with a window; foreground 13/18 running samples, continuously from 10:43:22Z to 10:43:46Z (end of run) |
+| d05 | off | 0 | 79 | aborted | parts oneFrame=ok, uhd4k=ok; soak round 1 started, 0 rounds done; pixelProbe nonBlackRatio 0.0 (1266x683, before-first-frame, fpsAtProbe null, timePosDelta 0.0); renderErrors 0, deviceLost 0; last_marker `t=33036 round=1 step=dispose-begin`; forensics none | WindowsTerminal:20, msedge:9, mpv_kit_example:3 | visible and not iconic in 17/17; foreground only 10:45:36Z–10:45:40Z (3/17), WindowsTerminal foreground from 10:45:42Z to the end |
+| cycles | on  | 1 | 0 | complete (**GPU condition not met**) | completed 100/100, failures 0, controllers 101, renderErrors 0, deviceLost false; RSS 286420992 → 343982080 (+57561088 B, +54.9 MiB); `cs2.exe` started 10:47:02Z during the run | TaskBarHero:20, cs2:3, steamwebhelper:1, explorer:1 | visible and not iconic in 10/10 with a window; never foreground (0/12); cs2 foreground from 10:47:23Z |
+| cycles | off | 0 | — | not run | halted: `cs2.exe` running (precondition unmet) | — | — |
+| resize-front | on  | 1 | — | not run | halted: `cs2.exe` running (precondition unmet) | — | — |
+| resize-front | off | 0 | — | not run | halted: `cs2.exe` running (precondition unmet) | — | — |
+
+"foreground" is `GetForegroundWindow` equal to the example's `MainWindowHandle`. A window that is not in the foreground can still be uncovered, and the sampler cannot tell whether another window overlaps it. The user, who watched the window, confirms that. In d05-on, the part-2 pixel probe read an 872x385 surface where every other d05 run read 1266x683. The record does not establish why.
+
+Attempt 2 compared with attempt 1, for the groups recorded so far: d05 aborted again under both switches, with the same shape and the same last marker (`round=1 step=dispose-begin`, 18 ms (on) and 24 ms (off) after `round-start`), exit 79 and no crash forensics. cycles-on again completed 100/100 with 0 failures (+54.9 MiB, against +60.2 MiB in attempt 1). That run had a concurrent GPU program, though.
+
+## Invalidated attempts (attempt 1)
+
+All six rows are `invalid … reason=run-conditions-unverified`, and none is a measured record. They are kept because the protocol never deletes an attempt.
 
 | group | switch | engine renderer lines | exit | result | key values |
 |-------|--------|-----------------------|------|--------|------------|
@@ -60,7 +79,7 @@ The exit code is the flutter `PIPESTATUS[0]`. Every trace file is truncated when
 
 "engine renderer lines" is the identity count for that switch, taken from the `flutter run` logs. cycles mode has no pass rule (it never calls `_classify`), so a run that reports every cycle is classified `complete` rather than `pass`. The cycles RSS growth is the in-process `ProcessInfo.currentRss` difference across 100 cycles. It is not comparable to the 50-cycle, 5-warm-up figure in `2026-10-24-baseline.md`.
 
-### Raw BENCH / DIAG lines
+### Raw BENCH / DIAG lines (attempt 1, invalidated)
 
 The `dart` field of the preflight line is the same in every run: `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "windows_x64"`. Each preflight line names `mpvKitPath` = the bundle above, and the log prints `mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)`.
 
@@ -73,6 +92,8 @@ The `dart` field of the preflight line is the same in every run: `3.13.7 (stable
 All four aborted runs end the same way in the log: `did not complete [E]`, `Some tests failed.`, `No tests were found.`, then a listener-cleanup `PathNotFoundException`.
 
 ## Soak abort
+
+The analysis below was written from attempt 1, which is now invalidated. In attempt 2, both d05 runs reproduced the same shape and the same last marker (see the attempt-2 table), and resize-front was not yet re-run.
 
 **Reproduced: yes, under both switches, with the same shape.**
 

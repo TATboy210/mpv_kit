@@ -1,0 +1,9 @@
+trace-start utc=2026-10-26T10:46:06.516374Z
+t=33012 round=1 step=round-start rss=441065472 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33016 round=1 step=unmount-begin rss=441143296 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33019 round=1 step=unmount-done rss=441151488 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33022 round=1 step=frame-after-unmount-begin rss=441159680 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33027 round=1 step=frame-after-unmount-done rss=441368576 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33030 round=1 step=set-size-begin rss=441368576 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33034 round=1 step=set-size-done rss=441503744 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=33036 round=1 step=dispose-begin rss=441503744 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2

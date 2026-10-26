@@ -1,0 +1,25 @@
+2026-10-26T10:46:38.955Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:41.096Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:43.115Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:45.159Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:47.188Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:49.203Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:51.227Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:53.255Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:55.295Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:57.318Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:46:59.348Z fg=TaskBarHero title="TaskBarHero" example=absent
+2026-10-26T10:47:01.367Z fg=explorer title="Program Manager" example=absent
+2026-10-26T10:47:03.406Z fg=steamwebhelper title="Æô¶¯ÖÐ..." example=absent
+2026-10-26T10:47:05.428Z fg=TaskBarHero title="TaskBarHero" example=running,nowindow
+2026-10-26T10:47:07.471Z fg=TaskBarHero title="TaskBarHero" example=running,nowindow
+2026-10-26T10:47:09.491Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:11.533Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:13.561Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:15.585Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:17.607Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:19.632Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:21.660Z fg=TaskBarHero title="TaskBarHero" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:23.696Z fg=cs2 title="Counter-Strike 2" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:25.736Z fg=cs2 title="Counter-Strike 2" example=running,visible=1,iconic=0,isfg=0
+2026-10-26T10:47:27.765Z fg=cs2 title="Counter-Strike 2" example=running,visible=1,iconic=0,isfg=0
