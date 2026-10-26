@@ -103,6 +103,9 @@ class VideoRenderer {
   /// Creates the render context and starts the render thread. Tries the
   /// candidates of Interop::BackendCandidates(choice) in order (requested
   /// Vulkan renderer(s), then software). False if nothing works.
+  /// MPV_KIT_VIDEO_API, read once per call, restricts the candidates to one
+  /// api and the requested renderer(s), with no fallback; the others become
+  /// `excluded by MPV_KIT_VIDEO_API=<value>` trails (ADR 0004, Decision 4).
   bool Start(RendererChoice choice);
 
   /// ICC profile for color management (gpu-next / gpu), applied on the

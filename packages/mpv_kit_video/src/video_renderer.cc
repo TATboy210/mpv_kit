@@ -1,6 +1,7 @@
 #include "video_renderer.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 
 namespace mpv_kit {
@@ -38,11 +39,82 @@ std::string Trail(const BackendCandidate& c, const std::string& why) {
   return std::string(c.api) + "/" + c.renderer + " unavailable: " + why;
 }
 
-/// Whether a candidate after [i] uses [api] (its backend is kept for it).
-bool UsedLater(const std::vector<BackendCandidate>& candidates, size_t i,
-               const char* api) {
+/// Whether a candidate after [i] that may be tried uses [api] (its backend
+/// is kept for it).
+bool UsedLater(const std::vector<BackendCandidate>& candidates,
+               const std::vector<bool>& allowed, size_t i, const char* api) {
   for (size_t k = i + 1; k < candidates.size(); k++) {
-    if (std::strcmp(candidates[k].api, api) == 0) return true;
+    if (allowed[k] && std::strcmp(candidates[k].api, api) == 0) return true;
+  }
+  return false;
+}
+
+// --- MPV_KIT_VIDEO_API (docs/adr/0004-render-backend-reporting.md,
+// Decision 4) --------------------------------------------------------------
+
+/// Longest accepted value; also the length of its echo.
+constexpr size_t kMaxForcedApiLength = 16;
+
+/// The forced graphics API of one Start.
+struct ForcedApi {
+  bool active = false;  // set and non-empty
+  // The value when it matches ^[a-z0-9-]{1,16}$; empty (matches no
+  // candidate) when it is malformed.
+  std::string api;
+  // The value as it appears in trails and the log: characters outside
+  // [a-z0-9-] become '?', cut to kMaxForcedApiLength characters.
+  std::string echo;
+};
+
+/// The raw value of MPV_KIT_VIDEO_API, read at each call; "" when unset.
+std::string ForcedApiValue() {
+#ifdef _WIN32
+  // The CRT's getenv is deprecated on Windows (C4996, an error under the
+  // plugin's /WX); _dupenv_s reads the same environment.
+  char* value = nullptr;
+  size_t size = 0;
+  if (_dupenv_s(&value, &size, "MPV_KIT_VIDEO_API") != 0 || !value) return {};
+  std::string out(value);
+  std::free(value);
+  return out;
+#else
+  const char* value = std::getenv("MPV_KIT_VIDEO_API");
+  return value ? value : "";
+#endif
+}
+
+ForcedApi ParseForcedApi(const std::string& value) {
+  ForcedApi forced;
+  if (value.empty()) return forced;  // empty means unset
+  forced.active = true;
+  bool valid = value.size() <= kMaxForcedApiLength;
+  for (size_t i = 0; i < value.size(); i++) {
+    const char c = value[i];
+    const bool ok =
+        (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
+    valid = valid && ok;
+    if (i < kMaxForcedApiLength) forced.echo += ok ? c : '?';
+  }
+  if (valid) forced.api = value;
+  return forced;
+}
+
+/// Whether a forced run may try [c]: its api is the forced one and its
+/// renderer was requested (kAuto requests all of them). The software
+/// candidate of a gpu-next or gpu request is only that request's fallback,
+/// so it is excluded as well: a forced run never falls back.
+bool ForcedAllows(const ForcedApi& forced, RendererChoice choice,
+                  const BackendCandidate& c) {
+  if (forced.api.empty() || forced.api != c.api) return false;
+  switch (choice) {
+    case RendererChoice::kAuto:
+      return true;
+    case RendererChoice::kGpuNext:
+      return std::strcmp(c.renderer, "gpu-next") == 0;
+    case RendererChoice::kGpu:
+      return std::strcmp(c.renderer, "gpu") == 0;
+    case RendererChoice::kSoftware:
+      return std::strcmp(c.renderer, "sw") == 0;
   }
   return false;
 }
@@ -215,6 +287,16 @@ bool VideoRenderer::Start(RendererChoice choice) {
   ring_size_ = quarantine_count_ + 3;
   const std::vector<BackendCandidate> candidates =
       interop_->BackendCandidates(choice);
+  // Read once per Start: a later change affects only later renderers.
+  const ForcedApi forced = ParseForcedApi(ForcedApiValue());
+  if (forced.active)
+    log_("mpv_kit: MPV_KIT_VIDEO_API=" + forced.echo +
+         " restricts rendering to that API");
+  std::vector<bool> allowed(candidates.size(), true);
+  if (forced.active) {
+    for (size_t i = 0; i < candidates.size(); i++)
+      allowed[i] = ForcedAllows(forced, choice, candidates[i]);
+  }
   // Every candidate ranked before the winner leaves one trail, in chain
   // order; an explicit software request has none.
   std::vector<std::string> trails;
@@ -222,6 +304,12 @@ bool VideoRenderer::Start(RendererChoice choice) {
   attempts.reserve(candidates.size());  // AttemptFor's references stay valid
   for (size_t i = 0; i < candidates.size() && !render_backend_; i++) {
     const BackendCandidate& c = candidates[i];
+    if (!allowed[i]) {
+      // Excluded before its backend exists: no device, no create.
+      trails.push_back(
+          Trail(c, "excluded by MPV_KIT_VIDEO_API=" + forced.echo));
+      continue;
+    }
     ApiAttempt& a = AttemptFor(&attempts, c.api);
     if (!a.backend && a.why.empty()) a.backend = NewBackend(c.api, &a.why);
     if (!a.why.empty()) {
@@ -250,10 +338,10 @@ bool VideoRenderer::Start(RendererChoice choice) {
       }
       trails.push_back(Trail(c, why));
     }
-    if (UsedLater(candidates, i, c.api)) continue;
+    if (UsedLater(candidates, allowed, i, c.api)) continue;
     // The api's last candidate failed: its device goes before the next api
-    // is tried.
-    if (a.asked && a.api == "vulkan")
+    // is tried. A forced run tries no other api, so it does not fall back.
+    if (a.asked && a.api == "vulkan" && !forced.active)
       log_("mpv_kit: Vulkan backend unavailable (" + JoinTrails(trails) +
            "), falling back to software rendering");
     a.backend.reset();
