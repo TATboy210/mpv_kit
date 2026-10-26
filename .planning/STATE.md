@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-10-26T07:05:23.230Z"
+stopped_at: Completed 12-05-PLAN.md
+last_updated: "2026-10-26T08:09:38.136Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: c0548e747a736139d3ace8b16c2645ac78aa34f3
+state_head: 87a7a2970d70abcfc5f366ebb5344d8e56467082
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -96,6 +96,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P01 | 42 min | 3 tasks | 5 files |
 | Phase 12 P02 | 21min | 2 tasks | 6 files |
 | Phase 12 P03 | 33min | 2 tasks | 6 files |
+| Phase 12 P05 | 53min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 12]: Private wire set is exactly d3d11|opengl|vulkan|software, case-sensitive; anything else stays render_init
 - [Phase 12]: reason grammar: head = api (renderer) on device; trail = api/renderer unavailable: why; ';'->',' and control chars->space in device/why
 - [Phase 12]: MPV_KIT_VIDEO_API: native, per-create, ^[a-z0-9-]{1,16}$, no fallback (software included), intersects renderer selection
+- [Phase 12]: 12-05: software golden expectations derived from reading video_renderer.cc matched the renderer on the first run (MSVC local + six CI jobs); no expectation adjusted
+- [Phase 12]: 12-05: sw-resize-retries-at-once resizes after 5 failures (1600 ms) so immediate retry is distinguishable under the 1000 ms sanitizer slack
+- [Phase 12]: 12-05: RBE-02 stays Pending until 12-07 adds the Vulkan publish-gating scenarios
 
 ### Pending Todos
 
@@ -210,8 +214,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T07:05:23.182Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-10-26T08:09:38.086Z
+Stopped at: Completed 12-05-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
