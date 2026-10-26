@@ -32,6 +32,17 @@
 // Golden files are only ever read. There is no update/regenerate mode: an
 // expectation changes only by editing the golden file in a reviewed commit.
 // Golden binaries exit 0 on pass, 1 on mismatch/invariant/timeout/usage.
+//
+// Vulkan path (12-07): FakeVulkanInterop creates real images on the real
+// Vulkan device the renderer picked (lavapipe / MoltenVK / a GPU), so the
+// real VulkanContext and its timeline semaphore run unmodified; only mpv's
+// GPU work is faked (FakeMpv signals the timeline value of each render, at
+// once or when the test says so). The platform objects behind
+// SharedImage::platform live in a registry that is never freed (FakeImages),
+// so a second destroy or a use after destroy is recorded as an invariant
+// violation (`DOUBLE DESTROY` / `USE AFTER DESTROY`) instead of being
+// undefined behaviour in the test itself: the defect turns red on plain
+// builds too, and the sanitizer job checks the production code around it.
 #pragma once
 
 #include <algorithm>
@@ -41,6 +52,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -55,6 +67,7 @@
 #include <mpv/render_vk.h>
 
 #include "video_renderer.h"
+#include "vulkan_backend.h"
 
 namespace golden {
 
@@ -122,6 +135,122 @@ inline void* FindParam(mpv_render_param* params, mpv_render_param_type type) {
   return nullptr;
 }
 
+// --- Fake Vulkan images ------------------------------------------------------
+
+/// One shared image FakeVulkanInterop created; SharedImage::platform points
+/// at it.
+struct FakeImage {
+  int serial = 0;  // CreateImage order within the scenario, from 1; 0: none
+  int width = 0, height = 0;
+  VkImage image = VK_NULL_HANDLE;
+  bool destroyed = false;
+};
+
+/// Process-wide registry of fake images. Entries are never freed (a deque
+/// keeps their addresses stable), so a platform pointer the renderer still
+/// holds after DestroyImage points at a readable entry that says so.
+class FakeImages {
+ public:
+  /// Starts a scenario: serials restart at 1, violations are cleared.
+  void Reset() {
+    std::lock_guard<std::mutex> lock(mu_);
+    base_ = images_.size();
+    violations_.clear();
+  }
+
+  void* Add(int width, int height, VkImage image) {
+    std::lock_guard<std::mutex> lock(mu_);
+    FakeImage e;
+    e.serial = static_cast<int>(images_.size() - base_) + 1;
+    e.width = width;
+    e.height = height;
+    e.image = image;
+    images_.push_back(e);
+    return &images_.back();
+  }
+
+  /// Copy of the entry `platform` points at (serial 0 if it is none).
+  FakeImage Entry(const void* platform) {
+    std::lock_guard<std::mutex> lock(mu_);
+    const FakeImage* e = Find(platform);
+    return e ? *e : FakeImage{};
+  }
+
+  /// Marks the entry destroyed; false if it already was (or is unknown).
+  bool MarkDestroyed(const void* platform) {
+    std::lock_guard<std::mutex> lock(mu_);
+    FakeImage* e = Find(platform);
+    if (!e || e->destroyed) return false;
+    e->destroyed = true;
+    return true;
+  }
+
+  /// Newest live entry for a VkImage handle (drivers may reuse handles).
+  FakeImage FindLive(VkImage image) {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto it = images_.rbegin(); it != images_.rend(); ++it)
+      if (it->image == image && !it->destroyed) return *it;
+    return FakeImage{};
+  }
+
+  /// Live images of this scenario (created and not yet destroyed).
+  int live() {
+    std::lock_guard<std::mutex> lock(mu_);
+    int n = 0;
+    for (size_t i = base_; i < images_.size(); i++) n += !images_[i].destroyed;
+    return n;
+  }
+
+  /// An invariant violation; every scenario reports and clears them.
+  void Violation(std::string what) {
+    std::lock_guard<std::mutex> lock(mu_);
+    violations_.push_back(std::move(what));
+  }
+
+  std::vector<std::string> TakeViolations() {
+    std::lock_guard<std::mutex> lock(mu_);
+    std::vector<std::string> out = std::move(violations_);
+    violations_.clear();
+    return out;
+  }
+
+  /// Device of the images; the timeline semaphore FakeMpv signals lives on
+  /// it too (VulkanContext creates both on one VkDevice).
+  void SetDevice(VkDevice device) {
+    std::lock_guard<std::mutex> lock(mu_);
+    device_ = device;
+  }
+
+  VkDevice device() {
+    std::lock_guard<std::mutex> lock(mu_);
+    return device_;
+  }
+
+ private:
+  FakeImage* Find(const void* platform) {
+    for (FakeImage& e : images_)
+      if (&e == platform) return &e;
+    return nullptr;
+  }
+
+  std::mutex mu_;
+  std::deque<FakeImage> images_;
+  size_t base_ = 0;
+  std::vector<std::string> violations_;
+  VkDevice device_ = VK_NULL_HANDLE;
+};
+
+inline FakeImages& Images() {
+  static FakeImages images;
+  return images;
+}
+
+/// When a Vulkan render's timeline value is signalled (its "GPU work"
+/// completes): during the render call, when the test calls
+/// FakeMpv::SignalPending(), or not until then (kNever: the scenario
+/// promises not to signal before the renderer's 1 s wait expired).
+enum class SignalMode { kImmediate, kDeferred, kNever };
+
 // --- FakeMpv -----------------------------------------------------------------
 
 /// Scriptable stand-in for the nine libmpv render symbols. One per process
@@ -148,6 +277,19 @@ class FakeMpv {
     buf_ids_.clear();
     gen_w_ = gen_h_ = frame_counter_ = 0;
     last_buf_ = -1;
+    signal_mode_ = SignalMode::kImmediate;
+    pending_signals_.clear();
+  }
+
+  void SetSignalMode(SignalMode mode) {
+    std::lock_guard<std::mutex> lock(mu_);
+    signal_mode_ = mode;
+  }
+
+  /// Signals every pending timeline value, oldest first; returns how many.
+  int SignalPending() {
+    std::lock_guard<std::mutex> lock(mu_);
+    return SignalLocked();
   }
 
   /// Result of mpv_render_context_create for one API type (and Vulkan
@@ -274,8 +416,21 @@ class FakeMpv {
 
   /// Adds a render-thread line (events go through here).
   void Note(std::string line) {
-    std::lock_guard<std::mutex> lock(mu_);
-    async_.push_back(std::move(line));
+    {
+      std::lock_guard<std::mutex> lock(mu_);
+      async_.push_back(std::move(line));
+    }
+    // WaitNoted may be waiting for exactly this line.
+    cv_.notify_all();
+  }
+
+  /// Waits until `line` is queued (and not yet drained): for render-thread
+  /// lines that no barrier can wait for, e.g. an event raised while the
+  /// render thread sits in a timeline wait and cannot observe a poke.
+  void WaitNoted(const std::string& line, Ms timeout = kWaitTimeout) {
+    WaitUntil(timeout, "line '" + line + "'", [&] {
+      return std::find(async_.begin(), async_.end(), line) != async_.end();
+    });
   }
 
   /// Takes the queued render-thread lines. Only meaningful at a barrier.
@@ -350,14 +505,9 @@ class FakeMpv {
       return 0;
     }
     render_times_.push_back(Clock::now());
-    if (auto* vk = static_cast<const mpv_vulkan_image*>(
-            FindParam(params, MPV_RENDER_PARAM_VULKAN_IMAGE))) {
-      const int err = VulkanTarget(*vk);
-      lock.unlock();
-      cv_.notify_all();
-      return err;
-    }
-    const int err = SoftwareTarget(params);
+    const auto* vk = static_cast<const mpv_vulkan_image*>(
+        FindParam(params, MPV_RENDER_PARAM_VULKAN_IMAGE));
+    const int err = vk ? VulkanTarget(*vk) : SoftwareTarget(params);
     // Hold after the pixels are written: the renderer has reallocated (on a
     // resize) but cannot publish until the render call returns.
     if (hold_) {
@@ -488,11 +638,7 @@ class FakeMpv {
     if (it == buf_ids_.end())
       it = buf_ids_.emplace(pixels, static_cast<int>(buf_ids_.size())).first;
     last_buf_ = it->second;
-    int err = default_render_result_;
-    if (!render_results_.empty()) {
-      err = render_results_.front();
-      render_results_.erase(render_results_.begin());
-    }
+    const int err = TakeRenderResult();
     std::string line = "render buf=" + std::to_string(last_buf_);
     if (err >= 0) {
       const int frame = ++frame_counter_;
@@ -508,13 +654,55 @@ class FakeMpv {
     return err;
   }
 
-  // Vulkan target entry point, reserved for the Vulkan golden (12-07),
-  // which renders into the real shared images. The software golden never
-  // reaches it; if it does, the trace shows it and the render fails.
+  /// Scripted result of the next non-skip render. Called with mu_ held.
+  int TakeRenderResult() {
+    if (render_results_.empty()) return default_render_result_;
+    const int err = render_results_.front();
+    render_results_.erase(render_results_.begin());
+    return err;
+  }
+
+  // Vulkan target: must be a live FakeVulkanInterop image of the announced
+  // size. A successful render queues its timeline value, which "completes
+  // the GPU work" when signalled (SignalMode). Called with mu_ held.
   int VulkanTarget(const mpv_vulkan_image& image) {
-    async_.push_back("render vulkan-image " + std::to_string(image.width) +
-                     "x" + std::to_string(image.height) + " unsupported");
-    return MPV_ERROR_NOT_IMPLEMENTED;
+    const std::string size =
+        std::to_string(image.width) + "x" + std::to_string(image.height);
+    const FakeImage e = Images().FindLive(image.image);
+    if (e.serial == 0 || e.width != image.width || e.height != image.height) {
+      async_.push_back("render vulkan-image " + size + " unknown");
+      return MPV_ERROR_INVALID_PARAMETER;
+    }
+    const int err = TakeRenderResult();
+    std::string line = "render serial=" + std::to_string(e.serial) + " " + size;
+    if (err < 0) line += " err=" + std::to_string(err);
+    async_.push_back(line);
+    if (err >= 0 && image.signal_semaphore) {
+      pending_signals_.emplace_back(image.signal_semaphore, image.signal_value);
+      if (signal_mode_ == SignalMode::kImmediate) SignalLocked();
+    }
+    return err;
+  }
+
+  // Timeline values only move forward: a value at or below the counter (a
+  // later one was signalled first) is already complete. Called with mu_
+  // held.
+  int SignalLocked() {
+    const VkDevice device = Images().device();
+    int n = 0;
+    for (const auto& pending : pending_signals_) {
+      uint64_t current = 0;
+      vkGetSemaphoreCounterValue(device, pending.first, &current);
+      if (pending.second <= current) continue;
+      VkSemaphoreSignalInfo si{};
+      si.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+      si.semaphore = pending.first;
+      si.value = pending.second;
+      vkSignalSemaphore(device, &si);
+      n++;
+    }
+    pending_signals_.clear();
+    return n;
   }
 
   std::mutex mu_;
@@ -540,6 +728,8 @@ class FakeMpv {
   int gen_w_ = 0, gen_h_ = 0;
   int last_buf_ = -1;
   int frame_counter_ = 0;
+  SignalMode signal_mode_ = SignalMode::kImmediate;
+  std::vector<std::pair<VkSemaphore, uint64_t>> pending_signals_;
 };
 
 inline FakeMpv& Fake() {
@@ -607,7 +797,11 @@ class FakeInterop : public mpv_kit::Interop {
   }
 
   void RetainFrame(void* platform) override {
-    (void)platform;
+    // Vulkan path: the compositor would now reference the platform object.
+    const FakeImage e = Images().Entry(platform);
+    if (e.serial != 0 && e.destroyed)
+      Images().Violation("USE AFTER DESTROY serial=" +
+                         std::to_string(e.serial) + " (RetainFrame)");
     std::lock_guard<std::mutex> lock(mu_);
     retains_++;
   }
@@ -638,6 +832,132 @@ class FakeInterop : public mpv_kit::Interop {
   std::condition_variable cv_;
   int frame_ready_ = 0;
   int retains_ = 0;
+};
+
+// --- FakeVulkanInterop -------------------------------------------------------
+
+/// Vulkan platform seam with no compositor behind it: the system loader,
+/// no extra extensions, and plain device-local B8G8R8A8 images. Every
+/// CreateImage/DestroyImage is a render-thread (or teardown) trace line.
+class FakeVulkanInterop : public mpv_kit::VulkanInterop {
+ public:
+  explicit FakeVulkanInterop(bool accept_device = true)
+      : accept_(accept_device) {}
+
+  std::vector<const char*> InstanceExtensions() const override { return {}; }
+  std::vector<const char*> DeviceExtensions() const override { return {}; }
+
+  bool AcceptDevice(VkPhysicalDevice device) override {
+    if (!accept_) return false;
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(device, &props);
+    std::lock_guard<std::mutex> lock(mu_);
+    names_.emplace_back(props.deviceName);
+    return true;
+  }
+
+  /// The `k`-th CreateImage from now (1 = the next one) fails, once.
+  void FailCreate(int k) {
+    std::lock_guard<std::mutex> lock(mu_);
+    fail_in_ = k;
+  }
+
+  /// Names of the devices accepted so far (for NormalizeReason).
+  std::vector<std::string> device_names() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    return names_;
+  }
+
+  bool CreateImage(VkPhysicalDevice pd, VkDevice dev, int width, int height,
+                   mpv_kit::SharedImage* out) override {
+    const std::string size =
+        std::to_string(width) + "x" + std::to_string(height);
+    {
+      std::lock_guard<std::mutex> lock(mu_);
+      if (fail_in_ > 0 && --fail_in_ == 0) {
+        Fake().Note("create failed " + size);
+        return false;
+      }
+    }
+    Images().SetDevice(dev);
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = VK_FORMAT_B8G8R8A8_UNORM;
+    ici.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height),
+                  1};
+    ici.mipLevels = ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = mpv_kit::kSharedImageUsage;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImage image = VK_NULL_HANDLE;
+    if (vkCreateImage(dev, &ici, nullptr, &image) != VK_SUCCESS) {
+      Fake().Note("create vkCreateImage-failed " + size);
+      return false;
+    }
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(dev, image, &req);
+    VkMemoryAllocateInfo mai{};
+    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = DeviceLocalType(pd, req.memoryTypeBits);
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    if (vkAllocateMemory(dev, &mai, nullptr, &memory) != VK_SUCCESS ||
+        vkBindImageMemory(dev, image, memory, 0) != VK_SUCCESS) {
+      if (memory) vkFreeMemory(dev, memory, nullptr);
+      vkDestroyImage(dev, image, nullptr);
+      Fake().Note("create memory-failed " + size);
+      return false;
+    }
+    out->image = image;
+    out->memory = memory;
+    out->format = ici.format;
+    out->width = width;
+    out->height = height;
+    out->platform = Images().Add(width, height, image);
+    Fake().Note("create serial=" +
+                std::to_string(Images().Entry(out->platform).serial) + " " +
+                size);
+    return true;
+  }
+
+  void DestroyImage(VkDevice dev, mpv_kit::SharedImage* img) override {
+    const FakeImage e = Images().Entry(img->platform);
+    if (e.serial == 0) {
+      Fake().Note("destroy unknown-image");
+      Images().Violation("destroy of an image FakeVulkanInterop never created");
+    } else if (!Images().MarkDestroyed(img->platform)) {
+      // The handles are already gone: no second driver call.
+      const std::string what =
+          "DOUBLE DESTROY serial=" + std::to_string(e.serial);
+      Fake().Note(what);
+      Images().Violation(what);
+    } else {
+      vkDestroyImage(dev, img->image, nullptr);
+      vkFreeMemory(dev, img->memory, nullptr);
+      Fake().Note("destroy serial=" + std::to_string(e.serial));
+    }
+    *img = mpv_kit::SharedImage{};
+  }
+
+ private:
+  static uint32_t DeviceLocalType(VkPhysicalDevice pd, uint32_t bits) {
+    VkPhysicalDeviceMemoryProperties mp;
+    vkGetPhysicalDeviceMemoryProperties(pd, &mp);
+    for (uint32_t i = 0; i < mp.memoryTypeCount; i++)
+      if ((bits & (1u << i)) && (mp.memoryTypes[i].propertyFlags &
+                                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+        return i;
+    for (uint32_t i = 0; i < mp.memoryTypeCount; i++)
+      if (bits & (1u << i)) return i;  // a UMA driver without the flag
+    return 0;
+  }
+
+  const bool accept_;
+  mutable std::mutex mu_;
+  std::vector<std::string> names_;
+  int fail_in_ = 0;
 };
 
 // --- Trace and golden files --------------------------------------------------

@@ -72,3 +72,26 @@ golden_sw = executable('video_renderer_golden_sw',
                        dependencies: threads)
 test('video_renderer_golden_sw', golden_sw,
      args: [files('golden/sw.txt'), '--slack-ms=' + slack], timeout: 120)
+
+# Vulkan path: the real VulkanContext on the runner's Vulkan 1.3 device
+# (lavapipe / MoltenVK), images from a fake platform interop. Exits 77
+# (skipped) with `GOLDEN skip:` only when no loader, instance or Vulkan 1.3
+# device exists. volk dlopens the loader by its plain name; Homebrew's
+# libdir is not on macOS's default search path, so the loader's pkg-config
+# libdir is added to the fallback path rather than letting macOS skip.
+golden_vk_env = environment()
+if host_machine.system() == 'darwin'
+  vulkan_libdir = vulkan.get_variable(pkgconfig: 'libdir', default_value: '')
+  if vulkan_libdir != ''
+    golden_vk_env.prepend('DYLD_FALLBACK_LIBRARY_PATH', vulkan_libdir)
+  endif
+endif
+golden_vk = executable('video_renderer_golden_vk',
+                       'video_renderer_golden_vk.cc',
+                       include_directories: [renderer_inc, vulkan_inc],
+                       cpp_args: renderer_defines,
+                       link_with: renderer,
+                       dependencies: threads)
+test('video_renderer_golden_vk', golden_vk,
+     args: [files('golden/vk.txt'), '--slack-ms=' + slack],
+     env: golden_vk_env, timeout: 120)
