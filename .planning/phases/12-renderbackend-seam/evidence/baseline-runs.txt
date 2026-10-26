@@ -1,0 +1,23 @@
+# 12-04 RBE-01 pre-refactor baseline run ledger (one key per line; one run= line per attempt, never overwritten)
+baseline_sha=5de4f8f5c3cb6901c048924ef9dd50060802b3d9
+native_ref=3a5f450
+native_equal_to_ref_at_start=yes
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+flutter_engine=Engine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (3 days ago) • 2026-10-23 02:13:38.000Z
+dart=Tools • Dart 3.13.7 • DevTools 2.60.0
+libmpv=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll
+libmpv_sha256=a21d4797891aa164fbc3477d6ceb8abfac9496818a849b5c67afa80236a6376c
+libmpv_bundle=v0.1.0-dev.3 windows-x64
+host=MINGW64_NT-10.0-26300 3.6.7-fb42d713.x86_64
+precondition_check=2026-10-26T10:15:04Z unlocked(logonui=0,fg=1576814,inputdesk=1,lastStandby=507@2026-10-26T10:00:59Z) gpu_util=31 %
+run_line_format=run=<name> attempt=<n> sha=<sha> start=<UTC> end=<UTC> exit=<code> benches=<n> complete=<n> result=<...> [extra tokens] desktop_pre=<...> desktop_post=<...> last_marker=<verbatim last trace line, rest of line>
+gpu_idle_recheck=2026-10-26T10:16:33Z transient 22-46% / 3.7-4.7GiB burst seen 10:15:04-10:15:16Z, unattributed (gone before per-process counters were read); 20 s resample 0-20% (mostly <=5%), 1.6-2.1GiB; engine users: WindowsTerminal 2.5%, TaskBarHero 2%, dwm 0.7%
+identity_on_command=cd example && MPV_KIT_LIBMPV_PATH=<libmpv> PATH="$PATH:<libdir>" timeout 75 flutter run -d windows --enable-impeller
+identity_on_start=2026-10-26T10:16:36Z
+identity_on_end=2026-10-26T10:17:51Z
+identity_on_rc=124
+identity_on_matches=1
+identity_on_stray_example_after=0
+run=d05-on attempt=1 sha=5de4f8f5c3cb6901c048924ef9dd50060802b3d9 start=2026-10-26T10:18:17Z end=2026-10-26T10:19:18Z exit=79 benches=2 complete=0 result=aborted switch=--enable-impeller stages=preflight,soak-start soak_rounds_started=1 trace_lines=9 pixelProbe_nonBlackRatio=0.0 probeTiming=before-first-frame fpsAtProbe=null exit_meaning=package:test-noTests(log:'No tests were found.') stray_pre=0 stray_post=0 desktop_pre=unlocked(logonui=0,fg=1904558,inputdesk=1,lastStandby=507@2026-10-26T10:00:59Z) desktop_post=unlocked(logonui=0,fg=1904558,inputdesk=1,lastStandby=507@2026-10-26T10:00:59Z) last_marker=t=32862 round=1 step=dispose-begin rss=467562496 resizeEvents=2 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+forensics=none run=d05-on attempt=1 checked=2026-10-26T10:21:31Z crashdumps_since_start=0 (newest CrashDumps entry TaskBarHero.exe.15664.dmp 2026-10-18) application_1000_1001_last20min=0 named_mpv_kit_example.exe=no named_flutter_windows.dll=no attribution=unexplained
