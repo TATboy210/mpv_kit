@@ -96,7 +96,9 @@ jobs:
           dart pub global run coverage:test_with_coverage
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
           # BUILD-02: the committed bundle pins must match the live release.
-          dart run ../../tools/pin_bundles.dart --check
+          # pin_bundles.dart reads packages/mpv_kit_libs/... relative to the
+          # repo root (its usage line), so run it from there in a subshell.
+          (cd "$GITHUB_WORKSPACE" && dart run tools/pin_bundles.dart --check)
           # The `lifecycle` tag is skipped by default in dart_test.yaml, so the
           # concurrent coverage run above never executes the soak. The explicit
           # file-scoped invocation below loads only lifecycle_test.dart, so no

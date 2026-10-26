@@ -44,10 +44,16 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
+      - name: Build example (${{ matrix.target }})
+        # Runs before the locate step: since Flutter 3.47 `flutter pub get`
+        # no longer runs native-assets build hooks, so it is `flutter build`
+        # that makes the mpv_kit_libs hook download the pinned bundle.
+        working-directory: example
+        run: flutter build ${{ matrix.target }} --debug
       - name: Locate the hook-bundle libmpv
         # The mpv_kit_libs build hook downloaded the pinned bundle during
-        # pub get; point the tests at it so the channel tests run for real
-        # instead of silently skipping (ROADMAP phase-6 criterion 3).
+        # the example build; point the tests at it so the channel tests run
+        # for real instead of silently skipping (ROADMAP phase-6 criterion 3).
         shell: bash
         run: |
           lib=$(find .dart_tool/hooks_runner/shared/mpv_kit_libs/build             \( -name 'libmpv-2.dll' -o -name 'libmpv.so.2' -o -name 'libmpv.2.dylib' \)             | head -1)
@@ -64,6 +70,3 @@ jobs:
         run: |
           cd packages/mpv_kit_video && flutter analyze --fatal-infos && flutter test
           cd ../../example && flutter analyze --fatal-infos
-      - name: Build example (${{ matrix.target }})
-        working-directory: example
-        run: flutter build ${{ matrix.target }} --debug

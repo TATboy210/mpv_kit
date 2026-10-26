@@ -1,0 +1,2 @@
+push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none granted_at=2026-10-26T05:32:03Z head_at_grant=2ed9c803f4774d56b98d8ae58f674d73377488d8
+user_reply=push-green-only
