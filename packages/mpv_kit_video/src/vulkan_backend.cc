@@ -368,6 +368,10 @@ bool VulkanContext::AllocateRing(int count, int width, int height,
   retired_.clear();
   if (keep_retired && (keep_retired->image || keep_retired->platform))
     retired_.push_back(std::move(*keep_retired));
+  // SharedImage is a plain aggregate: the move above only copied it, so the
+  // source slot still holds the handles. Clear it so DestroyAll(ring_) below
+  // skips it (its moved-out rule) instead of destroying the retired image.
+  if (keep_retired) *keep_retired = SharedImage{};
   // Destroy the rest of the old ring. Each image is awaited on its own last
   // timeline value: a device-wide vkDeviceWaitIdle would also serialize the
   // decode and present queues for the whole reallocation.
