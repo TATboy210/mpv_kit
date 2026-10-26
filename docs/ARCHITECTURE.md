@@ -49,10 +49,19 @@ Each `MpvVideoController` owns one native `VideoRenderer`
 
 * **Render thread.** `Start()` creates the mpv render context (Vulkan
   gpu-next, then gpu, then software, depending on the requested
-  `MpvVideoRenderer`) and starts a dedicated thread. mpv's update callback
-  only sets a flag and signals a condition variable; the render thread calls
-  `mpv_render_context_update` / `_render` / `_report_swap`. The UI and
-  raster threads never render.
+  `MpvVideoRenderer`; see [RenderBackend seam](#renderbackend-seam)) and
+  starts a dedicated thread. mpv's update callback only sets a flag and
+  signals a condition variable. After `Start()`, every `mpv_render_*` call
+  runs on the render thread: `mpv_render_context_update` / `_render` /
+  `_set_parameter` / `_report_swap`, and finally the removal of the update
+  callback and `mpv_render_context_free`. Only `_create` and `_get_info`
+  run earlier, in `Start()` on the caller's thread, before the render
+  thread exists. The UI and raster threads never call into the render
+  context. render.h allows one `mpv_render_*` call at a time and, for
+  OpenGL, only on the thread whose context is current, so this is what
+  lets an OpenGL backend (Phase 15) work at all. Debug builds assert the
+  render thread at every call site; `video_renderer_affinity_test`
+  (native/tests) checks the same rule from a fake libmpv's call log.
 * **Frame hand-off.** After a frame completes, the platform `Interop`
   marks its Flutter texture dirty (`FrameReady`, called from the render
   thread). When the compositor pulls the texture, `AcquireFront()` returns
@@ -68,10 +77,24 @@ Each `MpvVideoController` owns one native `VideoRenderer`
   instead of drawn, and one redraw happens on the next acquisition. A
   failed frame is retried with exponential backoff (100 ms → 5 s); device
   loss stops rendering for good.
-* **Swap reporting.** `mpv_render_context_report_swap` is reported when the
-  compositor first takes a frame (or after 50 ms without one), so mpv's
-  timing follows actual presentation. The display refresh rate is passed
-  via `display-fps-override`, since the render API has no vsync source.
+* **Swap reporting.** A frame's swap is due when the compositor first
+  takes it (or after 50 ms without one), so mpv's timing follows actual
+  presentation. `AcquireFront()` runs on the raster thread and makes no
+  libmpv call: it only counts the due swap (`swaps_to_report_`, under the
+  renderer lock) and wakes the render thread. The render thread reports
+  every counted swap with `mpv_render_context_report_swap` before its next
+  `mpv_render_context_update`, outside the lock. When it woke only for
+  swaps it does not call update, so mpv sees the same update pattern as
+  before. The extra latency is one condition-variable wake-up, far below
+  the 200 ms that vo_libmpv's `flip_page` waits for a swap. The display
+  refresh rate is passed via `display-fps-override`, since the render API
+  has no vsync source.
+* **Render context release.** When the renderer is destroyed, the
+  platform thread only sets `quit` and joins. The render thread, still
+  bound to its backend (`RenderBackend::BindThread`), removes mpv's update
+  callback, frees the render context through `RenderBackend::Release`,
+  unbinds and exits. Only then is the backend destroyed (device last).
+  Swaps not yet reported are dropped with the context.
 
 ## Dispose ordering
 
@@ -82,12 +105,62 @@ destroyed. `MpvVideoController.create` therefore registers
 1. `player.dispose()` first runs all dispose hooks (in registration order,
    awaiting each). The controller's hook removes it from the routing table
    and asks the plugin to stop the render thread and free the render
-   context and texture.
+   context and texture. The render context is freed on the render thread
+   itself, before the plugin's join returns (see Render context release
+   above).
 2. Only then are the `Player`'s subscriptions cancelled and `Mpv.dispose()`
    called (`mpv_terminate_destroy`).
 
 Calling `controller.dispose()` earlier is fine; it is idempotent and
 unregisters its hook (`Player.removeDisposeHook`).
+
+## RenderBackend seam
+
+`VideoRenderer` (`src/video_renderer.cc`) is the engine that is the same for
+every graphics API. It owns the render thread, the ring bookkeeping (front,
+in use, quarantine, retired front), the publish gate, failure backoff, swap
+reporting, idle/active, ICC forwarding and events. Everything that depends
+on the API sits behind `RenderBackend` (`src/render_backend.h`):
+
+| Method | Job | Thread |
+|---|---|---|
+| `wire_name`, `frame_kind`, `pipelined` | API name for reasons and the method channel; what a frame carries (shared image or CPU pixels); whether a frame needs a GPU wait before it is published | any |
+| `BindThread` / `UnbindThread` | thread affinity (an OpenGL context made current); no-ops for Vulkan and software | render thread, at start and before exit |
+| `Create`, `device_failed`, `device_name`, `RendererName` | device on the first call, then the mpv render context for one renderer; the reason head's device and renderer | caller of `Start` |
+| `AllocTargets`, `FreeRetired`, `FrameFor` | the ring of render targets, the retired generation, one slot's platform object or pixels | render thread (`FrameFor` under the renderer lock, also from `AcquireFront`) |
+| `Render`, `Wait` | `mpv_render_context_render` into one slot; its bounded GPU completion | render thread |
+| `Release` | `mpv_render_context_free`, before the device goes | render thread, before it exits |
+
+Built-in backends: `SoftwareBackend` (`MPV_RENDER_API_TYPE_SW`,
+video_renderer.cc) and `VulkanRenderBackend` (vulkan_backend.cc). The
+platform keeps what is genuinely platform work: `Interop::FrameReady`
+(mark the Flutter texture dirty), `RetainFrame`, `CompositorLatency` and,
+for Vulkan, the `VulkanInterop` that creates images shared with the
+compositor.
+
+**Candidate chain.** `Start` tries an ordered list of `BackendCandidate`
+entries (`api`, `renderer`). `DefaultCandidates(choice)` gives
+`vulkan/gpu-next`, `vulkan/gpu`, `software/sw` for `auto` (a `gpu-next` or
+`gpu` request keeps only its own Vulkan entry; `software` only the last).
+A platform changes the chain by overriding `Interop::BackendCandidates` and
+supplies its own API's backend through `Interop::CreateBackend(api)`; no
+platform overrides either in Phase 12. One backend instance (one device
+initialisation) serves all candidates of its api, and an api's backend is
+released before the next api is tried.
+
+**`MPV_KIT_VIDEO_API`.** A native environment variable read once per
+`Start`. Set to an api's wire name (`vulkan`, `software`; later `d3d11`,
+`opengl`), it restricts the chain to that api and the requested renderer,
+with no fallback; every other candidate becomes an
+`excluded by MPV_KIT_VIDEO_API=<value>` trail. It exists so CI can verify
+each backend on its own.
+
+**Reason.** The winner's head and the trails of every candidate ranked
+before it follow the grammar of
+[ADR 0004](adr/0004-render-backend-reporting.md) (Decision 3), for example
+`software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed`.
+The plugin's create response carries the winner's `wire_name` as `backend`;
+when nothing works, `render_init` carries the trails as details.
 
 ## Frame ring and quarantine
 
@@ -115,8 +188,30 @@ taking it, and no platform reports when it is done. So:
 The renderer therefore never writes into an image that may still be read,
 without any cross-API fence. Rendering into a slot additionally waits on a
 Vulkan timeline value for that slot, so a slot is never reused while mpv's
-own GPU work on it is pending. The software backend keeps the previous
-buffer generation alive for one extra resize for the same reason.
+own GPU work on it is pending. A GPU frame becomes the front only after its
+own GPU work finished (publish gate, `RenderBackend::pipelined`).
+
+**Deferred-release contract, shared by every backend.** A reallocation
+retires only the old front's target; every other old target is released
+once its last GPU work has completed. The retired front stays valid, and is
+what `AcquireFront` hands out, until the first frame at the new size has
+been published and the compositor has taken quarantine + 1 further frames.
+Then `FreeRetired` releases it, exactly once. 12-07 fixed the earlier
+behaviour, which destroyed it at the reallocation itself; 12-09 fixed a
+resize that follows a resize without a frame, which handed out the
+generation before last. A platform object the compositor still holds is kept
+alive by the platform's own reference until the platform has unregistered
+the texture: on Windows the D3D11 texture's COM reference (released by the
+descriptor's release callback) and the instance kept until
+`UnregisterTexture`'s callback; on Linux the GL graveyard, drained by the
+next populate, plus a 1 s delay after unregistering before the texture
+state is dropped; on macOS the `CVPixelBuffer` reference count. The
+software backend keeps its whole previous buffer generation until the same
+point (`FreeRetired`) or the next resize. The goldens under
+`native/tests/golden/` (`vk.txt`, `sw.txt`, `vk_retire_twice.txt`,
+`sw_retire_twice.txt`) pin this contract, and `real_plugin_test` exercises
+it with the compositor attached (resizes of a controller whose texture is
+mounted, plus create/dispose cycles).
 
 Platform sharing:
 

@@ -83,6 +83,9 @@ trail = api "/" renderer " unavailable: " why
     `no Vulkan 1.3 device shareable with the compositor`
   - `platform interop unavailable: <why>`
   - `platform has no Vulkan interop`
+  - `platform has no <api> backend` (the platform's chain names an api
+    that neither the platform nor the built-in backends provide; no
+    Phase 12 chain does)
   - `excluded by MPV_KIT_VIDEO_API=<value>`
 
 Examples:
@@ -121,7 +124,9 @@ adds no Dart API.
 - It intersects with the renderer selection made on the Dart side
   (`renderer:` / `MPV_KIT_VIDEO_RENDERER`). An empty intersection is also
   `render_init`. For example, `MPV_KIT_VIDEO_API=software` with
-  `MPV_KIT_VIDEO_RENDERER=gpu-next` fails.
+  `MPV_KIT_VIDEO_RENDERER=gpu-next` fails: the `software/sw` candidate at
+  the end of a `gpu-next` or `gpu` chain is only that request's fallback,
+  and a forced run drops it too, whatever the value.
 - Effective values in Phase 12, on all three platforms: `vulkan` and
   `software`. `d3d11` (Phase 14, Windows) and `opengl` (Phase 15, Linux)
   start to work as soon as those phases add their candidates to the chain.
