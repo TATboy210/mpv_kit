@@ -183,7 +183,9 @@ jobs:
           - runner: ubuntu-24.04
             target: linux
             artifact: libmpv-verify-linux-ubuntu-24.04
-            libname: libmpv.so.2
+            # The linux job stages libmpv under lib/ and the deps.sh
+            # libplacebo/dav1d it dlopens under deps/.
+            libname: lib/libmpv.so.2
           - runner: windows-2025
             target: windows
             artifact: libmpv-verify-CLANG64
@@ -201,7 +203,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
-            xvfb mesa-vulkan-drivers
+            xvfb mesa-vulkan-drivers \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev
+          # Same runtime set as flutter-video-coverage: the verify-tier
+          # libmpv.so.2 links the distro FFmpeg/libass/Vulkan/EGL.
       - name: macOS runtime dependencies
         if: matrix.target == 'macos'
         run: brew install ffmpeg libplacebo libass vulkan-loader
@@ -225,7 +233,7 @@ jobs:
           export PATH="$libdir:$PATH"
           case "${{ matrix.target }}" in
             linux)
-              export LD_LIBRARY_PATH="$libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
               cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
               ;;
             macos)

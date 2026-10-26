@@ -36,7 +36,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
+            libpulse0 libasound2t64 libva2 libva-drm2 libvulkan1
+          # The second line is the hook bundle's host-provided runtime set
+          # (package.sh system allowlist: audio, VA-API, Vulkan loader); a
+          # minimal runner lacks libpulse.so.0, so libmpv.so.2 fails to load.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
