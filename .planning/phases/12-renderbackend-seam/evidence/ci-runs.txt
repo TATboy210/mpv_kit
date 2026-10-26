@@ -10,3 +10,11 @@ integration platform=macos line={"backend":"vulkan","reason":"vulkan (gpu-next) 
 coverage mpv_kit_video=91.4%
 sha=1227b93d2d64ccc061a150f5fa9c4e8f5c79def5 workflow=native-verify.yml run=40281585616 conclusion=success
 sha=1227b93d2d64ccc061a150f5fa9c4e8f5c79def5 workflow=flutter-plugin.yml run=40281585561 conclusion=success
+sha=e69ddcd7fe5311e8fa331d160662c72b7a1e8119 workflow=native-verify.yml run=40285441269 conclusion=success
+sha=e69ddcd7fe5311e8fa331d160662c72b7a1e8119 workflow=flutter-plugin.yml run=40285441252 conclusion=success
+sha=e612ca127fe603a01be7369093d10e3094d2dcef workflow=native-verify.yml run=40286642083 conclusion=success
+sha=e612ca127fe603a01be7369093d10e3094d2dcef workflow=flutter-plugin.yml run=40286642129 conclusion=success
+sha=2daa12da6acbb27d8da380e3bfa651ad03c78c79 workflow=native-verify.yml run=40287928268 conclusion=failure
+sha=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5 workflow=native-verify.yml run=40288892406 conclusion=success
+sha=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5 workflow=flutter-plugin.yml run=40288892437 conclusion=success
+note sha=2daa12da6acbb27d8da380e3bfa651ad03c78c79 red=accidental cause=GCC/clang reject deduced-return member used before definition (MSVC-only local check) fixed_by=d6a3a35bf551b51eabee39e36d0d2f283a3ec9d5
