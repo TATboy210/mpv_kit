@@ -18,10 +18,9 @@
 #include <vector>
 
 #include "mpv_api.h"
+#include "render_backend.h"
 
 namespace mpv_kit {
-
-enum class Backend { kVulkan, kSoftware };
 
 /// Renderer requested by the API user. Every choice except kSoftware falls
 /// back to the software backend when Vulkan cannot be used.
@@ -130,9 +129,8 @@ class VideoRenderer {
   void ApplyIccProfile();
   void Emit(const char* kind, const std::string& msg = {});
   void SkipFrame();
-  // Both append one reason trail per candidate that failed (ADR 0004).
+  // Appends one reason trail per candidate that failed (ADR 0004).
   bool StartVulkan(RendererChoice choice, std::vector<std::string>* trails);
-  bool StartSoftware(std::vector<std::string>* trails);
   int PickBackBuffer();
   void FreeRetiredIfDone();
 
@@ -146,12 +144,8 @@ class VideoRenderer {
   std::string backend_reason_;
   mpv_render_context* render_ctx_ = nullptr;
   std::unique_ptr<VulkanContext> vulkan_;
-
-  // Software ring.
-  std::vector<std::vector<uint8_t>> sw_buffers_;
-  // Previous generation, kept one resize longer: the compositor may still be
-  // uploading from it after its copy callback returned.
-  std::vector<std::vector<uint8_t>> sw_retired_;
+  // Software path: device, render context and targets (render_backend.h).
+  std::unique_ptr<RenderBackend> render_backend_;
 
   std::thread thread_;
   std::mutex mutex_;

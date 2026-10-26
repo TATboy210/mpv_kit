@@ -59,7 +59,97 @@ void AddVulkanTrails(const std::vector<const char*>& renderers,
   }
 }
 
+/// MPV_RENDER_API_TYPE_SW into a ring of CPU buffers (RenderBackend).
+class SoftwareBackend final : public RenderBackend {
+ public:
+  explicit SoftwareBackend(bool bgra) : bgra_(bgra) {}
+
+  const char* wire_name() const override { return "software"; }
+  Backend frame_kind() const override { return Backend::kSoftware; }
+  bool pipelined() const override { return false; }
+
+  int Create(const MpvApi& api, mpv_handle* handle, const char* renderer,
+             mpv_render_context** out, std::string* why) override {
+    (void)renderer;  // "sw": the software renderer has no variants
+    int advanced = 1;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_API_TYPE, const_cast<char*>(MPV_RENDER_API_TYPE_SW)},
+        {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    const int err = api.render_context_create(out, handle, params);
+    if (err < 0) {
+      *why = "mpv_render_context_create: " +
+             SanitizeReasonField(api.error_string(err));
+      *out = nullptr;
+    }
+    return err;
+  }
+  std::string device_name() const override { return "cpu"; }
+  std::string RendererName(const MpvApi& api,
+                           mpv_render_context* ctx) const override {
+    (void)api;
+    (void)ctx;
+    return "sw";
+  }
+
+  bool AllocTargets(int count, int width, int height, int keep_slot,
+                    std::string* error) override {
+    // The whole old generation is retired, so keep_slot does not matter:
+    // the compositor may still be uploading from its front buffer after its
+    // copy callback returned. Replacing retired_ frees the generation
+    // before it. Allocation does not fail (bad_alloc aside).
+    (void)keep_slot;
+    (void)error;
+    retired_ = std::move(buffers_);
+    buffers_.assign(count, std::vector<uint8_t>(size_t(width) * height * 4));
+    return true;
+  }
+  void FreeRetired() override { retired_.clear(); }
+  TargetView FrameFor(int slot) override {
+    TargetView view;
+    view.pixels = buffers_[slot].data();
+    return view;
+  }
+
+  int Render(const MpvApi& api, mpv_render_context* ctx, int slot, int width,
+             int height) override {
+    int size[2] = {width, height};
+    size_t stride = size_t(width) * 4;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_SW_SIZE, size},
+        {MPV_RENDER_PARAM_SW_FORMAT, const_cast<char*>(bgra_ ? "bgr0" : "rgb0")},
+        {MPV_RENDER_PARAM_SW_STRIDE, &stride},
+        {MPV_RENDER_PARAM_SW_POINTER, buffers_[slot].data()},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    const int err = api.render_context_render(ctx, params);
+    // The padding byte of rgb0/bgr0 is undefined; textures treat it as alpha.
+    uint8_t* px = buffers_[slot].data();
+    for (size_t i = 3, n = size_t(width) * height * 4; i < n; i += 4) px[i] = 0xff;
+    return err;
+  }
+  WaitResult Wait(int slot) override {
+    (void)slot;  // software frames are complete when Render returns
+    return WaitResult::kOk;
+  }
+
+  void Release(const MpvApi& api, mpv_render_context* ctx) override {
+    api.render_context_free(ctx);
+  }
+
+ private:
+  const bool bgra_;
+  std::vector<std::vector<uint8_t>> buffers_;
+  // Previous generation, kept one resize longer (see AllocTargets).
+  std::vector<std::vector<uint8_t>> retired_;
+};
+
 }  // namespace
+
+std::unique_ptr<RenderBackend> CreateSoftwareBackend(bool bgra) {
+  return std::make_unique<SoftwareBackend>(bgra);
+}
 
 RendererChoice ParseRendererChoice(const std::string& name) {
   if (name == "gpu-next") return RendererChoice::kGpuNext;
@@ -86,9 +176,14 @@ VideoRenderer::~VideoRenderer() {
   if (render_ctx_) {
     api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
     // Must precede device destruction: mpv owns objects on our VkDevice.
-    api_.render_context_free(render_ctx_);
+    if (render_backend_) {
+      render_backend_->Release(api_, render_ctx_);
+    } else {
+      api_.render_context_free(render_ctx_);
+    }
     render_ctx_ = nullptr;
   }
+  render_backend_.reset();
   vulkan_.reset();
 }
 
@@ -115,7 +210,19 @@ bool VideoRenderer::Start(RendererChoice choice) {
     AddVulkanTrails(renderers, "platform has no Vulkan interop", &trails);
   }
   if (!ok) {
-    ok = StartSoftware(&trails);
+    std::unique_ptr<RenderBackend> software =
+        CreateSoftwareBackend(interop_->SoftwareIsBgra());
+    std::string why;
+    const int err = software->Create(api_, handle_, "sw", &render_ctx_, &why);
+    ok = err >= 0;
+    if (ok) {
+      render_backend_ = std::move(software);
+      backend_ = Backend::kSoftware;
+    } else {
+      log_(std::string("mpv_kit: software backend failed: ") +
+           api_.error_string(err));
+      trails.push_back("software/sw unavailable: " + why);
+    }
     if (ok) {
       backend_reason_ = "software (sw) on cpu";
       if (!trails.empty()) backend_reason_ += "; " + JoinTrails(trails);
@@ -193,26 +300,6 @@ bool VideoRenderer::StartVulkan(RendererChoice choice,
   }
   vulkan_.reset();
   return false;
-}
-
-bool VideoRenderer::StartSoftware(std::vector<std::string>* trails) {
-  int advanced = 1;
-  mpv_render_param params[] = {
-      {MPV_RENDER_PARAM_API_TYPE, const_cast<char*>(MPV_RENDER_API_TYPE_SW)},
-      {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
-      {MPV_RENDER_PARAM_INVALID, nullptr},
-  };
-  const int err = api_.render_context_create(&render_ctx_, handle_, params);
-  if (err < 0) {
-    log_(std::string("mpv_kit: software backend failed: ") +
-         api_.error_string(err));
-    trails->push_back("software/sw unavailable: mpv_render_context_create: " +
-                      SanitizeReasonField(api_.error_string(err)));
-    render_ctx_ = nullptr;
-    return false;
-  }
-  backend_ = Backend::kSoftware;
-  return true;
 }
 
 void VideoRenderer::OnMpvUpdate(void* self) {
@@ -309,7 +396,7 @@ Frame VideoRenderer::AcquireFront() {
     return f;
   }
   if (backend_ == Backend::kSoftware) {
-    f.pixels = sw_buffers_[front_].data();
+    f.pixels = render_backend_->FrameFor(front_).pixels;
   } else {
     f.platform = vulkan_->ring()[front_].platform;
     interop_->RetainFrame(f.platform);
@@ -338,9 +425,11 @@ void VideoRenderer::FreeRetiredIfDone() {
     if (retired_countdown_ != 0) return;
     retired_countdown_ = -1;
     retired_front_ = Frame{};
-    // Software: the retired buffers only back retired_front_.
-    sw_retired_.clear();
   }
+  // Outside the lock, as for Vulkan. Equivalent to the software path's old
+  // clear under the lock: retired_front_, the only way AcquireFront reaches
+  // the retired buffers, was already cleared under it above.
+  if (render_backend_) render_backend_->FreeRetired();
   if (vulkan_) vulkan_->FreeRetired();
 }
 
@@ -496,7 +585,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         retired_front_.width = ring_w_;
         retired_front_.height = ring_h_;
         if (backend_ == Backend::kSoftware) {
-          retired_front_.pixels = sw_buffers_[front_].data();
+          retired_front_.pixels = render_backend_->FrameFor(front_).pixels;
         } else {
           retired_front_.platform = vulkan_->ring()[front_].platform;
         }
@@ -542,8 +631,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
           }
         }
       } else {
-        sw_retired_ = std::move(sw_buffers_);
-        sw_buffers_.assign(ring_size_, std::vector<uint8_t>(size_t(w) * h * 4));
+        render_backend_->AllocTargets(ring_size_, w, h, keep_front, error);
       }
       if (!failed_before_render) {
         ring_w_ = w;
@@ -605,20 +693,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     // Only a successful render transitions the image out of UNDEFINED.
     if (err >= 0) img.initialized = true;
   } else {
-    int size[2] = {w, h};
-    size_t stride = size_t(w) * 4;
-    mpv_render_param params[] = {
-        {MPV_RENDER_PARAM_SW_SIZE, size},
-        {MPV_RENDER_PARAM_SW_FORMAT,
-         const_cast<char*>(interop_->SoftwareIsBgra() ? "bgr0" : "rgb0")},
-        {MPV_RENDER_PARAM_SW_STRIDE, &stride},
-        {MPV_RENDER_PARAM_SW_POINTER, sw_buffers_[back].data()},
-        {MPV_RENDER_PARAM_INVALID, nullptr},
-    };
-    err = api_.render_context_render(render_ctx_, params);
-    // The padding byte of rgb0/bgr0 is undefined; textures treat it as alpha.
-    uint8_t* px = sw_buffers_[back].data();
-    for (size_t i = 3, n = size_t(w) * h * 4; i < n; i += 4) px[i] = 0xff;
+    err = render_backend_->Render(api_, render_ctx_, back, w, h);
   }
   if (err < 0) {
     *error = std::string("render: ") + api_.error_string(err);
