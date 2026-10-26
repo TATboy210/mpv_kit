@@ -31,9 +31,7 @@
 //
 // Golden files are only ever read. There is no update/regenerate mode: an
 // expectation changes only by editing the golden file in a reviewed commit.
-//
-// Exit codes of the golden binaries: 0 pass, 1 mismatch, invariant
-// violation, timeout or usage error.
+// Golden binaries exit 0 on pass, 1 on mismatch/invariant/timeout/usage.
 #pragma once
 
 #include <algorithm>
@@ -84,12 +82,8 @@ struct Call {
 /// Counters of fake libmpv calls. `renders` counts every
 /// mpv_render_context_render call, including SKIP_RENDERING and failed ones.
 struct Counters {
-  int renders = 0;
-  int skips = 0;
-  int swaps = 0;
-  int frees = 0;
-  int creates = 0;
-  int updates = 0;
+  int renders = 0, skips = 0, swaps = 0;
+  int frees = 0, creates = 0, updates = 0;
 };
 
 // --- Fake handles ------------------------------------------------------------
@@ -118,9 +112,7 @@ inline std::underlying_type_t<mpv_render_param_type> ParamType(
 }
 
 inline bool IsParam(const mpv_render_param& p, mpv_render_param_type type) {
-  std::underlying_type_t<mpv_render_param_type> want;
-  std::memcpy(&want, &type, sizeof want);
-  return ParamType(p) == want;
+  return ParamType(p) == ParamType(mpv_render_param{type, nullptr});
 }
 
 /// Data of the first parameter of `type` in an INVALID-terminated list.
@@ -142,25 +134,20 @@ class FakeMpv {
     std::lock_guard<std::mutex> lock(mu_);
     create_results_.clear();
     info_name_ = "gpu-next";
-    info_err_ = 0;
     render_results_.clear();
-    default_render_result_ = 0;
-    queued_frames_ = 0;
-    hold_ = false;
-    held_ = false;
+    info_err_ = default_render_result_ = queued_frames_ = 0;
+    hold_ = held_ = false;
     callback_ = nullptr;
     callback_ctx_ = nullptr;
-    poke_seq_ = 0;
-    seen_seq_ = 0;
+    poke_seq_ = seen_seq_ = 0;
     counters_ = Counters{};
     calls_.clear();
     creates_.clear();
     async_.clear();
     render_times_.clear();
     buf_ids_.clear();
-    gen_w_ = gen_h_ = 0;
+    gen_w_ = gen_h_ = frame_counter_ = 0;
     last_buf_ = -1;
-    frame_counter_ = 0;
   }
 
   /// Result of mpv_render_context_create for one API type (and Vulkan
@@ -208,9 +195,7 @@ class FakeMpv {
   }
 
   void WaitRenderHeld() {
-    std::unique_lock<std::mutex> lock(mu_);
-    if (!cv_.wait_for(lock, kWaitTimeout, [&] { return held_; }))
-      throw TimeoutError("render to be held");
+    WaitUntil(kWaitTimeout, "render to be held", [&] { return held_; });
   }
 
   /// Calls mpv's update callback as mpv would on a new frame. Returns the
@@ -239,44 +224,31 @@ class FakeMpv {
   /// — has completed. Swaps reported by AcquireFront calls made before the
   /// poke are synchronous and complete as well.
   void WaitPokeSeen(uint64_t seq) {
-    std::unique_lock<std::mutex> lock(mu_);
-    if (!cv_.wait_for(lock, kWaitTimeout, [&] { return seen_seq_ >= seq; }))
-      throw TimeoutError("render loop to observe poke " + std::to_string(seq));
+    WaitUntil(kWaitTimeout, "render loop to observe poke " + std::to_string(seq),
+              [&] { return seen_seq_ >= seq; });
   }
 
   /// Waits until `n` non-skip renders have been entered.
   void WaitRenders(int n, Ms timeout = kWaitTimeout) {
-    std::unique_lock<std::mutex> lock(mu_);
-    if (!cv_.wait_for(lock, timeout, [&] {
-          return counters_.renders - counters_.skips >= n;
-        }))
-      throw TimeoutError(std::to_string(n) + " non-skip renders");
+    WaitUntil(timeout, std::to_string(n) + " non-skip renders",
+              [&] { return counters_.renders - counters_.skips >= n; });
   }
 
   void WaitSkips(int n) {
-    std::unique_lock<std::mutex> lock(mu_);
-    if (!cv_.wait_for(lock, kWaitTimeout,
-                      [&] { return counters_.skips >= n; }))
-      throw TimeoutError(std::to_string(n) + " skipped renders");
+    WaitUntil(kWaitTimeout, std::to_string(n) + " skipped renders",
+              [&] { return counters_.skips >= n; });
   }
 
   // --- Observations ---
 
-  Counters counters() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return counters_;
-  }
+  Counters counters() { return Locked([&] { return counters_; }); }
 
   /// Entry times of the non-skip renders, in order.
   std::vector<Clock::time_point> render_times() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return render_times_;
+    return Locked([&] { return render_times_; });
   }
 
-  std::vector<Call> calls() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return calls_;
-  }
+  std::vector<Call> calls() { return Locked([&] { return calls_; }); }
 
   /// API types (and renderer names) passed to render_context_create, in
   /// order, e.g. "sw" or "vulkan/gpu-next,vulkan/gpu,sw".
@@ -287,10 +259,7 @@ class FakeMpv {
     return out.empty() ? "none" : out;
   }
 
-  bool callback_set() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return callback_ != nullptr;
-  }
+  bool callback_set() { return Locked([&] { return callback_ != nullptr; }); }
 
   /// Ordinal of the software buffer at `p` within the current generation
   /// (order of first use by a render), or -1 if never rendered into.
@@ -301,10 +270,7 @@ class FakeMpv {
   }
 
   /// Buffer ordinal written by the most recent non-skip software render.
-  int last_buf() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return last_buf_;
-  }
+  int last_buf() { return Locked([&] { return last_buf_; }); }
 
   /// Adds a render-thread line (events go through here).
   void Note(std::string line) {
@@ -470,6 +436,18 @@ class FakeMpv {
   }
 
  private:
+  template <typename F>
+  auto Locked(F f) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return f();
+  }
+
+  template <typename Pred>
+  void WaitUntil(Ms timeout, const std::string& what, Pred pred) {
+    std::unique_lock<std::mutex> lock(mu_);
+    if (!cv_.wait_for(lock, timeout, pred)) throw TimeoutError(what);
+  }
+
   static std::string CreateKey(const char* api, const char* renderer) {
     return std::string(api ? api : "") + "/" + (renderer ? renderer : "");
   }
@@ -570,42 +548,38 @@ inline FakeMpv& Fake() {
 
 // --- MakeApi -----------------------------------------------------------------
 
-namespace detail {
-inline int Create(mpv_render_context** out, mpv_handle* handle,
-                  mpv_render_param* params) {
-  return Fake().Create(out, handle, params);
-}
-inline void SetUpdateCallback(mpv_render_context* ctx, mpv_render_update_fn fn,
-                              void* cb_ctx) {
-  Fake().SetUpdateCallback(ctx, fn, cb_ctx);
-}
-inline uint64_t Update(mpv_render_context* ctx) { return Fake().Update(ctx); }
-inline int Render(mpv_render_context* ctx, mpv_render_param* params) {
-  return Fake().Render(ctx, params);
-}
-inline void ReportSwap(mpv_render_context* ctx) { Fake().ReportSwap(ctx); }
-inline void Free(mpv_render_context* ctx) { Fake().Free(ctx); }
-inline const char* ErrorString(int err) { return FakeMpv::ErrorString(err); }
-inline int GetInfo(mpv_render_context* ctx, mpv_render_param param) {
-  return Fake().GetInfo(ctx, param);
-}
-inline int SetParameter(mpv_render_context* ctx, mpv_render_param param) {
-  return Fake().SetParameter(ctx, param);
-}
-}  // namespace detail
-
-/// The renderer's libmpv function table, bound to Fake().
+/// The renderer's libmpv function table, bound to Fake(). Captureless
+/// lambdas convert to the plain function pointers MpvApi holds.
 inline mpv_kit::MpvApi MakeApi() {
   mpv_kit::MpvApi api;
-  api.render_context_create = &detail::Create;
-  api.render_context_set_update_callback = &detail::SetUpdateCallback;
-  api.render_context_update = &detail::Update;
-  api.render_context_render = &detail::Render;
-  api.render_context_report_swap = &detail::ReportSwap;
-  api.render_context_free = &detail::Free;
-  api.error_string = &detail::ErrorString;
-  api.render_context_get_info = &detail::GetInfo;
-  api.render_context_set_parameter = &detail::SetParameter;
+  api.render_context_create = [](mpv_render_context** out, mpv_handle* handle,
+                                 mpv_render_param* params) {
+    return Fake().Create(out, handle, params);
+  };
+  api.render_context_set_update_callback =
+      [](mpv_render_context* ctx, mpv_render_update_fn fn, void* cb_ctx) {
+        Fake().SetUpdateCallback(ctx, fn, cb_ctx);
+      };
+  api.render_context_update = [](mpv_render_context* ctx) {
+    return Fake().Update(ctx);
+  };
+  api.render_context_render = [](mpv_render_context* ctx,
+                                 mpv_render_param* params) {
+    return Fake().Render(ctx, params);
+  };
+  api.render_context_report_swap = [](mpv_render_context* ctx) {
+    Fake().ReportSwap(ctx);
+  };
+  api.render_context_free = [](mpv_render_context* ctx) { Fake().Free(ctx); };
+  api.error_string = &FakeMpv::ErrorString;
+  api.render_context_get_info = [](mpv_render_context* ctx,
+                                   mpv_render_param param) {
+    return Fake().GetInfo(ctx, param);
+  };
+  api.render_context_set_parameter = [](mpv_render_context* ctx,
+                                        mpv_render_param param) {
+    return Fake().SetParameter(ctx, param);
+  };
   return api;
 }
 
