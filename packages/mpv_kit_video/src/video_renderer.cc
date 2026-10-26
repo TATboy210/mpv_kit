@@ -8,6 +8,59 @@
 
 namespace mpv_kit {
 
+namespace {
+
+// Reason grammar (docs/adr/0004-render-backend-reporting.md, Decision 3):
+//   reason = head *( "; " trail )
+//   head   = api " (" renderer ") on " device
+//   trail  = api "/" renderer " unavailable: " why
+
+/// Makes a driver/mpv-supplied string safe inside a reason field: `;` would
+/// split a trail and control characters would break the one-line form.
+std::string SanitizeReasonField(std::string s) {
+  for (char& c : s) {
+    if (c == ';') {
+      c = ',';
+    } else if (static_cast<unsigned char>(c) < 0x20) {
+      c = ' ';
+    }
+  }
+  return s;
+}
+
+/// Joins trails with the grammar's "; " separator.
+std::string JoinTrails(const std::vector<std::string>& trails) {
+  std::string out;
+  for (const std::string& t : trails) {
+    if (!out.empty()) out += "; ";
+    out += t;
+  }
+  return out;
+}
+
+/// Vulkan renderers [choice] tries, in candidate-chain order: gpu-next
+/// (libplacebo's renderer) first; the older gpu renderer covers devices or
+/// libplacebo builds where it cannot initialise.
+std::vector<const char*> VulkanRenderers(RendererChoice choice) {
+  std::vector<const char*> renderers;
+  if (choice == RendererChoice::kSoftware) return renderers;
+  if (choice != RendererChoice::kGpu) renderers.push_back("gpu-next");
+  if (choice != RendererChoice::kGpuNext) renderers.push_back("gpu");
+  return renderers;
+}
+
+/// One trail per Vulkan renderer in [renderers], all for the same [why].
+void AddVulkanTrails(const std::vector<const char*>& renderers,
+                     const std::string& why,
+                     std::vector<std::string>* trails) {
+  for (const char* renderer : renderers) {
+    trails->push_back(std::string("vulkan/") + renderer +
+                      " unavailable: " + why);
+  }
+}
+
+}  // namespace
+
 RendererChoice ParseRendererChoice(const std::string& name) {
   if (name == "gpu-next") return RendererChoice::kGpuNext;
   if (name == "gpu") return RendererChoice::kGpu;
@@ -43,34 +96,48 @@ bool VideoRenderer::Start(RendererChoice choice) {
   quarantine_count_ =
       std::clamp(interop_->CompositorLatency(), 1, kMaxQuarantine);
   ring_size_ = quarantine_count_ + 3;
+  // Every candidate ranked before the winner leaves one trail, in chain
+  // order; an explicit software request has none.
+  std::vector<std::string> trails;
+  const std::vector<const char*> renderers = VulkanRenderers(choice);
   bool ok = false;
-  if (choice != RendererChoice::kSoftware && interop_->vulkan()) {
-    ok = StartVulkan(choice);
-    if (!ok) log_("mpv_kit: Vulkan backend unavailable (" + backend_reason_ +
+  if (renderers.empty()) {
+    // kSoftware: no Vulkan candidate, so nothing to report.
+  } else if (interop_->vulkan()) {
+    ok = StartVulkan(choice, &trails);
+    if (!ok) log_("mpv_kit: Vulkan backend unavailable (" + JoinTrails(trails) +
                   "), falling back to software rendering");
-  } else if (choice == RendererChoice::kSoftware) {
-    backend_reason_ = "software rendering requested";
   } else if (const char* why = interop_->interopReason()) {
-    backend_reason_ = std::string("platform interop unavailable: ") + why;
+    AddVulkanTrails(renderers,
+                    "platform interop unavailable: " + SanitizeReasonField(why),
+                    &trails);
   } else {
-    backend_reason_ = "platform has no Vulkan interop";
+    AddVulkanTrails(renderers, "platform has no Vulkan interop", &trails);
   }
   if (!ok) {
-    const std::string why = backend_reason_;
-    ok = StartSoftware();
-    backend_reason_ = "software (" + why + ")";
+    ok = StartSoftware(&trails);
+    if (ok) {
+      backend_reason_ = "software (sw) on cpu";
+      if (!trails.empty()) backend_reason_ += "; " + JoinTrails(trails);
+    } else {
+      // No head when every candidate failed: the reason is the trails only.
+      backend_reason_ = JoinTrails(trails);
+      return false;
+    }
   }
-  if (!ok) return false;
 
   api_.render_context_set_update_callback(render_ctx_, &OnMpvUpdate, this);
   thread_ = std::thread(&VideoRenderer::RenderLoop, this);
   return true;
 }
 
-bool VideoRenderer::StartVulkan(RendererChoice choice) {
+bool VideoRenderer::StartVulkan(RendererChoice choice,
+                                std::vector<std::string>* trails) {
+  const std::vector<const char*> renderers = VulkanRenderers(choice);
   vulkan_ = std::make_unique<VulkanContext>(interop_->vulkan());
   if (!vulkan_->Init(&backend_reason_)) {
     vulkan_.reset();
+    AddVulkanTrails(renderers, SanitizeReasonField(backend_reason_), trails);
     return false;
   }
   VulkanContext& vk = *vulkan_;
@@ -87,12 +154,6 @@ bool VideoRenderer::StartVulkan(RendererChoice choice) {
   init.queue_compute = {vk.compute_queues().index, vk.compute_queues().count};
   init.queue_transfer = {vk.transfer_queues().index,
                          vk.transfer_queues().count};
-
-  // gpu-next (libplacebo's renderer) first; the older gpu renderer covers
-  // devices or libplacebo builds where it cannot initialise.
-  std::vector<const char*> renderers;
-  if (choice != RendererChoice::kGpu) renderers.push_back("gpu-next");
-  if (choice != RendererChoice::kGpuNext) renderers.push_back("gpu");
 
   int advanced = 1;
   int err = 0;
@@ -128,10 +189,11 @@ bool VideoRenderer::StartVulkan(RendererChoice choice) {
   }
   backend_reason_ = "mpv_render_context_create: " + tried;
   vulkan_.reset();
+  AddVulkanTrails(renderers, SanitizeReasonField(backend_reason_), trails);
   return false;
 }
 
-bool VideoRenderer::StartSoftware() {
+bool VideoRenderer::StartSoftware(std::vector<std::string>* trails) {
   int advanced = 1;
   mpv_render_param params[] = {
       {MPV_RENDER_PARAM_API_TYPE, const_cast<char*>(MPV_RENDER_API_TYPE_SW)},
@@ -142,6 +204,8 @@ bool VideoRenderer::StartSoftware() {
   if (err < 0) {
     log_(std::string("mpv_kit: software backend failed: ") +
          api_.error_string(err));
+    trails->push_back("software/sw unavailable: mpv_render_context_create: " +
+                      SanitizeReasonField(api_.error_string(err)));
     render_ctx_ = nullptr;
     return false;
   }

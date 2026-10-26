@@ -30,6 +30,10 @@ class GlInterop : public Interop, public VulkanInterop {
 
   // Interop
   VulkanInterop* vulkan() override { return gl_ok_ ? this : nullptr; }
+  /// The GL probe failure, which the renderer puts in its reason trails.
+  const char* interopReason() const override {
+    return gl_reason_[0] ? gl_reason_ : nullptr;
+  }
   bool SoftwareIsBgra() const override { return false; }  // GL_RGBA8
   void FrameReady() override { frame_ready_(); }
 

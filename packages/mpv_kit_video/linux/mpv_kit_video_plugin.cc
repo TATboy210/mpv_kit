@@ -346,9 +346,8 @@ class Plugin {
     raw->texture_id = id;
     instances_[id] = st;
 
-    std::string reason = raw->renderer->backend_reason();
-    if (!vk && raw->interop->gl_reason()[0])
-      reason += std::string(": ") + raw->interop->gl_reason();
+    // The GL probe failure is already a trail (GlInterop::interopReason).
+    const std::string& reason = raw->renderer->backend_reason();
     g_autoptr(FlValue) out = fl_value_new_map();
     fl_value_set_string_take(out, "textureId", fl_value_new_int(id));
     fl_value_set_string_take(out, "backend",

@@ -21,7 +21,7 @@
 #   teardown frees=<n>                  render_context_free calls after destruction
 
 [sw-requested-basic]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 rgb0
@@ -36,26 +36,26 @@ quiesce renders=4 skips=0 swaps=4
 teardown frees=1
 
 [sw-fallback-no-interop]
-start ok backend=software reason="software (platform has no Vulkan interop)"
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform has no Vulkan interop; vulkan/gpu unavailable: platform has no Vulkan interop"
 create-attempts sw
 quiesce renders=0 skips=0 swaps=0
 teardown frees=1
 
 [sw-fallback-interop-reason]
-start ok backend=software reason="software (platform interop unavailable: probe failed (0x887A0004))"
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform interop unavailable: probe failed (0x887A0004); vulkan/gpu unavailable: platform interop unavailable: probe failed (0x887A0004)"
 create-attempts sw
 quiesce renders=0 skips=0 swaps=0
 teardown frees=1
 
 [sw-create-fails]
-start=false reason="software (software rendering requested)"
+start=false reason="software/sw unavailable: mpv_render_context_create: fake error -18"
 create-attempts sw
 update-callback none
 quiesce renders=0 skips=0 swaps=0
 teardown frees=0
 
 [sw-ring-q2]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 rgb0
@@ -86,7 +86,7 @@ quiesce renders=12 skips=0 swaps=12
 teardown frees=1
 
 [sw-ring-q4]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 bgr0
@@ -117,7 +117,7 @@ quiesce renders=12 skips=0 swaps=12
 teardown frees=1
 
 [sw-retire-on-resize]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 rgb0
@@ -142,7 +142,7 @@ quiesce renders=8 skips=0 swaps=8
 teardown frees=1
 
 [sw-backoff]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 64x36 rgb0 err=-20
@@ -167,7 +167,7 @@ quiesce renders=11 skips=1 swaps=11
 teardown frees=1
 
 [sw-resize-retries-at-once]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 64x36 rgb0 err=-20
@@ -189,7 +189,7 @@ quiesce renders=7 skips=0 swaps=7
 teardown frees=1
 
 [sw-idle-active]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 rgb0
@@ -210,7 +210,7 @@ quiesce renders=7 skips=3 swaps=7
 teardown frees=1
 
 [sw-icc]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 event resize 64x36
 render buf=0 frame=1 64x36 rgb0
@@ -225,7 +225,7 @@ quiesce renders=3 skips=0 swaps=3
 teardown frees=1
 
 [sw-setsize-invalid]
-start ok backend=software reason="software (software rendering requested)"
+start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
 render skip
 render skip

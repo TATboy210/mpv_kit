@@ -130,8 +130,9 @@ class VideoRenderer {
   void ApplyIccProfile();
   void Emit(const char* kind, const std::string& msg = {});
   void SkipFrame();
-  bool StartVulkan(RendererChoice choice);
-  bool StartSoftware();
+  // Both append one reason trail per candidate that failed (ADR 0004).
+  bool StartVulkan(RendererChoice choice, std::vector<std::string>* trails);
+  bool StartSoftware(std::vector<std::string>* trails);
   int PickBackBuffer();
   void FreeRetiredIfDone();
 
