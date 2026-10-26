@@ -38,3 +38,7 @@ prior_surface_explained: true
 prior_surface_explanation: the 1280x720 window (Win32Window::Size scaled by dpr 1.5) leaves a 1265.33x682.67 logical client view; Center hands the production SizedBox(1280, 720) loose constraints bounded by that view, so its RepaintBoundary is clamped to 1265.33x682.67 and toImage(pixelRatio: 1.0) rounds it to 1266x683. The 640x360 control boundary fits and is not clamped.
 engine_renderer: unresolved-by-harness (flutter test does not forward the engine's "Using the Impeller rendering backend" line; the switch is the --enable-impeller / --no-enable-impeller flag only)
 run_at: 2026-10-26T06:22:25Z
+probe_decision: readiness-gate
+pass_rule_changed: false
+probe_decision_basis: probe_visibility_on and probe_visibility_off are both texture-visible (stable, after-first-frame); RepaintBoundary.toImage composites the external texture, so _probePixels keeps its whole-image sampling and _minNonBlackRatio = 0.01, and part 2 now reads only after the same first-frame gate (fps > 0, time-pos advances >= 0.2 s), recording probeTiming in the soak-start pixelProbe map
+wr03_ambiguity: closed-by-region-control

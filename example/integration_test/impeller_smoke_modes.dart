@@ -13,6 +13,15 @@ part of 'impeller_smoke_test.dart';
 //       and a texture region read through the same RepaintBoundary.toImage
 //       channel part 2 uses, so a black texture read can be told apart from
 //       "the probe never sees external textures".
+//   MPV_KIT_SMOKE_DIAG=resize-front
+//       Reproducer for the 10-05 soak abort candidate: setSize on a
+//       controller that already published a front frame while its texture
+//       stays mounted (RenderOnce keep_front -> VulkanContext::AllocateRing).
+//       Trace marker before and after every await.
+//   MPV_KIT_SMOKE_MODE=cycles
+//       ROADMAP baseline segment: N create -> mount -> setSize(640, 360) ->
+//       resize -> unmount -> dispose cycles, one `"stage":"cycles"` BENCH
+//       line. Runs on its own, independent of a soak that may abort.
 //
 // None of these modes calls _classify or emits a `"stage":"complete"` line:
 // they cannot be mistaken for a D-05 measurement.
@@ -493,5 +502,171 @@ extension _SmokeModes on _SmokeHarness {
           'rounds': rounds,
           'mode': mode,
         })}');
+  }
+
+  /// Frees the identity-gate controller so a mode can own the render
+  /// context: libmpv allows one render context per core at a time.
+  Future<void> _disposePreflight() async {
+    final preflight = _controller;
+    if (preflight == null) return;
+    _trace.mark('preflight-dispose-begin', round: 0);
+    _setTexture(null);
+    _trace.mark('preflight-unmount-done', round: 0);
+    await _nextFrame();
+    _trace.mark('preflight-frame-done', round: 0);
+    await preflight.dispose();
+    _controller = null;
+    _trace.mark('preflight-dispose-done', round: 0);
+  }
+
+  /// MPV_KIT_SMOKE_MODE=cycles: [count] create -> mount -> setSize(640, 360)
+  /// -> resize event (<= 5 s, a timeout is that cycle's failure) -> unmount
+  /// -> dispose cycles, then one `"stage":"cycles"` BENCH line.
+  ///
+  /// No media is opened: a resize forces a redraw without a decoded frame
+  /// (video_renderer.cc RenderLoop), so the cycle exercises create, ring
+  /// allocation, composition and teardown only. Never reaches _classify.
+  Future<void> _runCycles(Player player, int count) async {
+    _stage = 'cycles';
+    await _disposePreflight();
+    final rssStart = ProcessInfo.currentRss;
+    var completed = 0;
+    var failures = 0;
+    for (var round = 1; round <= count; round++) {
+      _trace.mark('cycle-create-begin', round: round);
+      final controller = _controller = await MpvVideoController.create(
+        player,
+      );
+      _controllersCreated++;
+      _trace.mark('cycle-create-done', round: round);
+      _watch(controller);
+      _setTexture(controller.textureId);
+      _trace.mark('cycle-mount-done', round: round);
+
+      final baseline = _resizeEvents;
+      _trace.mark('cycle-set-size-begin', round: round);
+      await controller.setSize(640, 360);
+      _trace.mark('cycle-set-size-done', round: round);
+      final resized = await _waitUntil(
+        () => _resizeEvents > baseline,
+        timeout: const Duration(seconds: 5),
+      );
+      _trace.mark('cycle-resize-wait-done', round: round);
+      await _nextFrame();
+      _trace.mark('cycle-frame-after-resize-done', round: round);
+
+      _setTexture(null);
+      _trace.mark('cycle-unmount-done', round: round);
+      await _nextFrame();
+      _trace.mark('cycle-frame-after-unmount-done', round: round);
+      _trace.mark('cycle-dispose-begin', round: round);
+      await controller.dispose();
+      _controller = null;
+      _trace.mark('cycle-dispose-done', round: round);
+      if (resized) {
+        completed++;
+      } else {
+        failures++;
+      }
+    }
+    _emitBench({
+      'stage': 'cycles',
+      'cycles': count,
+      'completed': completed,
+      'failures': failures,
+      'rssStart': rssStart,
+      'rssEnd': ProcessInfo.currentRss,
+      'controllers': _controllersCreated,
+      'renderErrors': _renderErrors,
+      'deviceLost': _deviceLost,
+    });
+    await _disposeQuietly();
+  }
+
+  /// MPV_KIT_SMOKE_DIAG=resize-front: the shape 10-05's measured path really
+  /// executed and 10-07's diag modes never reached — setSize on a controller
+  /// that has already published a front frame, with its texture mounted, so
+  /// RenderOnce takes the keep_front reallocation path
+  /// (VulkanContext::AllocateRing with a kept slot).
+  ///
+  /// Every await is bracketed by a flushed trace marker: if the process
+  /// disappears, the trace's last line is the last completed step. Prints
+  /// `DIAG resize-front complete` only after all rounds. Never reaches
+  /// _classify and never emits a D-05 BENCH line.
+  Future<void> _runResizeFront(Player player, int rounds) async {
+    _stage = 'diag-resize-front';
+    await _disposePreflight();
+    for (var r = 1; r <= rounds; r++) {
+      _trace.mark('create-begin', round: r);
+      final controller = _controller = await MpvVideoController.create(
+        player,
+      );
+      _controllersCreated++;
+      _trace.mark('create-done', round: r);
+      _watch(controller);
+      _setTexture(controller.textureId);
+      _trace.mark('mount-done', round: r);
+
+      if (r == 1) {
+        _trace.mark('open-begin', round: r);
+        await player.open(_lavfiSource);
+        _trace.mark('open-done', round: r);
+        final paramsReady = await _waitUntil(() {
+          final params = player.videoParams.value;
+          return params?.width == 1920 && params?.height == 1080;
+        }, timeout: const Duration(seconds: 30));
+        _trace.mark('params-wait-done', round: r);
+        if (!paramsReady) {
+          throw StateError('resize-front: video params timeout');
+        }
+      }
+
+      // First allocation: publishes a front frame at 1280x720.
+      final firstBaseline = _resizeEvents;
+      _trace.mark('set-size-1280-begin', round: r);
+      await controller.setSize(1280, 720);
+      _trace.mark('set-size-1280-done', round: r);
+      final firstReady = await _waitUntil(() {
+        final fps = player.mpv.tryGetProperty('estimated-vf-fps');
+        return fps is num && fps > 0 && _resizeEvents > firstBaseline;
+      }, timeout: const Duration(seconds: 30));
+      _trace.mark('first-resize-wait-done', round: r);
+      if (!firstReady) {
+        throw StateError('resize-front: no 1280x720 resize in round $r');
+      }
+      _trace.mark('hold-front-begin', round: r);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      _trace.mark('hold-front-done', round: r);
+
+      // The candidate abort shape: reallocate while a front frame exists and
+      // the compositor is still sampling it.
+      final secondBaseline = _resizeEvents;
+      _trace.mark('set-size-640-begin', round: r);
+      await controller.setSize(640, 360);
+      _trace.mark('set-size-640-done', round: r);
+      final secondReady = await _waitUntil(
+        () => _resizeEvents > secondBaseline,
+        timeout: const Duration(seconds: 30),
+      );
+      _trace.mark('second-resize-wait-done', round: r);
+      if (!secondReady) {
+        throw StateError('resize-front: no 640x360 resize in round $r');
+      }
+      _trace.mark('hold-resized-begin', round: r);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      _trace.mark('hold-resized-done', round: r);
+
+      _setTexture(null);
+      _trace.mark('unmount-done', round: r);
+      _trace.mark('frame-after-unmount-begin', round: r);
+      await _nextFrame();
+      _trace.mark('frame-after-unmount-done', round: r);
+      _trace.mark('dispose-begin', round: r);
+      await controller.dispose();
+      _controller = null;
+      _trace.mark('dispose-done', round: r);
+    }
+    print('DIAG resize-front complete ${jsonEncode({'rounds': rounds})}');
+    await _disposeQuietly();
   }
 }

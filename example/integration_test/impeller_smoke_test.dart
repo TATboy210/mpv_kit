@@ -318,8 +318,23 @@ final class _SmokeHarness {
       case 'probe':
         await _runProbe(player);
         return;
+      case 'resize-front':
+        await _runResizeFront(player, modeRounds ?? 5);
+        return;
       default:
         throw StateError('unknown MPV_KIT_SMOKE_DIAG: $diagMode');
+    }
+    // MPV_KIT_SMOKE_MODE selects the measured workload; d05 (default) is the
+    // unchanged part 1 -> part 2 -> part 3 flow below.
+    final smokeMode = Platform.environment['MPV_KIT_SMOKE_MODE'] ?? 'd05';
+    switch (smokeMode) {
+      case 'd05':
+        break;
+      case 'cycles':
+        await _runCycles(player, modeRounds ?? 100);
+        return;
+      default:
+        throw StateError('unknown MPV_KIT_SMOKE_MODE: $smokeMode');
     }
 
     // --- Part 1: minimal chain, 1920x1080 source --------------------------
@@ -400,8 +415,13 @@ final class _SmokeHarness {
     final part2Ms = part2Watch.elapsedMilliseconds;
     final fps4k = player.mpv.tryGetProperty('estimated-vf-fps');
 
-    // Pixel proof: a black-but-alive frame is not a pass.
-    _pixelProbe = await _probePixels();
+    // Pixel proof: a black-but-alive frame is not a pass. 12-02's probe
+    // control showed toImage does see the external texture under both
+    // switches (probe_decision: readiness-gate), so the only change is to
+    // read after presented frames; probeTiming is recorded with the probe
+    // and never consulted by _classify.
+    final probeGate = await _firstFrameGate(player);
+    _pixelProbe = {...await _probePixels(), ...probeGate};
     _parts['uhd4k'] = 'ok';
 
     // --- Part 3: 30 s soak with 100 resize/dispose rounds -----------------
@@ -692,11 +712,11 @@ final class _SmokeHarness {
 
   /// Samples the composed texture through a [RenderRepaintBoundary].
   ///
-  /// Known limitation (WR-03): the probe has no independent black control, so
-  /// `nonBlackRatio < 0.01` cannot distinguish a genuinely black frame from a
-  /// texture that was never composited. Classification keeps the 10-03 rule
-  /// (`failed`, with `reason` naming the probe) and the ambiguity is recorded
-  /// in the 10-06 ADR's known-limitations section.
+  /// WR-03 (no independent black control) is answered out of band: the
+  /// MPV_KIT_SMOKE_DIAG=probe control (impeller_smoke_modes.dart) showed in
+  /// 12-02 that this channel does see the external texture with Impeller on
+  /// and off. The whole-image sampling and the 0.01 threshold are unchanged;
+  /// a black read here is a black composed frame.
   Future<Map<String, Object?>> _probePixels() async {
     try {
       final boundary = _probeKey.currentContext?.findRenderObject();

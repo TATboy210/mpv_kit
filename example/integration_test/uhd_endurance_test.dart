@@ -5,6 +5,15 @@
 //   MPV_KIT_BENCH_SIZE    WxH      (default 3840x2160)
 //   MPV_KIT_BENCH_SECONDS duration (default 1800)
 //   MPV_KIT_BENCH_LABEL   run name for the BENCH line (default uhd)
+//   MPV_KIT_BENCH_RENDER  1 = mount a Texture and setSize(<source size>),
+//                         timing starts after that size's resize event
+//
+// Unset (the Phase 4 gate command) the test never mounts a Texture and never
+// calls setSize, so VideoRenderer::RenderLoop sees `sized == false` and only
+// SkipFrame()s: the Phase 4 "4K 30 min PASS" measured decode and VO pacing,
+// not one frame rendered into a shared image. It stays the like-for-like
+// baseline command. MPV_KIT_BENCH_RENDER=1 is the variant that really renders
+// every frame at the source size; its BENCH line carries "rendered": true.
 //
 // Run from example/ (window must stay visible the whole time — minimizing
 // triggers the renderer's idle path):
@@ -28,6 +37,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
@@ -41,8 +51,29 @@ void main() {
   final seconds =
       int.parse(Platform.environment['MPV_KIT_BENCH_SECONDS'] ?? '1800');
   final label = Platform.environment['MPV_KIT_BENCH_LABEL'] ?? 'uhd';
+  final render = Platform.environment['MPV_KIT_BENCH_RENDER'] == '1';
 
   testWidgets('UHD endurance $size x ${seconds}s', (tester) async {
+    // Rendered variant only: the minimal texture tree of
+    // impeller_smoke_test.dart, pumped once before runAsync.
+    final textureId = render ? ValueNotifier<int?>(null) : null;
+    if (textureId != null) {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: ValueListenableBuilder<int?>(
+            valueListenable: textureId,
+            builder: (context, id, child) => id == null
+                ? const SizedBox.shrink()
+                : SizedBox(
+                    width: 1280,
+                    height: 720,
+                    child: Texture(textureId: id),
+                  ),
+          ),
+        ),
+      );
+    }
     await tester.runAsync(() async {
       final player = Player(
         options: const {
@@ -56,21 +87,32 @@ void main() {
       );
       addTearDown(player.dispose);
       final controller = await MpvVideoController.create(player);
+      textureId?.value = controller.textureId;
 
       var renderErrors = 0;
       var deviceLost = false;
+      String? lastResize;
       final sub = controller.events.listen((e) {
         if (e.kind == MpvVideoEventKind.renderError) renderErrors++;
         if (e.kind == MpvVideoEventKind.deviceLost) deviceLost = true;
+        if (render && e.kind == MpvVideoEventKind.resize) {
+          lastResize = e.message;
+        }
       }, onError: (Object _) {});
 
       final (w, h) = switch (size.split('x')) {
         [final a, final b] => (int.parse(a), int.parse(b)),
         _ => throw ArgumentError('MPV_KIT_BENCH_SIZE must be WxH, got $size'),
       };
+      // The rendered variant starts timing only after its resize, so its
+      // source outlasts the run by the resize wait's 30 s bound: a run
+      // window that reaches EOF counts the undisplayed tail as VO drops
+      // (12-02 self-check: 8 drops at EOF in a rendered 20 s 1080p run, 0
+      // when the source outlasted the run). Unset, the source is unchanged.
+      final sourceSeconds = render ? seconds + 30 : seconds;
       await player.open(
-        'av://lavfi:testsrc2=size=$size:rate=30:duration=$seconds[out0];'
-        'sine=frequency=440:sample_rate=48000:duration=$seconds[out1]',
+        'av://lavfi:testsrc2=size=$size:rate=30:duration=$sourceSeconds[out0];'
+        'sine=frequency=440:sample_rate=48000:duration=$sourceSeconds[out1]',
       );
 
       // Wait until the requested resolution is actually being decoded.
@@ -83,6 +125,19 @@ void main() {
       expect(player.videoParams.value?.width, w,
           reason: 'the source must reach the requested resolution');
       expect(player.videoParams.value?.height, h);
+
+      // Rendered variant: size the renderer to the source and start timing
+      // only once the ring exists at that size (resize is emitted after a
+      // successful (re)allocation, video_renderer.cc RenderOnce).
+      if (render) {
+        await controller.setSize(w, h);
+        final sizedBy = DateTime.now().add(const Duration(seconds: 30));
+        while (lastResize != '${w}x$h' && DateTime.now().isBefore(sizedBy)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        expect(lastResize, '${w}x$h',
+            reason: 'the rendered variant must reach a ${w}x$h ring');
+      }
 
       // Sample every 10 s; keep one compact sample per minute.
       const names = [
@@ -140,6 +195,7 @@ void main() {
         'label': label,
         'size': size,
         'seconds': seconds,
+        'rendered': render,
         'renderErrors': renderErrors,
         'deviceLost': deviceLost,
         'frameDropCountFinal': frameDrops,
@@ -156,6 +212,11 @@ void main() {
       print('BENCH uhd ${jsonEncode(result)}');
 
       await sub.cancel();
+      if (textureId != null) {
+        // Unmount before the render context goes away.
+        textureId.value = null;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
       await controller.dispose();
 
       // --- fixed gates ---
