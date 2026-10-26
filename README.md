@@ -145,14 +145,28 @@ Software is used whenever Vulkan 1.3, the platform interop extensions or a
 suitable GPU are missing, or both Vulkan renderers fail to initialise. After
 `create` returns:
 
-* `controller.backend` is `MpvVideoBackend.vulkan` or `.software`;
+* `controller.backend` is `MpvVideoBackend.vulkan` (the GPU zero-copy
+  path) or `.software` (CPU rendering). The enum is frozen; the real
+  graphics API is the first token of `controller.reason`;
 * `controller.reason` explains it, e.g. `vulkan (gpu-next) on <device>` or
-  `software (<why Vulkan was not used>)`. It is also printed once with
-  `debugPrint`.
+  `software (sw) on cpu; vulkan/gpu-next unavailable: <why>`. The format is
+  `<api> (<renderer>) on <device>` followed by one
+  `; <api>/<renderer> unavailable: <why>` per candidate that was ranked
+  before the winner ([ADR 0004](docs/adr/0004-render-backend-reporting.md)).
+  It is also printed once with `debugPrint`.
 
 The environment variable **`MPV_KIT_VIDEO_RENDERER`** (`auto`, `gpu-next`,
 `gpu`, `software`) takes precedence over the requested renderer, so driver
 problems in a shipped app can be diagnosed without code changes.
+
+The native environment variable **`MPV_KIT_VIDEO_API`** forces one graphics
+API (`vulkan` or `software` today; `d3d11` on Windows and `opengl` on Linux
+once those backends land). It is strict: only that API is tried, there is
+no fallback to any other API (software included), and `create` throws
+`PlatformException(code: 'render_init')` when it cannot be used or does not
+match the selected renderer. Leave it unset in shipped apps; it exists for
+CI and diagnostics. See
+[ADR 0004](docs/adr/0004-render-backend-reporting.md).
 
 ## Hardware decoding defaults
 
@@ -166,8 +180,10 @@ decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
 
 ## Troubleshooting
 
-* **Which renderer is active?** `controller.backend` / `controller.reason`;
-  force one with `MPV_KIT_VIDEO_RENDERER`.
+* **Which renderer is active?** `controller.backend` / `controller.reason`
+  (the first token of `reason` is the graphics API); force a renderer with
+  `MPV_KIT_VIDEO_RENDERER`, or a graphics API, with no fallback, with
+  `MPV_KIT_VIDEO_API`.
 * **Is hardware decoding active?** `player.hwdecCurrent.value` or
   `player.mpv.getProperty('hwdec-current')`.
 * **Dropped frames:** read mpv's statistics properties such as

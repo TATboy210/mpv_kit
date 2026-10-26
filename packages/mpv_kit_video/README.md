@@ -55,9 +55,18 @@ scalers rather than texture filtering. Resizes are debounced
 
 If Vulkan 1.3, the interop extensions or a suitable GPU are missing, the
 software renderer is used. `MpvVideoController.backend` and `.reason` say
-which path is active and why. Set the environment variable
-`MPV_KIT_VIDEO_RENDERER` (`auto`, `gpu-next`, `gpu`, `software`) to override
-the renderer without code changes.
+which path is active and why: `backend` is `vulkan` for the GPU zero-copy
+path or `software`, and `reason` starts with the real graphics API, e.g.
+`vulkan (gpu-next) on <device>` or
+`software (sw) on cpu; vulkan/gpu-next unavailable: <why>`. Set the
+environment variable `MPV_KIT_VIDEO_RENDERER` (`auto`, `gpu-next`, `gpu`,
+`software`) to override the renderer without code changes.
+
+`MPV_KIT_VIDEO_API` (read by the native plugin) forces one graphics API,
+for example `vulkan` or `software`, for CI and diagnostics. It never falls
+back: if that API cannot be used, `create` throws `render_init`. See
+[ADR 0004](https://github.com/TATboy210/mpv_kit/blob/main/docs/adr/0004-render-backend-reporting.md)
+for the `reason` grammar and the exact semantics.
 
 ## Diagnostics
 
