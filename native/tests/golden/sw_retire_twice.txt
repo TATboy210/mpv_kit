@@ -1,0 +1,47 @@
+# Software-path golden trace of a resize that follows a resize without a
+# frame (video_renderer_golden_sw_retire_twice.cc, harness in
+# renderer_harness.h).
+#
+# Same format as golden/sw.txt: one [scenario] per section, one expected
+# line per line; lines starting with '#' are comments. `buf=` numbers the
+# buffers of one generation in first-use order; `frame=` is the frame
+# number the fake wrote into the pixels. `acquire index=-1 ... frame=none`
+# is an AcquireFront with no front frame; index -2 is the previous
+# generation's retired front.
+
+# Latency 2 (ring 5): one 64x36 frame is taken by the compositor. After
+# the resize to 32x18 every render fails: the resize itself and four
+# retries (100 + 200 + 400 + 800 ms; render_error at the 1st, 2nd and 4th
+# failure), so the retired 64x36 frame is still what AcquireFront shows.
+# The second resize, to 48x27, retires the 32x18 buffers, which frees the
+# 64x36 ones; it retries at once and succeeds. While that render is held
+# in the fake AcquireFront has nothing to show: the 64x36 frame's pixels
+# are freed memory and must not be handed out (on the defect this line
+# reads `acquire index=-2 64x36 pixels=set`). Then the new ring rotates.
+[sw-retire-twice]
+start ok backend=software reason="software (sw) on cpu"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+event resize 32x18
+render buf=0 32x18 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 32x18 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 32x18 rgb0 err=-20
+render buf=0 32x18 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 32x18 rgb0 err=-20
+acquire index=-2 64x36 frame=1
+event resize 48x27
+render buf=0 frame=2 48x27 rgb0
+acquire index=-1 48x27 frame=none
+event recovered
+acquire index=0 48x27 frame=2
+render buf=1 frame=3 48x27 rgb0
+acquire index=1 48x27 frame=3
+render buf=2 frame=4 48x27 rgb0
+acquire index=2 48x27 frame=4
+quiesce renders=9 skips=0 swaps=9
+teardown frees=1

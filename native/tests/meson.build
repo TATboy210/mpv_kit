@@ -107,3 +107,28 @@ golden_vk_fallback = executable('video_renderer_golden_vk_fallback',
 test('video_renderer_golden_vk_fallback', golden_vk_fallback,
      args: [files('golden/vk_fallback.txt'), '--slack-ms=' + slack],
      env: golden_vk_env, timeout: 120)
+
+# A resize that follows a resize without a frame (the retired front of two
+# generations ago): separate binaries because the golden set above is
+# frozen. The Vulkan one has golden_vk's device, probe and skip semantics;
+# the software one runs everywhere, like golden_sw.
+golden_vk_retire_twice = executable('video_renderer_golden_vk_retire_twice',
+                                    'video_renderer_golden_vk_retire_twice.cc',
+                                    include_directories: [renderer_inc,
+                                                          vulkan_inc],
+                                    cpp_args: renderer_defines,
+                                    link_with: renderer,
+                                    dependencies: threads)
+test('video_renderer_golden_vk_retire_twice', golden_vk_retire_twice,
+     args: [files('golden/vk_retire_twice.txt'), '--slack-ms=' + slack],
+     env: golden_vk_env, timeout: 120)
+golden_sw_retire_twice = executable('video_renderer_golden_sw_retire_twice',
+                                    'video_renderer_golden_sw_retire_twice.cc',
+                                    include_directories: [renderer_inc,
+                                                          vulkan_inc],
+                                    cpp_args: renderer_defines,
+                                    link_with: renderer,
+                                    dependencies: threads)
+test('video_renderer_golden_sw_retire_twice', golden_sw_retire_twice,
+     args: [files('golden/sw_retire_twice.txt'), '--slack-ms=' + slack],
+     timeout: 120)
