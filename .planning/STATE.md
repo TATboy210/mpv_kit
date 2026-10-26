@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-04-PLAN.md
-last_updated: "2026-10-26T11:18:23.758Z"
+stopped_at: Completed 12-06-PLAN.md
+last_updated: "2026-10-26T13:34:19.535Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 9b8aa6fb9317a816514bae1e0fd1bae01676e219
+state_head: 52341e1dd7af0daae0b3af8aaff18b876c9b6355
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -98,6 +98,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P03 | 33min | 2 tasks | 6 files |
 | Phase 12 P05 | 53min | 2 tasks | 4 files |
 | Phase 12 P04 | 61min | 3 tasks | 39 files |
+| Phase 12 P06 | 130 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,7 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-04: pre-refactor RTX 4060 baseline measured record = latest valid attempt per group (d05 on/off + cycles-on a3, cycles-off + resize-front on/off a2); attempt 1 and three attempt-2 runs invalidated by the user with reasons in baseline-runs.txt
 - [Phase 12]: 12-04: D-05 and resize-front abort reproduced identically with Impeller on and off (round 1, last marker dispose-begin / set-size-640-done, exit 79, forensics none); recorded as unexplained, not re-run to green; cycles 100/100 both switches
 - [Phase 12]: 12-04: TaskBarHero (+UnityCrashHandler64, <=2.1% GPU engine) accepted as permitted background for RTX 4060 runs; nvidia-smi 22-24% at gates unexplained; RBE-01 stays Pending until 12-08/12-12
+- [Phase 12]: 12-06: native reason follows ADR 0004 grammar; software failure has no head; renderer name also sanitized
 
 ### Pending Todos
 
@@ -188,6 +190,7 @@ None yet.
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
 - **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
+- 12-06 Task 2 CI gate on 52341e1 pending (integration-test reason regex); linux x64 apt mirror stall
 
 ## Deferred Items
 
@@ -218,8 +221,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T11:17:47.135Z
-Stopped at: Completed 12-04-PLAN.md
+Last session: 2026-10-26T13:34:19.421Z
+Stopped at: Completed 12-06-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
