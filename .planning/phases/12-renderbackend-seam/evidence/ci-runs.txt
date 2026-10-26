@@ -36,3 +36,36 @@ sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 workflow=flutter-plugin.yml run=403
 gate plan=12-06 task=2 sha=52341e1dd7af0daae0b3af8aaff18b876c9b6355 native-verify=40327855409 attempt=2 flutter-plugin=40327854823 result=CI-GATE-ok gate_rc=0 expectations=jobs-success:integration-test,reason-grammar-regex:ubuntu|windows|macos recorded_by=12-07
 red_local sha=f6df1fa1d9ba409ab7e044e240a0b1b3aace00ed host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 log=.planning/phases/12-renderbackend-seam/evidence/red-local-12-07-publish-gate.log line=GOLDEN invariant scenario=vk-publish-gate: frame 1 was published before its GPU work completed
 red_local sha=c452ccd114f4982882bca32eb7625ebef5944daa host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 log=.planning/phases/12-renderbackend-seam/evidence/red-local-12-07.log line=GOLDEN invariant scenario=vk-retire-on-resize: DOUBLE DESTROY serial=4
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=cancelled
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+note sha=f77378fe2052f03519142fa731e45ee85bc80825 run=40341371979 cancelled_by=executor cause=infra job='integration-test (ubuntu-24.04, linux, libmpv-verify-linux-ubuntu-24.04, lib/libmpv.so.2)' step='Linux build and runtime dependencies' stuck 20 min (apt mirror); other 9 native-verify jobs success incl. golden_vk OK on linux/macos-15/sanitizers/linux-arm and SKIP (vkCreateInstance failed) on both windows; rerun via CI_GATE_RERUN_INFRA=1
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=cancelled
+rerun sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 attempt=2 reason=infra
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=native-verify.yml run=40341371979 conclusion=success
+sha=f77378fe2052f03519142fa731e45ee85bc80825 workflow=flutter-plugin.yml run=40341371920 conclusion=success
+gate plan=12-07 task=1 sha=f77378fe2052f03519142fa731e45ee85bc80825 native-verify=40341371979 attempt=2 flutter-plugin=40341371920 result=CI-GATE-ok gate_rc=0 expectations=log:golden_vk_OK:linux-ubuntu-24.04,macos-15,sanitizers;golden_vk_OK|SKIP:windows-2025(user decision 2) observed_windows-2025="GOLDEN skip: software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed" note=gate invocations between the rerun and this ok line failed on GitHub API 502/503 only
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=native-verify.yml run=40346404234 conclusion=cancelled
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=flutter-plugin.yml run=40346404382 conclusion=success
+note sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 run=40346404234 cancelled_by=executor cause=infra job='linux (ubuntu-24.04)' step='Install dependencies' stuck 22 min (apt mirror); other 7 build jobs success (golden_vk OK scenarios=8 on macos-15/sanitizers/linux-arm, SKIP vkCreateInstance failed on both windows); rerun via CI_GATE_RERUN_INFRA=1
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=native-verify.yml run=40346404234 conclusion=cancelled
+rerun sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=native-verify.yml run=40346404234 attempt=2 reason=infra
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=native-verify.yml run=40346404234 conclusion=
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=flutter-plugin.yml run=40346404382 conclusion=success
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=native-verify.yml run=40346404234 conclusion=success
+sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 workflow=flutter-plugin.yml run=40346404382 conclusion=success
+gate plan=12-07 task=2 sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 native-verify=40346404234 attempt=2 flutter-plugin=40346404382 result=CI-GATE-ok gate_rc=0 expectations=jobs-success:build,integration-test;golden_vk_OK:linux-ubuntu-24.04,macos-15,sanitizers;golden_vk_OK|SKIP:windows-2025(user decision 2);golden_sw_OK:sanitizers observed="GOLDEN ok scenarios=8" on linux x64/arm64, macos-15, sanitizers; windows-2025 and windows-11-arm "GOLDEN skip: software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed"
+integration platform=linux sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 line={"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)","elapsedMs":309,"fps":30.0,"events":[]}
+integration platform=macos sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 line={"backend":"vulkan","reason":"vulkan (gpu-next) on Apple Paravirtual device","elapsedMs":208,"fps":30.0,"events":[]}
+local_real_plugin sha=f77378fe2052f03519142fa731e45ee85bc80825 host=mengyiyu002 gpu="NVIDIA GeForce RTX 4060 Laptop GPU" cmd="flutter test integration_test/real_plugin_test.dart -d windows" result="All tests passed!" line={"backend":"vulkan","reason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU","elapsedMs":207,"fps":30.0,"events":[]} gpu_contention=unknown(no cs2.exe in tasklist at run time)
+local_real_plugin sha=e3ef12b5cd5041209fd39e8322fce0f37d492b29 host=mengyiyu002 gpu="NVIDIA GeForce RTX 4060 Laptop GPU" cmd="flutter test integration_test/real_plugin_test.dart -d windows" result="All tests passed!" line={"backend":"vulkan","reason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU","elapsedMs":213,"fps":30.0,"events":[]}
