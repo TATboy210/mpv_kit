@@ -146,3 +146,18 @@ api_test = executable('video_renderer_api_test',
 test('video_renderer_api_test', api_test,
      args: [files('golden/api_override.txt'), '--slack-ms=' + slack],
      env: golden_vk_env, timeout: 120)
+
+# Thread affinity of the mpv_render_* calls (render.h, "Threading"): a
+# separate binary because the golden set above is frozen. A raster thread
+# takes frames while the test checks, from the fake's call log, that swaps,
+# renders, updates, parameters and the final free all run on the render
+# thread. The software scenario runs everywhere; the Vulkan one needs
+# golden_vk's Vulkan 1.3 device and is skipped on its own without one.
+affinity_test = executable('video_renderer_affinity_test',
+                           'video_renderer_affinity_test.cc',
+                           include_directories: [renderer_inc, vulkan_inc],
+                           cpp_args: renderer_defines,
+                           link_with: renderer,
+                           dependencies: threads)
+test('video_renderer_affinity_test', affinity_test, env: golden_vk_env,
+     timeout: 120)
