@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: v3.0 roadmap created (Phases 12-17); awaiting roadmap approval, then Phase 12 discussion/planning
-last_updated: "2026-10-25T20:04:50.899Z"
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-10-26T06:13:52.395Z"
 last_activity: 2026-10-26
-last_activity_desc: v3.0 roadmap created (Phases 12-17, 31/31 requirements mapped)
-state_head: 3f91d028c95d3071ab8cba49fc01da21e3529623
+last_activity_desc: Phase 12 execution started
+state_head: fada55854cffe197b2fb2683fab39883e89d3f17
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 12 — RenderBackend Seam（基线先行的纯重构）
+**Current focus:** Phase 12 — RenderBackend Seam
 
 ## Current Position
 
-Phase: 12 (RenderBackend Seam) — READY TO EXECUTE
-Plan: Not started
+Phase: 12 (RenderBackend Seam) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-10-26 — v3.0 roadmap created (Phases 12-17, 31/31 requirements mapped)
+Last activity: 2026-10-26 — Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -93,6 +93,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 10 P02 | 7 min | 1 task | 4 files |
 | Phase 10 P03 | 14 min | 2 tasks | 11 files |
 | Phase 10 P07 | 10 min | 1 tasks | 7 files |
+| Phase 12 P01 | 42 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,8 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-03: ADR 0003 rejects the 'no ANGLE' slogan on 3.47.8; Phase 11 primary route is upstreaming the requirement, with the upgrade bypass as delivery vehicle and modified ANGLE as fallback.
 - [Phase 10]: 10-07: soak abort is not-reproduced across soak-after-4k (5/5), soak (5/5) and a 25-round after-4k retry (all exit 0 with DIAG soak complete); Task 1 fails, Task 2 is not entered, and no speculative fix is applied
 - [Phase 10]: 10-07: diag trace proven independently: writeAsStringSync flush:true, 25/25 and 5/5 round-end markers, 0 stage:complete lines in all diag logs, _classify untouched
+- [Phase 12]: 12-01: Phase 12 push authorization is push-green-only (user, 2026-10-26); 12-07 Task 2 and 12-11 Task 1 RED commits must stop before push and ask the user
+- [Phase 12]: 12-01: hosted CI gate is .planning/phases/12-renderbackend-seam/tools/ci_gate.sh; Flutter 3.47.8 prints 'N tests passed.' (no 'All tests passed!'), use 'tests passed\.[[:space:]]*$' for zero-skip success
 
 ### Pending Todos
 
@@ -199,8 +202,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26
-Stopped at: v3.0 roadmap created (Phases 12-17); awaiting roadmap approval, then Phase 12 discussion/planning
+Last session: 2026-10-26T06:13:52.282Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

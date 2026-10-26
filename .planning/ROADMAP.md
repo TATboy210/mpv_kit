@@ -74,11 +74,11 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
-**Plans:** 12 plans（9 waves）
+**Plans:** 1/12 plans executed（9 waves）
 
 Plans:
 **Wave 1**
-- [ ] 12-01-PLAN.md — 推送授权检查点 + 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
+- [x] 12-01-PLAN.md — 推送授权检查点 + 恢复 hosted CI 验证层（pin 检查路径、hook-bundle 定位；integration-test 首跑）+ `ci_gate.sh`
 - [ ] 12-02-PLAN.md — soak harness 修复：探针三方对照、resize-front 复现器、100 次 create/dispose 段、真正渲染的 4K 变体
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -190,7 +190,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. RenderBackend Seam | v3.0 | 0/12 | Planned | - |
+| 12. RenderBackend Seam | v3.0 | 1/12 | In Progress | - |
 | 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |
