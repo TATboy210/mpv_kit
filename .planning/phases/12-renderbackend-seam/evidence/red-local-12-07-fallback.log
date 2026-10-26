@@ -1,0 +1,73 @@
+# local RED evidence: video_renderer_golden_vk_fallback on f9b559faedf9987cd4651ef680083375ef39932c
+# host: MINGW64_NT-10.0-26300 mengyiyu002 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+# built: MSVC cl /W4 /WX /O2 (build/golden-local/p1207/build_fb.bat) from the working tree == HEAD (git status clean under native/ and packages/)
+# command: golden_vk_fallback.exe native/tests/golden/vk_fallback.txt --slack-ms=250
+# date: 2026-10-26T18:01:38Z
+GOLDEN invariant scenario=vk-fallback-after-resize: USE AFTER DESTROY serial=4
+GOLDEN invariant scenario=vk-fallback-after-resize: missing log line: mpv_kit: shared-image allocation failed at ring 7, retried with a ring of 5
+GOLDEN invariant scenario=vk-fallback-after-resize: USE AFTER DESTROY serial=4 (RetainFrame)
+  [vk-fallback-after-resize] log: mpv_kit: shared-image allocation failed at ring 5, retried with a ring of 5
+GOLDEN mismatch scenario=vk-fallback-after-resize line=44
+  expected: acquire index=-1 32x18 serial=none
+  actual:   acquire index=-2 64x36 serial=4 USE AFTER DESTROY
+  actual trace of [vk-fallback-after-resize]:
+    start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+    create-attempts vulkan/gpu-next
+    create serial=1 64x36
+    create serial=2 64x36
+    create serial=3 64x36
+    create serial=4 64x36
+    create serial=5 64x36
+    create serial=6 64x36
+    create serial=7 64x36
+    event resize 64x36
+    render serial=1 64x36
+    acquire index=0 64x36 serial=1
+    render serial=2 64x36
+    acquire index=1 64x36 serial=2
+    render serial=3 64x36
+    acquire index=2 64x36 serial=3
+    render serial=4 64x36
+    acquire index=3 64x36 serial=4
+    destroy serial=1
+    destroy serial=2
+    destroy serial=3
+    destroy serial=5
+    destroy serial=6
+    destroy serial=7
+    create serial=8 32x18
+    create serial=9 32x18
+    create serial=10 32x18
+    create serial=11 32x18
+    create serial=12 32x18
+    create failed 32x18
+    destroy serial=8
+    destroy serial=9
+    destroy serial=10
+    destroy serial=11
+    destroy serial=12
+    destroy serial=4
+    create serial=13 32x18
+    create serial=14 32x18
+    create serial=15 32x18
+    create serial=16 32x18
+    create serial=17 32x18
+    event resize 32x18
+    render serial=13 32x18
+    acquire index=-2 64x36 serial=4 USE AFTER DESTROY
+    acquire index=0 32x18 serial=13
+    render serial=14 32x18
+    acquire index=1 32x18 serial=14
+    render serial=15 32x18
+    acquire index=2 32x18 serial=15
+    render serial=16 32x18
+    acquire index=3 32x18 serial=16
+    quiesce renders=8 skips=0 swaps=8
+    destroy serial=13
+    destroy serial=14
+    destroy serial=15
+    destroy serial=16
+    destroy serial=17
+    teardown frees=1 live-images=0
+    log mpv_kit: shared-image allocation failed at ring 5, retried with a ring of 5
+# exit=1
