@@ -436,8 +436,9 @@ class FakeMpv {
   }
 
  private:
+  // Explicit return type: the members above use it before its definition.
   template <typename F>
-  auto Locked(F f) {
+  auto Locked(F f) -> decltype(f()) {
     std::lock_guard<std::mutex> lock(mu_);
     return f();
   }
