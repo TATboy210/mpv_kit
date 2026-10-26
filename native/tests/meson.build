@@ -95,3 +95,15 @@ golden_vk = executable('video_renderer_golden_vk',
 test('video_renderer_golden_vk', golden_vk,
      args: [files('golden/vk.txt'), '--slack-ms=' + slack],
      env: golden_vk_env, timeout: 120)
+
+# Ring fallback after a resize (latency 4): a separate binary because the
+# golden_vk set above is frozen. Same device, probe and skip semantics.
+golden_vk_fallback = executable('video_renderer_golden_vk_fallback',
+                                'video_renderer_golden_vk_fallback.cc',
+                                include_directories: [renderer_inc, vulkan_inc],
+                                cpp_args: renderer_defines,
+                                link_with: renderer,
+                                dependencies: threads)
+test('video_renderer_golden_vk_fallback', golden_vk_fallback,
+     args: [files('golden/vk_fallback.txt'), '--slack-ms=' + slack],
+     env: golden_vk_env, timeout: 120)
