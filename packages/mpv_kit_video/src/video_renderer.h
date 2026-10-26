@@ -118,6 +118,8 @@ class VideoRenderer {
   /// Most recent completed frame (index into the ring). Thread-safe; the
   /// returned index stays valid until the next AcquireFront() call, so the
   /// renderer never writes into the image the compositor is reading.
+  /// Makes no libmpv call: a frame it presents only counts a swap for the
+  /// render thread to report.
   Frame AcquireFront();
 
   /// What the frames carry; kSoftware when no backend was created.
@@ -140,6 +142,11 @@ class VideoRenderer {
   void ApplyIccProfile();
   void Emit(const char* kind, const std::string& msg = {});
   void SkipFrame();
+  // Reports [n] swaps to mpv (render thread only).
+  void ReportSwaps(int n);
+  // Debug builds: every mpv_render_* call after Start runs on the render
+  // thread (render.h, "Threading"; an OpenGL context is only current there).
+  void AssertRenderThread() const;
   // The backend for one candidate api, or nullptr with *why (the reason
   // trail's text) when this platform cannot provide it.
   std::unique_ptr<RenderBackend> NewBackend(const char* api, std::string* why);
@@ -159,12 +166,18 @@ class VideoRenderer {
   std::unique_ptr<RenderBackend> render_backend_;
 
   std::thread thread_;
+  // Set by the render thread when it starts (AssertRenderThread).
+  std::atomic<std::thread::id> render_thread_id_{};
   std::mutex mutex_;
   std::condition_variable cv_;
   bool update_pending_ = false;
-  // A rendered frame awaits mpv_render_context_report_swap(): reported when
-  // the compositor first takes it, or after kPresentTimeout without one.
+  // A rendered frame awaits mpv_render_context_report_swap(): due when the
+  // compositor first takes it, or after kPresentTimeout without one.
   bool swap_pending_ = false;
+  // Swaps AcquireFront (raster thread) found due; the render thread reports
+  // them before its next mpv_render_context_update. Dropped at exit, when
+  // the render context is freed anyway.
+  int swaps_to_report_ = 0;
   static constexpr std::chrono::milliseconds kPresentTimeout{50};
   // Last time the compositor took a frame. Swaps are only deferred to the
   // compositor while it is actively consuming (not before the texture is

@@ -1,6 +1,7 @@
 #include "video_renderer.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 
@@ -271,12 +272,18 @@ VideoRenderer::~VideoRenderer() {
     quit_ = true;
   }
   cv_.notify_all();
+  // The render thread frees the render context before it exits (RenderLoop).
   if (thread_.joinable()) thread_.join();
   if (render_ctx_) {
+    // Only when the render thread never ran: Start created the context and
+    // then std::thread threw. No thread ever owned the context, so this one
+    // binds the backend and frees it here, as the render thread would.
+    render_backend_->BindThread();
     api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
     // Must precede device destruction: mpv owns objects on our VkDevice.
     render_backend_->Release(api_, render_ctx_);
     render_ctx_ = nullptr;
+    render_backend_->UnbindThread();
   }
   render_backend_.reset();  // device last
 }
@@ -426,6 +433,7 @@ void VideoRenderer::ApplyIccProfile() {
   // side sets it); the software renderer does not support ICC.
   mpv_byte_array data{profile.empty() ? nullptr : profile.data(),
                       profile.size()};
+  AssertRenderThread();
   const int err = api_.render_context_set_parameter(
       render_ctx_, {MPV_RENDER_PARAM_ICC_PROFILE, &data});
   if (err < 0)
@@ -436,9 +444,14 @@ void VideoRenderer::ApplyIccProfile() {
 Frame VideoRenderer::AcquireFront() {
   std::unique_lock<std::mutex> lock(mutex_);
   // The compositor takes the newest frame for display: that is when mpv's
-  // frame counts as presented (vsync timing / display-resample).
+  // frame counts as presented (vsync timing / display-resample). The swap
+  // is reported by the render thread (RenderLoop), the only thread that
+  // calls into the render context.
   const bool presented = swap_pending_ && front_ >= 0;
-  if (presented) swap_pending_ = false;
+  if (presented) {
+    swap_pending_ = false;
+    swaps_to_report_++;
+  }
   last_acquire_ = std::chrono::steady_clock::now();
   // Visible again after skipped frames: the front image is stale.
   const bool resumed = idle_;
@@ -476,9 +489,7 @@ Frame VideoRenderer::AcquireFront() {
   f.platform = view.platform;
   if (f.platform) interop_->RetainFrame(f.platform);
   lock.unlock();
-  if (resumed) cv_.notify_one();
-  // Outside our lock: mpv takes its own lock and may call OnMpvUpdate.
-  if (presented) api_.render_context_report_swap(render_ctx_);
+  if (presented || resumed) cv_.notify_one();
   return f;
 }
 
@@ -506,16 +517,31 @@ void VideoRenderer::FreeRetiredIfDone() {
   if (render_backend_) render_backend_->FreeRetired();
 }
 
+void VideoRenderer::ReportSwaps(int n) {
+  AssertRenderThread();
+  for (int i = 0; i < n; i++) api_.render_context_report_swap(render_ctx_);
+}
+
+void VideoRenderer::AssertRenderThread() const {
+  assert(std::this_thread::get_id() == render_thread_id_.load());
+}
+
 void VideoRenderer::RenderLoop() {
   using clock = std::chrono::steady_clock;
+  render_thread_id_.store(std::this_thread::get_id());
+  // Always true for Vulkan and software. A backend with thread affinity
+  // (OpenGL, Phase 15) binds its context here for the thread's lifetime.
+  render_backend_->BindThread();
   for (;;) {
     bool resized = false;
     bool redraw = false;
     bool retry = false;
+    int swaps = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       auto ready = [&] {
-        return quit_ || update_pending_ || resize_pending_ || redraw_pending_;
+        return quit_ || update_pending_ || resize_pending_ ||
+               redraw_pending_ || swaps_to_report_ > 0;
       };
       // Wake for whichever comes first: a pending swap that nobody
       // displayed, or the end of a failure backoff.
@@ -531,23 +557,39 @@ void VideoRenderer::RenderLoop() {
           // raster): report it anyway so mpv's flip_page never stalls.
           swap_pending_ = false;
           lock.unlock();
-          api_.render_context_report_swap(render_ctx_);
+          ReportSwaps(1);
           continue;
         }
         // Backoff over: try again even if mpv has no new frame (paused).
         retry = failures_ > 0 && clock::now() >= retry_at_;
         if (!retry) continue;
       }
-      if (quit_) return;
+      if (quit_) break;
+      // Swaps the compositor made due (AcquireFront) go first: mpv's
+      // flip_page waits for them.
+      swaps = swaps_to_report_;
+      swaps_to_report_ = 0;
+      const bool work =
+          update_pending_ || resize_pending_ || redraw_pending_ || retry;
+      if (!work) {
+        // Woken only to report swaps: no update call, so mpv sees the same
+        // update pattern as when the compositor reported them itself.
+        lock.unlock();
+        ReportSwaps(swaps);
+        continue;
+      }
       update_pending_ = false;
       resized = resize_pending_.exchange(false);
       redraw = redraw_pending_ || retry;
       redraw_pending_ = false;
     }
+    // Outside the lock: mpv takes its own lock and may call OnMpvUpdate.
+    ReportSwaps(swaps);
     ApplyIccProfile();
     FreeRetiredIfDone();
     // A new size is the usual cure for allocation failures: retry now.
     if (resized && failures_ > 0) retry_at_ = clock::now();
+    AssertRenderThread();
     const uint64_t flags = api_.render_context_update(render_ctx_);
     // A resize or a return from idle must redraw even when paused (no new
     // frame from mpv).
@@ -589,6 +631,15 @@ void VideoRenderer::RenderLoop() {
       if (sized && !backing_off) interop_->FrameReady();
     }
   }
+  // Still on the render thread, with the backend bound: the render context
+  // is freed here, never on the platform thread that destroys the renderer.
+  // Swaps not yet reported are dropped with it.
+  AssertRenderThread();
+  api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
+  // Must precede device destruction: mpv owns objects on our VkDevice.
+  render_backend_->Release(api_, render_ctx_);
+  render_ctx_ = nullptr;
+  render_backend_->UnbindThread();
 }
 
 void VideoRenderer::OnRenderResult(RenderResult result,
@@ -630,8 +681,9 @@ void VideoRenderer::SkipFrame() {
       {MPV_RENDER_PARAM_SKIP_RENDERING, &skip},
       {MPV_RENDER_PARAM_INVALID, nullptr},
   };
+  AssertRenderThread();
   api_.render_context_render(render_ctx_, params);
-  api_.render_context_report_swap(render_ctx_);
+  ReportSwaps(1);
 }
 
 VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
@@ -726,12 +778,13 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
                                              : RenderResult::kFailed;
     }
   }
+  AssertRenderThread();
   const int err = render_backend_->Render(api_, render_ctx_, back, w, h);
   if (err < 0) {
     *error = std::string("render: ") + api_.error_string(err);
     // The frame was consumed (unless the target was rejected up front,
     // where an extra swap is harmless): keep vo_libmpv's counts moving.
-    api_.render_context_report_swap(render_ctx_);
+    ReportSwaps(1);
     return RenderResult::kFailed;
   }
   if (render_backend_->pipelined()) {
@@ -764,7 +817,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     }
     if (done != WaitResult::kOk) {
       // The frame is consumed either way: keep vo_libmpv's counts moving.
-      api_.render_context_report_swap(render_ctx_);
+      ReportSwaps(1);
       *error = done == WaitResult::kDeviceLost ? "device lost" : "gpu timeout";
       return done == WaitResult::kDeviceLost ? RenderResult::kDeviceLost
                                              : RenderResult::kFailed;
@@ -786,7 +839,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     swap_pending_ = consuming;
     if (!consuming) swaps++;
   }
-  for (int i = 0; i < swaps; i++) api_.render_context_report_swap(render_ctx_);
+  ReportSwaps(swaps);
   interop_->FrameReady();
   return RenderResult::kOk;
 }

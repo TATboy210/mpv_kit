@@ -6,10 +6,11 @@
 // delivers FrameReady and RetainFrame.
 //
 // Threads: Render, Wait, AllocTargets and FreeRetired run on the render
-// thread; FrameFor runs with the renderer lock held (AcquireFront and
-// RenderOnce); Create, RendererName, Release and the destructor run before
-// the render thread starts or after it was joined. Each VideoRenderer owns
-// its own backend instance.
+// thread, between BindThread and UnbindThread, and so does Release, just
+// before the render thread exits; FrameFor runs with the renderer lock held
+// (AcquireFront and RenderOnce); Create and RendererName run before the
+// render thread starts, the destructor after it was joined. Each
+// VideoRenderer owns its own backend instance.
 #pragma once
 
 #include <cstdint>
