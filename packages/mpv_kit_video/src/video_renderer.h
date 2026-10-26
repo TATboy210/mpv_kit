@@ -84,8 +84,6 @@ class Interop {
   virtual int CompositorLatency() const { return 2; }
 };
 
-class VulkanContext;  // vulkan_backend.cc
-
 /// Owns rendering for one mpv instance.
 class VideoRenderer {
  public:
@@ -114,11 +112,11 @@ class VideoRenderer {
   /// renderer never writes into the image the compositor is reading.
   Frame AcquireFront();
 
-  Backend backend() const { return backend_; }
+  /// What the frames carry; kSoftware when no backend was created.
+  Backend backend() const {
+    return render_backend_ ? render_backend_->frame_kind() : Backend::kSoftware;
+  }
   const std::string& backend_reason() const { return backend_reason_; }
-
-  /// Vulkan backend: access to the shared images for the platform layer.
-  VulkanContext* vulkan() const { return vulkan_.get(); }
 
  private:
   static void OnMpvUpdate(void* self);
@@ -140,11 +138,10 @@ class VideoRenderer {
   LogFn log_;
   EventFn event_;
 
-  Backend backend_ = Backend::kSoftware;
   std::string backend_reason_;
   mpv_render_context* render_ctx_ = nullptr;
-  std::unique_ptr<VulkanContext> vulkan_;
-  // Software path: device, render context and targets (render_backend.h).
+  // Device, render context targets and API-specific rendering
+  // (render_backend.h); null until Start() succeeded.
   std::unique_ptr<RenderBackend> render_backend_;
 
   std::thread thread_;

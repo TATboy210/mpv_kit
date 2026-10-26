@@ -111,4 +111,15 @@ class RenderBackend {
 /// (Interop::SoftwareIsBgra).
 std::unique_ptr<RenderBackend> CreateSoftwareBackend(bool bgra);
 
+class VulkanInterop;  // vulkan_backend.h
+
+/// MPV_RENDER_API_TYPE_VULKAN into images shared zero-copy with the
+/// platform compositor through [interop] (vulkan_backend.cc).
+std::unique_ptr<RenderBackend> CreateVulkanBackend(VulkanInterop* interop);
+
+/// Makes a driver/mpv-supplied string safe inside a reason field
+/// (docs/adr/0004-render-backend-reporting.md): `;` would split a trail and
+/// control characters would break the one-line form.
+std::string SanitizeReasonField(std::string s);
+
 }  // namespace mpv_kit

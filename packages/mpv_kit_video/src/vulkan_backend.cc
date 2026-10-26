@@ -1,9 +1,14 @@
 #include "vulkan_backend.h"
 
+#include <mpv/render_vk.h>
+
 #include <algorithm>
 #include <bitset>
 #include <cstring>
+#include <memory>
 #include <mutex>
+
+#include "render_backend.h"
 
 namespace mpv_kit {
 namespace {
@@ -415,6 +420,158 @@ VkResult VulkanContext::WaitImage(int i) {
   wi.pValues = &img.ready_value;
   // 1 s timeout: a stuck GPU must not wedge the render thread forever.
   return vkWaitSemaphores(device_, &wi, 1'000'000'000ull);
+}
+
+namespace {
+
+/// MPV_RENDER_API_TYPE_VULKAN into the VulkanContext's shared-image ring
+/// (RenderBackend). The device is created by the first Create().
+class VulkanRenderBackend final : public RenderBackend {
+ public:
+  explicit VulkanRenderBackend(VulkanInterop* interop) : interop_(interop) {}
+
+  const char* wire_name() const override { return "vulkan"; }
+  Backend frame_kind() const override { return Backend::kVulkan; }
+  bool pipelined() const override { return true; }
+
+  int Create(const MpvApi& api, mpv_handle* handle, const char* renderer,
+             mpv_render_context** out, std::string* why) override {
+    *out = nullptr;
+    if (!vk_ && !device_failed_) {
+      vk_ = std::make_unique<VulkanContext>(interop_);
+      std::string init_error;
+      if (!vk_->Init(&init_error)) {
+        vk_.reset();
+        device_failed_ = true;
+        device_error_ = SanitizeReasonField(init_error);
+      }
+    }
+    if (device_failed_) {
+      *why = device_error_;
+      return MPV_ERROR_GENERIC;  // mpv was not asked (see device_failed())
+    }
+    VulkanContext& vk = *vk_;
+    mpv_vulkan_init_params init{};
+    init.instance = vk.instance();
+    init.get_instance_proc_addr = vkGetInstanceProcAddr;  // from volk
+    init.api_version = vk.api_version();
+    init.physical_device = vk.physical_device();
+    init.device = vk.device();
+    init.extensions = vk.enabled_extensions().data();
+    init.num_extensions = static_cast<int>(vk.enabled_extensions().size());
+    init.features = vk.features();
+    init.queue_graphics = {vk.graphics_queues().index, vk.graphics_queues().count};
+    init.queue_compute = {vk.compute_queues().index, vk.compute_queues().count};
+    init.queue_transfer = {vk.transfer_queues().index,
+                           vk.transfer_queues().count};
+
+    int advanced = 1;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_API_TYPE,
+         const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
+        {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
+        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    const int err = api.render_context_create(out, handle, params);
+    if (err < 0) {
+      *why = "mpv_render_context_create: " +
+             SanitizeReasonField(api.error_string(err));
+      *out = nullptr;
+    }
+    return err;
+  }
+  bool device_failed() const override { return device_failed_; }
+  std::string device_name() const override {
+    return vk_ ? vk_->device_name() : std::string();
+  }
+  std::string RendererName(const MpvApi& api,
+                           mpv_render_context* ctx) const override {
+    // Ask mpv which renderer it really built: a libmpv without the
+    // renderer parameter ignores it and always uses its default.
+    const char* active = nullptr;
+    const int info = api.render_context_get_info(
+        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+    return info >= 0 && active ? active : "unknown renderer";
+  }
+
+  bool AllocTargets(int count, int width, int height, int keep_slot,
+                    std::string* error) override {
+    SharedImage* keep = keep_slot >= 0 ? &vk_->ring()[keep_slot] : nullptr;
+    return vk_->AllocateRing(count, width, height, keep, error);
+  }
+  void FreeRetired() override {
+    if (vk_) vk_->FreeRetired();
+  }
+  TargetView FrameFor(int slot) override {
+    TargetView view;
+    view.platform = vk_->ring()[slot].platform;
+    return view;
+  }
+
+  int Render(const MpvApi& api, mpv_render_context* ctx, int slot, int width,
+             int height) override {
+    // The image's own size: it is the ring's, which is [width]x[height].
+    (void)width;
+    (void)height;
+    SharedImage& img = vk_->ring()[slot];
+    mpv_vulkan_image target{};
+    target.image = img.image;
+    target.format = img.format;
+    target.usage = kSharedImageUsage;
+    target.width = img.width;
+    target.height = img.height;
+    // Images are shared with another API: transfer ownership to/from the
+    // external queue family and keep them in GENERAL layout between frames.
+    // Always EXTERNAL, also on first use: an acquire from EXTERNAL with
+    // UNDEFINED (contents discarded) is valid, while IGNORED on an
+    // EXCLUSIVE image with dedicated queue families is not
+    // (VUID-VkImageMemoryBarrier2-image-09117) and leaves the next frame's
+    // acquire without a matching release.
+    target.layout = img.initialized ? VK_IMAGE_LAYOUT_GENERAL
+                                    : VK_IMAGE_LAYOUT_UNDEFINED;
+    target.queue_family = VK_QUEUE_FAMILY_EXTERNAL;
+    target.final_layout = VK_IMAGE_LAYOUT_GENERAL;
+    target.signal_semaphore = vk_->timeline();
+    const uint64_t previous_ready = img.ready_value;
+    target.signal_value = vk_->NextSignalValue(slot);
+    int flip = 0;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_VULKAN_IMAGE, &target},
+        {MPV_RENDER_PARAM_FLIP_Y, &flip},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    const int err = api.render_context_render(ctx, params);
+    // A failed render signals nothing: without the rollback the next
+    // WaitImage(slot) would wait 1 s and report a false "gpu timeout".
+    if (err < 0) vk_->RollbackSignalValue(slot, previous_ready);
+    // Only a successful render transitions the image out of UNDEFINED.
+    if (err >= 0) img.initialized = true;
+    return err;
+  }
+  WaitResult Wait(int slot) override {
+    const VkResult result = vk_->WaitImage(slot);
+    if (result == VK_SUCCESS) return WaitResult::kOk;
+    return result == VK_ERROR_DEVICE_LOST ? WaitResult::kDeviceLost
+                                          : WaitResult::kTimeout;
+  }
+
+  void Release(const MpvApi& api, mpv_render_context* ctx) override {
+    api.render_context_free(ctx);
+  }
+
+ private:
+  VulkanInterop* const interop_;
+  std::unique_ptr<VulkanContext> vk_;  // destroyed last, with this backend
+  bool device_failed_ = false;
+  std::string device_error_;  // why Init failed, sanitized
+};
+
+}  // namespace
+
+std::unique_ptr<RenderBackend> CreateVulkanBackend(VulkanInterop* interop) {
+  return std::make_unique<VulkanRenderBackend>(interop);
 }
 
 }  // namespace mpv_kit

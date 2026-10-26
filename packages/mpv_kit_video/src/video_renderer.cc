@@ -1,22 +1,14 @@
 #include "video_renderer.h"
 
-#include <mpv/render_vk.h>
-
 #include <algorithm>
 
-#include "vulkan_backend.h"
-
 namespace mpv_kit {
-
-namespace {
 
 // Reason grammar (docs/adr/0004-render-backend-reporting.md, Decision 3):
 //   reason = head *( "; " trail )
 //   head   = api " (" renderer ") on " device
 //   trail  = api "/" renderer " unavailable: " why
 
-/// Makes a driver/mpv-supplied string safe inside a reason field: `;` would
-/// split a trail and control characters would break the one-line form.
 std::string SanitizeReasonField(std::string s) {
   for (char& c : s) {
     if (c == ';') {
@@ -27,6 +19,8 @@ std::string SanitizeReasonField(std::string s) {
   }
   return s;
 }
+
+namespace {
 
 /// Joins trails with the grammar's "; " separator.
 std::string JoinTrails(const std::vector<std::string>& trails) {
@@ -176,15 +170,10 @@ VideoRenderer::~VideoRenderer() {
   if (render_ctx_) {
     api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
     // Must precede device destruction: mpv owns objects on our VkDevice.
-    if (render_backend_) {
-      render_backend_->Release(api_, render_ctx_);
-    } else {
-      api_.render_context_free(render_ctx_);
-    }
+    render_backend_->Release(api_, render_ctx_);
     render_ctx_ = nullptr;
   }
-  render_backend_.reset();
-  vulkan_.reset();
+  render_backend_.reset();  // device last
 }
 
 bool VideoRenderer::Start(RendererChoice choice) {
@@ -217,7 +206,6 @@ bool VideoRenderer::Start(RendererChoice choice) {
     ok = err >= 0;
     if (ok) {
       render_backend_ = std::move(software);
-      backend_ = Backend::kSoftware;
     } else {
       log_(std::string("mpv_kit: software backend failed: ") +
            api_.error_string(err));
@@ -241,64 +229,34 @@ bool VideoRenderer::Start(RendererChoice choice) {
 bool VideoRenderer::StartVulkan(RendererChoice choice,
                                 std::vector<std::string>* trails) {
   const std::vector<const char*> renderers = VulkanRenderers(choice);
-  vulkan_ = std::make_unique<VulkanContext>(interop_->vulkan());
-  std::string init_error;
-  if (!vulkan_->Init(&init_error)) {
-    vulkan_.reset();
-    // No device, so every Vulkan renderer of this choice is unavailable for
-    // the same reason.
-    AddVulkanTrails(renderers, SanitizeReasonField(init_error), trails);
-    return false;
-  }
-  VulkanContext& vk = *vulkan_;
-  mpv_vulkan_init_params init{};
-  init.instance = vk.instance();
-  init.get_instance_proc_addr = vkGetInstanceProcAddr;  // from volk
-  init.api_version = vk.api_version();
-  init.physical_device = vk.physical_device();
-  init.device = vk.device();
-  init.extensions = vk.enabled_extensions().data();
-  init.num_extensions = static_cast<int>(vk.enabled_extensions().size());
-  init.features = vk.features();
-  init.queue_graphics = {vk.graphics_queues().index, vk.graphics_queues().count};
-  init.queue_compute = {vk.compute_queues().index, vk.compute_queues().count};
-  init.queue_transfer = {vk.transfer_queues().index,
-                         vk.transfer_queues().count};
-
-  int advanced = 1;
+  // One device for every renderer of this choice; destroyed on return
+  // unless a render context was created on it.
+  std::unique_ptr<RenderBackend> vulkan =
+      CreateVulkanBackend(interop_->vulkan());
   for (const char* renderer : renderers) {
-    mpv_render_param params[] = {
-        {MPV_RENDER_PARAM_API_TYPE,
-         const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
-        {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
-        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
-        {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
-        {MPV_RENDER_PARAM_INVALID, nullptr},
-    };
-    const int err = api_.render_context_create(&render_ctx_, handle_, params);
+    std::string why;
+    const int err = vulkan->Create(api_, handle_, renderer, &render_ctx_, &why);
+    if (vulkan->device_failed()) {
+      // No device, so every Vulkan renderer of this choice is unavailable for
+      // the same reason.
+      AddVulkanTrails(renderers, why, trails);
+      return false;
+    }
     if (err >= 0) {
-      // Ask mpv which renderer it really built: a libmpv without the
-      // renderer parameter ignores it and always uses its default.
-      const char* active = nullptr;
-      const int info = api_.render_context_get_info(
-          render_ctx_, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
-      const std::string name = SanitizeReasonField(
-          info >= 0 && active ? active : "unknown renderer");
-      backend_ = Backend::kVulkan;
+      const std::string name =
+          SanitizeReasonField(vulkan->RendererName(api_, render_ctx_));
       // The trails so far are exactly the renderers ranked before this one.
       backend_reason_ = "vulkan (" + name + ") on " +
-                        SanitizeReasonField(vk.device_name());
+                        SanitizeReasonField(vulkan->device_name());
       if (!trails->empty()) backend_reason_ += "; " + JoinTrails(*trails);
+      render_backend_ = std::move(vulkan);
       return true;
     }
     log_(std::string("mpv_kit: ") + renderer + " unavailable: " +
          api_.error_string(err));
-    trails->push_back(std::string("vulkan/") + renderer +
-                      " unavailable: mpv_render_context_create: " +
-                      SanitizeReasonField(api_.error_string(err)));
-    render_ctx_ = nullptr;
+    trails->push_back(std::string("vulkan/") + renderer + " unavailable: " +
+                      why);
   }
-  vulkan_.reset();
   return false;
 }
 
@@ -395,12 +353,10 @@ Frame VideoRenderer::AcquireFront() {
     if (resumed) cv_.notify_one();
     return f;
   }
-  if (backend_ == Backend::kSoftware) {
-    f.pixels = render_backend_->FrameFor(front_).pixels;
-  } else {
-    f.platform = vulkan_->ring()[front_].platform;
-    interop_->RetainFrame(f.platform);
-  }
+  const TargetView view = render_backend_->FrameFor(front_);
+  f.pixels = view.pixels;
+  f.platform = view.platform;
+  if (f.platform) interop_->RetainFrame(f.platform);
   lock.unlock();
   if (resumed) cv_.notify_one();
   // Outside our lock: mpv takes its own lock and may call OnMpvUpdate.
@@ -426,11 +382,10 @@ void VideoRenderer::FreeRetiredIfDone() {
     retired_countdown_ = -1;
     retired_front_ = Frame{};
   }
-  // Outside the lock, as for Vulkan. Equivalent to the software path's old
-  // clear under the lock: retired_front_, the only way AcquireFront reaches
-  // the retired buffers, was already cleared under it above.
+  // Outside the lock. Equivalent to the software path's old clear under the
+  // lock: retired_front_, the only way AcquireFront reaches the retired
+  // targets, was already cleared under it above.
   if (render_backend_) render_backend_->FreeRetired();
-  if (vulkan_) vulkan_->FreeRetired();
 }
 
 void VideoRenderer::RenderLoop() {
@@ -584,11 +539,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         retired_front_.index = -2;  // never equal to a ring index
         retired_front_.width = ring_w_;
         retired_front_.height = ring_h_;
-        if (backend_ == Backend::kSoftware) {
-          retired_front_.pixels = render_backend_->FrameFor(front_).pixels;
-        } else {
-          retired_front_.platform = vulkan_->ring()[front_].platform;
-        }
+        const TargetView view = render_backend_->FrameFor(front_);
+        retired_front_.pixels = view.pixels;
+        retired_front_.platform = view.platform;
       }
       retired_countdown_ = -1;
       front_ = in_use_ = -1;
@@ -601,37 +554,33 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     {
       // Under the lock: AcquireFront() must never observe a half-built ring.
       std::lock_guard<std::mutex> lock(mutex_);
-      if (backend_ == Backend::kVulkan) {
-        // The compositor may still sample the front frame: only that ring
-        // slot survives into retirement, the rest is freed at once.
-        SharedImage* keep =
-            keep_front >= 0 ? &vulkan_->ring()[keep_front] : nullptr;
-        if (!vulkan_->AllocateRing(ring_size_, w, h, keep, error)) {
-          // 8K on a small GPU: the full ring may not fit. One retry with
-          // the smallest ring whose quarantine (2) still respects the
-          // documented tearing constraint beats dropping to software.
-          const int fallback_quarantine = 2;
-          const int fallback_ring = fallback_quarantine + 3;
-          // The failed attempt freed everything, the image it had just
-          // retired included: nothing is left to keep (the slot keep points
-          // at is gone with the old ring), and the old front must never be
-          // handed out again, as on the plain-failure branch below.
-          retired_front_ = Frame{};
-          if (ring_size_ > fallback_ring &&
-              vulkan_->AllocateRing(fallback_ring, w, h, nullptr, error)) {
-            log_("mpv_kit: shared-image allocation failed at ring " +
-                 std::to_string(ring_size_) + ", retried with a ring of " +
-                 std::to_string(fallback_ring));
-            ring_size_ = fallback_ring;
-            quarantine_count_ = fallback_quarantine;
-          } else {
-            ring_w_ = ring_h_ = 0;
-            retired_front_ = Frame{};  // AllocateRing freed everything
-            failed_before_render = true;
-          }
+      // The compositor may still sample the front frame: only that ring
+      // slot survives into retirement, the rest is freed at once (software
+      // retires its whole generation and never fails).
+      if (!render_backend_->AllocTargets(ring_size_, w, h, keep_front,
+                                         error)) {
+        // 8K on a small GPU: the full ring may not fit. One retry with
+        // the smallest ring whose quarantine (2) still respects the
+        // documented tearing constraint beats dropping to software.
+        const int fallback_quarantine = 2;
+        const int fallback_ring = fallback_quarantine + 3;
+        // The failed attempt freed everything, the image it had just
+        // retired included: nothing is left to keep (keep_front's slot is
+        // gone with the old ring), and the old front must never be
+        // handed out again, as on the plain-failure branch below.
+        retired_front_ = Frame{};
+        if (ring_size_ > fallback_ring &&
+            render_backend_->AllocTargets(fallback_ring, w, h, -1, error)) {
+          log_("mpv_kit: shared-image allocation failed at ring " +
+               std::to_string(ring_size_) + ", retried with a ring of " +
+               std::to_string(fallback_ring));
+          ring_size_ = fallback_ring;
+          quarantine_count_ = fallback_quarantine;
+        } else {
+          ring_w_ = ring_h_ = 0;
+          retired_front_ = Frame{};  // AllocTargets freed everything
+          failed_before_render = true;
         }
-      } else {
-        render_backend_->AllocTargets(ring_size_, w, h, keep_front, error);
       }
       if (!failed_before_render) {
         ring_w_ = w;
@@ -645,56 +594,21 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     Emit("resize", std::to_string(w) + "x" + std::to_string(h));
   }
 
-  int err;
-  if (backend_ == Backend::kVulkan) {
-    SharedImage& img = vulkan_->ring()[back];
+  if (render_backend_->pipelined()) {
     // Previous use of this image must be finished before we write to it.
     const auto wait_prev_begin = std::chrono::steady_clock::now();
-    const VkResult prev = vulkan_->WaitImage(back);
+    const WaitResult prev = render_backend_->Wait(back);
     probe_wait_prev_ms_ +=
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - wait_prev_begin)
             .count();
-    if (prev != VK_SUCCESS) {
+    if (prev != WaitResult::kOk) {
       SkipFrame();
-      *error = prev == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
-      return prev == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
-                                          : RenderResult::kFailed;
+      *error = prev == WaitResult::kDeviceLost ? "device lost" : "gpu timeout";
+      return prev == WaitResult::kDeviceLost ? RenderResult::kDeviceLost
+                                             : RenderResult::kFailed;
     }
-    mpv_vulkan_image target{};
-    target.image = img.image;
-    target.format = img.format;
-    target.usage = kSharedImageUsage;
-    target.width = img.width;
-    target.height = img.height;
-    // Images are shared with another API: transfer ownership to/from the
-    // external queue family and keep them in GENERAL layout between frames.
-    // Always EXTERNAL, also on first use: an acquire from EXTERNAL with
-    // UNDEFINED (contents discarded) is valid, while IGNORED on an
-    // EXCLUSIVE image with dedicated queue families is not
-    // (VUID-VkImageMemoryBarrier2-image-09117) and leaves the next frame's
-    // acquire without a matching release.
-    target.layout = img.initialized ? VK_IMAGE_LAYOUT_GENERAL
-                                    : VK_IMAGE_LAYOUT_UNDEFINED;
-    target.queue_family = VK_QUEUE_FAMILY_EXTERNAL;
-    target.final_layout = VK_IMAGE_LAYOUT_GENERAL;
-    target.signal_semaphore = vulkan_->timeline();
-    const uint64_t previous_ready = img.ready_value;
-    target.signal_value = vulkan_->NextSignalValue(back);
-    int flip = 0;
-    mpv_render_param params[] = {
-        {MPV_RENDER_PARAM_VULKAN_IMAGE, &target},
-        {MPV_RENDER_PARAM_FLIP_Y, &flip},
-        {MPV_RENDER_PARAM_INVALID, nullptr},
-    };
-    err = api_.render_context_render(render_ctx_, params);
-    // A failed render signals nothing: without the rollback the next
-    // WaitImage(back) would wait 1 s and report a false "gpu timeout".
-    if (err < 0) vulkan_->RollbackSignalValue(back, previous_ready);
-    // Only a successful render transitions the image out of UNDEFINED.
-    if (err >= 0) img.initialized = true;
-  } else {
-    err = render_backend_->Render(api_, render_ctx_, back, w, h);
   }
+  const int err = render_backend_->Render(api_, render_ctx_, back, w, h);
   if (err < 0) {
     *error = std::string("render: ") + api_.error_string(err);
     // The frame was consumed (unless the target was rejected up front,
@@ -702,15 +616,15 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     api_.render_context_report_swap(render_ctx_);
     return RenderResult::kFailed;
   }
-  if (backend_ == Backend::kVulkan) {
-    // Publish gate: the compositor samples without GPU sync, so a Vulkan
+  if (render_backend_->pipelined()) {
+    // Publish gate: the compositor samples without GPU sync, so a GPU
     // frame may only become the front (below) once its GPU work finished.
     // The wait sits right after the render call on purpose: deferring it to
     // the next round (857ccc2, pipeline depth 2) let this shared publish
     // block show the unfinished frame at once and count its swap twice
     // (golden vk-publish-gate). Software frames are complete already.
     const auto wait_done_begin = std::chrono::steady_clock::now();
-    const VkResult done = vulkan_->WaitImage(back);
+    const WaitResult done = render_backend_->Wait(back);
     const double wait_done_ms = std::chrono::duration<double, std::milli>(
                                     std::chrono::steady_clock::now() -
                                     wait_done_begin)
@@ -730,12 +644,12 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       probe_wait_done_ms_ = 0;
       probe_wait_done_max_ms_ = 0;
     }
-    if (done != VK_SUCCESS) {
+    if (done != WaitResult::kOk) {
       // The frame is consumed either way: keep vo_libmpv's counts moving.
       api_.render_context_report_swap(render_ctx_);
-      *error = done == VK_ERROR_DEVICE_LOST ? "device lost" : "gpu timeout";
-      return done == VK_ERROR_DEVICE_LOST ? RenderResult::kDeviceLost
-                                          : RenderResult::kFailed;
+      *error = done == WaitResult::kDeviceLost ? "device lost" : "gpu timeout";
+      return done == WaitResult::kDeviceLost ? RenderResult::kDeviceLost
+                                             : RenderResult::kFailed;
     }
   }
   int swaps = 0;
