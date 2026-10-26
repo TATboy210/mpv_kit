@@ -38,6 +38,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+part 'impeller_smoke_modes.dart';
+
 /// Matches VideoRenderer::kIdleTimeout (packages/mpv_kit_video/src/
 /// video_renderer.h:171). The renderer also enters idle when the texture is
 /// off screen, so an idle event is not by itself a renderer failure: only an
@@ -191,6 +193,9 @@ final class _SmokeHarness {
     // Minimal tree: the Texture is the only thing this harness needs to
     // compose. MpvVideo is deliberately not used — it calls setSize itself,
     // which would fight D-04's direct size control.
+    // The probe-control tree is chosen here, before the only pumpWidget:
+    // pumping a second tree inside runAsync is not reliable.
+    final probeTree = Platform.environment['MPV_KIT_SMOKE_DIAG'] == 'probe';
     try {
       await tester.pumpWidget(
         Directionality(
@@ -200,6 +205,8 @@ final class _SmokeHarness {
               valueListenable: _textureId,
               builder: (context, textureId, child) => textureId == null
                   ? const SizedBox.shrink()
+                  : probeTree
+                  ? _probeControlTree(textureId)
                   : RepaintBoundary(
                       key: _probeKey,
                       child: SizedBox(
@@ -292,18 +299,27 @@ final class _SmokeHarness {
     }
     _rssStart = ProcessInfo.currentRss;
 
-    // --- Diagnostic branch (evidence only, never a classification) --------
-    // Placed after the identity gate and before any part: it replays the
-    // measured prelude and then only writes a trace. It never reaches
-    // _classify, never emits a `stage: complete` line and never touches the
-    // classification evidence file.
+    // --- Mode dispatch (evidence only, never a classification) ------------
+    // Placed after the identity gate and before any part. Every branch lives
+    // in impeller_smoke_modes.dart; none reaches _classify, emits a
+    // `stage: complete` line or touches the classification evidence file.
+    // An unknown non-empty value fails loudly instead of silently running
+    // the measured D-05 workload.
     final diagMode = Platform.environment['MPV_KIT_SMOKE_DIAG'] ?? '';
-    if (diagMode == 'soak' || diagMode == 'soak-after-4k') {
-      final diagRounds =
-          int.tryParse(Platform.environment['MPV_KIT_SMOKE_ROUNDS'] ?? '') ??
-          5;
-      await _runDiag(player, diagMode, diagRounds);
-      return;
+    final modeRounds = int.tryParse(
+      Platform.environment['MPV_KIT_SMOKE_ROUNDS'] ?? '',
+    );
+    switch (diagMode) {
+      case '':
+        break;
+      case 'soak' || 'soak-after-4k':
+        await _runDiag(player, diagMode, modeRounds ?? 5);
+        return;
+      case 'probe':
+        await _runProbe(player);
+        return;
+      default:
+        throw StateError('unknown MPV_KIT_SMOKE_DIAG: $diagMode');
     }
 
     // --- Part 1: minimal chain, 1920x1080 source --------------------------
@@ -548,108 +564,6 @@ final class _SmokeHarness {
     _trace.mark('frame-after-mount-begin', round: round);
     await _nextFrame();
     _trace.mark('frame-after-mount-done', round: round);
-  }
-
-  /// Evidence-only reproducer: replays the measured part-1 lifecycle, applies
-  /// the mode prelude, then runs [rounds] soak rounds through the same
-  /// [_runSoakRounds].
-  ///
-  /// It never calls [_classify], never emits a `stage: complete` payload and
-  /// never writes the classification evidence file, so no diag run can be
-  /// mistaken for a D-05 measurement.
-  Future<void> _runDiag(Player player, String mode, int rounds) async {
-    _stage = 'diag-$mode';
-
-    // --- part 1 replay: the prelude 10-05 actually executed ---------------
-    var controller = _controller;
-    if (controller == null) {
-      throw StateError('diag requires the preflight controller');
-    }
-    _trace.mark('mount-begin', round: 0);
-    _setTexture(controller.textureId);
-    _trace.mark('mount-done', round: 0);
-
-    await player.open(_lavfiSource);
-    final paramsReady = await _waitUntil(() {
-      final params = player.videoParams.value;
-      return params?.width == 1920 && params?.height == 1080;
-    }, timeout: const Duration(seconds: 30));
-    if (!paramsReady) {
-      throw StateError('diag part-1 replay: video params timeout');
-    }
-    final resizeBaseline = _resizeEvents;
-    _trace.mark('set-size-begin', round: 0);
-    await controller.setSize(1920, 1080);
-    _trace.mark('set-size-done', round: 0);
-    final part1Ready = await _waitUntil(() {
-      final fps = player.mpv.tryGetProperty('estimated-vf-fps');
-      return fps is num && fps > 0 && _resizeEvents > resizeBaseline;
-    }, timeout: const Duration(seconds: 30));
-    if (!part1Ready) {
-      throw StateError('diag part-1 replay: readiness timeout');
-    }
-
-    _trace.mark('unmount-begin', round: 0);
-    _setTexture(null);
-    _trace.mark('unmount-done', round: 0);
-    _trace.mark('frame-after-unmount-begin', round: 0);
-    await _nextFrame();
-    _trace.mark('frame-after-unmount-done', round: 0);
-    _trace.mark('dispose-begin', round: 0);
-    await controller.dispose();
-    _trace.mark('dispose-done', round: 0);
-    _controller = null;
-
-    _trace.mark('create-begin', round: 0);
-    final remounted = _controller = await MpvVideoController.create(player);
-    _controllersCreated++;
-    _trace.mark('create-done', round: 0);
-    _watch(remounted);
-    _trace.mark('mount-begin', round: 0);
-    _setTexture(remounted.textureId);
-    _trace.mark('mount-done', round: 0);
-    _trace.mark('frame-after-mount-begin', round: 0);
-    await _nextFrame();
-    _trace.mark('frame-after-mount-done', round: 0);
-    print('DIAG soak part1_replay yes');
-
-    // --- mode prelude ------------------------------------------------------
-    if (mode == 'soak-after-4k') {
-      final uhdBaseline = _resizeEvents;
-      _saw4kResize = false;
-      _trace.mark('set-size-begin', round: 0);
-      await remounted.setSize(3840, 2160);
-      _trace.mark('set-size-done', round: 0);
-      final uhdReady = await _waitUntil(
-        () => _saw4kResize && _resizeEvents > uhdBaseline,
-        timeout: const Duration(seconds: 30),
-      );
-      if (!uhdReady) {
-        throw StateError('diag prelude: no 3840x2160 resize');
-      }
-      // Hold the 4K target so the compositor samples it repeatedly, exactly
-      // like part 2.
-      await Future<void>.delayed(const Duration(seconds: 2));
-      await _remountCycle(round: 0);
-    } else {
-      final loopBaseline = _resizeEvents;
-      _trace.mark('set-size-begin', round: 0);
-      await remounted.setSize(1280, 720);
-      _trace.mark('set-size-done', round: 0);
-      await _waitUntil(
-        () => _resizeEvents > loopBaseline,
-        timeout: const Duration(seconds: 30),
-      );
-    }
-
-    // --- measured soak rounds, trace only ---------------------------------
-    _soakStarted = true;
-    _soakStart = DateTime.now();
-    await _runSoakRounds(rounds, emitDiag: true);
-    print('DIAG soak complete ${jsonEncode({
-          'rounds': rounds,
-          'mode': mode,
-        })}');
   }
 
   void _watch(MpvVideoController controller) {
