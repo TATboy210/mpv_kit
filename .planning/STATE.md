@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
 status: executing
-stopped_at: Completed 12-07-PLAN.md
-last_updated: "2026-10-26T17:20:49.628Z"
+stopped_at: Completed 12-08-PLAN.md
+last_updated: "2026-10-26T20:09:00.058Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: 2d639ab87f2ee38e37334971d7b8ae8dab88eba9
+state_head: 42df617c7a8ed028eca44481ca593db3cf3649d1
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 12 execution started
 
@@ -100,6 +100,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P04 | 61min | 3 tasks | 39 files |
 | Phase 12 P06 | 130 min | 2 tasks | 5 files |
 | Phase 12 P07 | 3h 0m | 5 tasks | 13 files |
+| Phase 12 P08 | 47 min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-07: windows-2025 golden_vk expectation is OK|SKIP (no lavapipe instance; user decision 2 = a); probe skips on vkCreateInstance failed
 - [Phase 12]: 12-07: RED evidence local-only ("只在本地跑 golden 测试拿到红色结果作为证据，不推送"); golden set frozen at 2d639ab (evidence/golden-freeze.sha256)
 - [Phase 12]: 12-07 follow-up (user decision "a"): ring-7 fallback after a resize clears retired_front_ before the retry and logs the failed ring (7); regression test is the new golden_vk_fallback (frozen five files untouched); RED f9b559f local, GREEN de9dcc5 CI-gated
+- [Phase 12]: 12-08: post-fix pre-move reference on RTX 4060: D-05 soak resolved-by-fix (pre-fix 0/100 exit 79 both switches -> post-fix 100/100 exit 0 both switches), attributed to the 12-06+12-07 change set, not isolated; 12-12 compares against 'pre-move reference (after fix)', never the pre-fix section
+- [Phase 12]: 12-08: resize-front reference is inconclusive 1/5 (round 2 StateError no-1280x720-resize after 30 s, process alive), user-accepted; rendered 4K 600 s pass (drops 0/0) stays the reference despite manual window interaction; cycles RSS +66.8/+80.8 MiB per 100 accepted; go to 12-09
 
 ### Pending Todos
 
@@ -198,6 +201,8 @@ None yet.
 - **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
 - 12-06 Task 2 CI gate on 52341e1 pending (integration-test reason regex); linux x64 apt mirror stall
 - （已解决）12-07 finding: use after destroy in the 8K ring-7 fallback after a resize. Fixed in de9dcc5 (user decision "a"), regression golden video_renderer_golden_vk_fallback, CI gate ok on de9dcc5; see 12-07-SUMMARY "Follow-up: 8K ring fallback"
+- 12-08 open finding (route to 12-12 or a separate diagnostic): resize-front round 2 - a fresh second controller never gets a 1280x720 resize within 30 s (likely estimated-vf-fps never > 0); candidate link: d05 part-2 pixel probe always before-first-frame/fpsAtProbe null pre- and post-fix, so a second controller in the process may never receive presented frames
+- 12-09 plan text is stale: it references pending_front_ and a deferred publish gate that 12-07 f77378f removed (publish gate is now a synchronous wait after render, depth 1); 12-09 must move the current gate as-is
 
 ## Deferred Items
 
@@ -228,8 +233,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T17:20:23.105Z
-Stopped at: Completed 12-07-PLAN.md
+Last session: 2026-10-26T20:09:00.001Z
+Stopped at: Completed 12-08-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
