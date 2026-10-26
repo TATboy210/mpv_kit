@@ -34,3 +34,202 @@ render buf=3 frame=4 64x36 rgb0
 acquire index=3 64x36 frame=4
 quiesce renders=4 skips=0 swaps=4
 teardown frees=1
+
+[sw-fallback-no-interop]
+start ok backend=software reason="software (platform has no Vulkan interop)"
+create-attempts sw
+quiesce renders=0 skips=0 swaps=0
+teardown frees=1
+
+[sw-fallback-interop-reason]
+start ok backend=software reason="software (platform interop unavailable: probe failed (0x887A0004))"
+create-attempts sw
+quiesce renders=0 skips=0 swaps=0
+teardown frees=1
+
+[sw-create-fails]
+start=false reason="software (software rendering requested)"
+create-attempts sw
+update-callback none
+quiesce renders=0 skips=0 swaps=0
+teardown frees=0
+
+[sw-ring-q2]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+render buf=1 frame=2 64x36 rgb0
+acquire index=1 64x36 frame=2
+render buf=2 frame=3 64x36 rgb0
+acquire index=2 64x36 frame=3
+render buf=3 frame=4 64x36 rgb0
+acquire index=3 64x36 frame=4
+render buf=0 frame=5 64x36 rgb0
+acquire index=0 64x36 frame=5
+render buf=1 frame=6 64x36 rgb0
+acquire index=1 64x36 frame=6
+render buf=2 frame=7 64x36 rgb0
+acquire index=2 64x36 frame=7
+render buf=3 frame=8 64x36 rgb0
+acquire index=3 64x36 frame=8
+render buf=0 frame=9 64x36 rgb0
+acquire index=0 64x36 frame=9
+render buf=1 frame=10 64x36 rgb0
+acquire index=1 64x36 frame=10
+render buf=2 frame=11 64x36 rgb0
+acquire index=2 64x36 frame=11
+render buf=3 frame=12 64x36 rgb0
+acquire index=3 64x36 frame=12
+quiesce renders=12 skips=0 swaps=12
+teardown frees=1
+
+[sw-ring-q4]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+acquire index=0 64x36 frame=1
+render buf=1 frame=2 64x36 bgr0
+acquire index=1 64x36 frame=2
+render buf=2 frame=3 64x36 bgr0
+acquire index=2 64x36 frame=3
+render buf=3 frame=4 64x36 bgr0
+acquire index=3 64x36 frame=4
+render buf=4 frame=5 64x36 bgr0
+acquire index=4 64x36 frame=5
+render buf=5 frame=6 64x36 bgr0
+acquire index=5 64x36 frame=6
+render buf=0 frame=7 64x36 bgr0
+acquire index=0 64x36 frame=7
+render buf=1 frame=8 64x36 bgr0
+acquire index=1 64x36 frame=8
+render buf=2 frame=9 64x36 bgr0
+acquire index=2 64x36 frame=9
+render buf=3 frame=10 64x36 bgr0
+acquire index=3 64x36 frame=10
+render buf=4 frame=11 64x36 bgr0
+acquire index=4 64x36 frame=11
+render buf=5 frame=12 64x36 bgr0
+acquire index=5 64x36 frame=12
+quiesce renders=12 skips=0 swaps=12
+teardown frees=1
+
+[sw-retire-on-resize]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+render buf=1 frame=2 64x36 rgb0
+acquire index=1 64x36 frame=2
+render buf=2 frame=3 64x36 rgb0
+acquire index=2 64x36 frame=3
+render buf=3 frame=4 64x36 rgb0
+acquire index=3 64x36 frame=4
+event resize 32x18
+render buf=0 frame=5 32x18 rgb0
+acquire index=-2 64x36 frame=4
+acquire index=0 32x18 frame=5
+render buf=1 frame=6 32x18 rgb0
+acquire index=1 32x18 frame=6
+render buf=2 frame=7 32x18 rgb0
+acquire index=2 32x18 frame=7
+render buf=3 frame=8 32x18 rgb0
+acquire index=3 32x18 frame=8
+quiesce renders=8 skips=0 swaps=8
+teardown frees=1
+
+[sw-backoff]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+render buf=0 64x36 rgb0 err=-20
+render buf=0 64x36 rgb0 err=-20
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+backoff-ms 100 200 400 800 1600 3200 5000 5000
+render skip
+frame-ready=0
+render buf=0 frame=1 64x36 rgb0
+event recovered
+quiesce renders=11 skips=1 swaps=11
+teardown frees=1
+
+[sw-resize-retries-at-once]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+render buf=0 64x36 rgb0 err=-20
+event render_error render: fake error -20
+render buf=0 64x36 rgb0 err=-20
+event resize 32x18
+render buf=0 32x18 rgb0 err=-20
+resize-retry immediate
+event resize 48x27
+render buf=0 frame=1 48x27 rgb0
+event recovered
+resize-retry immediate
+quiesce renders=7 skips=0 swaps=7
+teardown frees=1
+
+[sw-idle-active]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+render buf=1 frame=2 64x36 rgb0
+acquire index=1 64x36 frame=2
+render buf=2 frame=3 64x36 rgb0
+acquire index=2 64x36 frame=3
+event idle
+render skip
+render skip
+render skip
+acquire index=2 64x36 frame=3
+event active
+render buf=3 frame=4 64x36 rgb0
+acquire index=3 64x36 frame=4
+quiesce renders=7 skips=3 swaps=7
+teardown frees=1
+
+[sw-icc]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+acquire index=0 64x36 frame=1
+icc size=3 data=010203
+render buf=1 frame=2 64x36 rgb0
+acquire index=1 64x36 frame=2
+icc size=0 data=none
+render buf=2 frame=3 64x36 rgb0
+acquire index=2 64x36 frame=3
+quiesce renders=3 skips=0 swaps=3
+teardown frees=1
+
+[sw-setsize-invalid]
+start ok backend=software reason="software (software rendering requested)"
+create-attempts sw
+render skip
+render skip
+frame-ready=0
+acquire index=-1 0x0 frame=none
+quiesce renders=2 skips=2 swaps=2
+teardown frees=1
