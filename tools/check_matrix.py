@@ -4,7 +4,8 @@
 Asserts that the supported-target matrices stay complete in both CI tiers
 and that no step hides failures behind continue-on-error (the two allowed
 exceptions are documented inline: the msys2 setup retry pattern and the
-purely informational Vulkan loader diagnostics).
+purely informational Vulkan loader diagnostics). macos-route.yml (the
+Phase 13 route probe, which runs on every PR) is audited with no exception.
 
 Run from the repo root:  python tools/check_matrix.py
 """
@@ -72,7 +73,7 @@ if targets == expected:
 else:
     fail(f"release.yml targets drifted: {sorted(targets)} vs {sorted(expected)}")
 
-# --- continue-on-error audit across both tiers ---
+# --- continue-on-error audit across all audited workflows ---
 ALLOWED = {
     # Retry pattern: an immediate second attempt follows; double failure
     # fails the job. Not failure suppression.
@@ -100,6 +101,8 @@ def audit(path, doc):
 
 audit(f"{ROOT}/.github/workflows/native-verify.yml", nv)
 audit(f"{ROOT}/.github/workflows/release.yml", rel)
+audit(f"{ROOT}/.github/workflows/macos-route.yml",
+      load(f"{ROOT}/.github/workflows/macos-route.yml"))
 
 if failures:
     print(f"CHECK-MATRIX: {len(failures)} failure(s)")

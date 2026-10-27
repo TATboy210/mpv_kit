@@ -1,0 +1,48 @@
+# macOS route probe (Phase 13 / ADR 0005, MAC-02): runs the real plugin test
+# on a macOS runner against the hook bundle libmpv and reads the pixels.
+# The bundle in the app is the libmpv under test (not a verify-tier build);
+# the verification tier is an Apple Silicon VM. The test itself asserts the
+# loaded library is `@rpath/mpv.2.framework/mpv.2` and prints every attempt
+# when it is not. No step may be tolerated when it fails: a red probe is data.
+name: macos-route
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.8
+
+jobs:
+  route-probe:
+    name: route-probe (macos-15)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The pre-Phase-12 comparison (3a5f450) needs history.
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Route probe (HEAD plugin)
+        # `flutter test -d macos` builds the example, which makes the
+        # mpv_kit_libs hook download the pinned bundle. No libmpv path
+        # override is set on purpose: the bundle inside the app is measured.
+        shell: bash
+        working-directory: example
+        run: |
+          flutter test integration_test/macos_route_test.dart -d macos \
+            --dart-define=MPV_KIT_ROUTE_TREE=head \
+            --dart-define=MPV_KIT_ROUTE_SECTIONS=pixel \
+            | tee "$RUNNER_TEMP/route-head.log"
