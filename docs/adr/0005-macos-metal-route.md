@@ -140,5 +140,18 @@ The evidence for this ADR comes from Phase 13's hosted CI:
   `docs/perf/macos-route-verification.md`, and 13-05 writes the result into
   this section.
 
+Conclusions per Phase 13 success criterion (details and raw lines in
+[`../perf/macos-route-verification.md`](../perf/macos-route-verification.md)):
+
+- **SC1:** decided here, (a) MoltenVK → IOSurface. Status stays `proposed`
+  until the user decision of 13-06.
+- **SC2:** the `via MoltenVK` reason is proven on hosted macos-15 (native-verify
+  run 40465908724, sha 8103bebfde1031b5a68ba000989448fce9407654). The pixel
+  parity part against the pre-Phase-12 plugin is not measured yet
+  (`ci-gate: deferred`: all hosted CI is deferred until phases 13-17 are done).
+- **SC3:** VideoToolbox on MoltenVK is not measured for h264-8bit, hevc-8bit or
+  hevc-10bit (`ci-gate: deferred`). There is neither a zero-copy result nor
+  evidence of unreachability yet.
+
 The project has no macOS hardware, so every real-hardware conclusion stays
 `unverified`.
