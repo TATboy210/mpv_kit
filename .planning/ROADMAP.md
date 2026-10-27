@@ -119,12 +119,12 @@ Plans:
 
 **验证分层**: hosted macOS runner（Apple Silicon VM，Metal 可用）证明渲染路径与 reason；VideoToolbox 在 VM 内能否硬解未经证实，项目也没有本地 macOS 硬件，HWD-04 允许以证据收口；RTX 4060 不涉及。
 **Research**: 标准模式（三条路线已在研究中比较），无需阶段研究。
-**Plans:** 1/6 plans executed（5 waves）
+**Plans:** 2/6 plans executed（5 waves）
 
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — 推送授权检查点 + macOS reason 写出实际承载驱动（`via MoltenVK`）+ Phase 13 CI 门
-- [ ] 13-02-PLAN.md — ADR 0005（`Status: proposed`）三路线比较与决定（逐格来源记录、重新评估触发条件）+ ADR 0004 的 `via <carrier>` 语法补充
+- [x] 13-02-PLAN.md — ADR 0005（`Status: proposed`）三路线比较与决定（逐格来源记录、重新评估触发条件）+ ADR 0004 的 `via <carrier>` 语法补充
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 13-03-PLAN.md — `macos-route` workflow：真实插件像素探针（toImage + 插件 IOSurface 诊断探针两个通道），HEAD 与 Phase 12 之前插件（3a5f450）同条件一致性判定，输出 SC2 结论行
@@ -258,7 +258,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
-| 13. macOS Metal Route Decision | v3.0 | 1/6 | In Progress | - |
+| 13. macOS Metal Route Decision | v3.0 | 2/6 | In Progress | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 1/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/7 | Planned | - |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |

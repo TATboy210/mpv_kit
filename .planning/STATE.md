@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-10-27T07:39:07.996Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-10-27T07:49:32.966Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 14 execution started
-state_head: d9d042dacd18747f0f534aa29824cc4abeecf3a5
+state_head: 5e64d9cbc031fc53a32fcf86a35ec8ae8caefbc8
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 14
+  completed_plans: 15
   percent: 17
 ---
 
@@ -108,6 +108,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 12 P12 | 2h 20m | 3 tasks | 29 files |
 | Phase 14 P01 | 15 min | 3 tasks | 5 files |
 | Phase 13 P01 | 55min | 2 tasks | 6 files |
+| Phase 13 P02 | 14min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,7 @@ Recent decisions affecting current work:
 - [Phase 14]: 14-01: green-plus-scratch push authorization; fences available on all hosts, VIDEO_SUPPORT needs retry-without on Basic Render Driver, no UAV on shared textures, 16384 texture cap
 - [Phase 13]: 13-01: user answered push-green-only; pushes limited to origin feat/mpv-master-upgrade fast-forward, no force, no red commits
 - [Phase 13]: 13-01: macOS reason carrier comes only from VkPhysicalDeviceDriverProperties via a forwarding wrapper returned by MetalInterop::CreateBackend; shared engine untouched
+- [Phase 13]: 13-02: ADR 0005 (proposed) keeps MoltenVK to IOSurface as the macOS route; ADR 0004 Decision 3 gains optional via carrier suffix, first-token api parsing unchanged
 
 ### Pending Todos
 
@@ -266,8 +268,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T07:39:07.649Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-10-27T07:49:32.248Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
