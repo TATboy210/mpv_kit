@@ -153,11 +153,11 @@ Plans:
 **阶段内顺序**: 构建与 ANGLE 禁令门禁（D3D-01/02）→ 0010 backport + 0004 gpu-next D3D11 分支 + smoke（D3D-03/04/05）→ `D3D11Backend` 与设备丢失/回退（D3D-06/07）→ auto 链切换提交（D3D-08）。构建计划必须先于渲染计划。
 **验证分层**: hosted windows runner（无 GPU，Flutter 适配器为 WARP）证明构建、PE 审计、PATCH-DRIFT、两种 smoke 变体与强制 d3d11 的真实插件测试；RTX 4060 证明真实适配器上的渲染与性能，并作为 auto 链切换的前提。
 **Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。（用户选择跳过阶段研究直接规划：这些未知项已写成 14-01 / 14-04 / 14-05 的实测 spike 任务，结论门控后续任务。）
-**Plans:** 11 plans（10 waves）
+**Plans:** 1/11 plans executed（10 waves）
 
 Plans:
 **Wave 1**
-- [ ] 14-01-PLAN.md — 推送授权检查点（feat 只推绿 + `ci/14-` scratch）+ 参数化 `ci_gate.sh` + D3D11 能力探针（RTX 4060 / WARP / hosted runner 实测 fence、VIDEO_SUPPORT、typed UAV、纹理上限）
+- [x] 14-01-PLAN.md — 推送授权检查点（feat 只推绿 + `ci/14-` scratch）+ 参数化 `ci_gate.sh` + D3D11 能力探针（RTX 4060 / WARP / hosted runner 实测 fence、VIDEO_SUPPORT、typed UAV、纹理上限）
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 14-02-PLAN.md — PickDevice reason 拆分（独立提交）+ 与 Phase 12 golden 冻结冲突的用户裁决
@@ -259,7 +259,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
 | 13. macOS Metal Route Decision | v3.0 | 0/6 | Planned | - |
-| 14. Windows Native D3D11 Backend | v3.0 | 0/11 | Planned | - |
+| 14. Windows Native D3D11 Backend | v3.0 | 1/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/7 | Planned | - |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
