@@ -176,3 +176,21 @@ affinity_test = executable('video_renderer_affinity_test',
                            dependencies: threads)
 test('video_renderer_affinity_test', affinity_test, env: golden_vk_env,
      timeout: 120)
+
+# --- D3D11 render API (Windows only) -------------------------------------------
+#
+# Renders a red-over-blue lavfi frame through MPV_RENDER_API_TYPE_D3D11 into a
+# host texture on whatever D3D11 device exists (WARP on the hosted runners)
+# and reads it back. The tests are serial (is_parallel: false): WARP runs the
+# shaders on the CPU and parallel renders would only slow each other down and
+# make the timeouts flaky. render_vk.h is needed for the renderer
+# select/report parameter, hence the Vulkan headers.
+if host_machine.system() == 'windows'
+  cc = meson.get_compiler('c')
+  d3d11_libs = [cc.find_library('d3d11'), cc.find_library('dxgi'),
+                cc.find_library('dxguid')]
+  d3d11_smoke = executable('render_d3d11_smoke', 'render_d3d11_smoke.c',
+                           dependencies: [mpv, vulkan] + d3d11_libs)
+  test('render_d3d11_smoke_gpu', d3d11_smoke, args: ['gpu'], timeout: 120,
+       is_parallel: false)
+endif
