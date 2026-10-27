@@ -8,9 +8,12 @@
 #include <CoreVideo/CoreVideo.h>
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "render_backend.h"
 #include "video_renderer.h"
 #include "vulkan_backend.h"
 
@@ -34,6 +37,19 @@ class MetalInterop : public Interop, public VulkanInterop {
   void RetainFrame(void* platform) override {
     CVPixelBufferRetain(static_cast<CVPixelBufferRef>(platform));
   }
+  /// For "vulkan" with a Metal device present: the built-in Vulkan backend
+  /// (CreateVulkanBackend(this)) wrapped so that device_name() also names
+  /// the Vulkan driver that carries the rendering onto Metal ("... via
+  /// MoltenVK"; ROADMAP Phase 13 SC2, ADR 0004 Decision 3, ADR 0005). The
+  /// wrapper changes nothing else. Any other api, or no Metal device,
+  /// returns nullptr so the engine takes its unchanged built-in branch
+  /// (and the unchanged "no Metal device" trail).
+  std::unique_ptr<RenderBackend> CreateBackend(const char* api) override;
+  /// The Vulkan driver recorded for the physical device called
+  /// [device_name]: the single distinct driver name AcceptDevice saw for
+  /// that name, or "unknown Vulkan driver" when there is none or the name
+  /// does not identify one driver.
+  std::string CarrierFor(const std::string& device_name) const;
 
   // VulkanInterop
   PFN_vkGetInstanceProcAddr Loader() override;
@@ -56,6 +72,10 @@ class MetalInterop : public Interop, public VulkanInterop {
   // came up (OBS-03).
   std::string metal_reason_;
   uint64_t registry_id_ = 0;  // of MTLCreateSystemDefaultDevice()
+  // (device name, driver name) of every device AcceptDevice accepted.
+  // Written inside VulkanContext::Init and read while VideoRenderer::Start
+  // composes the reason head, both on the platform thread, so no lock.
+  std::vector<std::pair<std::string, std::string>> carriers_;
 };
 
 }  // namespace mpv_kit

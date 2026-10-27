@@ -153,6 +153,8 @@ suitable GPU are missing, or both Vulkan renderers fail to initialise. After
   `<api> (<renderer>) on <device>` followed by one
   `; <api>/<renderer> unavailable: <why>` per candidate that was ranked
   before the winner ([ADR 0004](docs/adr/0004-render-backend-reporting.md)).
+  On macOS the GPU head also names the Vulkan implementation that carries the
+  rendering onto Metal, e.g. `vulkan (gpu-next) on <device> via MoltenVK`.
   It is also printed once with `debugPrint`.
 
 The environment variable **`MPV_KIT_VIDEO_RENDERER`** (`auto`, `gpu-next`,

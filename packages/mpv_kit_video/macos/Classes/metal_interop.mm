@@ -21,6 +21,64 @@ PFN_vkGetInstanceProcAddr LoadFrom(NSString* path) {
       dlsym(lib, "vkGetInstanceProcAddr"));
 }
 
+// Carrier reported when the loaded Vulkan driver cannot be named.
+constexpr char kUnknownCarrier[] = "unknown Vulkan driver";
+
+/// The built-in Vulkan backend with one change: device_name() also names
+/// the Vulkan driver that carries the rendering onto Metal. On macOS every
+/// Vulkan device is a translation layer (MoltenVK in the bundle), and the
+/// reason would otherwise read as native Vulkan. Every other virtual
+/// forwards untouched, including the three with a default body: dropping
+/// one would silently change the failure paths (video_renderer.cc Start).
+/// Going through Interop::CreateBackend leaves the shared engine unchanged.
+class MetalVulkanBackend final : public RenderBackend {
+ public:
+  MetalVulkanBackend(std::unique_ptr<RenderBackend> inner,
+                     const MetalInterop* interop)
+      : inner_(std::move(inner)), interop_(interop) {}
+
+  const char* wire_name() const override { return inner_->wire_name(); }
+  Backend frame_kind() const override { return inner_->frame_kind(); }
+  bool pipelined() const override { return inner_->pipelined(); }
+  bool BindThread() override { return inner_->BindThread(); }
+  void UnbindThread() override { inner_->UnbindThread(); }
+  int Create(const MpvApi& api, mpv_handle* handle, const char* renderer,
+             mpv_render_context** out, std::string* why) override {
+    return inner_->Create(api, handle, renderer, out, why);
+  }
+  bool device_failed() const override { return inner_->device_failed(); }
+  std::string device_name() const override {
+    const std::string name = inner_->device_name();
+    // Before the device exists there is nothing to attribute.
+    if (name.empty()) return name;
+    return name + " via " + interop_->CarrierFor(name);
+  }
+  std::string RendererName(const MpvApi& api,
+                           mpv_render_context* ctx) const override {
+    return inner_->RendererName(api, ctx);
+  }
+  bool AllocTargets(int count, int width, int height, int keep_slot,
+                    std::string* error) override {
+    return inner_->AllocTargets(count, width, height, keep_slot, error);
+  }
+  void FreeRetired() override { inner_->FreeRetired(); }
+  TargetView FrameFor(int slot) override { return inner_->FrameFor(slot); }
+  int Render(const MpvApi& api, mpv_render_context* ctx, int slot, int width,
+             int height) override {
+    return inner_->Render(api, ctx, slot, width, height);
+  }
+  WaitResult Wait(int slot) override { return inner_->Wait(slot); }
+  void Release(const MpvApi& api, mpv_render_context* ctx) override {
+    inner_->Release(api, ctx);
+  }
+
+ private:
+  // Destroyed with this object: the inner backend frees its targets and
+  // device exactly as it would unwrapped.
+  std::unique_ptr<RenderBackend> inner_;
+  const MetalInterop* interop_;  // outlives the backend (owned by the plugin)
+};
+
 }  // namespace
 
 MetalInterop::MetalInterop(std::function<void()> frame_ready)
@@ -56,13 +114,52 @@ PFN_vkGetInstanceProcAddr MetalInterop::Loader() {
 bool MetalInterop::AcceptDevice(VkPhysicalDevice device) {
   // Same GPU as the compositor: on dual-GPU Macs an image rendered on the
   // other GPU would be migrated by the system on every frame.
-  VkPhysicalDeviceIDProperties id{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+  // VkPhysicalDeviceDriverProperties (Vulkan 1.2 core, always available on
+  // the 1.3 devices PickDevice accepts) rides the same query: it names the
+  // driver for the reason's "via <carrier>".
+  VkPhysicalDeviceDriverProperties driver{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+  VkPhysicalDeviceIDProperties id{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES, &driver};
   VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &id};
   vkGetPhysicalDeviceProperties2(device, &props);
-  if (!id.deviceLUIDValid) return true;  // cannot tell; accept
-  uint64_t luid = 0;
-  std::memcpy(&luid, id.deviceLUID, sizeof(luid));
-  return NSSwapBigLongLongToHost(luid) == registry_id_;
+  bool accepted = true;  // cannot tell without a valid LUID; accept
+  if (id.deviceLUIDValid) {
+    uint64_t luid = 0;
+    std::memcpy(&luid, id.deviceLUID, sizeof(luid));
+    accepted = NSSwapBigLongLongToHost(luid) == registry_id_;
+  }
+  if (accepted) {
+    // Report only what the driver says: the fixed id for MoltenVK, else its
+    // own (bounded) name. driverName is not guaranteed to be terminated.
+    std::string carrier = kUnknownCarrier;
+    if (driver.driverID == VK_DRIVER_ID_MOLTENVK) {
+      carrier = "MoltenVK";
+    } else if (const size_t n =
+                   strnlen(driver.driverName, VK_MAX_DRIVER_NAME_SIZE)) {
+      carrier.assign(driver.driverName, n);
+    }
+    carriers_.emplace_back(props.properties.deviceName, std::move(carrier));
+  }
+  return accepted;
+}
+
+std::unique_ptr<RenderBackend> MetalInterop::CreateBackend(const char* api) {
+  // Without a Metal device MoltenVK aborts the process, so the built-in
+  // branch (and its "no Metal device" trail) must stay in charge.
+  if (std::strcmp(api, "vulkan") != 0 || !metal_ok_) return nullptr;
+  return std::make_unique<MetalVulkanBackend>(CreateVulkanBackend(this), this);
+}
+
+std::string MetalInterop::CarrierFor(const std::string& device_name) const {
+  // Several devices can share a name; only a single distinct driver among
+  // them identifies the carrier of the winner without guessing.
+  const std::string* found = nullptr;
+  for (const auto& [name, carrier] : carriers_) {
+    if (name != device_name) continue;
+    if (found && *found != carrier) return kUnknownCarrier;
+    found = &carrier;
+  }
+  return found ? *found : std::string(kUnknownCarrier);
 }
 
 std::vector<const char*> MetalInterop::DeviceExtensions() const {
