@@ -26,12 +26,17 @@
 //     support a non-black / approximate call)
 //   ROUTE-SECTION {"tree","name","skipped"}   (a section that was not run)
 //   ROUTE-HWDEC-REF {"tree","sample","hwdecCurrent","pixelformat",
-//                    "screenshotPath","nonBlackRatio","valid"}
+//                    "screenshotPath","nonBlackRatio","valid",
+//                    "textureVisibility"}
 //   ROUTE-HWDEC-LOG {"sample","hwdec","line"}   (one per evidence line)
 //   ROUTE-HWDEC {"tree","sample","hwdec","outcome","gate","hwdecCurrent",
 //                "hwdecInterop","pixelformat","hwPixelformat","p010",
 //                "screenshot","screenshotPath","screenshotDiff",
-//                "failureEvidence","evidence"}
+//                "failureEvidence","evidence","flutterFrame"}
+//     (`hwdec` is "videotoolbox" (gate:true, asserted) or "default" (the
+//     Player's own list, gate:false, recorded only); `flutterFrame` is the
+//     toImage read of the mounted texture against the reference, recorded
+//     but never asserted: match | mismatch | blind)
 //     (hosted macos-15 is an Apple Silicon VM: this proves the interop chain
 //     CVPixelBuffer -> MTLTexture -> VkImage -> libplacebo, not Apple's
 //     media engine; real-hardware conclusions stay "not verified")
@@ -143,12 +148,14 @@ final class _PixelRead {
     required this.control,
     required this.background,
     required this.image,
+    this.textureBytes,
   });
 
   const _PixelRead.unsupported(this.image)
     : texture = null,
       control = null,
-      background = null;
+      background = null,
+      textureBytes = null;
 
   final RouteRegionStats? texture;
   final RouteRegionStats? control;
@@ -156,6 +163,10 @@ final class _PixelRead {
 
   /// `WxH` of the captured image, or `none` when the read failed.
   final String image;
+
+  /// Tightly packed RGBA bytes of the texture region (the hwdec section
+  /// compares them between the reference and the run under test).
+  final Uint8List? textureBytes;
 
   String get visibility => routeVisibility(
     texture: texture,
@@ -239,6 +250,14 @@ Future<_PixelRead> _readPixels(GlobalKey key) async {
         control: stats(routeControlRegion),
         background: stats(routeBackgroundRegion),
         image: '${image.width}x${image.height}',
+        textureBytes: routeRgbaRegion(
+          data,
+          width: image.width,
+          height: image.height,
+          region: routeTextureRegion,
+          sx: sx,
+          sy: sy,
+        ),
       );
     } finally {
       image.dispose();
@@ -382,7 +401,11 @@ Future<void> _pixelSection(_RouteSession session) async {
 const _sampleAssetDir = 'integration_test/route_samples/';
 
 /// Samples of the hwdec section, in run order.
-const _samples = ['h264-8bit.mp4'];
+const _samples = ['h264-8bit.mp4', 'hevc-8bit.mp4', 'hevc-10bit.mp4'];
+
+/// The sample that also runs once with the Player's default hwdec list
+/// (recorded, never gated).
+const _defaultListSample = 'h264-8bit.mp4';
 
 /// Evidence lines kept per run, so the public CI log stays short.
 const _maxEvidenceLines = 40;
@@ -455,6 +478,7 @@ final class _HwdecRun {
     required this.fellBack,
     required this.failureEvidence,
     required this.evidence,
+    required this.pixel,
   });
 
   final String? hwdecCurrent;
@@ -465,6 +489,10 @@ final class _HwdecRun {
   final bool fellBack;
   final int failureEvidence;
   final List<String> evidence;
+
+  /// The Flutter texture channel: a toImage read of the mounted texture
+  /// taken right after the screenshot.
+  final _PixelRead pixel;
 
   /// `vo` (rendered by the VO), `sw-fallback` (CPU download) or `none`.
   String get screenshotPath => screenshot == null
@@ -567,6 +595,10 @@ Future<_HwdecRun> _runSample(
     print('ROUTE-NOTE screenshot timed out after $_screenshotTimeout');
   }
   await Future<void>.delayed(_logSettle);
+  // The Flutter texture channel, recorded next to the screenshot. The frame
+  // is paused, so the compositor already shows what it will show.
+  await _nextFrame();
+  final pixel = await _readPixels(session.boundaryKey);
 
   return _HwdecRun(
     hwdecCurrent: hwdecCurrent,
@@ -577,7 +609,65 @@ Future<_HwdecRun> _runSample(
     fellBack: evidence.fellBack,
     failureEvidence: evidence.failureEvidence,
     evidence: List.of(evidence.lines),
+    pixel: pixel,
   );
+}
+
+/// The `flutterFrame` verdict of [run] against its software [reference].
+String _flutterFrame(_HwdecRun reference, _HwdecRun run) {
+  final refBytes = reference.pixel.textureBytes;
+  final runBytes = run.pixel.textureBytes;
+  return routeFlutterFrame(
+    referenceVisibility: reference.pixel.visibility,
+    visibility: run.pixel.visibility,
+    regionDiff: refBytes == null || runBytes == null
+        ? null
+        : routeRgbaMeanAbsDiff(refBytes, runBytes),
+    nonBlackRatio: run.pixel.texture?.nonBlackRatio,
+  );
+}
+
+/// Builds the ROUTE-HWDEC line of [run] against its software [reference] and
+/// returns it with the outcome. [requested] is `videotoolbox` (gated) or
+/// `default` (recorded only).
+(String line, String outcome) _hwdecLine({
+  required String sample,
+  required String requested,
+  required _HwdecRun reference,
+  required bool referenceValid,
+  required _HwdecRun run,
+}) {
+  final shot = run.screenshot;
+  final refFrame = reference.screenshot;
+  final check = routeScreenshotCheck(
+    fellBack: run.fellBack,
+    screenshot: shot,
+    reference: refFrame,
+  );
+  final diff = shot == null || refFrame == null
+      ? null
+      : routeBgr0MeanAbsDiff(shot, refFrame);
+  final outcome = routeHwdecOutcome(
+    requested: requested,
+    hwdecCurrent: run.hwdecCurrent,
+    pixelformat: run.pixelformat,
+    hwPixelformat: run.hwPixelformat,
+    screenshot: check,
+    failureEvidence: run.failureEvidence,
+    referenceValid: referenceValid,
+  );
+  final line =
+      'ROUTE-HWDEC ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdec': requested, 'outcome': outcome, 'gate': requested == 'videotoolbox', 'hwdecCurrent': run.hwdecCurrent, 'hwdecInterop': run.hwdecInterop, 'pixelformat': run.pixelformat, 'hwPixelformat': run.hwPixelformat, 'p010': run.hwPixelformat == 'p010', 'screenshot': check.name, 'screenshotPath': run.screenshotPath, 'screenshotDiff': _round4Opt(diff), 'failureEvidence': run.failureEvidence, 'evidence': run.evidence.length, 'flutterFrame': _flutterFrame(reference, run)})}';
+  return (line, outcome);
+}
+
+/// Prints the evidence lines of [run] as ROUTE-HWDEC-LOG lines.
+void _printEvidence(String sample, String requested, _HwdecRun run) {
+  for (final line in run.evidence) {
+    print(
+      'ROUTE-HWDEC-LOG ${jsonEncode({'sample': sample, 'hwdec': requested, 'line': line})}',
+    );
+  }
 }
 
 /// hwdec section: for every sample, a software reference run and a
@@ -592,6 +682,9 @@ Future<void> _hwdecSection(_RouteSession session) async {
   var gatedLines = 0;
   try {
     player.setLogLevel('v');
+    // The Player's own default list, as ROUTE-IDENTITY reports it; used for
+    // the recorded default-list run.
+    final defaultHwdec = _stringProperty(player, 'hwdec') ?? 'auto-safe';
     // The samples are app assets (the example app is sandboxed and cannot
     // read the workspace); copy them into the container's temp directory.
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
@@ -619,7 +712,7 @@ Future<void> _hwdecSection(_RouteSession session) async {
           refNonBlack != null &&
           refNonBlack >= routeMinNonBlackRatio;
       print(
-        'ROUTE-HWDEC-REF ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdecCurrent': ref.hwdecCurrent, 'pixelformat': ref.pixelformat, 'screenshotPath': ref.screenshotPath, 'nonBlackRatio': _round4Opt(refNonBlack), 'valid': refValid})}',
+        'ROUTE-HWDEC-REF ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdecCurrent': ref.hwdecCurrent, 'pixelformat': ref.pixelformat, 'screenshotPath': ref.screenshotPath, 'nonBlackRatio': _round4Opt(refNonBlack), 'valid': refValid, 'textureVisibility': ref.pixel.visibility})}',
       );
 
       // Under test: VideoToolbox.
@@ -629,35 +722,37 @@ Future<void> _hwdecSection(_RouteSession session) async {
         file.path,
         'videotoolbox',
       );
-      for (final line in run.evidence) {
-        print(
-          'ROUTE-HWDEC-LOG ${jsonEncode({'sample': sample, 'hwdec': 'videotoolbox', 'line': line})}',
-        );
-      }
-      final shot = run.screenshot;
-      final refFrame = ref.screenshot;
-      final check = routeScreenshotCheck(
-        fellBack: run.fellBack,
-        screenshot: shot,
-        reference: refFrame,
-      );
-      final diff = shot == null || refFrame == null
-          ? null
-          : routeBgr0MeanAbsDiff(shot, refFrame);
-      final outcome = routeHwdecOutcome(
+      _printEvidence(sample, 'videotoolbox', run);
+      final (line, outcome) = _hwdecLine(
+        sample: sample,
         requested: 'videotoolbox',
-        hwdecCurrent: run.hwdecCurrent,
-        pixelformat: run.pixelformat,
-        hwPixelformat: run.hwPixelformat,
-        screenshot: check,
-        failureEvidence: run.failureEvidence,
+        reference: ref,
         referenceValid: refValid,
+        run: run,
       );
-      final line =
-          'ROUTE-HWDEC ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdec': 'videotoolbox', 'outcome': outcome, 'gate': true, 'hwdecCurrent': run.hwdecCurrent, 'hwdecInterop': run.hwdecInterop, 'pixelformat': run.pixelformat, 'hwPixelformat': run.hwPixelformat, 'p010': run.hwPixelformat == 'p010', 'screenshot': check.name, 'screenshotPath': run.screenshotPath, 'screenshotDiff': _round4Opt(diff), 'failureEvidence': run.failureEvidence, 'evidence': run.evidence.length})}';
       print(line);
       gatedLines++;
       expect(routeGatedOutcomesAllowed, contains(outcome), reason: line);
+
+      // Recorded only: what the Player's default hwdec list ends up with.
+      if (name == _defaultListSample) {
+        final defaults = await _runSample(
+          session,
+          evidence,
+          file.path,
+          defaultHwdec,
+        );
+        _printEvidence(sample, 'default', defaults);
+        print(
+          _hwdecLine(
+            sample: sample,
+            requested: 'default',
+            reference: ref,
+            referenceValid: refValid,
+            run: defaults,
+          ).$1,
+        );
+      }
     }
     // Guards against a silently skipped sample.
     expect(

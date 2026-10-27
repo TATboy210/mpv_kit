@@ -352,6 +352,9 @@ String routeHwdecOutcome({
     return 'copy-back';
   }
   if (hwdecCurrent == null || hwdecCurrent.isEmpty || hwdecCurrent == 'no') {
+    // The Player's default list is a record, not a claim: software decoding
+    // there is simply what the list ended up with, evidence or not.
+    if (requested == 'default') return 'software';
     return failureEvidence > 0 ? 'unavailable' : 'unavailable-unexplained';
   }
   return 'unexpected';
@@ -381,3 +384,76 @@ final RegExp routeHwdecFailurePattern = RegExp(
   r'falling back|software decoding|not trying',
   caseSensitive: false,
 );
+
+/// Tightly packed RGBA bytes of [region] (logical coordinates) of an RGBA
+/// image, or null when the scaled rectangle is empty, falls outside the
+/// image, or [rgba] is shorter than the image claims. [sx] / [sy] scale
+/// logical to image pixels, exactly like [routeRegionStats].
+Uint8List? routeRgbaRegion(
+  Uint8List rgba, {
+  required int width,
+  required int height,
+  required Rect region,
+  required double sx,
+  required double sy,
+}) {
+  final left = (region.left * sx).round();
+  final top = (region.top * sy).round();
+  final right = (region.right * sx).round();
+  final bottom = (region.bottom * sy).round();
+  if (left < 0 || top < 0 || right > width || bottom > height) return null;
+  if (right <= left || bottom <= top) return null;
+  if (rgba.length < width * height * 4) return null;
+  final rowBytes = (right - left) * 4;
+  final out = Uint8List(rowBytes * (bottom - top));
+  for (var y = top; y < bottom; y++) {
+    final from = (y * width + left) * 4;
+    out.setRange((y - top) * rowBytes, (y - top + 1) * rowBytes, rgba, from);
+  }
+  return out;
+}
+
+/// Mean absolute difference over the R, G and B channels of two tightly
+/// packed RGBA regions (alpha is ignored), or null when the lengths differ
+/// or are empty.
+double? routeRgbaMeanAbsDiff(Uint8List a, Uint8List b) {
+  if (a.length != b.length || a.isEmpty) return null;
+  var sum = 0;
+  for (var i = 0; i < a.length; i += 4) {
+    sum +=
+        (a[i] - b[i]).abs() +
+        (a[i + 1] - b[i + 1]).abs() +
+        (a[i + 2] - b[i + 2]).abs();
+  }
+  return sum / (a.length ~/ 4 * 3);
+}
+
+/// What the Flutter texture channel (a `toImage` read of the mounted
+/// texture) says about the frame under test, compared with the software
+/// reference read in the same way. Recorded, never asserted: whether
+/// `toImage` can see a macOS external texture at all is not known in
+/// advance.
+///
+/// - `blind`: the channel cannot tell (the reference texture was not
+///   visible, the texture under test was not composited or the read failed,
+///   or there is no region diff to compare).
+/// - `mismatch`: the texture region under test is black or further than
+///   [routeFrameMaxMeanAbsDiff] from the reference.
+/// - `match`: otherwise.
+String routeFlutterFrame({
+  required String referenceVisibility,
+  required String visibility,
+  double? regionDiff,
+  double? nonBlackRatio,
+}) {
+  if (referenceVisibility != 'texture-visible') return 'blind';
+  if (visibility == 'texture-not-composited' || visibility == 'indeterminate') {
+    return 'blind';
+  }
+  if (visibility == 'texture-composited-black') return 'mismatch';
+  if (nonBlackRatio != null && nonBlackRatio < routeMinNonBlackRatio) {
+    return 'mismatch';
+  }
+  if (regionDiff == null) return 'blind';
+  return regionDiff > routeFrameMaxMeanAbsDiff ? 'mismatch' : 'match';
+}
