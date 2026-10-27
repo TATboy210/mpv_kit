@@ -269,6 +269,21 @@ jobs:
               MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
               ;;
           esac
+      # Phase 15 (GLX-03) spike: mounted-texture pixel/orientation probe on the
+      # existing Vulkan path (MPV_KIT_VIDEO_API unset: auto chain). Report-only;
+      # prints `PROBE {json}` and the Flutter version line.
+      - name: Texture probe (linux)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          echo "FLUTTER-VERSION $(flutter --version | head -n 1)"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
