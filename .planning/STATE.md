@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 15
 current_phase_name: Linux OpenGL Backend
 status: executing
-stopped_at: Completed 15-03-PLAN.md (CI deferred)
-last_updated: "2026-10-27T20:32:28.389Z"
+stopped_at: Completed 15-04-PLAN.md (CI deferred)
+last_updated: "2026-10-27T20:50:20.942Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 15 execution started
-state_head: 06c433e29331de8f42d3bad2ba450489a698c394
+state_head: 01eee6f3e487449775df2e1b0c6a3d3084baa24a
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 28
+  completed_plans: 29
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 15 (Linux OpenGL Backend) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 15 execution started
 
@@ -120,6 +120,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 15 P01 | 40min | 3 tasks | 9 files |
 | Phase 15 P02 | 25min | 3 tasks | 5 files |
 | Phase 15 P03 | 20min | 2 tasks | 6 files |
+| Phase 15 P04 | 45min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -233,6 +234,7 @@ Recent decisions affecting current work:
 - [Phase 14]: 14-08: D3D11 failure injection replaces only the HRESULT source (debug builds only); chain behaviour pinned by a platform-independent golden
 - [Phase 15]: [15-01] bundle-egl=adopt: libmpv.so.2 depends on host libEGL.so.1 (-Dgl -Degl -Dplain-gl, egl-drm off)
 - [Phase 15]: [15-01] Push authorization push-green-only+dispatch is effective only at the milestone-end CI pass; Phase 14 14-09..14-11 and 13-06 deferred until after that CI pass
+- [Phase 15]: [15-04] Linux chain decision A (auto vulkan/gpu-next, opengl/gpu, vulkan/gpu, software; gpu opengl first); SC3 interpreted as runbound (create-time calls in RenderBackend::RunBound)
 
 ### CI Deferral
 
@@ -294,8 +296,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T20:32:27.817Z
-Stopped at: Completed 15-03-PLAN.md (CI deferred)
+Last session: 2026-10-27T20:50:20.370Z
+Stopped at: Completed 15-04-PLAN.md (CI deferred)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
