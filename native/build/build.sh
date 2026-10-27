@@ -28,20 +28,24 @@ case "$(uname -s)" in
     # are host libraries, never bundled. vaapi: VA-API decoding via DRM.
     mpv_args+=(-Dpulse=enabled -Dalsa=enabled -Dpipewire=auto
       -Dvaapi=enabled -Ddrm=enabled -Dx11=disabled -Dwayland=disabled
-      -Dvdpau=disabled -Ddmabuf-wayland=disabled)
+      -Dvdpau=disabled -Ddmabuf-wayland=disabled
+      -Dshaderc=disabled -Dspirv-cross=disabled)
     ;;
   Darwin)
     export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-12.0}
     # Header room for install-name rewrites (package.sh, native assets).
     export LDFLAGS="${LDFLAGS:+$LDFLAGS }-Wl,-headerpad_max_install_names"
     mpv_args+=(-Dswift-build=disabled -Dcocoa=disabled -Dcoreaudio=enabled
-      -Dvideotoolbox-pl=enabled -Dx11=disabled)
+      -Dvideotoolbox-pl=enabled -Dx11=disabled
+      -Dshaderc=disabled -Dspirv-cross=disabled)
     ;;
   MINGW*|MSYS*)
-    # d3d11va-copy/dxva2-copy decoding needs only d3d-hwaccel; mpv's own
-    # D3D11 renderer (and with it shaderc + spirv-cross) is not used.
-    mpv_args+=(-Dwasapi=enabled -Dd3d-hwaccel=enabled -Dd3d11=disabled
-      -Ddirect3d=disabled)
+    # mpv's own D3D11 renderer (ra_d3d11, the libmpv D3D11 render API and
+    # hwdec_d3d11va) needs shaderc (GLSL -> SPIR-V) and SPIRV-Cross (SPIR-V ->
+    # HLSL); deps.sh builds both from pinned sources (D3D-01). mpv_kit's
+    # default path stays Vulkan until the D3D11 backend is selected.
+    mpv_args+=(-Dwasapi=enabled -Dd3d-hwaccel=enabled -Dd3d11=enabled
+      -Dshaderc=enabled -Dspirv-cross=enabled -Ddirect3d=disabled)
     # Hard constraint (D3D-02): mpv_kit's own Windows chain never uses ANGLE,
     # EGL or WGL-GL. -Dgl/-Degl are already disabled in the common meson line
     # below; this makes the remaining Windows GL backends explicit instead of
@@ -80,8 +84,7 @@ meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
   -Dlua=disabled -Djavascript=disabled -Drubberband=disabled \
   -Dvapoursynth=disabled -Dsdl2-audio=disabled -Dsdl2-video=disabled \
   -Dsdl2-gamepad=disabled -Dopenal=disabled -Djack=disabled -Dsixel=disabled \
-  -Dcaca=disabled -Dlibavdevice=enabled -Dshaderc=disabled \
-  -Dspirv-cross=disabled \
+  -Dcaca=disabled -Dlibavdevice=enabled \
   -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled \
   ${mpv_args[@]+"${mpv_args[@]}"}
 # -Dvulkan=enabled only makes the dependency lookup mandatory; mpv's
@@ -106,10 +109,18 @@ case "$(uname -s)" in
         exit 1
       fi
     done
+    # D3D-01: the native D3D11 renderer must really be on; a missing shaderc
+    # or SPIRV-Cross silently leaves d3d11 off despite -Dd3d11=enabled.
+    for feature in D3D11 SHADERC SPIRV_CROSS; do
+      grep -q "^#define HAVE_$feature 1" "$build/config.h" || {
+        echo "error: mpv configured without $feature on Windows; see $build/meson-logs/meson-log.txt" >&2
+        exit 1
+      }
+    done
     ;;
 esac
 meson compile -C "$build"
 meson install -C "$build" --strip
-grep -E "HAVE_(VULKAN|LIBPLACEBO|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|D3D_HWACCEL|VIDEOTOOLBOX_PL) " \
+grep -E "HAVE_(VULKAN|LIBPLACEBO|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|D3D_HWACCEL|D3D11|SHADERC|SPIRV_CROSS|VIDEOTOOLBOX_PL) " \
   "$build/config.h" || true
 echo "libmpv installed to $prefix"

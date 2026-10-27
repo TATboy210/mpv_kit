@@ -1,0 +1,37 @@
+# 14-04 bundle composition evidence (Windows: SPIRV-Cross + shaderc)
+# No scratch CI spike was run: all hosted CI is deferred until every phase is done (user decision 2026-10-27).
+# Every line marked `ci-gate: deferred` is unproven until the milestone-end release.yml run on feat.
+
+shaderc_tag=v2026.4 reason=newest tag returned by `gh api repos/google/shaderc/tags` on 2026-10-27 (v2026.4, v2026.3, v2026.2, ...); matches the research recommendation; tag sha d393a813c9b67c709d37b329203d72beb69d719e
+pin name=spirv-cross url=https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721 tag_sha=f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7
+pin name=spirv-headers url=https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=5b3a0d099f5c7649e29c0938476c462e71d66ad89a0bde42fa1ba3eb476956c9 tag_sha=496543121ce6419f23d6fa5d7194ba66c36212d2
+pin name=spirv-tools url=https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=e6c83a215538fbfd265ccf398d3877985055df1273dbed73912bd05307664688 tag_sha=ef96ed763b43b59b33b31b362f09a02b729fa1c9
+pin name=shaderc url=https://github.com/google/shaderc/archive/refs/tags/v2026.4.tar.gz sha256=f06ce5bcca94e5df7f34e115743597d0ad2e13c5fe9213c67dc8c76031241947 tag_sha=d393a813c9b67c709d37b329203d72beb69d719e
+pin name=libplacebo-v7.360.1 sha256=14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39 verified=match
+# sha256 values were computed locally from archives downloaded into build/phase14/dl/<name>/ (one directory each, nothing executed inside them).
+
+# What the local source inspection found (not a build result):
+glslang_compat=unknown ci-gate: deferred note=shaderc v2026.4 DEPS pins glslang e1b562a8 (not 16.6.0) and SPIRV-Headers 04fd3caa (not the SDK tag 496543121); SPIRV-Tools ef96ed76 equals the SDK tag exactly. The pinned glslang 16.6.0 source is handed to shaderc through SHADERC_GLSLANG_DIR; whether its CMake/API still fits is only known at the first Windows build.
+arm64_clangarm64_shaderc_build=unknown ci-gate: deferred
+have_d3d11 target=x64 ci-gate: deferred
+have_d3d11 target=arm64 ci-gate: deferred
+blocked target=x64 reason=hosted CI deferred by user decision 2026-10-27, no Windows toolchain on the local host (no MSYS2/meson); spike and final bundle checks run at the milestone-end CI pass
+blocked target=arm64 reason=hosted CI deferred by user decision 2026-10-27, no Windows toolchain on the local host (no MSYS2/meson); spike and final bundle checks run at the milestone-end CI pass
+
+# Task 2 (checkpoint:decision, bundle composition), answered in the orchestrator session at 2026-10-27T10:05:00Z.
+decision=shared user_reply=`shared`. shaderc_shared and spirv-cross-c-shared each ship as a separate DLL. (user: decide now and confirm buildability at the final CI pass; if shaderc later turns out not to build on glslang 16.6.0, the fallback is `own-glslang`.)
+fallback_if_shaderc_fails_on_glslang_16_6_0=own-glslang
+
+# Implemented shape (decision=shared): deps.sh Windows block builds spirv-cross-c-shared (DLL + spirv-cross-c-shared.pc) and shaderc_shared
+# (staged install; only include/shaderc, libshaderc_shared.dll.a, libshaderc_shared.dll and shaderc.pc are copied into PREFIX so the staged glslang cannot overwrite the one libplacebo links).
+# Bundle gains two DLLs, both audited by package.sh (--forbid-gpl --forbid-angle), listed in MANIFEST.txt, licenses under share/licenses/{spirv-cross,shaderc,spirv-tools,spirv-headers}.
+
+# Local checks (this host):
+local libplacebo_patches applied=16 fuzz=0 base=v7.360.1 result=ok
+local bash_n deps.sh=ok build.sh=ok
+local check_matrix=ok check_consistency=ok golden_freeze=5xOK(manifest=golden-freeze-14.sha256)
+
+# Pending at the milestone-end CI pass (ci-gate: deferred):
+#   release.yml on feat: six jobs green; Windows logs show `#define HAVE_D3D11 1` and `ANGLE-FREE` for the spirv-cross and shaderc DLLs
+#   native-verify / flutter-plugin on feat: green (Linux deps cache rebuilds because deps.sh hash changed; Linux path unchanged)
+#   then append `attempt ...`, `dlls ...`, `bundle_total ...`, `final target=<x64|arm64> run=<id> dlls=<n> manifest_ok=<yes|no> licenses=<list>` lines

@@ -11,3 +11,10 @@ mpv_kit licensing
   LGPL FFmpeg and are dynamically linked, so applications using mpv_kit
   are not subject to the GPL. The full corresponding source (mpv, patches,
   build scripts, dependency versions) is this repository.
+* The Windows bundles additionally contain SPIRV-Cross (spirv-cross-c-shared)
+  and shaderc (shaderc_shared), plus the SPIRV-Tools, SPIRV-Headers and
+  glslang code linked into them. All are built from pinned source archives
+  by native/build/deps.sh; they are licensed under Apache-2.0 (SPIRV-Cross,
+  shaderc, SPIRV-Tools), an MIT-style license (SPIRV-Headers) or BSD/MIT-style
+  licenses (glslang), all compatible with the LGPL. Their license texts are
+  shipped in the bundle under share/licenses/.

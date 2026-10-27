@@ -99,13 +99,15 @@ meson_build() {
   )
 }
 
+# cmake_dest=DIR cmake_build ...: installs into DIR instead of PREFIX (used
+# where only part of an install may reach PREFIX, see shaderc below).
 cmake_build() {
   local name=$1
   shift
   (
     cd "$work/src/$name"
     cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_PREFIX="${cmake_dest:-$prefix}" -DCMAKE_INSTALL_LIBDIR=lib \
       -DCMAKE_PREFIX_PATH="$prefix" -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       ${cmake_extra[@]+"${cmake_extra[@]}"} "$@"
@@ -195,6 +197,60 @@ cmake_build glslang -DBUILD_SHARED_LIBS=OFF -DENABLE_OPT=OFF \
   -DGLSLANG_ENABLE_INSTALL=ON
 license glslang LICENSE.txt
 
+# --- Windows only: SPIR-V -> HLSL (SPIRV-Cross) and shaderc ----------------
+# mpv's D3D11 renderer (-Dd3d11) needs shaderc (GLSL -> SPIR-V) and
+# spirv-cross-c-shared (SPIR-V -> HLSL); libplacebo's pl_d3d11 needs only
+# spirv-cross-c-shared. Both are built from the pinned official sources,
+# never taken from MSYS2 packages (D3D-01). Linux and macOS skip this block.
+if [ "$os" = windows ]; then
+  # Shared C API library: the pkg-config name spirv-cross-c-shared is the one
+  # libplacebo and mpv look up, and only the shared build installs it. One
+  # extra DLL in the bundle (shipped with its license, audited like the rest).
+  fetch spirv-cross \
+    "https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721
+  cmake_build spirv-cross -DSPIRV_CROSS_SHARED=ON -DSPIRV_CROSS_STATIC=OFF \
+    -DSPIRV_CROSS_CLI=OFF -DSPIRV_CROSS_ENABLE_TESTS=OFF
+  license spirv-cross LICENSE
+
+  # shaderc is built against the glslang 16.6.0 sources fetched above (one
+  # glslang version in the bundle) and the SPIRV-Tools / SPIRV-Headers of the
+  # same Vulkan SDK (SPIRV-Tools equals shaderc's own DEPS pin ef96ed76).
+  # SPIRV-Tools is linked statically into shaderc_shared.
+  fetch spirv-headers \
+    "https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    5b3a0d099f5c7649e29c0938476c462e71d66ad89a0bde42fa1ba3eb476956c9
+  fetch spirv-tools \
+    "https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    e6c83a215538fbfd265ccf398d3877985055df1273dbed73912bd05307664688
+  fetch shaderc https://github.com/google/shaderc/archive/refs/tags/v2026.4.tar.gz \
+    f06ce5bcca94e5df7f34e115743597d0ad2e13c5fe9213c67dc8c76031241947
+  # shaderc's install step also installs the glslang, SPIRV-Tools and
+  # SPIRV-Headers it builds from source. It is staged first because that
+  # glslang (optimizer on) must not overwrite the one libplacebo links
+  # statically. Only shaderc's headers, import library, DLL and pkg-config
+  # file are copied into PREFIX.
+  shaderc_stage="$work/shaderc-stage"
+  rm -rf "$shaderc_stage"
+  cmake_dest="$shaderc_stage" cmake_build shaderc -DBUILD_SHARED_LIBS=OFF \
+    -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON \
+    -DSHADERC_SKIP_EXECUTABLES=ON -DSHADERC_SKIP_COPYRIGHT_CHECK=ON \
+    -DSHADERC_ENABLE_WERROR_COMPILE=OFF -DSPIRV_SKIP_EXECUTABLES=ON \
+    -DSHADERC_GLSLANG_DIR="$(cygpath -m "$work/src/glslang")" \
+    -DSHADERC_SPIRV_TOOLS_DIR="$(cygpath -m "$work/src/spirv-tools")" \
+    -DSHADERC_SPIRV_HEADERS_DIR="$(cygpath -m "$work/src/spirv-headers")"
+  mkdir -p "$prefix/bin" "$prefix/include/shaderc"
+  cp "$shaderc_stage"/include/shaderc/*.h* "$prefix/include/shaderc/"
+  cp "$shaderc_stage/lib/libshaderc_shared.dll.a" "$prefix/lib/"
+  cp "$shaderc_stage/bin/libshaderc_shared.dll" "$prefix/bin/"
+  # The staged shaderc.pc points at the staging directory.
+  sed "s|^prefix=.*|prefix=$prefix|" "$shaderc_stage/lib/pkgconfig/shaderc.pc" \
+    > "$prefix/lib/pkgconfig/shaderc.pc"
+  license shaderc LICENSE
+  license spirv-tools LICENSE
+  license spirv-headers LICENSE
+fi
+
 # --- Color management ---------------------------------------------------
 fetch lcms2 https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz \
   bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8
@@ -232,8 +288,8 @@ if [ "$n_patches" -ne 16 ] || [ "$n_files" -ne 16 ]; then
   echo "libplacebo: expected 16 pinned patches, applied $n_patches of $n_files" >&2
   exit 1
 fi
-# Vulkan only: mpv_kit renders through the Vulkan render API (OpenGL and
-# D3D11 backends would only add size). Dolby Vision metadata is handled
+# Vulkan everywhere, plus pl_d3d11 on Windows (mpv_kit's native D3D11 path;
+# an OpenGL backend would only add size). Dolby Vision metadata is handled
 # by libplacebo itself (libdovi is optional).
 # libplacebo finds glslang with find_library, which searches only the
 # -Dvulkan-sdk directory and not for every library: point both at PREFIX.
@@ -248,11 +304,14 @@ fetch fast_float https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.
 rm -rf "$work/src/libplacebo/3rdparty/fast_float"
 cp -r "$work/src/fast_float" "$work/src/libplacebo/3rdparty/fast_float"
 license fast_float LICENSE-MIT
+# pl_d3d11 renders through SPIRV-Cross plus the inbox d3dcompiler_47.dll.
+placebo_d3d11=disabled
+if [ "$os" = windows ]; then placebo_d3d11=enabled; fi
 meson_build libplacebo -Dprefer_static=true -Dvulkan-sdk="$nprefix" \
   -Dc_args="-I$nprefix/include" -Dcpp_args="-I$nprefix/include" \
   -Dvulkan=enabled -Dvk-proc-addr=enabled \
   -Dvulkan-registry="$nprefix/share/vulkan/registry/vk.xml" \
-  -Dopengl=disabled -Dd3d11=disabled -Dglslang=enabled -Dshaderc=disabled \
+  -Dopengl=disabled -Dd3d11=$placebo_d3d11 -Dglslang=enabled -Dshaderc=disabled \
   -Dlcms=enabled -Ddovi=enabled -Dlibdovi=disabled -Dunwind=disabled \
   -Dxxhash=disabled -Ddemos=false -Dtests=false -Dbench=false -Dfuzz=false
 license libplacebo LICENSE
