@@ -119,7 +119,24 @@ Plans:
 
 **验证分层**: hosted macOS runner（Apple Silicon VM，Metal 可用）证明渲染路径与 reason；VideoToolbox 在 VM 内能否硬解未经证实，项目也没有本地 macOS 硬件，HWD-04 允许以证据收口；RTX 4060 不涉及。
 **Research**: 标准模式（三条路线已在研究中比较），无需阶段研究。
-**Plans**: TBD
+**Plans:** 6 plans（5 waves）
+
+Plans:
+**Wave 1**
+- [ ] 13-01-PLAN.md — 推送授权检查点 + macOS reason 写出实际承载驱动（`via MoltenVK`）+ Phase 13 CI 门
+- [ ] 13-02-PLAN.md — ADR 0005（`Status: proposed`）三路线比较与决定（逐格来源记录、重新评估触发条件）+ ADR 0004 的 `via <carrier>` 语法补充
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 13-03-PLAN.md — `macos-route` workflow：真实插件像素探针（toImage + 插件 IOSurface 诊断探针两个通道），HEAD 与 Phase 12 之前插件（3a5f450）同条件一致性判定，输出 SC2 结论行
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 13-04-PLAN.md — VideoToolbox 零拷贝探针：H.264 8-bit、HEVC 8-bit、HEVC 10-bit（P010）对照软件解码，带证据的结论
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 13-05-PLAN.md — 验证记录、ADR 0005 验证节、最终 HEAD 全量门与阶段审计
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 13-06-PLAN.md — 用户决策检查点（路线、HWD-04 分类、SC2 像素结论）；仅在 accept 后 ADR 0005 改为 accepted
 
 ### Phase 14: Windows Native D3D11 Backend
 
@@ -135,8 +152,40 @@ Plans:
 
 **阶段内顺序**: 构建与 ANGLE 禁令门禁（D3D-01/02）→ 0010 backport + 0004 gpu-next D3D11 分支 + smoke（D3D-03/04/05）→ `D3D11Backend` 与设备丢失/回退（D3D-06/07）→ auto 链切换提交（D3D-08）。构建计划必须先于渲染计划。
 **验证分层**: hosted windows runner（无 GPU，Flutter 适配器为 WARP）证明构建、PE 审计、PATCH-DRIFT、两种 smoke 变体与强制 d3d11 的真实插件测试；RTX 4060 证明真实适配器上的渲染与性能，并作为 auto 链切换的前提。
-**Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。
-**Plans**: TBD
+**Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。（用户选择跳过阶段研究直接规划：这些未知项已写成 14-01 / 14-04 / 14-05 的实测 spike 任务，结论门控后续任务。）
+**Plans:** 11 plans（10 waves）
+
+Plans:
+**Wave 1**
+- [ ] 14-01-PLAN.md — 推送授权检查点（feat 只推绿 + `ci/14-` scratch）+ 参数化 `ci_gate.sh` + D3D11 能力探针（RTX 4060 / WARP / hosted runner 实测 fence、VIDEO_SUPPORT、typed UAV、纹理上限）
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 14-02-PLAN.md — PickDevice reason 拆分（独立提交）+ 与 Phase 12 golden 冻结冲突的用户裁决
+- [ ] 14-03-PLAN.md — ANGLE/EGL 禁令：`pe_audit.py --forbid-angle` + 合成违规样本 + 三处 CI 接入 + build.sh 显式关闭（D3D-02）
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 14-04-PLAN.md — Windows bundle：SPIRV-Cross + shaderc（glslang 16.6.0 / CLANGARM64 实测）+ libplacebo/mpv `-Dd3d11` + 回补对 + bundle 组成裁决（D3D-01）
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 14-05-PLAN.md — `0010-upstream-d3d11-render-api.patch`（上游 4 提交 backport，ABI 逐字节比对，done_frame bool）+ PATCH-DRIFT（D3D-03）
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 14-06-PLAN.md — `render_d3d11_smoke`（gpu / gpu-next / cache，WARP）+ 0004 gpu-next D3D11 分支 + DXBC 持久缓存 + 打包 bundle 冒烟（D3D-04/05）
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 14-07-PLAN.md — `D3D11Backend`（Flutter 适配器、KMT 纹理环、fence/query 发布门控）+ 切换前候选链 + 强制 d3d11 真实插件测试 + 取帧延迟测量（D3D-06）
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 14-08-PLAN.md — 设备移除 → `device_lost`、创建失败 → 带原因回退：调试注入 + 真实插件测试 + chain golden（D3D-07）
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 14-09-PLAN.md — RTX 4060：强制 d3d11 功能、4K 600 s 对照 Phase 12、Impeller 开/关 D-05 与取帧延迟 + `docs/perf/d3d11-backend.md`
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 14-10-PLAN.md — GTX 960 + 核显笔记本验收：桌面 Release 演示包 + 用户人工验证（4K60 经 d3d11，绝不 software）
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 14-11-PLAN.md — auto 链切换决策检查点 + 独立切换提交（scratch CI 与 RTX 4060 先绿）+ 收口审计 + scratch 清理（D3D-08）
 
 ### Phase 15: Linux OpenGL Backend
 
@@ -150,8 +199,26 @@ Plans:
   4. Linux auto 链为 vulkan/gpu-next → opengl/gpu → vulkan/gpu → software；由 vo_gpu 服务时 `reason` 写 `opengl (gpu) on <device>`，从不冒称 gpu-next；Vulkan 不可用时自动落到 GL，并在 `reason` 中写明原因。
 
 **验证分层**: hosted ubuntu runner（xvfb + Mesa llvmpipe）证明全部渲染路径；项目没有 Linux GPU 硬件，NVIDIA/AMD/Intel 真驱动行为（包括 Mesa Xe2 的 EGLImage 黑帧问题）在验证记录中明确标为未验证；RTX 4060 不涉及。
-**Research**: 需要阶段研究（`/gsd-plan-phase 15 --research-phase`）：Flutter 3.47 Linux 光栅线程身份、EGL 与 GLX 下的 `EGL_BAD_ACCESS`、FLIP_Y、隔离 context 用 GLES 还是桌面 GL。gpu-next over GL（patch 0011，GLX-F1）不在本阶段核心范围。
-**Plans**: TBD
+**Research**: 需要阶段研究（`/gsd-plan-phase 15 --research-phase`）：Flutter 3.47 Linux 光栅线程身份、EGL 与 GLX 下的 `EGL_BAD_ACCESS`、FLIP_Y、隔离 context 用 GLES 还是桌面 GL。gpu-next over GL（patch 0011，GLX-F1）不在本阶段核心范围。用户选择跳过阶段研究直接规划：上述未知由 15-02（原生交接 spike）与 15-03（Flutter Linux spike）在早期取证，结论门控 15-05。
+**Plans:** 7 plans（5 waves）
+
+Plans:
+**Wave 1**
+- [ ] 15-01-PLAN.md — 推送/dispatch 授权与 bundle 组成检查点 + Linux libmpv 打开 GL/EGL/plain-gl + render_gl_smoke 示踪（gl/gles）
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 15-02-PLAN.md — 原生交接 spike（私有纹理 → blit → EGLImage → fence → 跨线程 GLES 2 导入、FLIP_Y、context API）+ release.yml 发布层证明
+- [ ] 15-03-PLAN.md — Flutter Linux spike：挂载纹理的像素/方向探针 + ProbeGl 第二控制器失败诊断 + 3.47.8 嵌入层源码事实
+- [ ] 15-04-PLAN.md — Linux 链决策检查点 + `LinuxBackendCandidates` golden + `RenderBackend::RunBound` 接缝（本地先红后绿）
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 15-05-PLAN.md — OpenGLBackend 示踪（强制 opengl 真实插件）+ 链接入 + 硬断言探针
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 15-06-PLAN.md — Vulkan 不可用时 auto 落到 OpenGL 的证明 + 探测移到新线程（第二控制器一致）
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 15-07-PLAN.md — 文档、未验证清单、最终全量 CI 门与审计、需求到证据映射 + 阶段末人工检查
 
 ### Phase 16: Hardware-Decode Zero-Copy
 
@@ -191,8 +258,8 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
-| 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
-| 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
-| 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |
+| 13. macOS Metal Route Decision | v3.0 | 0/6 | Planned | - |
+| 14. Windows Native D3D11 Backend | v3.0 | 0/11 | Planned | - |
+| 15. Linux OpenGL Backend | v3.0 | 0/7 | Planned | - |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |

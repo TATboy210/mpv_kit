@@ -262,11 +262,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-27
-Stopped at: Phase 12 complete, ready to plan Phase 13
+Stopped at: Phases 13/14/15 planned (6 + 11 + 7 plans, plan-checker passed), ready to execute
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
 ## Operator Next Steps
 
-- Phase 13 (macOS Metal Route Decision): `/gsd-discuss-phase 13` or `/gsd-plan-phase 13`
-- Phases 14/15/16 should be planned with `--research-phase`; Phase 14 must include the GTX 960 + iGPU laptop acceptance case
+- Phases 13, 14 and 15 are planned and may execute in parallel (14 before 15 if serialized): `/gsd-execute-phase 13`, `/gsd-execute-phase 14`, `/gsd-execute-phase 15`
+- Each phase opens with a push-authorization checkpoint; 13/14/15 share a golden-freeze gate (Phase 14's `golden-freeze-14.sha256` if present, else Phase 12's)
+- Phase 16 after 13/14/15 complete (plan with `--research-phase`), then Phase 17
