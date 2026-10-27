@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 14
-current_phase_name: Windows Native D3D11 Backend
+current_phase: 15
+current_phase_name: Linux OpenGL Backend
 status: executing
-stopped_at: Completed 14-08-PLAN.md
-last_updated: "2026-10-27T14:40:25.002Z"
-last_activity: 2026-10-27
-last_activity_desc: Phase 14 execution started
-state_head: 72752f566192bf731e1f9d8710387e09e8bf7959
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-10-27T20:10:06.273Z"
+last_activity: 2026-10-28
+last_activity_desc: Phase 15 execution started
+state_head: 5c2b060a734cb404b00b3d963c36d7fc10bbc5a1
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 25
+  completed_plans: 26
   percent: 17
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 14 — Windows Native D3D11 Backend
+**Current focus:** Phase 15 — Linux OpenGL Backend
 
 ## Current Position
 
-Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
-Plan: 9 of 11
+Phase: 15 (Linux OpenGL Backend) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-10-27 - Completed quick task 261027-or3: Linux release build against libdrm 2.4.113 (patch 0012), unblocks 14-03
+Last activity: 2026-10-28 — Phase 15 execution started
 
 Progress: [██░░░░░░░░] 17%
 
@@ -117,6 +117,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 14 P06 | 45min | 3 tasks | 9 files |
 | Phase 14 P07 | 40min | 3 tasks | 14 files |
 | Phase 14 P08 | 60min | 3 tasks | 12 files |
+| Phase 15 P01 | 40min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,8 @@ Recent decisions affecting current work:
 - [Phase 14]: 14-06: gpu-next D3D11 uses the VO's own shader cache (priv->libmpv_vo_cache) and a same-device pl_d3d11 + ra_d3d11 pair; no new render parameter, 0010 ABI untouched
 - [Phase 14]: 14-07: D3D11 backend reports frame_kind kVulkan (shared GPU image class); Windows chain is data (kWindowsApiOrder), 14-11 reorders one array; quarantine stays 4
 - [Phase 14]: 14-08: D3D11 failure injection replaces only the HRESULT source (debug builds only); chain behaviour pinned by a platform-independent golden
+- [Phase 15]: [15-01] bundle-egl=adopt: libmpv.so.2 depends on host libEGL.so.1 (-Dgl -Degl -Dplain-gl, egl-drm off)
+- [Phase 15]: [15-01] Push authorization push-green-only+dispatch is effective only at the milestone-end CI pass; Phase 14 14-09..14-11 and 13-06 deferred until after that CI pass
 
 ### CI Deferral
 
@@ -289,8 +292,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T14:40:24.472Z
-Stopped at: Completed 14-08-PLAN.md
+Last session: 2026-10-27T20:10:05.681Z
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
