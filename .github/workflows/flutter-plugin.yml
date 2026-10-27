@@ -54,6 +54,18 @@ jobs:
         # that makes the mpv_kit_libs hook download the pinned bundle.
         working-directory: example
         run: flutter build ${{ matrix.target }} --debug
+      - name: ANGLE ban audit (plugin DLL)
+        # D3D-02: mpv_kit's own Windows chain must not touch ANGLE/EGL. Only
+        # the plugin DLL is audited: flutter_windows.dll embeds ANGLE for the
+        # Flutter engine itself, which is outside mpv_kit's chain (ADR 0003).
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          dlls=$(find example/build/windows -name mpv_kit_video_plugin.dll)
+          if [ -z "$dlls" ]; then echo "mpv_kit_video_plugin.dll not found"; exit 1; fi
+          echo "$dlls" | while IFS= read -r dll; do
+            python -I tools/rea_abi_audit/pe_audit.py "$dll" --forbid-angle
+          done
       - name: Locate the hook-bundle libmpv
         # The mpv_kit_libs build hook downloaded the pinned bundle during
         # the example build; point the tests at it so the channel tests run

@@ -32,6 +32,10 @@ jobs:
         run: bash tools/check_patches.sh
       - name: Six-target matrix and continue-on-error audit
         run: python tools/check_matrix.py
+      # D3D-02: the ANGLE ban rule must turn red on synthetic violation
+      # samples (the test itself is green); see tools/rea_abi_audit.
+      - name: ANGLE ban audit self-test
+        run: python3 -I tools/rea_abi_audit/test_pe_audit.py
 
   linux:
     strategy:
@@ -411,11 +415,17 @@ jobs:
             libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p ntldd:p
       - name: Build libmpv
         run: |
-          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled --prefix="$PWD/prefix"
+          # D3D-02: no ANGLE/EGL/WGL-GL in mpv_kit's Windows chain; the verify
+          # layer switches them off explicitly, like the release build.
+          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled \
+            -Dgl=disabled -Degl=disabled -Degl-angle=disabled \
+            -Degl-angle-lib=disabled -Degl-angle-win32=disabled \
+            -Dgl-win32=disabled -Dgl-dxinterop=disabled \
+            -Dgl-dxinterop-d3d9=disabled --prefix="$PWD/prefix"
           meson compile -C out
           meson install -C out
       - name: ABI audit
-        run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt
+        run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt --forbid-gpl --forbid-angle
       - name: render_vk smoke test (lavapipe)
         run: |
           export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig" PATH="$PWD/prefix/bin:$PATH"
