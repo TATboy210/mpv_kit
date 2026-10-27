@@ -143,14 +143,14 @@ entries (`api`, `renderer`). `DefaultCandidates(choice)` gives
 `vulkan/gpu-next`, `vulkan/gpu`, `software/sw` for `auto` (a `gpu-next` or
 `gpu` request keeps only its own Vulkan entry; `software` only the last).
 A platform changes the chain by overriding `Interop::BackendCandidates` and
-supplies its own API's backend through `Interop::CreateBackend(api)`; no
-platform overrides either in Phase 12. One backend instance (one device
+supplies its own API's backend through `Interop::CreateBackend(api)`; the
+Windows interop overrides both since Phase 14 (see "D3D11 backend"). One backend instance (one device
 initialisation) serves all candidates of its api, and an api's backend is
 released before the next api is tried.
 
 **`MPV_KIT_VIDEO_API`.** A native environment variable read once per
-`Start`. Set to an api's wire name (`vulkan`, `software`; later `d3d11`,
-`opengl`), it restricts the chain to that api and the requested renderer,
+`Start`. Set to an api's wire name (`vulkan`, `software`, and `d3d11` on
+Windows since Phase 14; `opengl` follows), it restricts the chain to that api and the requested renderer,
 with no fallback; every other candidate becomes an
 `excluded by MPV_KIT_VIDEO_API=<value>` trail. It exists so CI can verify
 each backend on its own.
@@ -217,9 +217,53 @@ Platform sharing:
 
 | Platform | Shared image | Flutter texture |
 |---|---|---|
-| Windows | D3D11 texture (KMT handle) imported into Vulkan | `GpuSurfaceTexture` (DXGI shared handle) |
+| Windows | D3D11 texture (KMT handle) imported into Vulkan, or rendered into directly by mpv's D3D11 render API (`d3d11`) | `GpuSurfaceTexture` (DXGI shared handle) |
 | Linux | Vulkan `OPAQUE_FD` memory imported with `GL_EXT_memory_object_fd` | `FlTextureGL` |
 | macOS | IOSurface `CVPixelBuffer` bound by MoltenVK (`VK_EXT_metal_objects`) | `FlutterTexture` |
+
+## D3D11 backend (Windows, Phase 14)
+
+`packages/mpv_kit_video/windows/d3d11_backend.cpp` is a `RenderBackend`
+(`wire_name()` is `d3d11`) that lets mpv render with its own D3D11 render
+API (patch 0010; gpu-next uses the D3D11 branch of patch 0004) with no
+Vulkan in the path and no ANGLE, EGL or Flutter device on mpv_kit's side.
+Dart sees `MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy).
+
+* **Device.** One `ID3D11Device` per controller, created on Flutter's
+  `GetGraphicsAdapter()` adapter so the shared handles stay on one adapter.
+  Flags `BGRA_SUPPORT | VIDEO_SUPPORT` (d3d11va decoding); when the adapter
+  refuses `VIDEO_SUPPORT` (Basic Render Driver, WARP) it is created without
+  it and one `mpv_kit: d3d11 device created without VIDEO_SUPPORT (0x...)`
+  line is logged. Never the single-threaded or the debug flag;
+  `SetMultithreadProtected(TRUE)` serialises mpv's d3d11va decode thread.
+* **Targets.** A ring of `DXGI_FORMAT_B8G8R8A8_UNORM`, `D3D11_USAGE_DEFAULT`
+  textures with `RENDER_TARGET | SHADER_RESOURCE` and
+  `D3D11_RESOURCE_MISC_SHARED` (a legacy KMT handle, no NT handle, no keyed
+  mutex, no UAV). The platform object is the `D3D11Interop::Texture` also
+  used by the Vulkan path, so the plugin hands frames to Flutter through the
+  same `GpuSurfaceTexture`. Sizes above `D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION`
+  (16384) fail `AllocTargets`.
+* **Publish gate.** After each render the render thread signals an
+  `ID3D11Fence` and flushes; `Wait(slot)` returns only when that value has
+  completed (1000 ms bound: a timeout is `gpu_timeout`, a removed device is
+  `device_lost`). Without fence support each slot owns a
+  `D3D11_QUERY_EVENT` instead. A debug plugin build reads
+  `MPV_KIT_D3D11_SYNC=query` to force the query path; release builds never
+  read it.
+* **Threads.** The immediate context is used on the render thread only
+  (mpv renders with it and does not restore its state); the raster thread's
+  descriptor callback reads the cached shared handle.
+* **Quarantine stays 4.** Flutter's ANGLE consumer opens the handle with no
+  fence or keyed mutex, so the only bound on how long it samples an image is
+  its swap chain queue; `D3D11Interop::CompositorLatency()` is unchanged.
+* **Candidate chain.** `kWindowsApiOrder` in `d3d11_interop.cpp` is
+  `{"vulkan", "d3d11"}` within each renderer tier, so `auto` is
+  `vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, software.
+  Putting D3D11 first is a separate change that only reorders that array.
+* **Pickup latency.** The plugin logs
+  `mpv_kit: compositor pickup avg/over 120 frames: <avg>ms max=<max>ms
+  backend=<wire name>` every 120 frames: the time from the renderer's
+  `FrameReady` to the compositor asking for the frame. Measurement only.
 
 ## Stream bridge (patch 0006)
 

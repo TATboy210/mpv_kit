@@ -144,10 +144,10 @@ adds no Dart API.
   `MPV_KIT_VIDEO_RENDERER=gpu-next` fails: the `software/sw` candidate at
   the end of a `gpu-next` or `gpu` chain is only that request's fallback,
   and a forced run drops it too, whatever the value.
-- Effective values in Phase 12, on all three platforms: `vulkan` and
-  `software`. `d3d11` (Phase 14, Windows) and `opengl` (Phase 15, Linux)
-  start to work as soon as those phases add their candidates to the chain.
-  Until then they fail with `render_init`.
+- Effective values: `vulkan` and `software` on all three platforms, and
+  `d3d11` on Windows from Phase 14 on. `opengl` (Phase 15, Linux) starts to
+  work as soon as that phase adds its candidates to the chain. Until then it
+  fails with `render_init`, and so does `d3d11` on the other platforms.
 
 `MPV_KIT_VIDEO_RENDERER` is a graceful override: it still falls back to
 software. `MPV_KIT_VIDEO_API` is a diagnostic switch: it fails loudly
@@ -163,6 +163,13 @@ A platform moves its `auto` choice to a native API only when that API
 offers the better renderer. For example, Windows prefers D3D11 over Vulkan
 only once gpu-next runs on D3D11. Until then D3D11 is only a `gpu`-tier
 candidate.
+
+Current Windows chain (an intermediate order, Phase 14): within a tier the
+API preference is unchanged, Vulkan first, so `auto` is `vulkan/gpu-next`,
+`d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, `software/sw`. A machine with a
+usable Vulkan behaves as before; one without it renders on D3D11 instead of
+software. The planned switch to D3D11 first is a separate change that only
+reorders the API list of the Windows interop.
 
 ## Consequences
 

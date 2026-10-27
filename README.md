@@ -161,9 +161,18 @@ The environment variable **`MPV_KIT_VIDEO_RENDERER`** (`auto`, `gpu-next`,
 `gpu`, `software`) takes precedence over the requested renderer, so driver
 problems in a shipped app can be diagnosed without code changes.
 
+On Windows, mpv can also render through its own Direct3D 11 API (native
+`d3d11` backend, own `ID3D11Device` on Flutter's adapter, no Vulkan): set
+`MPV_KIT_VIDEO_API=d3d11` to force it. For now `auto` tries, in order,
+`vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, then
+software. A machine with a usable Vulkan 1.3 device behaves as before; a
+machine without one (no driver, an old GPU) renders on `d3d11` instead of
+falling back to software. Making D3D11 the first choice on Windows is a
+separate, later change.
+
 The native environment variable **`MPV_KIT_VIDEO_API`** forces one graphics
-API (`vulkan` or `software` today; `d3d11` on Windows and `opengl` on Linux
-once those backends land). It is strict: only that API is tried, there is
+API (`vulkan` or `software`; `d3d11` on Windows since Phase 14, `opengl` on
+Linux once that backend lands). It is strict: only that API is tried, there is
 no fallback to any other API (software included), and `create` throws
 `PlatformException(code: 'render_init')` when it cannot be used or does not
 match the selected renderer. Leave it unset in shipped apps; it exists for

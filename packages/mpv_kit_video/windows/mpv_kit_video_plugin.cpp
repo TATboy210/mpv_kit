@@ -20,7 +20,10 @@
 #include <flutter/texture_registrar.h>
 #include <windows.h>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
+#include <cstdio>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -48,12 +51,38 @@ const EncodableValue* Arg(const EncodableMap& m, const char* key) {
   return it == m.end() ? nullptr : &it->second;
 }
 
+/// Renderer log sink: DebugView, and stderr, which `flutter run` attaches
+/// so the probe lines are visible in the terminal without DebugView.
+void LogLine(const std::string& msg) {
+  OutputDebugStringA((msg + "\n").c_str());
+  if (stderr) fprintf(stderr, "%s\n", msg.c_str());
+}
+
+/// Frames between two compositor pickup log lines (same window as the
+/// renderer's `render waits avg/over` probe).
+constexpr int kPickupWindow = 120;
+
+/// Nanoseconds on the steady clock; the pickup latency's time base.
+int64_t SteadyNowNs() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
 /// Everything belonging to one MpvVideoController.
 struct Instance {
   // Guards dead/renderer against the raster thread's texture callbacks.
   std::mutex mutex;
   bool dead = false;
   std::atomic<int64_t> texture_id{-1};
+  // Compositor pickup latency (measurement only, ADR 0003 Q4): the render
+  // thread stamps the newest FrameReady; Describe, on the raster thread and
+  // under [mutex], accounts the time until the compositor asked for it.
+  std::atomic<int64_t> frame_ready_ns{0};
+  int64_t picked_ready_ns = 0;  // the stamp Describe last accounted
+  int pickup_count = 0;
+  double pickup_total_ms = 0;
+  double pickup_max_ms = 0;
   std::unique_ptr<D3D11Interop> interop;
   std::unique_ptr<VideoRenderer> renderer;
   std::unique_ptr<flutter::TextureVariant> texture;
@@ -201,17 +230,15 @@ class MpvKitVideoPlugin : public flutter::Plugin {
                               : nullptr;
     inst->interop = std::make_unique<D3D11Interop>(adapter, [raw, textures] {
       const int64_t id = raw->texture_id.load();
+      // Stamped before the compositor is told, so the pickup latency also
+      // contains the notification itself.
+      raw->frame_ready_ns.store(SteadyNowNs());
       if (id >= 0) textures->MarkTextureFrameAvailable(id);
     });
     inst->renderer = std::make_unique<VideoRenderer>(
         api, reinterpret_cast<mpv_handle*>(static_cast<intptr_t>(ToInt(*handle))),
         inst->interop.get(),
-        [](const std::string& msg) {
-          OutputDebugStringA((msg + "\n").c_str());
-          // Also to stderr: `flutter run` attaches it, so the sync-wait
-          // probe lines are visible in the terminal without DebugView.
-          if (stderr) fprintf(stderr, "%s\n", msg.c_str());
-        },
+        LogLine,
         [this, raw](const char* kind, const std::string& msg) {
           PostEvent(raw->texture_id.load(), kind, msg);
         });
@@ -275,12 +302,37 @@ class MpvKitVideoPlugin : public flutter::Plugin {
       delete e;
   }
 
+  /// Raster thread, [inst]->mutex held: accounts FrameReady -> Describe for
+  /// a frame not yet counted and logs one line per kPickupWindow frames
+  /// (count, sum and maximum reset after each line). Measurement only: no
+  /// publish, quarantine or delivery decision reads these numbers.
+  static void RecordPickup(Instance* inst) {
+    const int64_t ready = inst->frame_ready_ns.load();
+    if (ready == 0 || ready == inst->picked_ready_ns) return;
+    inst->picked_ready_ns = ready;
+    const double ms = static_cast<double>(SteadyNowNs() - ready) / 1e6;
+    inst->pickup_total_ms += ms;
+    inst->pickup_max_ms = std::max(inst->pickup_max_ms, ms);
+    if (++inst->pickup_count < kPickupWindow) return;
+    char line[160];
+    snprintf(line, sizeof(line),
+             "mpv_kit: compositor pickup avg/over %d frames: %.2fms "
+             "max=%.2fms backend=%s",
+             inst->pickup_count, inst->pickup_total_ms / inst->pickup_count,
+             inst->pickup_max_ms, inst->renderer->wire_name());
+    LogLine(line);
+    inst->pickup_count = 0;
+    inst->pickup_total_ms = 0;
+    inst->pickup_max_ms = 0;
+  }
+
   /// Raster thread: hand Flutter the latest completed shared texture.
   static const FlutterDesktopGpuSurfaceDescriptor* Describe(Instance* inst) {
     std::lock_guard<std::mutex> lock(inst->mutex);
     if (inst->dead) return nullptr;
     const Frame f = inst->renderer->AcquireFront();
     if (!f.platform) return nullptr;
+    RecordPickup(inst);
     auto* tex = static_cast<D3D11Interop::Texture*>(f.platform);
     auto& d = inst->descriptor;
     d.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
