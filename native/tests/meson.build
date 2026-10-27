@@ -133,6 +133,21 @@ test('video_renderer_golden_sw_retire_twice', golden_sw_retire_twice,
      args: [files('golden/sw_retire_twice.txt'), '--slack-ms=' + slack],
      timeout: 120)
 
+# The software frame of the last AcquireFront() stays valid until the next
+# one (video_renderer.h), across a second reallocation (code review CR-01):
+# a separate binary because the golden set above is frozen. It holds the
+# frame like a compositor and watches its buffer through its own global
+# operator new/delete; it runs everywhere, like golden_sw.
+sw_hold_front_test = executable('video_renderer_sw_hold_front_test',
+                                'video_renderer_sw_hold_front_test.cc',
+                                include_directories: [renderer_inc,
+                                                      vulkan_inc],
+                                cpp_args: renderer_defines,
+                                link_with: renderer,
+                                dependencies: threads)
+test('video_renderer_sw_hold_front_test', sw_hold_front_test,
+     args: ['--slack-ms=' + slack], timeout: 120)
+
 # MPV_KIT_VIDEO_API (ADR 0004 Decision 4): a separate binary because the
 # golden set above is frozen. Its scenarios run everywhere except
 # api-vulkan, which needs golden_vk's Vulkan 1.3 device and is skipped on
