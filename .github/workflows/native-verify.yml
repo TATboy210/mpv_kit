@@ -256,6 +256,10 @@ jobs:
               # is covered by 14-09.
               MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
               MPV_KIT_D3D11_SYNC=query MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
+              # D3D-07: debug-plugin failure injection (HRESULT layer; no real
+              # TDR). MPV_KIT_VIDEO_API stays unset so the auto chain runs.
+              MPV_KIT_D3D11_INJECT=device-removed:30 flutter test integration_test/d3d11_device_lost_test.dart -d windows
+              MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
               ;;
           esac
 

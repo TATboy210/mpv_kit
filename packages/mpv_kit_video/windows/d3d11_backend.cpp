@@ -74,23 +74,69 @@ std::string Utf8(const wchar_t* wide) {
   return out;
 }
 
+#ifndef NDEBUG
+/// The value of environment variable [name] ("" when unset). Debug builds
+/// only. The CRT's getenv is deprecated on Windows (C4996, an error under the
+/// plugin's /WX), same as in video_renderer.cc; _dupenv_s reads the same
+/// environment.
+std::string DebugEnv(const char* name) {
+  char* value = nullptr;
+  size_t size = 0;
+  if (_dupenv_s(&value, &size, name) != 0 || !value) return {};
+  std::string out(value);
+  std::free(value);
+  return out;
+}
+#endif
+
 /// True when MPV_KIT_D3D11_SYNC=query asked for the query path. Debug builds
 /// only (T-14-20): a release plugin cannot be steered by the environment.
 bool ForceQuerySync() {
 #ifndef NDEBUG
-  // The CRT's getenv is deprecated on Windows (C4996, an error under the
-  // plugin's /WX), same as in video_renderer.cc; _dupenv_s reads the same
-  // environment.
-  char* value = nullptr;
-  size_t size = 0;
-  if (_dupenv_s(&value, &size, "MPV_KIT_D3D11_SYNC") != 0 || !value)
-    return false;
-  const bool query = std::string(value) == "query";
-  std::free(value);
-  return query;
+  return DebugEnv("MPV_KIT_D3D11_SYNC") == "query";
 #else
   return false;
 #endif
+}
+
+/// Failure injection of one backend (see the file header). Empty in release
+/// builds.
+struct Injection {
+  bool create_fail = false;  // device creation fails
+  int removed_after = 0;     // > 0: removed after this many successful renders
+};
+
+/// Reads MPV_KIT_D3D11_INJECT once. An invalid value is logged and treated as
+/// unset. Debug builds only; release builds return the empty Injection.
+Injection ReadInjection() {
+  Injection injection;
+#ifndef NDEBUG
+  const std::string value = DebugEnv("MPV_KIT_D3D11_INJECT");
+  if (value.empty()) return injection;
+  const std::string removed = "device-removed:";
+  if (value == "create-fail") {
+    injection.create_fail = true;
+  } else if (value.compare(0, removed.size(), removed) == 0) {
+    const std::string digits = value.substr(removed.size());
+    const bool numeric =
+        !digits.empty() && digits.size() <= 9 &&
+        digits.find_first_not_of("0123456789") == std::string::npos;
+    injection.removed_after = numeric ? std::atoi(digits.c_str()) : 0;
+  }
+  if (!injection.create_fail && injection.removed_after <= 0) {
+    Log("mpv_kit: MPV_KIT_D3D11_INJECT=" + value +
+        " ignored (expected create-fail or device-removed:<n>, n >= 1)");
+    return Injection{};
+  }
+  Log("mpv_kit: D3D11 failure injection active: " + value);
+#endif
+  return injection;
+}
+
+/// True when [hr] says the device is gone (a query's GetData result).
+bool IsRemovalError(HRESULT hr) {
+  return hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET ||
+         hr == DXGI_ERROR_DRIVER_INTERNAL_ERROR;
 }
 
 /// One ring slot: the shared texture handed to Flutter plus its completion
@@ -224,6 +270,7 @@ class D3D11RenderBackend final : public RenderBackend {
     // value alone means the next Wait never waits for a value that will not
     // come (the Vulkan backend's RollbackSignalValue).
     if (err < 0) return err;
+    rendered_++;  // injection clock (device-removed:<n>); render thread only
     if (fence_mode_) {
       s.ready = ++fence_value_;
       context4_->Signal(fence_.Get(), s.ready);
@@ -256,6 +303,13 @@ class D3D11RenderBackend final : public RenderBackend {
     DXGI_ADAPTER_DESC desc{};
     if (SUCCEEDED(adapter->GetDesc(&desc))) device_name_ = Utf8(desc.Description);
     if (device_name_.empty()) device_name_ = "unknown adapter";
+    injection_ = ReadInjection();
+    if (injection_.create_fail) {
+      // Same path as a real failure: Fail() makes every later candidate of
+      // this api carry the same trail. The marker keeps the cause honest.
+      return Fail("d3d11 device creation failed: " +
+                  Hex(DXGI_ERROR_UNSUPPORTED) + " (injected)");
+    }
 
     const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
                                         D3D_FEATURE_LEVEL_11_0};
@@ -351,9 +405,15 @@ class D3D11RenderBackend final : public RenderBackend {
     return true;
   }
 
-  bool DeviceRemoved() const {
-    return device_ && FAILED(device_->GetDeviceRemovedReason());
+  /// The one source of the device removal reason: the real runtime, or in a
+  /// debug build the injected DEVICE_REMOVED once enough frames rendered.
+  HRESULT RemovedReason() const {
+    if (injection_.removed_after > 0 && rendered_ >= injection_.removed_after)
+      return DXGI_ERROR_DEVICE_REMOVED;
+    return device_ ? device_->GetDeviceRemovedReason() : S_OK;
   }
+
+  bool DeviceRemoved() const { return FAILED(RemovedReason()); }
 
   /// A wait that ran out of time: device removal is the more precise cause.
   WaitResult Timeout() const {
@@ -394,6 +454,7 @@ class D3D11RenderBackend final : public RenderBackend {
         s->pending = false;
         return WaitResult::kOk;
       }
+      if (IsRemovalError(hr)) return WaitResult::kDeviceLost;
       if (FAILED(hr) || Clock::now() >= deadline) return Timeout();
       if (poll < kQuerySpinPolls) {
         SwitchToThread();
@@ -412,6 +473,8 @@ class D3D11RenderBackend final : public RenderBackend {
   bool fence_mode_ = false;
   uint64_t fence_value_ = 0;  // monotonic across ring reallocations
   bool device_failed_ = false;
+  Injection injection_;       // debug builds only; empty otherwise
+  int rendered_ = 0;          // successful renders (injection clock)
   std::string device_error_;  // why InitDevice failed, sanitized
   std::string device_name_;
   std::vector<Slot> slots_;
