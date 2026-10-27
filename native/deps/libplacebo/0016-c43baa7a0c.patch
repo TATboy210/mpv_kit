@@ -1,0 +1,39 @@
+diff --git a/src/cache.h b/src/cache.h
+index 0430fcf532..0bf0bfe10e 100644
+--- a/src/cache.h
++++ b/src/cache.h
+@@ -68,5 +68,5 @@ enum {
+     CACHE_KEY_SPIRV     = UINT64_C(0x32352f6605ff60a7), // bare SPIR-V module
+     CACHE_KEY_VK_PIPE   = UINT64_C(0x4bdab2817ad02ad4), // VkPipelineCache
+     CACHE_KEY_GL_PROG   = UINT64_C(0x4274c309f4f0477b), // GL_ARB_get_program_binary
+-    CACHE_KEY_D3D_DXBC  = UINT64_C(0x5c9e6f43ec73f787), // DXBC bytecode
++    CACHE_KEY_D3D_DXBC  = UINT64_C(0xae98785f760f768c), // DXBC bytecode
+ };
+diff --git a/src/d3d11/gpu_pass.c b/src/d3d11/gpu_pass.c
+index dcd1da97cf..e47d5facaa 100644
+--- a/src/d3d11/gpu_pass.c
++++ b/src/d3d11/gpu_pass.c
+@@ -310,14 +310,16 @@ static bool alloc_hlsl_reg_bindings(pl_gpu gpu, pl_pass pass,
+         }
+ 
+         if (has_uav) {
+-            // UAVs are shared between VS and PS in a raster pass. Since slot
+-            // is derived from binding, both stages land on the same slot.
+-            int uav_slot = binding + uav_offset;
+-            hlslbind.uav.register_binding = uav_slot;
+-            while (pass_p->uavs.num <= uav_slot)
++            // UAVs are shared between VS and PS in a raster pass. The HLSL
++            // register is shifted by uav_offset since the runtime reserves
++            // slot 0 for the RTV, but the array index uses the bare binding
++            // because OMSetRenderTargetsAndUnorderedAccessViews is called
++            // with UAVStartSlot=uav_offset.
++            hlslbind.uav.register_binding = binding + uav_offset;
++            while (pass_p->uavs.num <= binding)
+                 PL_ARRAY_APPEND(pass, pass_p->uavs, HLSL_BINDING_NOT_USED);
+-            pass_p->uavs.elem[uav_slot] = binding;
+-            if (uav_slot >= p->max_uavs) {
++            pass_p->uavs.elem[binding] = binding;
++            if (binding + uav_offset >= p->max_uavs) {
+                 PL_ERR(gpu, "Too many UAVs in shader");
+                 goto error;
+             }

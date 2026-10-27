@@ -228,8 +228,8 @@ while read -r want name; do
   n_patches=$((n_patches + 1))
 done < "$placebo_patches/SHA256SUMS"
 n_files=$(find "$placebo_patches" -name '0*.patch' | wc -l)
-if [ "$n_patches" -ne 14 ] || [ "$n_files" -ne 14 ]; then
-  echo "libplacebo: expected 14 pinned patches, applied $n_patches of $n_files" >&2
+if [ "$n_patches" -ne 16 ] || [ "$n_files" -ne 16 ]; then
+  echo "libplacebo: expected 16 pinned patches, applied $n_patches of $n_files" >&2
   exit 1
 fi
 # Vulkan only: mpv_kit renders through the Vulkan render API (OpenGL and

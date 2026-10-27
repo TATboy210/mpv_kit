@@ -139,7 +139,7 @@ in mpv_kit, not upstream acceptability.
 
 `native/build/deps.sh` applies `native/deps/libplacebo/NNNN-<sha>.patch`
 after unpacking the pinned tarball: GNU patch only (`gpatch` on macOS),
-`--fuzz=0`, every file pinned in `SHA256SUMS` (exactly 14). The deps cache
+`--fuzz=0`, every file pinned in `SHA256SUMS` (exactly 16). The deps cache
 keys hash this directory, so changing a patch rebuilds the stack.
 
 Taken (upstream haasn/libplacebo, commit-date order): f89d3224a2 (renderer
@@ -153,7 +153,12 @@ command a thread waits on), 285d1cc8af (pl_queue init leak), 3ef51741f8
 (partial-init command cleanup), 13d0b79827 (pl_queue init UAF; must follow
 285d1cc8af), ca33bdacfd (release cached textures on pl_queue_reset),
 4aa872a15b (drop invalid mastering primaries), 1532bf6893 (reject a white
-point on the gamut boundary, mpv #18417).
+point on the gamut boundary, mpv #18417), 82224764a9 + c43baa7a0c (Windows D3D11 backend, used by 14-06/14-07 once
+`-Dd3d11=enabled`: 82224764a9 uses the SPIR-V binding as the HLSL register
+slot, which fixes AV1 film grain failing `D3DCompile` with overlapping
+registers, and changes the DXBC cache key; c43baa7a0c fixes the UAV slot
+regression 82224764a9 introduces in raster passes. They must be taken as a
+pair, in this order: 82224764a9 alone breaks UAVs in raster passes).
 
 Not taken: b6c62d4f04 and d5a5b4abbe (timer pending bitmask) sit on an
 intermediate `uint_fast8_t pending` refactor absent from 7.360.1
