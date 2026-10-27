@@ -236,3 +236,20 @@ if host_machine.system() == 'linux'
   test('render_gl_smoke', gl_smoke, args: ['gl'], timeout: 60)
   test('render_gl_smoke_gles', gl_smoke, args: ['gles'], timeout: 60)
 endif
+
+# Linux candidate chain (Phase 15, GLX-04): a separate binary because the
+# golden set above is frozen. LinuxBackendCandidates (linux_candidates.h) is
+# portable data, so this runs on every platform and under the sanitizers: a
+# fake "opengl" backend behind Interop::CreateBackend proves the auto/gpu/
+# gpu-next/software chains, the opengl trails, MPV_KIT_VIDEO_API=opengl and
+# the honest renderer in the reason head. Its Vulkan scenario needs
+# golden_vk's Vulkan 1.3 device and is skipped on its own without one.
+linux_chain_test = executable('video_renderer_linux_chain_test',
+                              'video_renderer_linux_chain_test.cc',
+                              include_directories: [renderer_inc, vulkan_inc],
+                              cpp_args: renderer_defines,
+                              link_with: renderer,
+                              dependencies: threads)
+test('video_renderer_linux_chain_test', linux_chain_test,
+     args: [files('golden/linux_chain.txt'), '--slack-ms=' + slack],
+     env: golden_vk_env, timeout: 120)
