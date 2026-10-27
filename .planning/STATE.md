@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-10-27T07:49:32.966Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-10-27T08:14:43.070Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 14 execution started
-state_head: 5e64d9cbc031fc53a32fcf86a35ec8ae8caefbc8
+state_head: f799e41b8a7ed350dcd0087edc31ee375df598e7
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 15
+  completed_plans: 16
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
 Last activity: 2026-10-27 — Phase 14 execution started
 
@@ -109,6 +109,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 14 P01 | 15 min | 3 tasks | 5 files |
 | Phase 13 P01 | 55min | 2 tasks | 6 files |
 | Phase 13 P02 | 14min | 2 tasks | 3 files |
+| Phase 14 P02 | 70min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,7 @@ Recent decisions affecting current work:
 - [Phase 13]: 13-01: user answered push-green-only; pushes limited to origin feat/mpv-master-upgrade fast-forward, no force, no red commits
 - [Phase 13]: 13-01: macOS reason carrier comes only from VkPhysicalDeviceDriverProperties via a forwarding wrapper returned by MetalInterop::CreateBackend; shared engine untouched
 - [Phase 13]: 13-02: ADR 0005 (proposed) keeps MoltenVK to IOSurface as the macOS route; ADR 0004 Decision 3 gains optional via carrier suffix, first-token api parsing unchanged
+- [Phase 14]: 14-02: PickDevice reason split with device names (decision A); frozen harness/vk.txt re-frozen as golden-freeze-14.sha256; known limitation: multi-Vulkan-device dev hosts mismatch the device-not-shareable golden
 
 ### Pending Todos
 
@@ -268,8 +270,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T07:49:32.248Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-10-27T08:14:42.272Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
