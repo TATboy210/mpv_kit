@@ -1,0 +1,7 @@
+# Phase 15 plan 15-02 spike decisions. NOT DECIDED: the evidence needs the render_gl_smoke handoff lines from hosted CI,
+# which is deferred to the milestone end (CI deferral 2026-10-27). Do not guess these values; 15-05 must not start from this file
+# until the lines below are replaced by real ones (format: key=value run=<id> sha=<40 hex> basis="<raw log line fragment>").
+D-GL-API=deferred (CI deferral 2026-10-27)
+D-FLIP-MPV=deferred (CI deferral 2026-10-27)
+D-SYNC=deferred (CI deferral 2026-10-27)
+UNVERIFIED=NVIDIA/AMD/Intel GL drivers, Mesa Xe2 EGLImage black frame, Wayland EGL platform

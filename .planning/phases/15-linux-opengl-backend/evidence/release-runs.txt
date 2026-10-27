@@ -1,0 +1,4 @@
+# Phase 15 release.yml dispatch record. Deferred to the milestone end (CI deferral 2026-10-27); no dispatch has happened.
+plan=15-02 task=3 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=release.yml run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
+plan=15-02 release_line target=linux-x64 line=deferred (CI deferral 2026-10-27)
+plan=15-02 release_line target=linux-arm64 line=deferred (CI deferral 2026-10-27)
