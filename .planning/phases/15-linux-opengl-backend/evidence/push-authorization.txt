@@ -1,0 +1,4 @@
+push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none release_dispatch=yes granted_at=2026-10-27T20:01:40Z head_at_grant=442226efa8b799a4aa75e4ccc1ac28b4d41c13dd
+user_reply=push-green-only+dispatch (授权只在里程碑末统一跑 CI 时生效)
+red_evidence=local-only (deliberately red commits are never pushed; spike code is written green by construction)
+note=effective only at the milestone-end CI pass (CI deferral 2026-10-27); no push during plan execution
