@@ -42,7 +42,7 @@
 ### macOS（MAC）
 
 - [ ] **MAC-01**: ADR 比较 MoltenVK→IOSurface / CGL+IOSurface / 自写 Metal 后端（成本、渲染器能力、弃用风险），给出决定与重新评估触发条件
-- [x] **MAC-02**: macOS 路径以 `RenderBackend` 形式运行且行为不变，`reason` 标明实际 Metal 承载（如 `via MoltenVK`）
+- [ ] **MAC-02**: macOS 路径以 `RenderBackend` 形式运行且行为不变，`reason` 标明实际 Metal 承载（如 `via MoltenVK`）
 
 ### 硬件解码零拷贝（HWD）
 
@@ -106,7 +106,7 @@
 | GLX-03 | Phase 15 | Pending |
 | GLX-04 | Phase 15 | Pending |
 | MAC-01 | Phase 13 | Pending |
-| MAC-02 | Phase 13 | Complete |
+| MAC-02 | Phase 13 | Pending |
 | HWD-01 | Phase 16 | Pending |
 | HWD-02 | Phase 16 | Pending |
 | HWD-03 | Phase 16 | Pending |
