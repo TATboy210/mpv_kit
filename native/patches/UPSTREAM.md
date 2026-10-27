@@ -58,6 +58,7 @@ byte-identity at the new base.
 | 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
 | 0009 upstream backports | Verbatim upstream mpv master commits after the base: 270367e8af7e (ta_talloc: MP_TARRAY_REMOVE_AT assert), 1f7ad6d31270 (vo_gpu_next: map queued frames again when baked-in options change), b6cab8fa0cc1 (vo_gpu_next: re-upload OSD textures only when they change), 5ce308b5730e (keep the scalers across frames with dynamic HDR metadata). Only offsets on this base, no fuzz. | Drop each hunk when rebasing onto a base that contains it. |
 | 0008 vendor integration fixes | The MPV_VERSION vendor stamp only — upstream commits `06ee185d3`+`b2c255c13` superseded the old io.c/wayland deltas in the 2026-10-24 rebase. | N/A (re-generated at each rebase). |
+| 0012 libdrm 2.4.113 floor | Upstream commit 4bed99f6a "meson: bump minimum libdrm version to 2.4.114" (2026-03-28) deliberately requires the dumb-buffer helpers added in libdrm 2.4.114, so this is not upstreamable as-is. Lowers the meson floor and adds ioctl shims in `vo_drm.c`. | Keep downstream; drop on the first rebase after the Linux release container ships libdrm >= 2.4.114. |
 
 ## Rebase onto mpv 0.41.0-1113 (2026-10-22)
 
@@ -180,3 +181,38 @@ the bundle stays on FFmpeg 8.1.3.
   6a262d11f637 (only meaningful with FFmpeg 9), 4dfee616d0fd (0007 is a
   superset). 1f7ad6d sets `want_reset` on the first options update after
   init (`last_ref_white` starts at 0): one harmless extra reset.
+
+## libdrm 2.4.113 floor (0012, 2026-10-27, quick 261027-or3)
+
+Upstream mpv commit 4bed99f6a "meson: bump minimum libdrm version to 2.4.114"
+(2026-03-28) made the vendored tree unconfigurable in the Linux release job:
+`release.yml` builds in `ubuntu:22.04` (glibc 2.35 baseline), whose libdrm is
+2.4.113, and `meson setup` runs with `-Ddrm=enabled` (VA-API through DRM
+render nodes), so the unmet floor is a hard error. 2.4.113 is also the host
+floor of the bundle.
+
+- libdrm is a host library (allowlisted in `package.sh`, never bundled) and
+  `libdrm.so.2` has no ELF symbol versioning. Building against a newer libdrm
+  (a prefix copy, a PPA, a 24.04 container) would leave plain undefined
+  references to the 2.4.114 symbols in `libmpv.so.2`: `dlopen` fails on
+  2.4.113 hosts, or the process aborts on the first call. So libdrm is not
+  upgraded in the prefix.
+- `0012-drm-build-against-libdrm-2.4.113.patch` lowers the meson floor to `>= 2.4.113` and replaces the only three
+  2.4.114-only calls in mpv's DRM code (all in `video/out/vo_drm.c`; the
+  other libdrm calls, `drmCloseBufferHandle`, `drmGetRenderDeviceNameFromFd`,
+  `drmIsKMS`, exist in 2.4.113 and `DRM_FORMAT_P030` is already `#ifdef`
+  guarded) with static `drmIoctl` shims equivalent to libdrm 2.4.114's own
+  (`-errno` on failure, errno intact). `--vo=drm` is never selected by
+  mpv_kit; it is compiled only because `build.sh` keeps `-Ddrm=enabled`.
+- Downstream only, not upstreamed (upstream requires 2.4.114 on purpose).
+  Drop it on the first rebase after the Linux release container ships
+  libdrm >= 2.4.114.
+- Numbering: 0010 is reserved for 14-05's D3D11 render-API backport and 0011
+  for GLX-F1, so this patch is 0012. It touches only the libdrm line of
+  `meson.build` and `vo_drm.c`, which neither reserved patch touches, so it
+  stacks after 0010/0011 in name order. Count: 9 patches now, 10 after 14-05.
+- Enforcement: the `LIBDRM-FLOOR` step in `release.yml` (linux job) checks
+  that `libmpv.so.2` resolves against the container libdrm with no
+  `undefined symbol: drm...`, imports none of the three 2.4.114 helpers and
+  keeps `libdrm.so.2` / `libva-drm.so.2` in NEEDED. `native-verify.yml` runs
+  on ubuntu-24.04 (newer libdrm) and cannot catch this regression.

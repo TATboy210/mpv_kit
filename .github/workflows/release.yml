@@ -61,6 +61,79 @@ jobs:
         run: |
           cp -a deps prefix
           SKIP_DEPS=1 bash native/build/build.sh "$PWD/prefix"
+      # The container's libdrm (2.4.113) is the runtime floor of the Linux
+      # bundle. This guard catches a vendored mpv that needs newer libdrm
+      # symbols; native-verify runs on ubuntu-24.04 (newer libdrm) and cannot.
+      - name: libmpv resolves against the container libdrm (2.4.113 floor)
+        shell: bash
+        run: |
+          libdrm_ver=$(pkg-config --modversion libdrm)
+          echo "container libdrm: $libdrm_ver"
+
+          # A libdrm copy in the prefix would mask the host's symbols.
+          if [ -n "$(find prefix/lib -maxdepth 1 -name 'libdrm*')" ]; then
+            echo "LIBDRM-FLOOR FAIL: prefix/lib contains a libdrm copy:" >&2
+            find prefix/lib -maxdepth 1 -name 'libdrm*' >&2
+            exit 1
+          fi
+
+          ldd_rc=0
+          ldd_out=$(LD_LIBRARY_PATH="$PWD/prefix/lib" ldd -r prefix/lib/libmpv.so.2 2>&1) || ldd_rc=$?
+          echo "ldd -r exit code: $ldd_rc"
+          printf '%s\n' "$ldd_out"
+
+          bad=$(printf '%s\n' "$ldd_out" | grep 'undefined symbol: drm' || true)
+          if [ -n "$bad" ]; then
+            echo "LIBDRM-FLOOR FAIL: libmpv needs libdrm symbols the container libdrm lacks:" >&2
+            printf '%s\n' "$bad" >&2
+            exit 1
+          fi
+
+          drm_line=$(printf '%s\n' "$ldd_out" | grep -E '^[[:space:]]*libdrm\.so\.2 => ' || true)
+          if [ -z "$drm_line" ]; then
+            echo "LIBDRM-FLOOR FAIL: ldd -r shows no 'libdrm.so.2 =>' line" >&2
+            exit 1
+          fi
+          drm_path=$(printf '%s\n' "$drm_line" | awk '{print $3}')
+          case "$drm_path" in
+            "$PWD"/prefix/*|"")
+              echo "LIBDRM-FLOOR FAIL: libdrm.so.2 resolved inside prefix/: '$drm_path'" >&2
+              exit 1 ;;
+            /*) echo "libdrm.so.2 resolved to $drm_path" ;;
+            *)
+              echo "LIBDRM-FLOOR FAIL: libdrm.so.2 did not resolve: '$drm_path'" >&2
+              exit 1 ;;
+          esac
+
+          # Imported drm* names, for the log; the three 2.4.114-only helpers must be absent.
+          drm_syms=$(nm -D --undefined-only prefix/lib/libmpv.so.2 | awk '$1 == "U" {print $2}' | sed 's/@.*//' | grep '^drm' | sort -u || true)
+          echo "libmpv imports (drm*):"
+          printf '%s\n' "$drm_syms"
+          new_syms=$(printf '%s\n' "$drm_syms" | grep -x -e drmModeCreateDumbBuffer -e drmModeDestroyDumbBuffer -e drmModeMapDumbBuffer || true)
+          if [ -n "$new_syms" ]; then
+            echo "LIBDRM-FLOOR FAIL: libmpv imports libdrm 2.4.114-only helpers:" >&2
+            printf '%s\n' "$new_syms" >&2
+            exit 1
+          fi
+
+          # Binding flags for the log (decides eager vs lazy failure on old hosts).
+          dyn=$(readelf -d prefix/lib/libmpv.so.2)
+          printf '%s\n' "$dyn" | grep -E 'NEEDED|FLAGS|BIND_NOW' || true
+          for lib in 'libdrm\.so\.2' 'libva-drm\.so\.2'; do
+            if ! printf '%s\n' "$dyn" | grep -Eq "\(NEEDED\).*\[$lib\]"; then
+              echo "LIBDRM-FLOOR FAIL: NEEDED lacks $lib" >&2
+              exit 1
+            fi
+          done
+
+          for flag in HAVE_DRM HAVE_VAAPI_DRM; do
+            if ! grep -Eq "^#define $flag 1[[:space:]]*$" .mpv-build/config.h; then
+              echo "LIBDRM-FLOOR FAIL: .mpv-build/config.h lacks '#define $flag 1'" >&2
+              exit 1
+            fi
+          done
+
+          echo "LIBDRM-FLOOR OK libdrm=$libdrm_ver undefined_drm=0"
       - name: render_vk smoke test (lavapipe)
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig

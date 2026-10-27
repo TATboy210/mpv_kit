@@ -39,6 +39,54 @@
 #define BYTES_PER_PIXEL 4
 #define BITS_PER_PIXEL 32
 
+// mpv_kit patch 0012: libdrm 2.4.113 (the Ubuntu 22.04 release container, our
+// glibc 2.35 baseline) lacks the drmMode*DumbBuffer helpers that libdrm added
+// in 2.4.114. These shims are equivalent thin wrappers over the same ioctls:
+// 0 on success, -errno on failure, with errno left intact for the callers.
+static int mp_drm_create_dumb(int fd, uint32_t width, uint32_t height,
+                              uint32_t bpp, uint32_t flags, uint32_t *handle,
+                              uint32_t *pitch, uint64_t *size)
+{
+    struct drm_mode_create_dumb create = {
+        .width = width,
+        .height = height,
+        .bpp = bpp,
+        .flags = flags,
+    };
+    int ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
+    if (ret < 0)
+        return -errno;
+    if (ret)
+        return ret;
+    *handle = create.handle;
+    *pitch = create.pitch;
+    *size = create.size;
+    return 0;
+}
+
+static int mp_drm_destroy_dumb(int fd, uint32_t handle)
+{
+    struct drm_mode_destroy_dumb destroy = {
+        .handle = handle,
+    };
+    int ret = drmIoctl(fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy);
+    return ret < 0 ? -errno : ret;
+}
+
+static int mp_drm_map_dumb(int fd, uint32_t handle, uint64_t *offset)
+{
+    struct drm_mode_map_dumb map = {
+        .handle = handle,
+    };
+    int ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &map);
+    if (ret < 0)
+        return -errno;
+    if (ret)
+        return ret;
+    *offset = map.offset;
+    return 0;
+}
+
 struct drm_frame {
     struct framebuffer *fb;
 };
@@ -75,7 +123,7 @@ static void destroy_framebuffer(int fd, struct framebuffer *fb)
         drmModeRmFB(fd, fb->id);
     }
     if (fb->handle) {
-        drmModeDestroyDumbBuffer(fd, fb->handle);
+        mp_drm_destroy_dumb(fd, fb->handle);
     }
 }
 
@@ -89,8 +137,8 @@ static struct framebuffer *setup_framebuffer(struct vo *vo)
     fb->height = drm->mode.mode.vdisplay;
     fb->fd = drm->fd;
 
-    if (drmModeCreateDumbBuffer(drm->fd, fb->width, fb->height, BITS_PER_PIXEL, 0,
-                                &fb->handle, &fb->stride, &fb->size) < 0) {
+    if (mp_drm_create_dumb(drm->fd, fb->width, fb->height, BITS_PER_PIXEL, 0,
+                           &fb->handle, &fb->stride, &fb->size) < 0) {
         MP_ERR(vo, "Cannot create dumb buffer: %s\n", mp_strerror(errno));
         goto err;
     }
@@ -137,7 +185,7 @@ static struct framebuffer *setup_framebuffer(struct vo *vo)
 
     // prepare buffer for memory mapping
     uint64_t offset = 0;
-    if (drmModeMapDumbBuffer(drm->fd, fb->handle, &offset)) {
+    if (mp_drm_map_dumb(drm->fd, fb->handle, &offset)) {
         MP_ERR(vo, "Cannot map dumb buffer: %s\n", mp_strerror(errno));
         goto err;
     }

@@ -1008,7 +1008,10 @@ if features['direct3d']
     sources += files('video/out/vo_direct3d.c')
 endif
 
-drm = dependency('libdrm', version: '>= 2.4.114', required: get_option('drm'))
+# mpv_kit patch 0012: build against the Ubuntu 22.04 release container's libdrm
+# 2.4.113. vo_drm.c carries ioctl shims for the dumb-buffer helpers libdrm
+# added in 2.4.114 (upstream 4bed99f6a).
+drm = dependency('libdrm', version: '>= 2.4.113', required: get_option('drm'))
 libdisplay_info = dependency('libdisplay-info', version: '>= 0.1.1', required: get_option('drm'))
 features += {'drm': drm.found() and libdisplay_info.found() and
              (features['vt.h'] or features['consio.h'] or features['wsdisplay-usl-io.h'])}
