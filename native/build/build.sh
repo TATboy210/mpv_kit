@@ -42,6 +42,13 @@ case "$(uname -s)" in
     # D3D11 renderer (and with it shaderc + spirv-cross) is not used.
     mpv_args+=(-Dwasapi=enabled -Dd3d-hwaccel=enabled -Dd3d11=disabled
       -Ddirect3d=disabled)
+    # Hard constraint (D3D-02): mpv_kit's own Windows chain never uses ANGLE,
+    # EGL or WGL-GL. -Dgl/-Degl are already disabled in the common meson line
+    # below; this makes the remaining Windows GL backends explicit instead of
+    # leaving them on "auto" (the config.h check after meson setup enforces it).
+    mpv_args+=(-Degl-angle=disabled -Degl-angle-lib=disabled
+      -Degl-angle-win32=disabled -Dgl-win32=disabled -Dgl-dxinterop=disabled
+      -Dgl-dxinterop-d3d9=disabled)
     # MSYS2's vulkan.pc (vulkan-loader) points at its own include dir, which
     # has no Vulkan headers; mpv's VK_VERSION_1_3 header check then fails and
     # meson silently turns Vulkan off despite -Dvulkan=enabled (0.1.0-dev.1/2
@@ -87,6 +94,20 @@ for feature in VULKAN LIBPLACEBO; do
     exit 1
   }
 done
+# D3D-02: on Windows no GL/EGL/ANGLE/WGL-GL feature may be configured on.
+# Checked as "no `#define HAVE_<X> 1`" rather than "must be defined as 0",
+# since a feature can be absent from config.h when its dependency is off.
+case "$(uname -s)" in
+  MINGW*|MSYS*)
+    for feature in GL EGL EGL_ANGLE EGL_ANGLE_LIB EGL_ANGLE_WIN32 GL_WIN32 \
+      GL_DXINTEROP GL_DXINTEROP_D3D9; do
+      if grep -q "^#define HAVE_$feature 1" "$build/config.h"; then
+        echo "error: mpv configured with $feature on Windows (ANGLE/EGL/WGL-GL ban)" >&2
+        exit 1
+      fi
+    done
+    ;;
+esac
 meson compile -C "$build"
 meson install -C "$build" --strip
 grep -E "HAVE_(VULKAN|LIBPLACEBO|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|D3D_HWACCEL|VIDEOTOOLBOX_PL) " \
