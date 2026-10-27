@@ -287,14 +287,17 @@ VideoRenderer::~VideoRenderer() {
   if (thread_.joinable()) thread_.join();
   if (render_ctx_) {
     // Only when the render thread never ran: Start created the context and
-    // then std::thread threw. No thread ever owned the context, so this one
-    // binds the backend and frees it here, as the render thread would.
-    render_backend_->BindThread();
-    api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
-    // Must precede device destruction: mpv owns objects on our VkDevice.
-    render_backend_->Release(api_, render_ctx_);
+    // then std::thread threw. No thread ever owned the context, so the
+    // release goes through RunBound, the same binding point as the create
+    // calls: a backend with thread affinity (OpenGL) needs its context
+    // current for these mpv_render_* calls as much as the render thread
+    // does.
+    render_backend_->RunBound([this] {
+      api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
+      // Must precede device destruction: mpv owns objects on our VkDevice.
+      render_backend_->Release(api_, render_ctx_);
+    });
     render_ctx_ = nullptr;
-    render_backend_->UnbindThread();
   }
   render_backend_.reset();  // device last
 }
@@ -334,14 +337,26 @@ bool VideoRenderer::Start(RendererChoice choice) {
       trails.push_back(Trail(c, a.why));
     } else {
       std::string why;
-      const int err = a.backend->Create(api_, handle_, c.renderer,
-                                        &render_ctx_, &why);
+      std::string renderer_name;
+      int err = 0;
+      // The create-time mpv_render_* calls (create, get_info of the winner's
+      // renderer and the first set_update_callback) run inside RunBound: for
+      // OpenGL, render.h requires mpv's context to be current on the thread
+      // that makes them, and the platform thread is not such a thread. The
+      // default RunBound is the caller's thread, so Vulkan and software see
+      // the same thread and call order as before.
+      a.backend->RunBound([&] {
+        err = a.backend->Create(api_, handle_, c.renderer, &render_ctx_, &why);
+        if (err < 0) return;
+        renderer_name = a.backend->RendererName(api_, render_ctx_);
+        api_.render_context_set_update_callback(render_ctx_, &OnMpvUpdate,
+                                                this);
+      });
       a.asked = true;
       if (err >= 0) {
-        backend_reason_ =
-            std::string(a.backend->wire_name()) + " (" +
-            SanitizeReasonField(a.backend->RendererName(api_, render_ctx_)) +
-            ") on " + SanitizeReasonField(a.backend->device_name());
+        backend_reason_ = std::string(a.backend->wire_name()) + " (" +
+                          SanitizeReasonField(renderer_name) + ") on " +
+                          SanitizeReasonField(a.backend->device_name());
         // The trails so far are exactly the candidates ranked before it.
         if (!trails.empty()) backend_reason_ += "; " + JoinTrails(trails);
         render_backend_ = std::move(a.backend);
@@ -370,7 +385,6 @@ bool VideoRenderer::Start(RendererChoice choice) {
     return false;
   }
 
-  api_.render_context_set_update_callback(render_ctx_, &OnMpvUpdate, this);
   thread_ = std::thread(&VideoRenderer::RenderLoop, this);
   return true;
 }
