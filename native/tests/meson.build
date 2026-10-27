@@ -177,6 +177,21 @@ affinity_test = executable('video_renderer_affinity_test',
 test('video_renderer_affinity_test', affinity_test, env: golden_vk_env,
      timeout: 120)
 
+# Candidate chain with platform-provided backends (Phase 14, D3D-07): a
+# separate binary because the golden set above is frozen. Fake "d3d11" and
+# "vulkan" backends behind Interop::CreateBackend prove the interleaved
+# candidate order, the device-failure trails and propagation, MPV_KIT_VIDEO_API
+# without fallback, and exactly one device_lost event. No Vulkan device or
+# libmpv is needed: it runs on every platform and under the sanitizers.
+chain_test = executable('video_renderer_chain_test',
+                        'video_renderer_chain_test.cc',
+                        include_directories: [renderer_inc, vulkan_inc],
+                        cpp_args: renderer_defines,
+                        link_with: renderer,
+                        dependencies: threads)
+test('video_renderer_chain_test', chain_test,
+     args: [files('golden/chain.txt'), '--slack-ms=' + slack], timeout: 120)
+
 # --- D3D11 render API (Windows only) -------------------------------------------
 #
 # Renders a red-over-blue lavfi frame through MPV_RENDER_API_TYPE_D3D11 into a
