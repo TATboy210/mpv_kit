@@ -40,6 +40,54 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
+      - name: Generate route samples
+        # Three 640x360 / 30 fps / 4 s samples for the hwdec section, made
+        # on the runner and never committed (example/integration_test/
+        # route_samples/README.md). The encoders are GPL (x264/x265): they
+        # only make test media and never enter the LGPL libmpv bundle.
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install ffmpeg
+          ffmpeg -hide_banner -version > "$RUNNER_TEMP/ffmpeg-version.txt"
+          # Write to a file first, then take the line: a pipe into `head`
+          # can SIGPIPE the writer under pipefail.
+          echo "ROUTE-SAMPLES ffmpeg=$(sed -n 1p "$RUNNER_TEMP/ffmpeg-version.txt")"
+          ffmpeg -hide_banner -encoders > "$RUNNER_TEMP/ffmpeg-encoders.txt"
+          for enc in libx264 libx265; do
+            if ! grep -q " $enc " "$RUNNER_TEMP/ffmpeg-encoders.txt"; then
+              echo "ffmpeg has no $enc encoder; cannot generate the route samples"
+              exit 1
+            fi
+          done
+          out=example/integration_test/route_samples
+          common="-nostdin -hide_banner -loglevel error -y -f lavfi -i testsrc2=size=640x360:rate=30:duration=4"
+          ffmpeg $common -c:v libx264 -pix_fmt yuv420p -g 30 \
+            -movflags +faststart "$out/h264-8bit.mp4"
+          ffmpeg $common -c:v libx265 -pix_fmt yuv420p -g 30 -tag:v hvc1 \
+            -x265-params log-level=error "$out/hevc-8bit.mp4"
+          ffmpeg $common -c:v libx265 -pix_fmt yuv420p10le -profile:v main10 \
+            -g 30 -tag:v hvc1 -x265-params log-level=error "$out/hevc-10bit.mp4"
+          check() { # name expected-codec expected-pix_fmt
+            ffprobe -v error -select_streams v:0 \
+              -show_entries stream=codec_name,pix_fmt -of default=nw=1 \
+              "$out/$1" > "$RUNNER_TEMP/probe-$1.txt"
+            codec=$(sed -n 's/^codec_name=//p' "$RUNNER_TEMP/probe-$1.txt")
+            pix=$(sed -n 's/^pix_fmt=//p' "$RUNNER_TEMP/probe-$1.txt")
+            bytes=$(wc -c < "$out/$1" | tr -d ' ')
+            echo "ROUTE-SAMPLES name=$1 codec=$codec pix_fmt=$pix bytes=$bytes"
+            if [ "$codec" != "$2" ] || [ "$pix" != "$3" ]; then
+              echo "$1: unexpected codec/pix_fmt"
+              exit 1
+            fi
+            if [ "$bytes" -gt 1048576 ]; then
+              echo "$1: larger than 1 MiB"
+              exit 1
+            fi
+          }
+          check h264-8bit.mp4 h264 yuv420p
+          check hevc-8bit.mp4 hevc yuv420p
+          check hevc-10bit.mp4 hevc yuv420p10le
       - name: Probe unit tests
         shell: bash
         working-directory: example
@@ -65,7 +113,7 @@ jobs:
         run: |
           flutter test integration_test/macos_route_test.dart -d macos \
             --dart-define=MPV_KIT_ROUTE_TREE=head \
-            --dart-define=MPV_KIT_ROUTE_SECTIONS=pixel \
+            --dart-define=MPV_KIT_ROUTE_SECTIONS=pixel,hwdec \
             | tee "$RUNNER_TEMP/route-head.log"
       - name: Route probe (pre-Phase-12 plugin)
         # Same runner, same Flutter SDK, same bundle tag, same test file:

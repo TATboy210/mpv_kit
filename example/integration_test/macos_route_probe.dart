@@ -169,3 +169,215 @@ String routeVisibility({
   }
   return 'texture-visible';
 }
+
+// --- hwdec section (Phase 13-04, HWD-04) ------------------------------------
+
+/// Largest mean absolute B/G/R difference between the software-decoded
+/// reference screenshot and the videotoolbox screenshot of the same sample.
+/// H.264/HEVC decoding is bit exact and both screenshots go through the same
+/// renderer, so a correct zero-copy import differs by about 0; a green frame
+/// or a wrongly imported plane differs by dozens. Fixed before any CI run:
+/// do not relax it after seeing a result without recording the observed
+/// values and a user decision.
+const double routeFrameMaxMeanAbsDiff = 8.0;
+
+/// A raw `screenshot-raw` frame in `bgr0` order (the fourth byte is padding).
+final class RouteBgr0Frame {
+  const RouteBgr0Frame({
+    required this.width,
+    required this.height,
+    required this.stride,
+    required this.data,
+  });
+
+  final int width;
+  final int height;
+
+  /// Bytes per row; may exceed `width * 4`.
+  final int stride;
+  final List<int> data;
+
+  /// Whether [data] holds every row the geometry claims.
+  bool get isComplete =>
+      width > 0 &&
+      height > 0 &&
+      stride >= width * 4 &&
+      data.length >= stride * height;
+}
+
+/// Share of non-black pixels of a bgr0 frame.
+final class RouteBgr0Stats {
+  const RouteBgr0Stats({required this.nonBlackRatio});
+
+  /// Share of pixels with any of B/G/R above [routeNonBlackChannel].
+  final double nonBlackRatio;
+}
+
+/// Statistics of a bgr0 frame, or null when [data] is shorter than
+/// `stride * height` (a truncated read must not look like a black frame).
+RouteBgr0Stats? routeBgr0Stats(
+  int width,
+  int height,
+  int stride,
+  List<int> data,
+) {
+  final frame = RouteBgr0Frame(
+    width: width,
+    height: height,
+    stride: stride,
+    data: data,
+  );
+  if (!frame.isComplete) return null;
+  var nonBlack = 0;
+  for (var y = 0; y < height; y++) {
+    final row = y * stride;
+    for (var x = 0; x < width; x++) {
+      final i = row + x * 4;
+      if (data[i] > routeNonBlackChannel ||
+          data[i + 1] > routeNonBlackChannel ||
+          data[i + 2] > routeNonBlackChannel) {
+        nonBlack++;
+      }
+    }
+  }
+  return RouteBgr0Stats(nonBlackRatio: nonBlack / (width * height));
+}
+
+/// Mean absolute difference over the B, G and R channels of two frames of
+/// the same size (the padding byte is ignored), or null when the sizes
+/// differ or either frame is truncated.
+double? routeBgr0MeanAbsDiff(RouteBgr0Frame a, RouteBgr0Frame b) {
+  if (a.width != b.width || a.height != b.height) return null;
+  if (!a.isComplete || !b.isComplete) return null;
+  var sum = 0;
+  for (var y = 0; y < a.height; y++) {
+    final rowA = y * a.stride;
+    final rowB = y * b.stride;
+    for (var x = 0; x < a.width; x++) {
+      final ia = rowA + x * 4;
+      final ib = rowB + x * 4;
+      sum +=
+          (a.data[ia] - b.data[ib]).abs() +
+          (a.data[ia + 1] - b.data[ib + 1]).abs() +
+          (a.data[ia + 2] - b.data[ib + 2]).abs();
+    }
+  }
+  return sum / (a.width * a.height * 3);
+}
+
+/// What the screenshot comparison says about the frame under test.
+enum RouteFrameCheck {
+  /// Not black and within [routeFrameMaxMeanAbsDiff] of the reference.
+  match,
+
+  /// Black, a different size, or too far from the reference.
+  mismatch,
+
+  /// No usable comparison: no screenshot, a software fallback screenshot
+  /// (which does not exercise the zero-copy render path), or no reference.
+  unavailable,
+}
+
+/// Compares the screenshot of the sample under test with the software
+/// reference. [fellBack] is true when mpv logged `Falling back to software
+/// screenshot.`: that screenshot downloads the hardware frame on the CPU and
+/// proves nothing about the zero-copy render path.
+RouteFrameCheck routeScreenshotCheck({
+  required bool fellBack,
+  RouteBgr0Frame? screenshot,
+  RouteBgr0Frame? reference,
+}) {
+  if (screenshot == null || fellBack || reference == null) {
+    return RouteFrameCheck.unavailable;
+  }
+  final stats = routeBgr0Stats(
+    screenshot.width,
+    screenshot.height,
+    screenshot.stride,
+    screenshot.data,
+  );
+  if (stats == null) return RouteFrameCheck.unavailable;
+  if (screenshot.width != reference.width ||
+      screenshot.height != reference.height) {
+    return RouteFrameCheck.mismatch;
+  }
+  if (stats.nonBlackRatio < routeMinNonBlackRatio) {
+    return RouteFrameCheck.mismatch;
+  }
+  final diff = routeBgr0MeanAbsDiff(screenshot, reference);
+  if (diff == null) return RouteFrameCheck.unavailable;
+  return diff > routeFrameMaxMeanAbsDiff
+      ? RouteFrameCheck.mismatch
+      : RouteFrameCheck.match;
+}
+
+/// Classifies one `hwdec=videotoolbox` run of a sample.
+///
+/// Zero-copy is only claimed when three independent markers agree:
+/// `hwdec-current` is `videotoolbox` (mpv selects the non-copy variant only
+/// when the `hwdec_vt_pl` interop loaded), `video-params/pixelformat` is the
+/// hardware format `videotoolbox` and `video-params/hw-pixelformat` names
+/// the underlying format (`nv12` / `p010`). The screenshot then decides
+/// between `zero-copy`, `zero-copy-bad-frame` and
+/// `zero-copy-render-unverified`.
+///
+/// Software decoding is `unavailable` only with at least one failure
+/// evidence line that does not come from the screenshot module; without it
+/// the outcome is `unavailable-unexplained`, which fails the test: an
+/// unreachable hardware path must come with a reason.
+String routeHwdecOutcome({
+  required String requested,
+  String? hwdecCurrent,
+  String? pixelformat,
+  String? hwPixelformat,
+  required RouteFrameCheck screenshot,
+  required int failureEvidence,
+  required bool referenceValid,
+}) {
+  if (!referenceValid) return 'reference-invalid';
+  final zeroCopyMarkers =
+      hwdecCurrent == 'videotoolbox' &&
+      pixelformat == 'videotoolbox' &&
+      hwPixelformat != null &&
+      hwPixelformat.isNotEmpty;
+  if (zeroCopyMarkers) {
+    return switch (screenshot) {
+      RouteFrameCheck.mismatch => 'zero-copy-bad-frame',
+      RouteFrameCheck.match => 'zero-copy',
+      RouteFrameCheck.unavailable => 'zero-copy-render-unverified',
+    };
+  }
+  if (hwdecCurrent == 'videotoolbox-copy' ||
+      (hwdecCurrent == 'videotoolbox' && pixelformat != 'videotoolbox')) {
+    return 'copy-back';
+  }
+  if (hwdecCurrent == null || hwdecCurrent.isEmpty || hwdecCurrent == 'no') {
+    return failureEvidence > 0 ? 'unavailable' : 'unavailable-unexplained';
+  }
+  return 'unexpected';
+}
+
+/// Outcomes that let the gated hwdec runs pass. The others are product or
+/// evidence facts (bad frame, copy-back, an unexplained software fallback,
+/// an invalid reference) and fail the test.
+const Set<String> routeGatedOutcomesAllowed = {
+  'zero-copy',
+  'zero-copy-render-unverified',
+  'unavailable',
+};
+
+/// mpv log lines worth keeping as evidence of what the hwdec path did.
+final RegExp routeHwdecLogPattern = RegExp(
+  r'videotoolbox|hwdec|hwaccel|hardware|interop|PL_HANDLE_MTL_TEX|'
+  r'CVPixelBuffer|screenshot',
+  caseSensitive: false,
+);
+
+/// Evidence lines that say the hardware path did not work. Lines from the
+/// `screenshot` module never count (the screenshot fallback message matches
+/// "falling back" but says nothing about decoding).
+final RegExp routeHwdecFailurePattern = RegExp(
+  r'fail|error|not supported|unsupported|could not|cannot|requires|'
+  r'falling back|software decoding|not trying',
+  caseSensitive: false,
+);
