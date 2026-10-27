@@ -153,7 +153,7 @@ Plans:
 **阶段内顺序**: 构建与 ANGLE 禁令门禁（D3D-01/02）→ 0010 backport + 0004 gpu-next D3D11 分支 + smoke（D3D-03/04/05）→ `D3D11Backend` 与设备丢失/回退（D3D-06/07）→ auto 链切换提交（D3D-08）。构建计划必须先于渲染计划。
 **验证分层**: hosted windows runner（无 GPU，Flutter 适配器为 WARP）证明构建、PE 审计、PATCH-DRIFT、两种 smoke 变体与强制 d3d11 的真实插件测试；RTX 4060 证明真实适配器上的渲染与性能，并作为 auto 链切换的前提。
 **Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。（用户选择跳过阶段研究直接规划：这些未知项已写成 14-01 / 14-04 / 14-05 的实测 spike 任务，结论门控后续任务。）
-**Plans:** 7/11 plans executed（10 waves）
+**Plans:** 8/11 plans executed（10 waves）
 
 Plans:
 **Wave 1**
@@ -176,7 +176,7 @@ Plans:
 - [x] 14-07-PLAN.md — `D3D11Backend`（Flutter 适配器、KMT 纹理环、fence/query 发布门控）+ 切换前候选链 + 强制 d3d11 真实插件测试 + 取帧延迟测量（D3D-06）
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 14-08-PLAN.md — 设备移除 → `device_lost`、创建失败 → 带原因回退：调试注入 + 真实插件测试 + chain golden（D3D-07）
+- [x] 14-08-PLAN.md — 设备移除 → `device_lost`、创建失败 → 带原因回退：调试注入 + 真实插件测试 + chain golden（D3D-07）
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 14-09-PLAN.md — RTX 4060：强制 d3d11 功能、4K 600 s 对照 Phase 12、Impeller 开/关 D-05 与取帧延迟 + `docs/perf/d3d11-backend.md`
@@ -259,7 +259,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
 | 13. macOS Metal Route Decision | v3.0 | 5/6 | In Progress | - |
-| 14. Windows Native D3D11 Backend | v3.0 | 7/11 | In Progress | - |
+| 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/7 | Planned | - |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
