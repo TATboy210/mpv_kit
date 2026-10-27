@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-27T13:00:52Z",
+  "phase": "13+14",
+  "phase_name": "macOS Metal Route Decision + Windows Native D3D11 Backend (interleaved)",
+  "phase_dir": ".planning/phases/14-windows-native-d3d11-backend",
+  "plan": "13-04 / 14-05",
+  "task": 1,
+  "total_tasks": 17,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Phase 12 complete (UAT 3/3, verification passed)", "status": "done", "commit": "a8a4ff9"},
+    {"id": 2, "name": "Plans for 13 (6), 14 (11), 15 (7) created, checker passed", "status": "done", "commit": "182a097"},
+    {"id": 3, "name": "14-01 push auth + ci_gate + D3D11 caps probe", "status": "done", "commit": "46aa24d"},
+    {"id": 4, "name": "13-01 via MoltenVK reason (CI green)", "status": "done", "commit": "fc6dec0"},
+    {"id": 5, "name": "13-02 ADR 0005 proposed", "status": "done", "commit": "d8dd0c0"},
+    {"id": 6, "name": "14-02 PickDevice reason split (option A) + golden-freeze-14", "status": "done", "commit": "fe71846"},
+    {"id": 7, "name": "quick 261027-or3 Linux release vs libdrm 2.4.113 (patch 0012)", "status": "done", "commit": "e8050dd"},
+    {"id": 8, "name": "14-03 ANGLE ban gate (feat release run 40498982368 success)", "status": "done", "commit": "8f891c8"},
+    {"id": 9, "name": "13-03 macOS route probe workflow + IOSurface frame probe (CI deferred)", "status": "done", "commit": "4934371"},
+    {"id": 10, "name": "14-04 SPIRV-Cross/shaderc_shared + libplacebo 0015/0016 (CI deferred)", "status": "done", "commit": "39bd127"}
+  ],
+  "remaining_tasks": [
+    {"id": 11, "name": "13-04 VideoToolbox zero-copy probe", "status": "not_started"},
+    {"id": 12, "name": "14-05 patch 0010 upstream D3D11 render API (patches=10)", "status": "not_started"},
+    {"id": 13, "name": "13-05 verification record + final audit; 13-06 user decision checkpoint (route/HWD-04/SC2)", "status": "not_started"},
+    {"id": 14, "name": "14-06..14-11 (smoke, D3D11Backend, device-lost, RTX 4060 perf, GTX 960 laptop demo, auto-chain switch)", "status": "not_started"},
+    {"id": 15, "name": "Phase 15 (7 plans; 15-01 after 14's build.sh hunks)", "status": "not_started"},
+    {"id": 16, "name": "Plan + execute Phases 16, 17 (lean: no research, 1 checker round)", "status": "not_started"},
+    {"id": 17, "name": "Single milestone-end CI pass for all deferred_ci_gates, then per-phase verification", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    "Future checkpoints: 15-01 push auth + bundle composition, 15-04 chain order + SC3 interpretation, 13-06 route/SC2 decision, 14-10 GTX 960 laptop demo test, 14-11 auto-chain switch"
+  ],
+  "decisions": [
+    {"decision": "Push auth: Phase 14 green-plus-scratch, Phase 13 push-green-only", "rationale": "User 2026-10-27", "phase": "13/14"},
+    {"decision": "14-02 option A (device names in reason), golden-freeze-14.sha256 now the active freeze manifest", "rationale": "User 2026-10-27", "phase": "14"},
+    {"decision": "Fix Linux release build first (patch 0012, libdrm floor 2.4.113)", "rationale": "User 2026-10-27", "phase": "quick"},
+    {"decision": "DEFER ALL hosted CI gating until every phase is done; executors record deferred_ci_gates in SUMMARY frontmatter and use requirements-partial", "rationale": "User 2026-10-27: token budget", "phase": "13-17"},
+    {"decision": "14-04 shaderc packaging = shared (fallback own-glslang if CI shows it cannot build on glslang 16.6.0)", "rationale": "User 2026-10-27", "phase": "14"},
+    {"decision": "Budget: finish 13-17 within ~500 CNY; lean mode (skip optional code/UI/Nyquist reviews, 16/17 without research, 1 checker round, executors stay sonnet)", "rationale": "User 2026-10-27", "phase": "13-17"}
+  ],
+  "uncommitted_files": [
+    " M .planning/config.json",
+    " M .planning/state.json",
+    "?? .planning/tmp/",
+    "?? .planning/ui-reviews/",
+    "?? engine_repo_embedder.cc"
+  ],
+  "next_action": "Resume interleaved sequential execution: dispatch gsd-executor for 13-04, then 14-05, 13-05, 13-06 (user checkpoint), 14-06.. ; use the dispatch template in .planning/.continue-here.md (CI deferral block, root pin, protected files). Do not run gsd-tools state.begin-phase/advance-plan without restoring state.json.",
+  "context_notes": "All uncommitted_files are pre-existing user changes: never stage/modify. Host is Windows MINGW64 (cwd shown as D:/mpv_kit), RTX 4060, Flutter 3.47.8 at /d/flutter. workflow.use_worktrees=false so executors run one at a time on the main tree. Local feat is 14 commits ahead of origin (unpushed; that is fine under CI deferral). Scratch branches origin/ci/14-{probe,angle,libdrm} to be deleted in 14-11."
+}
