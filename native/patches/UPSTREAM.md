@@ -57,6 +57,7 @@ byte-identity at the new base.
 | 0006 asynchronous stream bridge | mpv-specific glue for hosts that cannot answer stream_cb synchronously (Dart). Upstream's view so far is that stream_cb is enough. | Keep downstream. |
 | 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
 | 0009 upstream backports | Verbatim upstream mpv master commits after the base: 270367e8af7e (ta_talloc: MP_TARRAY_REMOVE_AT assert), 1f7ad6d31270 (vo_gpu_next: map queued frames again when baked-in options change), b6cab8fa0cc1 (vo_gpu_next: re-upload OSD textures only when they change), 5ce308b5730e (keep the scalers across frames with dynamic HDR metadata). Only offsets on this base, no fuzz. | Drop each hunk when rebasing onto a base that contains it. |
+| 0010 upstream D3D11 render API | Verbatim backport of upstream PR #17764 (merged as 4255130de4, client API 2.6): the 4 PR commits plus 2 prerequisite upstream commits. `libmpv_d3d11.c` is the only locally adapted file (see below). | Drop the whole patch when rebasing onto a base that contains 4255130de4. |
 | 0008 vendor integration fixes | The MPV_VERSION vendor stamp only — upstream commits `06ee185d3`+`b2c255c13` superseded the old io.c/wayland deltas in the 2026-10-24 rebase. | N/A (re-generated at each rebase). |
 | 0012 libdrm 2.4.113 floor | Upstream commit 4bed99f6a "meson: bump minimum libdrm version to 2.4.114" (2026-03-28) deliberately requires the dumb-buffer helpers added in libdrm 2.4.114, so this is not upstreamable as-is. Lowers the meson floor and adds ioctl shims in `vo_drm.c`. | Keep downstream; drop on the first rebase after the Linux release container ships libdrm >= 2.4.114. |
 
@@ -221,3 +222,31 @@ floor of the bundle.
   `undefined symbol: drm...`, imports none of the three 2.4.114 helpers and
   keeps `libdrm.so.2` / `libva-drm.so.2` in NEEDED. `native-verify.yml` runs
   on ubuntu-24.04 (newer libdrm) and cannot catch this regression.
+
+## Upstream D3D11 render API backport (0010, 2026-10-27, phase 14-05)
+
+`0010-upstream-d3d11-render-api.patch` carries mpv-player/mpv PR #17764
+(rebase-merged; client API 2.6) on base b2c255c13 + 0001..0009. Six upstream
+commits, applied with `cherry-pick -x` in this order (PR-head SHA -> master SHA,
+patch-ids identical):
+
+- prerequisites, not in the PR: `44be29945` (debug layer message printing moved
+  to d3d11_helpers, introduces `mp_d3d11_report_live_objects`) and `d802fab36`
+  (don't map fence messages by ID). Without them `b1b03bd34` does not apply on
+  this base.
+- `5deaba46b` (f0b70a87c2) vo_gpu dither fix, `0b3d2ab52` (b96f286532)
+  ra_d3d11 rasterizer state per draw, `b1b03bd34` (2a97b84b39) live object
+  report moved to the VO context, `4255130de4` (69920fdcaf) libmpv D3D11
+  render API (`render_d3d11.h`, `libmpv_d3d11.c`, params 21/22).
+- Only local adaptation: `libmpv_d3d11.c` `done_frame` returns `bool`
+  (`return true;`) to match the `libmpv_gpu_context_fns.done_frame` signature
+  from 0001/0004.
+- Hunk conflicts with our patches (all resolved by keeping ours and adding
+  upstream's lines): `libmpv_gpu.h` (0001 vk extern), `meson.build` (0001/0006
+  header list), `client-api-changes.rst` (0001 mpv_kit block); `libmpv_gpu.c`
+  auto-merged. Per-file record: `evidence/abi-0010.txt` in phase 14.
+- ABI: `render_d3d11.h` and `render.h` are byte-identical to upstream
+  4255130de4, `MPV_CLIENT_API_VERSION` is `MPV_MAKE_VERSION(2, 6)`,
+  `MPV_RENDER_PARAM_D3D11_INIT_PARAMS` is 21, `MPV_RENDER_PARAM_D3D11_FBO` is
+  22. No exported symbol is added.
+- Never add downstream D3D11 params here; mpv_kit behaviour goes into 0004.
