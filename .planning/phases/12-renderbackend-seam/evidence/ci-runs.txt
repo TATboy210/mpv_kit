@@ -133,3 +133,34 @@ local_real_plugin sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f host=mengyiyu002 
 local_real_plugin sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f host=mengyiyu002 env=MPV_KIT_VIDEO_API=software result="All tests passed!" soak=INTEGRATION-SOAK {"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
 gate plan=12-11 task=2 sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f native-verify=40420762139 flutter-plugin=40420762174 result=pending (deferred by user: "做好推送即可，CI 验收不着急") local=see local_real_plugin lines above; golden freeze 5xOK, CONSTANTS ok
 golden_freeze sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f result=5xOK
+sha=c4019dc4e490269751050ddde3dfbdf555a7a538 workflow=native-verify.yml run=40420012159 conclusion=success
+sha=c4019dc4e490269751050ddde3dfbdf555a7a538 workflow=flutter-plugin.yml run=40420012135 conclusion=success
+sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f workflow=native-verify.yml run=40420762139 conclusion=success
+sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f workflow=flutter-plugin.yml run=40420762174 conclusion=success
+sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 workflow=native-verify.yml run=40421971121 conclusion=success
+sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 workflow=flutter-plugin.yml run=40421971099 conclusion=success
+sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 workflow=native-verify.yml run=40415740058 conclusion=success
+sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 workflow=native-verify.yml run=40415740058 conclusion=success
+sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 workflow=flutter-plugin.yml run=40415740138 conclusion=success
+sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 workflow=flutter-plugin.yml run=40415740138 conclusion=success
+sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 workflow=native-verify.yml run=40417307003 conclusion=success
+sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 workflow=flutter-plugin.yml run=40417306963 conclusion=success
+sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 workflow=native-verify.yml run=40417307003 conclusion=success
+sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 workflow=flutter-plugin.yml run=40417306963 conclusion=success
+note plan=12-12 task=1 at=2026-10-27T00:25Z the duplicated sha= lines for eec251c and 598d287 just above (same run ids, same conclusion=success) come from a second ci_gate.sh invocation on those SHAs that this executor did not start; this executor ran exactly one gate per SHA (results below)
+gate plan=12-10 task=1 sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 native-verify=40415740058 attempt=2 flutter-plugin=40415740138 result=CI-GATE-ok gate_rc=0 (deferred gate, run in 12-12 Task 1 with the command recorded in 12-10-SUMMARY; attempt 2 = the orchestrator's infra rerun at ~23:43Z; its integration-test (ubuntu) apt step ran 23:41:32Z-~00:21Z)
+gate plan=12-10 task=2 sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 native-verify=40417307003 attempt=2 flutter-plugin=40417306963 result=CI-GATE-ok gate_rc=0 (deferred gate, run in 12-12 Task 1 with the command recorded in 12-10-SUMMARY; attempt 2 = the orchestrator's infra rerun at ~23:43Z; its sanitizers 'Install dependencies' step ran 23:41:33Z-~00:22Z)
+gate plan=12-11 task=1 sha=c4019dc4e490269751050ddde3dfbdf555a7a538 native-verify=40420012159 attempt=1 flutter-plugin=40420012135 result=CI-GATE-ok gate_rc=0 (deferred gate, run in 12-12 Task 1 with the command recorded in 12-11-SUMMARY)
+gate plan=12-11 task=2 sha=c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f native-verify=40420762139 attempt=1 flutter-plugin=40420762174 result=CI-GATE-ok gate_rc=0 (deferred gate, run in 12-12 Task 1 with the command recorded in 12-11-SUMMARY)
+final sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 native-verify=40421971121 attempt=1 flutter-plugin=40421971099 attempt=1 (pushed final HEAD: code tree identical to c3edb9e; contains f8d8715 and the 12-12 audit commit a3dc4c2)
+gate plan=12-12 task=1 sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 native-verify=40421971121 attempt=1 flutter-plugin=40421971099 result=CI-GATE-ok gate_rc=0 expectations=--jobs-success '.' (all 15 jobs success: patch-drift, linux x2, windows x2, macos x2, sanitizers, flutter-video-coverage, integration-test x3, flutter-plugin build x3); render_vk_smoke + render_vk_smoke_gpu OK linux-ubuntu-24.04; golden_sw, golden_vk, golden_vk_fallback, golden_vk_retire_twice, golden_sw_retire_twice, api_test, affinity_test OK on linux-ubuntu-24.04, macos-15, sanitizers; windows-2025: golden_sw, golden_sw_retire_twice, api_test, affinity_test OK and golden_vk/_fallback/_retire_twice OK-or-SKIP (user decision; observed SKIP exit 77, no Vulkan ICD on the hosted runner); INTEGRATION and INTEGRATION-SOAK lines on ubuntu, windows, macos
+integration platform=linux sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 line={"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)","elapsedMs":225,"fps":30.0,"events":[]} soak={"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
+integration platform=windows sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 line={"backend":"software","reason":"software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed; vulkan/gpu unavailable: vkCreateInstance failed","elapsedMs":211,"fps":30.0,"events":[]} soak={"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
+integration platform=macos sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 line={"backend":"vulkan","reason":"vulkan (gpu-next) on Apple Paravirtual device","elapsedMs":223,"fps":30.0,"events":[]} soak={"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
+coverage sha=a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 mpv_kit_video=91.4% (171/187)
+note sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 run=40415740058 cancelled_by=orchestrator cause=infra at=~2026-10-26T23:43Z (35-40 min on the azure apt mirror); rerun via gh run rerun --failed once (orchestrator relay to 12-12)
+rerun sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 workflow=native-verify.yml run=40415740058 attempt=2 reason=infra (by orchestrator)
+note sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 run=40417307003 cancelled_by=orchestrator cause=infra at=~2026-10-26T23:43Z (35-40 min on the azure apt mirror); rerun via gh run rerun --failed once (orchestrator relay to 12-12)
+rerun sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 workflow=native-verify.yml run=40417307003 attempt=2 reason=infra (by orchestrator)
+gate plan=12-10 task=1 sha=eec251c2e51e16e18b84edbfe5623db5b5d85225 native-verify=40415740058 attempt=2 flutter-plugin=40415740138 result=CI-GATE-ok gate_rc=0 (deferred gate, run by orchestrator; this is the second ci_gate.sh invocation behind the duplicated sha= lines noted above)
+gate plan=12-10 task=2 sha=598d2878b84b84f15cd657d3758b1d080cc9ec66 native-verify=40417307003 attempt=2 flutter-plugin=40417306963 result=CI-GATE-ok gate_rc=0 (deferred gate, run by orchestrator; this is the second ci_gate.sh invocation behind the duplicated sha= lines noted above)
