@@ -2,8 +2,9 @@
 
 Status: accepted
 Date: 2026-10-26
-Related: ADR 0003 (Windows composition path), `.planning/REQUIREMENTS.md`
-RBE-07 / RBE-08, `.planning/research/SUMMARY.md` (Open Decisions 1 and 3).
+Related: ADR 0003 (Windows composition path), ADR 0005 (macOS Metal route),
+`.planning/REQUIREMENTS.md` RBE-07 / RBE-08,
+`.planning/research/SUMMARY.md` (Open Decisions 1 and 3).
 
 ## Context
 
@@ -61,7 +62,7 @@ The wire names are not public API. Applications read the enum and the
 
 ```
 reason = head *( "; " trail )
-head = api " (" renderer ") on " device
+head = api " (" renderer ") on " device [ " via " carrier ]
 trail = api "/" renderer " unavailable: " why
 ```
 
@@ -69,6 +70,13 @@ trail = api "/" renderer " unavailable: " why
   `software`.
 - `renderer` is `gpu-next`, `gpu`, `sw` or `unknown renderer`. The last one
   is used when the render context cannot say which renderer serves.
+- `carrier` appears only on macOS. It names the Vulkan implementation that
+  carries the API onto the platform's native graphics API: `MoltenVK` when the
+  driver reports `VK_DRIVER_ID_MOLTENVK`, otherwise the driver's `driverName`,
+  and `unknown Vulkan driver` when it cannot be determined uniquely. It is
+  sanitised like `device`. A parser that needs the device name takes the text
+  between ` on ` and the last ` via `. Parsing `api` as the first token is
+  unchanged. See [ADR 0005](0005-macos-metal-route.md).
 - The head of the software backend is always `software (sw) on cpu`.
 - The trails list every candidate ranked before the winner, in
   candidate-chain order: each one either failed or was excluded by
@@ -92,6 +100,7 @@ Examples:
 
 ```
 vulkan (gpu-next) on NVIDIA GeForce RTX 4060
+vulkan (gpu-next) on Apple Paravirtual device via MoltenVK
 software (sw) on cpu; vulkan/gpu-next unavailable: Vulkan loader not found; vulkan/gpu unavailable: Vulkan loader not found
 software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software
 ```
