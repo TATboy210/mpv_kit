@@ -1,0 +1,19 @@
+# 12-12 Task 2 RTX 4060 run ledger (same format as postfix-runs.txt; one run= line per attempt, never overwritten)
+final_sha=d04ab9625a35dd948da18768d1080773e17efdbd
+final_code_tree=identical to c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f (git diff --quiet c3edb9e d04ab9625a35dd948da18768d1080773e17efdbd -- packages example native: rc=0)
+postfix_sha=59281b332a5ff0158be95b4083b0099df38c1600
+native_diff_vs_postfix=packages/mpv_kit_video/src/render_backend.h,packages/mpv_kit_video/src/video_renderer.cc,packages/mpv_kit_video/src/video_renderer.h,packages/mpv_kit_video/src/vulkan_backend.cc,packages/mpv_kit_video/windows/mpv_kit_video_plugin.cpp
+ci_gate_final=d04ab9625a35dd948da18768d1080773e17efdbd CI-GATE-ok for a3dc4c24cfad4a65f03a4c04c19fca38bd31bfe9 (native-verify 40421971121, flutter-plugin 40421971099; ci-runs.txt); d04ab96 is docs-only after it
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
+flutter=Flutter 3.47.8 ??? channel stable ??? https://github.com/flutter/flutter.git
+flutter_engine=Engine ??? hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (3 days ago) ??? 2026-10-23 02:13:38.000Z
+dart=Tools ??? Dart 3.13.7 ??? DevTools 2.60.0
+libmpv=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll
+libmpv_sha256=a21d4797891aa164fbc3477d6ceb8abfac9496818a849b5c67afa80236a6376c
+libmpv_bundle=v0.1.0-dev.3 windows-x64
+host=MINGW64_NT-10.0-26300 3.6.7-fb42d713.x86_64 x86_64
+df_h_repo=D: size=305G used=304G avail=975M use=100%
+df_h_tmp=C:/Users/35490/AppData/Local/Temp size=172G used=165G avail=6.4G use=97%
+method=12-04/12-08 commands verbatim (docs/perf/renderbackend-seam-baseline.md Reproduce) with final- output prefix; 12-08 gate (desktop unlocked, fg not LockApp/LogonUI, no cs2/dota2/csgo or new steamapps\common exe, no non-dwm process >=10% GPU engine, 0 stray example, native path == final_sha) plus the 12-12 precondition free disk on the repo filesystem (D:) >= 5.5 GB (5632 MiB) before EVERY run; sampler v2 every 2 s; read-only forensics after every run; TaskBarHero+UnityCrashHandler64 known background (user-accepted in 12-04)
+gate run=uhd4k attempt=1 result=FAIL at=2026-10-27T00:27:28Z desktop=unlocked(logonui=0,fg=3999372,fg_valid=1,fg_proc=TaskBarHero,fg_title="TaskBarHero",inputdesk=1,lastStandby=507@2026-10-26T23:28:03Z) gpu_gate=ok games=TaskBarHero+UnityCrashHandler64 new_games=none heavy=none gpu_engine_users=TaskBarHero:1.6,dwm:0.6 nvsmi=30 %/2343 MiB stray_example=0 native_equal_to_final=yes disk_free_repo=974MiB disk_free_tmp=6536MiB disk_min=5632MiB
+halt=2026-10-27T00:27:47Z no Task 2 run started (uhd4k, uhd4k-rendered, identity-on/off, d05-on/off, cycles-on/off, resize-front-on/off): precondition unmet at gate run=uhd4k: free disk on the repo filesystem D: is 975 MiB, below the plan minimum 5.5 GB (Phase 7 and Phase 9 lost runs to disk pressure on D:); every other gate item passed (desktop unlocked, gpu_gate ok, games=TaskBarHero+UnityCrashHandler64 only, 0 stray example, native_equal_to_final=yes); the temp filesystem (/tmp, df_h_tmp above) has 6537 MiB; awaiting user (free >= 5.5 GB on D:, then resume at uhd4k attempt 1)
