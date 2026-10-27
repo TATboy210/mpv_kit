@@ -8,12 +8,18 @@
 // Threads: Render, Wait, AllocTargets and FreeRetired run on the render
 // thread, between BindThread and UnbindThread, and so does Release, just
 // before the render thread exits; FrameFor runs with the renderer lock held
-// (AcquireFront and RenderOnce); Create and RendererName run before the
-// render thread starts, the destructor after it was joined. Each
-// VideoRenderer owns its own backend instance.
+// (AcquireFront and RenderOnce). Create of every candidate, and for the
+// winner RendererName and the first set_update_callback, run before the
+// render thread starts inside RunBound (the destructor releases a context
+// the render thread never owned inside RunBound too), the destructor after
+// the render thread was joined. A backend with thread affinity overrides
+// RunBound so those create-time calls run on a thread where its context is
+// current; Vulkan and software keep the caller's thread. Each VideoRenderer
+// owns its own backend instance.
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -107,6 +113,24 @@ class RenderBackend {
   /// software have none: no-ops.
   virtual bool BindThread() { return true; }
   virtual void UnbindThread() {}
+
+  /// Runs [fn], the create-time calls (Create, RendererName and the first
+  /// set_update_callback of the winning candidate; every failed candidate's
+  /// Create; the never-started render thread's release in the destructor),
+  /// where the backend can make them: on a thread with its context current.
+  /// The default runs [fn] on the caller's thread between BindThread and
+  /// UnbindThread, which for Vulkan and software are no-ops, so their
+  /// calling thread and order are unchanged. A backend with thread affinity
+  /// (OpenGL, Phase 15) may run [fn] on a thread of its own with its
+  /// context current, but must unbind that thread before returning: the
+  /// render thread then binds the same context in RenderLoop, and a context
+  /// is current on one thread at a time. RunBound returns after [fn] did;
+  /// a failure inside [fn] is recorded by [fn] itself.
+  virtual void RunBound(const std::function<void()>& fn) {
+    const bool bound = BindThread();
+    fn();
+    if (bound) UnbindThread();
+  }
 
   /// Creates the device on the first call, then the render context for
   /// [renderer] ("gpu-next", "gpu", "sw") into *out. Returns the result of

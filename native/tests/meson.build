@@ -253,3 +253,19 @@ linux_chain_test = executable('video_renderer_linux_chain_test',
 test('video_renderer_linux_chain_test', linux_chain_test,
      args: [files('golden/linux_chain.txt'), '--slack-ms=' + slack],
      env: golden_vk_env, timeout: 120)
+
+# Binding of the mpv_render_* calls to a backend's thread (Phase 15, GLX-03;
+# render.h "Threading"): a separate binary because the golden set above is
+# frozen. A fake backend with an OpenGL-like thread model (RunBound on a
+# thread of its own, a thread-local "context is current" flag) checks every
+# mpv_render_* call: create-time calls on the RunBound thread, the rest on the
+# render thread, the RunBound thread unbound before the render thread binds,
+# one free. Needs no GPU or libmpv: it runs on every platform and under the
+# sanitizers.
+bind_test = executable('video_renderer_bind_test',
+                       'video_renderer_bind_test.cc',
+                       include_directories: [renderer_inc, vulkan_inc],
+                       cpp_args: renderer_defines,
+                       link_with: renderer,
+                       dependencies: threads)
+test('video_renderer_bind_test', bind_test, timeout: 120)
