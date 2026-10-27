@@ -1,0 +1,27 @@
+decision=A user_reply=A (answered 2026-10-27T07:12:00Z via the orchestrator; includes device names, modify the frozen harness so rejected device names are normalized, change vk.txt line 57 and the five skip substrings, create golden-freeze-14.sha256)
+host=MINGW64_NT-10.0-26300 msvc=cl 14.44.35207 x64 flags=/W4 /WX /std:c++17
+known_limitation=on dev hosts with more than one Vulkan device the device-not-shareable golden scenario gains an extra entry and mismatches (accepted with option A)
+vulkan_devices_local:
+  apiVersion         = 1.4.351
+  deviceType         = PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+  deviceName         = NVIDIA GeForce RTX 4060 Laptop GPU
+--- RED (harness + goldens + skip substrings changed, PickDevice not yet) ---
+sw_hold_front_test rc=0 HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=1 GOLDEN mismatch scenario=vk-reasons line=10|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=1
+--- GREEN (PickDevice split) ---
+sw_hold_front_test rc=0 HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=0

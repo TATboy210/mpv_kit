@@ -1,0 +1,6 @@
+# Phase 14 re-freeze (14-02 decision=A, user_reply=A); supersedes Phase 12 golden-freeze.sha256 for these five files
+4dd9194e8a231774b002d32e0d8ce5c18c05eac243192ae656f44ee636c6d3a4 *native/tests/renderer_harness.h
+d6a33115ee93662b9effeb46f0fb3334778fbaadfa9b81ef637a0a64f49e2eab *native/tests/video_renderer_golden_sw.cc
+d3af81cbc1ea3b89bc789c735b62bb7175066de1e4f228208050ce269c969f9a *native/tests/video_renderer_golden_vk.cc
+4aa10846a71202e2848b376854d3fdf896bbd28fdc3f2f45ada1fd6ff77a1f35 *native/tests/golden/sw.txt
+41ab948c04a1e72034ad11ad80e13dfc1d98cdea602d093b520cda27835898b8 *native/tests/golden/vk.txt
