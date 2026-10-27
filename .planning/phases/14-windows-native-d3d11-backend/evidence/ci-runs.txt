@@ -1,3 +1,5 @@
 sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade workflow=native-verify.yml run=40442377807 conclusion=success
 sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade workflow=flutter-plugin.yml run=40442377813 conclusion=success
 selftest sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade gate=14-01/tools/ci_gate.sh args=--jobs-success '^patch-drift' result='CI-GATE ok' (the two lines above are the selftest's own records)
+sha=082162a3da33c26798de97963bdb30b8b9f57f1c branch=ci/14-probe workflow=spike-14-probe.yml run=40464431371 conclusion=success
+note sha=082162a3da33c26798de97963bdb30b8b9f57f1c branch=ci/14-probe run=40464431371 scratch=yes workflow=spike-14-probe.yml(only on ci/14-probe, never on feat) gate=ok resolution=gh run list --workflow worked directly on the non-default branch (REST fallback not needed) cleanup=delete ci/14-probe in 14-11
