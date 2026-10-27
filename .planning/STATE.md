@@ -6,10 +6,10 @@ current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
 stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-10-27T08:14:43.070Z"
+last_updated: "2026-10-27T11:47:38.870Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 14 execution started
-state_head: f799e41b8a7ed350dcd0087edc31ee375df598e7
+state_head: 2b9f6e2067d7c498b6c83daeed54fde70614d1d8
 progress:
   total_phases: 6
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
 Plan: 3 of 11
 Status: Ready to execute
-Last activity: 2026-10-27 — Phase 14 execution started
+Last activity: 2026-10-27 - Completed quick task 261027-or3: Linux release build against libdrm 2.4.113 (patch 0012), unblocks 14-03
 
 Progress: [██░░░░░░░░] 17%
 
@@ -267,6 +267,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 | 261025-rkh | always use VK_QUEUE_FAMILY_EXTERNAL for shared images | 2026-10-25 | 12b5009 | .planning/quick\\261025-rkh-fix-unbalanced-vulkan-queue-family-ownership-transfer-on-eac |
 | 261025-rkf | keep host ICC across option changes in gpu-next libmpv | 2026-10-25 | 13c130b | .planning/quick\\261025-rkf-fix-gpu-next-libmpv-state-bugs-in-vo-gpu-next-c-patch-0004-k |
 | 261025-rkk | 0009 upstream backports (4 mpv commits) | 2026-10-25 | a2f7c0d | .planning/quick\\261025-rkk-add-native-patches-0009-upstream-backports-patch-with-upstre |
+| 261027-or3 | Linux release build against libdrm 2.4.113 (patch 0012) + LIBDRM-FLOOR guard; unblocks 14-03 | 2026-10-27 | 2b9f6e2 | [261027-or3-fix-linux-release-build-libdrm-2-4-114](./quick/261027-or3-fix-linux-release-build-libdrm-2-4-114/) |
 
 ## Session Continuity
 
