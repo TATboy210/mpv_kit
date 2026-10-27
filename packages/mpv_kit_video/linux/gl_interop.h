@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <vector>
 
 #include "../src/video_renderer.h"
@@ -32,7 +33,7 @@ class GlInterop : public Interop, public VulkanInterop {
   VulkanInterop* vulkan() override { return gl_ok_ ? this : nullptr; }
   /// The GL probe failure, which the renderer puts in its reason trails.
   const char* interopReason() const override {
-    return gl_reason_[0] ? gl_reason_ : nullptr;
+    return gl_reason_.empty() ? nullptr : gl_reason_.c_str();
   }
   bool SoftwareIsBgra() const override { return false; }  // GL_RGBA8
   void FrameReady() override { frame_ready_(); }
@@ -69,7 +70,7 @@ class GlInterop : public Interop, public VulkanInterop {
   void Orphan();
 
   /// Why Vulkan sharing is unavailable (empty when it is available).
-  const char* gl_reason() const { return gl_reason_; }
+  const char* gl_reason() const { return gl_reason_.c_str(); }
 
  private:
   /// Probes Flutter's EGL display with a throwaway context: extension
@@ -80,7 +81,9 @@ class GlInterop : public Interop, public VulkanInterop {
   std::mutex graveyard_mutex_;
   std::vector<Image*> graveyard_;
   bool gl_ok_ = false;
-  const char* gl_reason_ = "";
+  // Owned by this interop (one per controller), so interopReason() stays
+  // valid for as long as VideoRenderer::Start reads it.
+  std::string gl_reason_;
   std::vector<std::array<uint8_t, 16>> gl_device_uuids_;
   std::array<uint8_t, 16> gl_driver_uuid_{};
 };

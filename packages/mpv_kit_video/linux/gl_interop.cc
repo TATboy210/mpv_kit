@@ -12,8 +12,12 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
+#include <exception>
 #include <mutex>
+#include <string>
+#include <thread>
 
 namespace mpv_kit {
 namespace {
@@ -77,6 +81,9 @@ class EglCurrentGuard {
     }
   }
   void set_fallback(EGLDisplay d) { fallback_ = d; }
+  /// The calling thread's state at construction, for diagnostics.
+  bool had_context() const { return context_ != EGL_NO_CONTEXT; }
+  EGLenum api() const { return api_; }
 
  private:
   EGLenum api_;
@@ -85,6 +92,134 @@ class EglCurrentGuard {
   EGLContext context_;
   EGLDisplay fallback_ = EGL_NO_DISPLAY;
 };
+
+/// "EGL_BAD_ACCESS 0x3002": the error's name and hexadecimal code, so a
+/// reason line identifies it even for codes missing from the table.
+std::string EglErrorText(EGLint error) {
+  const char* name = "EGL_UNKNOWN";
+  switch (error) {
+    case EGL_SUCCESS: name = "EGL_SUCCESS"; break;
+    case EGL_NOT_INITIALIZED: name = "EGL_NOT_INITIALIZED"; break;
+    case EGL_BAD_ACCESS: name = "EGL_BAD_ACCESS"; break;
+    case EGL_BAD_ALLOC: name = "EGL_BAD_ALLOC"; break;
+    case EGL_BAD_ATTRIBUTE: name = "EGL_BAD_ATTRIBUTE"; break;
+    case EGL_BAD_CONFIG: name = "EGL_BAD_CONFIG"; break;
+    case EGL_BAD_CONTEXT: name = "EGL_BAD_CONTEXT"; break;
+    case EGL_BAD_CURRENT_SURFACE: name = "EGL_BAD_CURRENT_SURFACE"; break;
+    case EGL_BAD_DISPLAY: name = "EGL_BAD_DISPLAY"; break;
+    case EGL_BAD_MATCH: name = "EGL_BAD_MATCH"; break;
+    case EGL_BAD_NATIVE_PIXMAP: name = "EGL_BAD_NATIVE_PIXMAP"; break;
+    case EGL_BAD_NATIVE_WINDOW: name = "EGL_BAD_NATIVE_WINDOW"; break;
+    case EGL_BAD_PARAMETER: name = "EGL_BAD_PARAMETER"; break;
+    case EGL_BAD_SURFACE: name = "EGL_BAD_SURFACE"; break;
+    case EGL_CONTEXT_LOST: name = "EGL_CONTEXT_LOST"; break;
+    default: break;
+  }
+  char hex[16];
+  std::snprintf(hex, sizeof(hex), "0x%04x", static_cast<unsigned>(error));
+  return std::string(name) + " " + hex;
+}
+
+/// Outcome of one throwaway-context attempt: the failing EGL call (null on
+/// success) and its eglGetError() value, read straight after the failure.
+struct ProbeAttempt {
+  const char* failed_call = nullptr;
+  EGLint error = EGL_SUCCESS;
+};
+
+/// Selects a GLES 2 config, creates a context and makes it current
+/// surfaceless on [display], for the calling thread. On success the context
+/// is returned through [out_ctx] and left current; on failure it is
+/// EGL_NO_CONTEXT. The same steps the engine's own context creation takes.
+ProbeAttempt TryProbeContext(EGLDisplay display, EGLContext* out_ctx) {
+  const EGLint config_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                                 EGL_NONE};
+  const EGLint ctx_attrs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+  ProbeAttempt attempt;
+  EGLConfig config = nullptr;
+  EGLint num = 0;
+  *out_ctx = EGL_NO_CONTEXT;
+  if (!eglChooseConfig(display, config_attrs, &config, 1, &num) || num <= 0) {
+    attempt.failed_call = "eglChooseConfig";
+    attempt.error = eglGetError();
+    return attempt;
+  }
+  EGLContext ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, ctx_attrs);
+  if (ctx == EGL_NO_CONTEXT) {
+    attempt.failed_call = "eglCreateContext";
+    attempt.error = eglGetError();
+    return attempt;
+  }
+  // Surfaceless: EGL_KHR_surfaceless_context, which the engine also needs.
+  if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
+    attempt.failed_call = "eglMakeCurrent";
+    attempt.error = eglGetError();
+    eglDestroyContext(display, ctx);
+    return attempt;
+  }
+  *out_ctx = ctx;
+  return attempt;
+}
+
+/// Diagnostic only: repeats the probe on a brand-new thread (no EGL state of
+/// its own) and reports `ok` or `<call> failed (<error>)`. Run only after the
+/// calling thread's probe failed, to tell "EGL is unusable here" from "this
+/// thread's EGL state is the problem". Never used to enable interop.
+std::string FreshThreadProbe(EGLDisplay display) {
+  std::string result = "not run";
+  try {
+    std::thread worker([display, &result] {
+      eglBindAPI(EGL_OPENGL_ES_API);
+      EGLContext ctx = EGL_NO_CONTEXT;
+      const ProbeAttempt attempt = TryProbeContext(display, &ctx);
+      if (attempt.failed_call) {
+        result = std::string(attempt.failed_call) + " failed (" +
+                 EglErrorText(attempt.error) + ")";
+      } else {
+        result = "ok";
+        eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                       EGL_NO_CONTEXT);
+        eglDestroyContext(display, ctx);
+      }
+      eglReleaseThread();  // drops this thread's EGL bookkeeping
+    });
+    worker.join();  // result is read only after the join
+  } catch (const std::exception&) {
+    result = "not run (thread creation failed)";
+  }
+  return result;
+}
+
+/// The `cannot create a probe EGL context` reason with its diagnosis: the
+/// failing call and EGL error, what the calling thread had current (EGL
+/// context and bound API, GDK GL context) and the fresh-thread result. One
+/// line, comma-separated, no semicolons (the reason trail uses them as field
+/// separators and SanitizeReasonField would rewrite them).
+///
+/// The fresh-thread run happens only on failure: success needs no diagnosis
+/// and the extra thread would cost every healthy create. Its result is
+/// informational. gl_ok_ stays decided by the calling thread's probe, because
+/// the engine's populate runs on a thread with the same constraints; enabling
+/// interop from a different thread's success would hide the failure instead
+/// of explaining it (15-06 acts on this spike's conclusion).
+std::string DescribeProbeFailure(EGLDisplay display,
+                                 const EglCurrentGuard& guard,
+                                 const ProbeAttempt& attempt) {
+  const EGLenum api = guard.api();
+  const char* api_name = api == EGL_OPENGL_ES_API ? "OPENGL_ES"
+                         : api == EGL_OPENGL_API  ? "OPENGL"
+                                                  : "NONE";
+  std::string text = "cannot create a probe EGL context: ";
+  text += attempt.failed_call;
+  text += " failed (" + EglErrorText(attempt.error) + "), ";
+  text += std::string("calling thread EGL context: ") +
+          (guard.had_context() ? "current" : "none") + " (api " + api_name +
+          "), ";
+  text += std::string("GDK GL context: ") +
+          (gdk_gl_context_get_current() ? "current" : "none") + ", ";
+  text += "fresh thread: " + FreshThreadProbe(display);
+  return text;
+}
 
 void ClearGlErrors() {
   // Bounded: a lost context can report errors forever.
@@ -112,20 +247,11 @@ void GlInterop::ProbeGl() {
   eglBindAPI(EGL_OPENGL_ES_API);
   // Mirror the engine's context (ES 2 request; drivers return the highest
   // compatible ES version) so extension support matches what populate sees.
-  const EGLint config_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                                 EGL_NONE};
-  EGLConfig config = nullptr;
-  EGLint num = 0;
-  const EGLint ctx_attrs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
   EGLContext ctx = EGL_NO_CONTEXT;
-  if (eglChooseConfig(display, config_attrs, &config, 1, &num) && num > 0) {
-    ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, ctx_attrs);
-  }
-  // Surfaceless: EGL_KHR_surfaceless_context, which the engine also needs.
-  if (ctx == EGL_NO_CONTEXT ||
-      !eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
-    gl_reason_ = "cannot create a probe EGL context";
-    if (ctx != EGL_NO_CONTEXT) eglDestroyContext(display, ctx);
+  const ProbeAttempt attempt = TryProbeContext(display, &ctx);
+  if (attempt.failed_call) {
+    // gl_ok_ stays false: the verdict is the calling thread's alone.
+    gl_reason_ = DescribeProbeFailure(display, guard, attempt);
     return;
   }
 

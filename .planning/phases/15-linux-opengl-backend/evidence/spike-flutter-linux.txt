@@ -1,0 +1,14 @@
+# Phase 15 plan 15-03 spike decisions for the Flutter Linux embedder. The D-FLUTTER-* lines come from static reading of
+# flutter/flutter tag 3.47.8 (gh api contents, path prefix engine/src/flutter/shell/platform/, read 2026-10-28; nothing executed).
+# D-PROBE, D-ORIENT, D-THREAD, D-LOG and IMPLICATION need the hosted-CI PROBE line and soak-loop reasons: all CI is deferred to
+# the milestone end (CI deferral 2026-10-27), so they are NOT DECIDED. Do not guess them; 15-05 and 15-06 must not start from those lines until replaced.
+D-PROBE=deferred (CI deferral 2026-10-27)
+D-ORIENT=deferred (CI deferral 2026-10-27)
+D-THREAD=deferred (CI deferral 2026-10-27)
+D-LOG=deferred (CI deferral 2026-10-27)
+IMPLICATION=deferred (CI deferral 2026-10-27)
+D-FLUTTER-RASTER=separate basis="linux/fl_engine.cc:802-811@3.47.8 custom_task_runners sets only platform_task_runner (804) and, per UI thread policy, ui_task_runner (811); no raster runner is supplied, so the engine runs raster on its own thread, not the GTK thread (fl_engine.cc:475-477 runs_task_on_current_thread compares against the GTK thread only)"
+D-FLUTTER-CONTEXT=egl basis="linux/fl_opengl_manager.cc:47-61,73-89@3.47.8 eglGetPlatformDisplayEXT (Wayland/X11), then three GLES 2 EGL contexts created on that display: render_context, resource_context and platform_context (the last two share with render_context); no GdkGLContext is used for engine rendering"
+D-FLUTTER-POPULATE=raster-thread-with-render-context basis="linux/fl_engine.cc:434-466@3.47.8 fl_engine_gl_external_texture_frame_callback calls fl_texture_gl_populate; the engine makes render_context current for rendering via config.open_gl.make_current (fl_engine.cc:776,413-416 -> fl_opengl_manager.cc:98-101); the calling thread is inferred as the raster thread from D-FLUTTER-RASTER, not shown by a file:line"
+D-FLUTTER-ORIGIN=top-left basis="embedder/embedder_external_texture_gl.cc:113@3.47.8 SkImages::BorrowTextureFrom(..., kTopLeft_GrSurfaceOrigin, ...) on the Skia path (Impeller path not read), so the first texture row is displayed at the top"
+UNVERIFIED=Impeller external-texture origin on Linux, the populate calling thread by direct observation, and everything the CI lines would show
