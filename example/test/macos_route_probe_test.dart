@@ -58,6 +58,27 @@ String _classify(Uint8List rgba) {
   );
 }
 
+/// A solid-colour bgr0 frame (the padding byte stays 0). [color] is in the
+/// screenshot's byte order: (B, G, R).
+RouteBgr0Frame _bgr0({
+  int width = 16,
+  int height = 8,
+  (int, int, int) color = (100, 50, 200),
+}) {
+  final data = List<int>.filled(width * 4 * height, 0);
+  for (var i = 0; i < width * height; i++) {
+    data[i * 4] = color.$1;
+    data[i * 4 + 1] = color.$2;
+    data[i * 4 + 2] = color.$3;
+  }
+  return RouteBgr0Frame(
+    width: width,
+    height: height,
+    stride: width * 4,
+    data: data,
+  );
+}
+
 void main() {
   group('route probe visibility', () {
     test('black texture region with visible control is composited-black', () {
@@ -122,6 +143,296 @@ void main() {
         ),
         'indeterminate',
       );
+    });
+  });
+
+  group('route screenshot check', () {
+    test('identical frames match', () {
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: _bgr0(),
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.match,
+      );
+    });
+
+    test('black screenshot is a mismatch', () {
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: _bgr0(color: (0, 0, 0)),
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.mismatch,
+      );
+    });
+
+    test('uniform green against a coloured reference is a mismatch', () {
+      // The classic wrong-plane import: the whole frame turns green.
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: _bgr0(color: (0, 135, 0)),
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.mismatch,
+      );
+    });
+
+    test('software fallback screenshot is unavailable, not a match', () {
+      expect(
+        routeScreenshotCheck(
+          fellBack: true,
+          screenshot: _bgr0(),
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.unavailable,
+      );
+    });
+
+    test('different sizes are a mismatch', () {
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: _bgr0(width: 8, height: 4),
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.mismatch,
+      );
+    });
+
+    test('missing screenshot is unavailable', () {
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: null,
+          reference: _bgr0(),
+        ),
+        RouteFrameCheck.unavailable,
+      );
+    });
+
+    test('a difference just below the threshold still matches', () {
+      // 7 on every channel: mean absolute difference 7.0 <= 8.0.
+      expect(
+        routeScreenshotCheck(
+          fellBack: false,
+          screenshot: _bgr0(color: (107, 57, 207)),
+          reference: _bgr0(color: (100, 50, 200)),
+        ),
+        RouteFrameCheck.match,
+      );
+    });
+
+    test('truncated data has no statistics, it is not a black frame', () {
+      expect(routeBgr0Stats(4, 4, 16, List<int>.filled(10, 0)), isNull);
+    });
+  });
+
+  group('route hwdec outcome', () {
+    String classify({
+      String requested = 'videotoolbox',
+      String? current = 'videotoolbox',
+      String? pixelformat = 'videotoolbox',
+      String? hwPixelformat = 'nv12',
+      RouteFrameCheck screenshot = RouteFrameCheck.match,
+      int failures = 0,
+      bool referenceValid = true,
+    }) => routeHwdecOutcome(
+      requested: requested,
+      hwdecCurrent: current,
+      pixelformat: pixelformat,
+      hwPixelformat: hwPixelformat,
+      screenshot: screenshot,
+      failureEvidence: failures,
+      referenceValid: referenceValid,
+    );
+
+    test('three markers and a matching screenshot are zero-copy', () {
+      expect(classify(), 'zero-copy');
+    });
+
+    test('markers with a mismatching screenshot are a bad frame', () {
+      expect(
+        classify(screenshot: RouteFrameCheck.mismatch),
+        'zero-copy-bad-frame',
+      );
+    });
+
+    test('markers without a usable screenshot are render-unverified', () {
+      expect(
+        classify(screenshot: RouteFrameCheck.unavailable),
+        'zero-copy-render-unverified',
+      );
+    });
+
+    test('videotoolbox-copy is copy-back', () {
+      expect(
+        classify(
+          current: 'videotoolbox-copy',
+          pixelformat: 'nv12',
+          hwPixelformat: null,
+        ),
+        'copy-back',
+      );
+    });
+
+    test('videotoolbox with a software pixel format is copy-back', () {
+      expect(classify(pixelformat: 'nv12', hwPixelformat: null), 'copy-back');
+    });
+
+    test('software decode with failure evidence is unavailable', () {
+      expect(
+        classify(
+          current: 'no',
+          pixelformat: 'yuv420p',
+          hwPixelformat: null,
+          failures: 2,
+        ),
+        'unavailable',
+      );
+    });
+
+    test('software decode without evidence is unexplained', () {
+      expect(
+        classify(current: 'no', pixelformat: 'yuv420p', hwPixelformat: null),
+        'unavailable-unexplained',
+      );
+    });
+
+    test('an invalid reference wins over everything', () {
+      expect(classify(referenceValid: false), 'reference-invalid');
+    });
+
+    test('another hwdec is unexpected', () {
+      expect(
+        classify(current: 'vaapi', pixelformat: 'vaapi', hwPixelformat: 'nv12'),
+        'unexpected',
+      );
+    });
+
+    test('the allowed set holds exactly the three non-failing outcomes', () {
+      expect(routeGatedOutcomesAllowed, {
+        'zero-copy',
+        'zero-copy-render-unverified',
+        'unavailable',
+      });
+    });
+
+    test('default list: software decoding is software, whatever the log', () {
+      for (final failures in [0, 3]) {
+        expect(
+          classify(
+            requested: 'default',
+            current: 'no',
+            pixelformat: 'yuv420p',
+            hwPixelformat: null,
+            failures: failures,
+          ),
+          'software',
+        );
+      }
+    });
+
+    test('default list: zero-copy markers keep the videotoolbox rules', () {
+      expect(classify(requested: 'default'), 'zero-copy');
+      expect(
+        classify(requested: 'default', screenshot: RouteFrameCheck.mismatch),
+        'zero-copy-bad-frame',
+      );
+    });
+  });
+
+  group('route flutter texture channel', () {
+    test('a reference texture that is not visible is blind', () {
+      expect(
+        routeFlutterFrame(
+          referenceVisibility: 'texture-not-composited',
+          visibility: 'texture-visible',
+          regionDiff: 0,
+          nonBlackRatio: 1,
+        ),
+        'blind',
+      );
+    });
+
+    test('a texture that was not composited under test is blind', () {
+      for (final visibility in ['texture-not-composited', 'indeterminate']) {
+        expect(
+          routeFlutterFrame(
+            referenceVisibility: 'texture-visible',
+            visibility: visibility,
+          ),
+          'blind',
+        );
+      }
+    });
+
+    test('a black texture region under test is a mismatch', () {
+      expect(
+        routeFlutterFrame(
+          referenceVisibility: 'texture-visible',
+          visibility: 'texture-composited-black',
+        ),
+        'mismatch',
+      );
+    });
+
+    test('a region far from the reference is a mismatch', () {
+      expect(
+        routeFlutterFrame(
+          referenceVisibility: 'texture-visible',
+          visibility: 'texture-visible',
+          regionDiff: 40,
+          nonBlackRatio: 0.9,
+        ),
+        'mismatch',
+      );
+    });
+
+    test('a region close to the reference matches', () {
+      expect(
+        routeFlutterFrame(
+          referenceVisibility: 'texture-visible',
+          visibility: 'texture-visible',
+          regionDiff: 0.5,
+          nonBlackRatio: 0.9,
+        ),
+        'match',
+      );
+    });
+  });
+
+  group('route rgba region helpers', () {
+    test('region bytes are tightly packed and the diff is per channel', () {
+      final a = _probeImage(texture: (200, 100, 50));
+      final b = _probeImage(texture: (210, 100, 50));
+      final regionA = routeRgbaRegion(
+        a,
+        width: _width,
+        height: _height,
+        region: routeTextureRegion,
+        sx: 1,
+        sy: 1,
+      );
+      final regionB = routeRgbaRegion(
+        b,
+        width: _width,
+        height: _height,
+        region: routeTextureRegion,
+        sx: 1,
+        sy: 1,
+      );
+      expect(regionA, isNotNull);
+      expect(regionA!.length, 320 * 180 * 4);
+      // Only R differs, by 10: the mean over three channels is 10 / 3.
+      expect(routeRgbaMeanAbsDiff(regionA, regionB!), closeTo(10 / 3, 1e-9));
+    });
+
+    test('regions of different sizes have no diff', () {
+      expect(routeRgbaMeanAbsDiff(Uint8List(8), Uint8List(16)), isNull);
     });
   });
 }
