@@ -245,7 +245,17 @@ jobs:
               cd example && flutter test integration_test/real_plugin_test.dart -d macos
               ;;
             *)
-              cd example && flutter test integration_test/real_plugin_test.dart -d windows
+              cd example
+              flutter test integration_test/real_plugin_test.dart -d windows
+              # Native D3D11 backend (Phase 14, D3D-06), forced with no
+              # fallback, one after the other (WARP). The first run takes the
+              # ID3D11Fence path (the runner has fences: spikes.txt gate
+              # fence=fence); the second forces the D3D11_QUERY_EVENT path
+              # (MPV_KIT_D3D11_SYNC is read by debug plugin builds only,
+              # which `flutter test` builds). The fence path on the RTX 4060
+              # is covered by 14-09.
+              MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
+              MPV_KIT_D3D11_SYNC=query MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
               ;;
           esac
 
