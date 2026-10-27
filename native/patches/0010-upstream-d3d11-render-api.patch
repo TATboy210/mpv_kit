@@ -1,0 +1,919 @@
+diff --git a/DOCS/client-api-changes.rst b/DOCS/client-api-changes.rst
+index a006a2459..fabc0b43c 100644
+--- a/DOCS/client-api-changes.rst
++++ b/DOCS/client-api-changes.rst
+@@ -38,6 +38,10 @@ API changes
+           Detect at compile time via MPV_RENDER_API_TYPE_VULKAN, at run
+           time mpv_render_context_create() returns
+           MPV_ERROR_NOT_IMPLEMENTED when the backend is unavailable.
++ --- mpv 0.42.0 ---
++ 2.6    - add MPV_RENDER_API_TYPE_D3D11 render API backend, along with
++          MPV_RENDER_PARAM_D3D11_INIT_PARAMS and MPV_RENDER_PARAM_D3D11_FBO,
++          and a new render_d3d11.h header.
+  --- mpv 0.40.0 ---
+  2.5    - Deprecate MPV_RENDER_PARAM_AMBIENT_LIGHT. no replacement.
+  --- mpv 0.39.0 ---
+diff --git a/include/mpv/client.h b/include/mpv/client.h
+index f72a0e0a4..f970b9ab5 100644
+--- a/include/mpv/client.h
++++ b/include/mpv/client.h
+@@ -248,7 +248,7 @@ extern "C" {
+  * relational operators (<, >, <=, >=).
+  */
+ #define MPV_MAKE_VERSION(major, minor) (((major) << 16) | (minor) | 0UL)
+-#define MPV_CLIENT_API_VERSION MPV_MAKE_VERSION(2, 5)
++#define MPV_CLIENT_API_VERSION MPV_MAKE_VERSION(2, 6)
+ 
+ /**
+  * The API user is allowed to "#define MPV_ENABLE_DEPRECATED 0" before
+diff --git a/include/mpv/render.h b/include/mpv/render.h
+index 99aadeb5d..0b59982fc 100644
+--- a/include/mpv/render.h
++++ b/include/mpv/render.h
+@@ -49,6 +49,7 @@ extern "C" {
+  * Supported backends
+  * ------------------
+  *
++ * Direct3D 11: via MPV_RENDER_API_TYPE_D3D11, see render_d3d11.h header.
+  * OpenGL: via MPV_RENDER_API_TYPE_OPENGL, see render_gl.h header.
+  * Software: via MPV_RENDER_API_TYPE_SW, see section "Software renderer"
+  *
+@@ -213,8 +214,9 @@ typedef enum mpv_render_param_type {
+      * Control surface depth. Valid for mpv_render_context_render().
+      * Type: int*
+      * This implies the depth of the surface passed to the render function in
+-     * bits per channel. If omitted or set to 0, the renderer will assume 8.
+-     * Typically used to control dithering.
++     * bits per channel. If omitted or set to 0, the renderer will use the
++     * depth of the texture format with the Direct3D 11 backend, and assume 8
++     * otherwise. Typically used to control dithering.
+      */
+     MPV_RENDER_PARAM_DEPTH = 5,
+     /**
+@@ -422,6 +424,17 @@ typedef enum mpv_render_param_type {
+      * See MPV_RENDER_PARAM_SW_STRIDE for alignment requirements.
+      */
+     MPV_RENDER_PARAM_SW_POINTER = 20,
++    /**
++     * Required parameters for initializing the Direct3D 11 renderer. Valid
++     * for mpv_render_context_create().
++     * Type: mpv_d3d11_init_params*
++     */
++    MPV_RENDER_PARAM_D3D11_INIT_PARAMS = 21,
++    /**
++     * Describes a D3D11 render target. Valid for mpv_render_context_render().
++     * Type: mpv_d3d11_fbo*
++     */
++    MPV_RENDER_PARAM_D3D11_FBO = 22,
+ } mpv_render_param_type;
+ 
+ /**
+@@ -464,6 +477,8 @@ typedef struct mpv_render_param {
+ /**
+  * Predefined values for MPV_RENDER_PARAM_API_TYPE.
+  */
++// See render_d3d11.h
++#define MPV_RENDER_API_TYPE_D3D11 "d3d11"
+ // See render_gl.h
+ #define MPV_RENDER_API_TYPE_OPENGL "opengl"
+ // See section "Software renderer"
+diff --git a/include/mpv/render_d3d11.h b/include/mpv/render_d3d11.h
+new file mode 100644
+index 000000000..7fa4c12ce
+--- /dev/null
++++ b/include/mpv/render_d3d11.h
+@@ -0,0 +1,118 @@
++/* Copyright (C) 2024 the mpv developers
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#ifndef MPV_CLIENT_API_RENDER_D3D11_H_
++#define MPV_CLIENT_API_RENDER_D3D11_H_
++
++#include "render.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/**
++ * Direct3D 11 backend
++ * -------------------
++ *
++ * This header contains definitions for using Direct3D 11 with the render.h
++ * API.
++ *
++ * API use
++ * -------
++ *
++ * The mpv_render_* API is used. That API supports multiple backends, and this
++ * section documents specifics for the Direct3D 11 backend.
++ *
++ * Use mpv_render_context_create() with MPV_RENDER_PARAM_API_TYPE set to
++ * MPV_RENDER_API_TYPE_D3D11, and MPV_RENDER_PARAM_D3D11_INIT_PARAMS provided.
++ *
++ * Call mpv_render_context_render() with MPV_RENDER_PARAM_D3D11_FBO to render
++ * the video frame to a D3D11 texture. The API user is responsible for creating
++ * and presenting the texture (for example, via a DXGI swap chain).
++ *
++ * Direct3D 11 state
++ * -----------------
++ *
++ * mpv renders with the immediate context of the device and does not restore
++ * its state, so the API user has to set its own state again after calling the
++ * mpv_render_* functions. State that mpv does not set, like the geometry, hull
++ * and domain shader stages, must be at the defaults that
++ * ID3D11DeviceContext::ClearState() sets.
++ *
++ * Threading
++ * ---------
++ *
++ * Unlike OpenGL, Direct3D 11 does not use a per-thread implicit context. Any
++ * thread may call the mpv_render_* functions with this backend, subject to the
++ * general restrictions described in render.h. Other threads must not use the
++ * immediate context while an mpv_render_* function runs.
++ *
++ * Hardware decoding
++ * -----------------
++ *
++ * d3d11va decodes on the device passed in mpv_d3d11_init_params from mpv's
++ * decoder thread, and mpv enables multithread protection on the device for it.
++ * A device created with D3D11_CREATE_DEVICE_SINGLETHREADED does not support
++ * this, so only copy-back hardware decoding like d3d11va-copy works with it.
++ */
++
++/**
++ * For initializing the mpv D3D11 state via MPV_RENDER_PARAM_D3D11_INIT_PARAMS.
++ */
++typedef struct mpv_d3d11_init_params {
++    /**
++     * The ID3D11Device to use for rendering. libmpv will add a reference to
++     * the device, so it is safe to release the caller's reference after
++     * mpv_render_context_create() returns.
++     *
++     * Type: ID3D11Device*
++     */
++    void *device;
++} mpv_d3d11_init_params;
++
++/**
++ * For MPV_RENDER_PARAM_D3D11_FBO.
++ */
++typedef struct mpv_d3d11_fbo {
++    /**
++     * The D3D11 texture to render into. This must be a 2D texture
++     * (ID3D11Texture2D) created on the same ID3D11Device that was passed to
++     * mpv_render_context_create() via mpv_d3d11_init_params.
++     *
++     * The texture must have been created with at least the
++     * D3D11_BIND_RENDER_TARGET bind flag and D3D11_USAGE_DEFAULT usage. It
++     * must not be multisampled, a texture array, or mipmapped. Formats like
++     * DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM,
++     * DXGI_FORMAT_R10G10B10A2_UNORM and DXGI_FORMAT_R16G16B16A16_FLOAT are
++     * supported. sRGB formats are not supported.
++     *
++     * The texture is owned by the caller. mpv_render_context_render() submits
++     * all its rendering to the immediate context before it returns, and keeps
++     * no reference to the texture. Later work on the same device, like
++     * presenting the texture or resizing its swap chain, needs no further
++     * synchronization. If another device uses the texture, the API user has to
++     * synchronize the access, for example with a keyed mutex acquired around
++     * mpv_render_context_render().
++     *
++     * Type: ID3D11Texture2D*
++     */
++    void *tex;
++} mpv_d3d11_fbo;
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+diff --git a/meson.build b/meson.build
+index a023a8fb8..eba4aedf0 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1083,7 +1083,8 @@ d3d11 = get_option('d3d11').require(
+ features += {'d3d11': d3d11.allowed()}
+ if features['d3d11']
+     sources += files('video/out/d3d11/context.c',
+-                     'video/out/d3d11/ra_d3d11.c')
++                     'video/out/d3d11/ra_d3d11.c',
++                     'video/out/d3d11/libmpv_d3d11.c')
+ endif
+ 
+ wayland = {
+@@ -1864,8 +1865,8 @@ if get_option('libmpv')
+                  description: 'mpv media player client library')
+ 
+     headers = ['include/mpv/client.h', 'include/mpv/render.h',
+-               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h',
+-               'include/mpv/stream_bridge.h']
++               'include/mpv/render_d3d11.h', 'include/mpv/render_gl.h',
++               'include/mpv/stream_cb.h', 'include/mpv/stream_bridge.h']
+     if features['vulkan']
+         headers += 'include/mpv/render_vk.h'
+     endif
+diff --git a/video/out/d3d11/context.c b/video/out/d3d11/context.c
+index fc8802e60..3afe21f36 100644
+--- a/video/out/d3d11/context.c
++++ b/video/out/d3d11/context.c
+@@ -472,6 +472,11 @@ static void d3d11_uninit(struct ra_ctx *ctx)
+ {
+     struct priv *p = ctx->priv;
+ 
++    IDXGIDebug *debug = NULL;
++    IDXGIInfoQueue *iqueue = NULL;
++    if (p->device && (ID3D11Device_GetCreationFlags(p->device) & D3D11_CREATE_DEVICE_DEBUG))
++        mp_d3d11_get_debug_interfaces(ctx->log, &debug, &iqueue);
++
+     if (p->swapchain)
+         IDXGISwapChain_SetFullscreenState(p->swapchain, FALSE, NULL);
+ 
+@@ -490,6 +495,11 @@ static void d3d11_uninit(struct ra_ctx *ctx)
+     // leak checker
+     if (ctx->ra)
+         ctx->ra->fns->destroy(ctx->ra);
++
++    if (debug)
++        mp_d3d11_report_live_objects(ctx->log, debug, iqueue);
++    SAFE_RELEASE(debug);
++    SAFE_RELEASE(iqueue);
+ }
+ 
+ static const struct ra_swapchain_fns d3d11_swapchain = {
+diff --git a/video/out/d3d11/libmpv_d3d11.c b/video/out/d3d11/libmpv_d3d11.c
+new file mode 100644
+index 000000000..80a68e115
+--- /dev/null
++++ b/video/out/d3d11/libmpv_d3d11.c
+@@ -0,0 +1,103 @@
++/*
++ * This file is part of mpv.
++ *
++ * mpv is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * mpv is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "common/msg.h"
++#include "mpv/render_d3d11.h"
++#include "ra_d3d11.h"
++#include "video/out/gpu/libmpv_gpu.h"
++#include "video/out/gpu/ra.h"
++
++struct priv {
++    struct ra_tex *wrapped_tex;
++};
++
++static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
++{
++    struct priv *p = ctx->priv = talloc_zero(NULL, struct priv);
++
++    mpv_d3d11_init_params *init_params = get_mpv_render_param(params, MPV_RENDER_PARAM_D3D11_INIT_PARAMS, NULL);
++    if (!init_params || !init_params->device)
++        return MPV_ERROR_INVALID_PARAMETER;
++
++    struct ra_ctx *ra_ctx = talloc_zero(p, struct ra_ctx);
++    ra_ctx->log = ctx->log;
++    ra_ctx->global = ctx->global;
++
++    if (!spirv_compiler_init(ra_ctx))
++        return MPV_ERROR_UNSUPPORTED;
++
++    ra_ctx->ra = ra_d3d11_create(init_params->device, ctx->log, ra_ctx->spirv);
++    if (!ra_ctx->ra)
++        return MPV_ERROR_UNSUPPORTED;
++
++    ctx->ra_ctx = ra_ctx;
++    return 0;
++}
++
++static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
++                    struct ra_tex **out)
++{
++    struct priv *p = ctx->priv;
++
++    mpv_d3d11_fbo *fbo = get_mpv_render_param(params, MPV_RENDER_PARAM_D3D11_FBO, NULL);
++    if (!fbo || !fbo->tex)
++        return MPV_ERROR_INVALID_PARAMETER;
++
++    ra_tex_free(ctx->ra_ctx->ra, &p->wrapped_tex);
++    p->wrapped_tex = ra_d3d11_wrap_tex(ctx->ra_ctx->ra, (ID3D11Resource *)fbo->tex);
++    if (!p->wrapped_tex)
++        return MPV_ERROR_UNSUPPORTED;
++
++    if (!p->wrapped_tex->params.render_dst) {
++        MP_ERR(ctx, "Texture was not created with D3D11_BIND_RENDER_TARGET\n");
++        ra_tex_free(ctx->ra_ctx->ra, &p->wrapped_tex);
++        return MPV_ERROR_INVALID_PARAMETER;
++    }
++
++    *out = p->wrapped_tex;
++    return 0;
++}
++
++static bool done_frame(struct libmpv_gpu_context *ctx, bool ds)
++{
++    struct priv *p = ctx->priv;
++
++    ra_d3d11_flush(ctx->ra_ctx->ra);
++    ra_tex_free(ctx->ra_ctx->ra, &p->wrapped_tex);
++    // mpv_kit: libmpv_gpu_context_fns.done_frame returns bool (patch 0001).
++    return true;
++}
++
++static void destroy(struct libmpv_gpu_context *ctx)
++{
++    struct priv *p = ctx->priv;
++
++    if (ctx->ra_ctx && ctx->ra_ctx->ra) {
++        ra_tex_free(ctx->ra_ctx->ra, &p->wrapped_tex);
++        // ra_d3d11 frees its own struct from inside its destroy callback.
++        ctx->ra_ctx->ra->fns->destroy(ctx->ra_ctx->ra);
++        ctx->ra_ctx->ra = NULL;
++    }
++}
++
++const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11 = {
++    .api_name   = MPV_RENDER_API_TYPE_D3D11,
++    .init       = init,
++    .wrap_fbo   = wrap_fbo,
++    .done_frame = done_frame,
++    .destroy    = destroy,
++};
+diff --git a/video/out/d3d11/ra_d3d11.c b/video/out/d3d11/ra_d3d11.c
+index cfdedec54..b0906cd69 100644
+--- a/video/out/d3d11/ra_d3d11.c
++++ b/video/out/d3d11/ra_d3d11.c
+@@ -1,7 +1,6 @@
+ #include <windows.h>
+ #include <versionhelpers.h>
+ #include <d3d11_1.h>
+-#include <d3d11sdklayers.h>
+ #include <dxgi1_2.h>
+ #include <d3dcompiler.h>
+ #include <spirv_cross_c.h>
+@@ -22,10 +21,6 @@
+ #endif
+ #define D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE (0x80)
+ 
+-// D3D11.3 message IDs, not present in mingw-w64 v9
+-#define D3D11_MESSAGE_ID_CREATE_FENCE  ((D3D11_MESSAGE_ID)0x300209)
+-#define D3D11_MESSAGE_ID_DESTROY_FENCE ((D3D11_MESSAGE_ID)0x30020b)
+-
+ struct dll_version {
+     uint16_t major;
+     uint16_t minor;
+@@ -44,8 +39,7 @@ struct ra_d3d11 {
+ 
+     struct dll_version d3d_compiler_ver;
+ 
+-    // Debug interfaces (--gpu-debug)
+-    IDXGIDebug *debug;
++    // Debug layer messages (--gpu-debug)
+     IDXGIInfoQueue *iqueue;
+ 
+     // Device capabilities
+@@ -54,6 +48,9 @@ struct ra_d3d11 {
+     bool has_timestamp_queries;
+     int max_uavs;
+ 
++    // Rasterizer state, which is used for all draws
++    ID3D11RasterizerState *rstate;
++
+     // Streaming dynamic vertex buffer, which is used for all renderpasses
+     ID3D11Buffer *vbuf;
+     size_t vbuf_size;
+@@ -1042,6 +1039,7 @@ static void clear_rpass(struct ra *ra, struct ra_tex *tex, float color[4],
+ 
+     ID3D11DeviceContext_VSSetShader(p->ctx, p->clear_vs, NULL, 0);
+ 
++    ID3D11DeviceContext_RSSetState(p->ctx, p->rstate);
+     ID3D11DeviceContext_RSSetViewports(p->ctx, 1, (&(D3D11_VIEWPORT) {
+         .Width = params->w,
+         .Height = params->h,
+@@ -1221,6 +1219,7 @@ static void blit_rpass(struct ra *ra, struct ra_tex *dst, struct ra_tex *src,
+ 
+     ID3D11DeviceContext_VSSetShader(p->ctx, p->blit_vs, NULL, 0);
+ 
++    ID3D11DeviceContext_RSSetState(p->ctx, p->rstate);
+     ID3D11DeviceContext_RSSetViewports(p->ctx, 1, (&(D3D11_VIEWPORT) {
+         .TopLeftX = dst_rc->x0,
+         .TopLeftY = dst_rc->y0,
+@@ -1831,6 +1830,7 @@ static void renderpass_run_raster(struct ra *ra,
+ 
+     ID3D11DeviceContext_VSSetShader(p->ctx, pass_p->vs, NULL, 0);
+ 
++    ID3D11DeviceContext_RSSetState(p->ctx, p->rstate);
+     ID3D11DeviceContext_RSSetViewports(p->ctx, 1, (&(D3D11_VIEWPORT) {
+         .TopLeftX = params->viewport.x0,
+         .TopLeftY = params->viewport.y0,
+@@ -2107,130 +2107,16 @@ static uint64_t timer_stop(struct ra *ra, ra_timer *ratimer)
+     return timer->result;
+ }
+ 
+-static int map_msg_severity(DXGI_INFO_QUEUE_MESSAGE_SEVERITY sev)
+-{
+-    switch (sev) {
+-    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION:
+-        return MSGL_FATAL;
+-    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR:
+-        return MSGL_ERR;
+-    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING:
+-        return MSGL_WARN;
+-    default:
+-    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_INFO:
+-    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_MESSAGE:
+-        return MSGL_DEBUG;
+-    }
+-}
+-
+-static int map_msg_severity_by_id(D3D11_MESSAGE_ID id,
+-                                  DXGI_INFO_QUEUE_MESSAGE_SEVERITY sev)
+-{
+-    switch (id) {
+-    // These are normal. The RA timer queue habitually reuses timer objects
+-    // without retrieving the results.
+-    case D3D11_MESSAGE_ID_QUERY_BEGIN_ABANDONING_PREVIOUS_RESULTS:
+-    case D3D11_MESSAGE_ID_QUERY_END_ABANDONING_PREVIOUS_RESULTS:
+-        return MSGL_TRACE;
+-
+-    // D3D11 writes log messages every time an object is created or
+-    // destroyed. That results in a lot of log spam, so force MSGL_TRACE.
+-#define OBJ_LIFETIME_MESSAGES(obj)          \
+-    case D3D11_MESSAGE_ID_CREATE_ ## obj:   \
+-    case D3D11_MESSAGE_ID_DESTROY_ ## obj
+-
+-    OBJ_LIFETIME_MESSAGES(CONTEXT):
+-    OBJ_LIFETIME_MESSAGES(BUFFER):
+-    OBJ_LIFETIME_MESSAGES(TEXTURE1D):
+-    OBJ_LIFETIME_MESSAGES(TEXTURE2D):
+-    OBJ_LIFETIME_MESSAGES(TEXTURE3D):
+-    OBJ_LIFETIME_MESSAGES(SHADERRESOURCEVIEW):
+-    OBJ_LIFETIME_MESSAGES(RENDERTARGETVIEW):
+-    OBJ_LIFETIME_MESSAGES(DEPTHSTENCILVIEW):
+-    OBJ_LIFETIME_MESSAGES(VERTEXSHADER):
+-    OBJ_LIFETIME_MESSAGES(HULLSHADER):
+-    OBJ_LIFETIME_MESSAGES(DOMAINSHADER):
+-    OBJ_LIFETIME_MESSAGES(GEOMETRYSHADER):
+-    OBJ_LIFETIME_MESSAGES(PIXELSHADER):
+-    OBJ_LIFETIME_MESSAGES(INPUTLAYOUT):
+-    OBJ_LIFETIME_MESSAGES(SAMPLER):
+-    OBJ_LIFETIME_MESSAGES(BLENDSTATE):
+-    OBJ_LIFETIME_MESSAGES(DEPTHSTENCILSTATE):
+-    OBJ_LIFETIME_MESSAGES(RASTERIZERSTATE):
+-    OBJ_LIFETIME_MESSAGES(QUERY):
+-    OBJ_LIFETIME_MESSAGES(PREDICATE):
+-    OBJ_LIFETIME_MESSAGES(COUNTER):
+-    OBJ_LIFETIME_MESSAGES(COMMANDLIST):
+-    OBJ_LIFETIME_MESSAGES(CLASSINSTANCE):
+-    OBJ_LIFETIME_MESSAGES(CLASSLINKAGE):
+-    OBJ_LIFETIME_MESSAGES(COMPUTESHADER):
+-    OBJ_LIFETIME_MESSAGES(UNORDEREDACCESSVIEW):
+-    OBJ_LIFETIME_MESSAGES(VIDEODECODER):
+-    OBJ_LIFETIME_MESSAGES(VIDEOPROCESSORENUM):
+-    OBJ_LIFETIME_MESSAGES(VIDEOPROCESSOR):
+-    OBJ_LIFETIME_MESSAGES(DECODEROUTPUTVIEW):
+-    OBJ_LIFETIME_MESSAGES(PROCESSORINPUTVIEW):
+-    OBJ_LIFETIME_MESSAGES(PROCESSOROUTPUTVIEW):
+-    OBJ_LIFETIME_MESSAGES(DEVICECONTEXTSTATE):
+-    OBJ_LIFETIME_MESSAGES(FENCE):
+-        return MSGL_TRACE;
+-
+-#undef OBJ_LIFETIME_MESSAGES
+-
+-    default:
+-        return map_msg_severity(sev);
+-    }
+-}
+-
+ static void debug_marker(struct ra *ra, const char *msg)
+ {
+     struct ra_d3d11 *p = ra->priv;
+-    void *talloc_ctx = talloc_new(NULL);
+-    HRESULT hr;
+-
+-    if (!p->iqueue)
+-        goto done;
+-
+-    // Copy debug-layer messages to mpv's log output
+-    bool printed_header = false;
+-    uint64_t messages = IDXGIInfoQueue_GetNumStoredMessages(p->iqueue,
+-                                                            DXGI_DEBUG_ALL);
+-    for (uint64_t i = 0; i < messages; i++) {
+-        SIZE_T len;
+-        hr = IDXGIInfoQueue_GetMessage(p->iqueue, DXGI_DEBUG_ALL, i, NULL, &len);
+-        if (FAILED(hr) || !len)
+-            goto done;
+-
+-        DXGI_INFO_QUEUE_MESSAGE *dxgimsg = talloc_size(talloc_ctx, len);
+-        hr = IDXGIInfoQueue_GetMessage(p->iqueue, DXGI_DEBUG_ALL, i, dxgimsg, &len);
+-        if (FAILED(hr))
+-            goto done;
+-
+-        int msgl = IsEqualGUID(&dxgimsg->Producer, &DXGI_DEBUG_D3D11)
+-                        ? map_msg_severity_by_id(dxgimsg->ID, dxgimsg->Severity)
+-                        : map_msg_severity(dxgimsg->Severity);
+-
+-        if (mp_msg_test(ra->log, msgl)) {
+-            if (!printed_header)
+-                MP_INFO(ra, "%s:\n", msg);
+-            printed_header = true;
+-
+-            MP_MSG(ra, msgl, "%d: %.*s\n", (int)dxgimsg->ID,
+-                (int)dxgimsg->DescriptionByteLength, dxgimsg->pDescription);
+-            talloc_free(dxgimsg);
+-        }
+-    }
+-
+-    IDXGIInfoQueue_ClearStoredMessages(p->iqueue, DXGI_DEBUG_ALL);
+-done:
+-    talloc_free(talloc_ctx);
++    mp_d3d11_debug_marker(ra->log, p->iqueue, msg);
+ }
+ 
+ static void destroy(struct ra *ra)
+ {
+     struct ra_d3d11 *p = ra->priv;
+ 
+-    // Release everything except the interfaces needed to perform leak checking
+     SAFE_RELEASE(p->clear_ps);
+     SAFE_RELEASE(p->clear_vs);
+     SAFE_RELEASE(p->clear_layout);
+@@ -2242,6 +2128,7 @@ static void destroy(struct ra *ra)
+     SAFE_RELEASE(p->blit_vbuf);
+     SAFE_RELEASE(p->blit_sampler);
+     SAFE_RELEASE(p->vbuf);
++    SAFE_RELEASE(p->rstate);
+     SAFE_RELEASE(p->ctx1);
+     SAFE_RELEASE(p->dev1);
+     SAFE_RELEASE(p->dev);
+@@ -2253,16 +2140,6 @@ static void destroy(struct ra *ra)
+         ID3D11DeviceContext_Flush(p->ctx);
+     }
+     SAFE_RELEASE(p->ctx);
+-
+-    if (p->debug) {
+-        // Report any leaked objects
+-        debug_marker(ra, "after destroy");
+-        IDXGIDebug_ReportLiveObjects(p->debug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
+-        debug_marker(ra, "after leak check");
+-        IDXGIDebug_ReportLiveObjects(p->debug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
+-        debug_marker(ra, "after leak summary");
+-    }
+-    SAFE_RELEASE(p->debug);
+     SAFE_RELEASE(p->iqueue);
+ 
+     talloc_free(ra);
+@@ -2456,7 +2333,7 @@ struct ra *ra_d3d11_create(ID3D11Device *dev, struct mp_log *log,
+     }
+ 
+     if (ID3D11Device_GetCreationFlags(p->dev) & D3D11_CREATE_DEVICE_DEBUG)
+-        mp_d3d11_get_debug_interfaces(ra->log, &p->debug, &p->iqueue);
++        mp_d3d11_get_debug_interfaces(ra->log, NULL, &p->iqueue);
+ 
+     // Some level 9_x devices don't have timestamp queries
+     hr = ID3D11Device_CreateQuery(p->dev,
+@@ -2488,8 +2365,6 @@ struct ra *ra_d3d11_create(ID3D11Device *dev, struct mp_log *log,
+ 
+     setup_formats(ra);
+ 
+-    // The rasterizer state never changes, so set it up here
+-    ID3D11RasterizerState *rstate;
+     D3D11_RASTERIZER_DESC rdesc = {
+         .FillMode = D3D11_FILL_SOLID,
+         .CullMode = D3D11_CULL_NONE,
+@@ -2497,13 +2372,11 @@ struct ra *ra_d3d11_create(ID3D11Device *dev, struct mp_log *log,
+         .DepthClipEnable = TRUE, // Required for 10level9
+         .ScissorEnable = TRUE,
+     };
+-    hr = ID3D11Device_CreateRasterizerState(p->dev, &rdesc, &rstate);
++    hr = ID3D11Device_CreateRasterizerState(p->dev, &rdesc, &p->rstate);
+     if (FAILED(hr)) {
+         MP_ERR(ra, "Failed to create rasterizer state: %s\n", mp_HRESULT_to_str(hr));
+         goto error;
+     }
+-    ID3D11DeviceContext_RSSetState(p->ctx, rstate);
+-    SAFE_RELEASE(rstate);
+ 
+     // If the device doesn't support ClearView, we have to set up a
+     // shader-based clear() implementation
+diff --git a/video/out/gpu/d3d11_helpers.c b/video/out/gpu/d3d11_helpers.c
+index 93510d705..0bb839db3 100644
+--- a/video/out/gpu/d3d11_helpers.c
++++ b/video/out/gpu/d3d11_helpers.c
+@@ -17,6 +17,7 @@
+ 
+ #include <windows.h>
+ #include <d3d11.h>
++#include <d3d11sdklayers.h>
+ #include <dxgi1_6.h>
+ #include <versionhelpers.h>
+ 
+@@ -1159,7 +1160,8 @@ void mp_d3d11_get_debug_interfaces(struct mp_log *log, IDXGIDebug **debug,
+                                    IDXGIInfoQueue **iqueue)
+ {
+     *iqueue = NULL;
+-    *debug = NULL;
++    if (debug)
++        *debug = NULL;
+ 
+     PFN_DXGI_GET_DEBUG_INTERFACE pDXGIGetDebugInterface = get_DXGIGetDebugInterface();
+     if (!pDXGIGetDebugInterface)
+@@ -1174,7 +1176,7 @@ void mp_d3d11_get_debug_interfaces(struct mp_log *log, IDXGIDebug **debug,
+     }
+ 
+     // Store an unlimited amount of messages in the buffer. This is fine
+-    // because we flush stored messages regularly (in debug_marker.)
++    // because we flush stored messages regularly (in mp_d3d11_debug_marker.)
+     IDXGIInfoQueue_SetMessageCountLimit(*iqueue, DXGI_DEBUG_D3D11, -1);
+     IDXGIInfoQueue_SetMessageCountLimit(*iqueue, DXGI_DEBUG_DXGI, -1);
+ 
+@@ -1182,6 +1184,9 @@ void mp_d3d11_get_debug_interfaces(struct mp_log *log, IDXGIDebug **debug,
+     DXGI_INFO_QUEUE_FILTER filter = {0};
+     IDXGIInfoQueue_PushStorageFilter(*iqueue, DXGI_DEBUG_ALL, &filter);
+ 
++    if (!debug)
++        return;
++
+     hr = pDXGIGetDebugInterface(&IID_IDXGIDebug, (void **) debug);
+     if (FAILED(hr)) {
+         mp_fatal(log, "Failed to get debug device: %s\n", mp_HRESULT_to_str(hr));
+@@ -1189,6 +1194,134 @@ void mp_d3d11_get_debug_interfaces(struct mp_log *log, IDXGIDebug **debug,
+     }
+ }
+ 
++static int map_msg_severity(DXGI_INFO_QUEUE_MESSAGE_SEVERITY sev)
++{
++    switch (sev) {
++    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION:
++        return MSGL_FATAL;
++    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR:
++        return MSGL_ERR;
++    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING:
++        return MSGL_WARN;
++    default:
++    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_INFO:
++    case DXGI_INFO_QUEUE_MESSAGE_SEVERITY_MESSAGE:
++        return MSGL_DEBUG;
++    }
++}
++
++static int map_msg_severity_by_id(D3D11_MESSAGE_ID id,
++                                  DXGI_INFO_QUEUE_MESSAGE_SEVERITY sev)
++{
++    switch (id) {
++    // These are normal. The RA timer queue habitually reuses timer objects
++    // without retrieving the results.
++    case D3D11_MESSAGE_ID_QUERY_BEGIN_ABANDONING_PREVIOUS_RESULTS:
++    case D3D11_MESSAGE_ID_QUERY_END_ABANDONING_PREVIOUS_RESULTS:
++        return MSGL_TRACE;
++
++    // D3D11 writes log messages every time an object is created or
++    // destroyed. That results in a lot of log spam, so force MSGL_TRACE.
++#define OBJ_LIFETIME_MESSAGES(obj)          \
++    case D3D11_MESSAGE_ID_CREATE_ ## obj:   \
++    case D3D11_MESSAGE_ID_DESTROY_ ## obj
++
++    OBJ_LIFETIME_MESSAGES(CONTEXT):
++    OBJ_LIFETIME_MESSAGES(BUFFER):
++    OBJ_LIFETIME_MESSAGES(TEXTURE1D):
++    OBJ_LIFETIME_MESSAGES(TEXTURE2D):
++    OBJ_LIFETIME_MESSAGES(TEXTURE3D):
++    OBJ_LIFETIME_MESSAGES(SHADERRESOURCEVIEW):
++    OBJ_LIFETIME_MESSAGES(RENDERTARGETVIEW):
++    OBJ_LIFETIME_MESSAGES(DEPTHSTENCILVIEW):
++    OBJ_LIFETIME_MESSAGES(VERTEXSHADER):
++    OBJ_LIFETIME_MESSAGES(HULLSHADER):
++    OBJ_LIFETIME_MESSAGES(DOMAINSHADER):
++    OBJ_LIFETIME_MESSAGES(GEOMETRYSHADER):
++    OBJ_LIFETIME_MESSAGES(PIXELSHADER):
++    OBJ_LIFETIME_MESSAGES(INPUTLAYOUT):
++    OBJ_LIFETIME_MESSAGES(SAMPLER):
++    OBJ_LIFETIME_MESSAGES(BLENDSTATE):
++    OBJ_LIFETIME_MESSAGES(DEPTHSTENCILSTATE):
++    OBJ_LIFETIME_MESSAGES(RASTERIZERSTATE):
++    OBJ_LIFETIME_MESSAGES(QUERY):
++    OBJ_LIFETIME_MESSAGES(PREDICATE):
++    OBJ_LIFETIME_MESSAGES(COUNTER):
++    OBJ_LIFETIME_MESSAGES(COMMANDLIST):
++    OBJ_LIFETIME_MESSAGES(CLASSINSTANCE):
++    OBJ_LIFETIME_MESSAGES(CLASSLINKAGE):
++    OBJ_LIFETIME_MESSAGES(COMPUTESHADER):
++    OBJ_LIFETIME_MESSAGES(UNORDEREDACCESSVIEW):
++    OBJ_LIFETIME_MESSAGES(VIDEODECODER):
++    OBJ_LIFETIME_MESSAGES(VIDEOPROCESSORENUM):
++    OBJ_LIFETIME_MESSAGES(VIDEOPROCESSOR):
++    OBJ_LIFETIME_MESSAGES(DECODEROUTPUTVIEW):
++    OBJ_LIFETIME_MESSAGES(PROCESSORINPUTVIEW):
++    OBJ_LIFETIME_MESSAGES(PROCESSOROUTPUTVIEW):
++    OBJ_LIFETIME_MESSAGES(DEVICECONTEXTSTATE):
++        return MSGL_TRACE;
++
++#undef OBJ_LIFETIME_MESSAGES
++
++    default:
++        return map_msg_severity(sev);
++    }
++}
++
++void mp_d3d11_debug_marker(struct mp_log *log, IDXGIInfoQueue *iqueue,
++                           const char *msg)
++{
++    void *talloc_ctx = talloc_new(NULL);
++    HRESULT hr;
++
++    if (!iqueue)
++        goto done;
++
++    // Copy debug-layer messages to mpv's log output
++    bool printed_header = false;
++    uint64_t messages = IDXGIInfoQueue_GetNumStoredMessages(iqueue,
++                                                            DXGI_DEBUG_ALL);
++    for (uint64_t i = 0; i < messages; i++) {
++        SIZE_T len;
++        hr = IDXGIInfoQueue_GetMessage(iqueue, DXGI_DEBUG_ALL, i, NULL, &len);
++        if (FAILED(hr) || !len)
++            goto done;
++
++        DXGI_INFO_QUEUE_MESSAGE *dxgimsg = talloc_size(talloc_ctx, len);
++        hr = IDXGIInfoQueue_GetMessage(iqueue, DXGI_DEBUG_ALL, i, dxgimsg, &len);
++        if (FAILED(hr))
++            goto done;
++
++        int msgl = IsEqualGUID(&dxgimsg->Producer, &DXGI_DEBUG_D3D11)
++                        ? map_msg_severity_by_id(dxgimsg->ID, dxgimsg->Severity)
++                        : map_msg_severity(dxgimsg->Severity);
++
++        if (mp_msg_test(log, msgl)) {
++            if (!printed_header)
++                mp_info(log, "%s:\n", msg);
++            printed_header = true;
++
++            mp_msg(log, msgl, "%d: %.*s\n", (int)dxgimsg->ID,
++                (int)dxgimsg->DescriptionByteLength, dxgimsg->pDescription);
++            talloc_free(dxgimsg);
++        }
++    }
++
++    IDXGIInfoQueue_ClearStoredMessages(iqueue, DXGI_DEBUG_ALL);
++done:
++    talloc_free(talloc_ctx);
++}
++
++void mp_d3d11_report_live_objects(struct mp_log *log, IDXGIDebug *debug,
++                                  IDXGIInfoQueue *iqueue)
++{
++    mp_d3d11_debug_marker(log, iqueue, "after destroy");
++    IDXGIDebug_ReportLiveObjects(debug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
++    mp_d3d11_debug_marker(log, iqueue, "after leak check");
++    IDXGIDebug_ReportLiveObjects(debug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
++    mp_d3d11_debug_marker(log, iqueue, "after leak summary");
++}
++
+ DXGI_COLOR_SPACE_TYPE mp_params_to_dxgi_colorspace(struct mp_log *log,
+                                                    const struct mp_image_params *params)
+ {
+diff --git a/video/out/gpu/d3d11_helpers.h b/video/out/gpu/d3d11_helpers.h
+index f3d4908a1..bae7cc52f 100644
+--- a/video/out/gpu/d3d11_helpers.h
++++ b/video/out/gpu/d3d11_helpers.h
+@@ -128,6 +128,12 @@ bool mp_d3d11_create_swapchain(ID3D11Device *dev, struct mp_log *log,
+ void mp_d3d11_get_debug_interfaces(struct mp_log *log, IDXGIDebug **debug,
+                                    IDXGIInfoQueue **iqueue);
+ 
++void mp_d3d11_debug_marker(struct mp_log *log, IDXGIInfoQueue *iqueue,
++                           const char *msg);
++
++void mp_d3d11_report_live_objects(struct mp_log *log, IDXGIDebug *debug,
++                                  IDXGIInfoQueue *iqueue);
++
+ const char *d3d11_get_csp_name(DXGI_COLOR_SPACE_TYPE csp);
+ 
+ DXGI_COLOR_SPACE_TYPE mp_params_to_dxgi_colorspace(struct mp_log *log,
+diff --git a/video/out/gpu/error_diffusion.c b/video/out/gpu/error_diffusion.c
+index ad3188b39..c523b0133 100644
+--- a/video/out/gpu/error_diffusion.c
++++ b/video/out/gpu/error_diffusion.c
+@@ -15,6 +15,7 @@
+  * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <inttypes.h>
+ #include <stdlib.h>
+ 
+ #include "error_diffusion.h"
+@@ -135,7 +136,7 @@ void pass_error_diffusion(struct gl_shader_cache *sc,
+     GLSL("vec3 pix = texelFetch(texture%d, ivec2(x, y), 0).rgb;\n", tex);
+ 
+     // The dithering will quantize pixel value into multiples of 1/dither_quant.
+-    int dither_quant = (1 << depth) - 1;
++    uint32_t dither_quant = UINT32_MAX >> (32 - depth);
+ 
+     // We encode errors in RGB components into a single 32-bit unsigned integer.
+     // The error we propagate from the current pixel is in range of
+@@ -165,7 +166,7 @@ void pass_error_diffusion(struct gl_shader_cache *sc,
+     // in the buffer.
+     GLSL("uint err_u32 = err_rgb8[idx] + %uu;\n",
+          (128u << bitshift_r) | (128u << bitshift_g) | 128u);
+-    GLSL("pix = pix * %d.0 + vec3("
++    GLSL("pix = pix * %" PRIu32 ".0 + vec3("
+          "int((err_u32 >> %d) & 255u) - 128,"
+          "int((err_u32 >> %d) & 255u) - 128,"
+          "int( err_u32        & 255u) - 128"
+@@ -174,8 +175,8 @@ void pass_error_diffusion(struct gl_shader_cache *sc,
+ 
+     // Write the dithered pixel.
+     GLSL("vec3 dithered = round(pix);\n");
+-    GLSL("imageStore(out_image, ivec2(x, y), vec4(dithered / %d.0, 0.0));\n",
+-         dither_quant);
++    GLSL("imageStore(out_image, ivec2(x, y), "
++         "vec4(dithered / %" PRIu32 ".0, 0.0));\n", dither_quant);
+ 
+     GLSL("vec3 err_divided = (pix - dithered) * %d.0 / %d.0;\n",
+          uint8_mul, k->divisor);
+diff --git a/video/out/gpu/libmpv_gpu.c b/video/out/gpu/libmpv_gpu.c
+index ddb75b390..f9ae201ec 100644
+--- a/video/out/gpu/libmpv_gpu.c
++++ b/video/out/gpu/libmpv_gpu.c
+@@ -6,6 +6,9 @@
+ #include "video/out/libmpv.h"
+ 
+ static const struct libmpv_gpu_context_fns *context_backends[] = {
++#if HAVE_D3D11
++    &libmpv_gpu_context_d3d11,
++#endif
+ #if HAVE_GL
+     &libmpv_gpu_context_gl,
+ #endif
+@@ -184,6 +187,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
+ 
+     int depth = *(int *)get_mpv_render_param(params, MPV_RENDER_PARAM_DEPTH,
+                                              &(int){0});
++    if (!depth)
++        depth = tex->params.format->component_depth[0];
+     gl_video_set_fb_depth(p->renderer, depth);
+ 
+     bool flip = *(int *)get_mpv_render_param(params, MPV_RENDER_PARAM_FLIP_Y,
+diff --git a/video/out/gpu/libmpv_gpu.h b/video/out/gpu/libmpv_gpu.h
+index 2f3595bd9..034244ec3 100644
+--- a/video/out/gpu/libmpv_gpu.h
++++ b/video/out/gpu/libmpv_gpu.h
+@@ -40,3 +40,4 @@ struct libmpv_gpu_context_fns {
+ 
+ extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
+ extern const struct libmpv_gpu_context_fns libmpv_gpu_context_vk;
++extern const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11;
+diff --git a/video/out/gpu/video.c b/video/out/gpu/video.c
+index 4d90d447a..bed2dc25f 100644
+--- a/video/out/gpu/video.c
++++ b/video/out/gpu/video.c
+@@ -17,6 +17,7 @@
+ 
+ #include <assert.h>
+ #include <float.h>
++#include <inttypes.h>
+ #include <math.h>
+ #include <stdarg.h>
+ #include <stdbool.h>
+@@ -3094,7 +3095,7 @@ static void pass_dither(struct gl_video *p, const struct ra_fbo *fbo)
+     // screen. The superfluous bits will be used for rounding according to the
+     // dither matrix. The precision of the source implicitly decides how many
+     // dither patterns can be visible.
+-    int dither_quantization = (1 << dst_depth) - 1;
++    uint32_t dither_quantization = UINT32_MAX >> (32 - dst_depth);
+     int dither_size = p->dither_texture->params.w;
+ 
+     gl_sc_uniform_texture(p->sc, "dither", p->dither_texture);
+@@ -3117,7 +3118,8 @@ static void pass_dither(struct gl_video *p, const struct ra_fbo *fbo)
+     }
+ 
+     GLSL(float dither_value = texture(dither, dither_pos).r;)
+-    GLSLF("color = floor(color * %d.0 + dither_value + 0.5 / %d.0) * 1.0/%d.0;\n",
++    GLSLF("color = floor(color * %" PRIu32 ".0 + dither_value + 0.5 / %d.0) * "
++          "1.0/%" PRIu32 ".0;\n",
+           dither_quantization, dither_size * dither_size, dither_quantization);
+ }
+ 
