@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-10-27T11:47:38.870Z"
+stopped_at: Completed 14-03-PLAN.md (feat release gate deferred)
+last_updated: "2026-10-27T12:00:50.094Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 14 execution started
-state_head: 2b9f6e2067d7c498b6c83daeed54fde70614d1d8
+state_head: 378983fcdbf6120081e1219b4c67d8d6ca88a6d1
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 16
+  completed_plans: 17
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
-Plan: 3 of 11
+Plan: 4 of 11
 Status: Ready to execute
 Last activity: 2026-10-27 - Completed quick task 261027-or3: Linux release build against libdrm 2.4.113 (patch 0012), unblocks 14-03
 
@@ -110,6 +110,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 13 P01 | 55min | 2 tasks | 6 files |
 | Phase 13 P02 | 14min | 2 tasks | 3 files |
 | Phase 14 P02 | 70min | 2 tasks | 12 files |
+| Phase 14 P03 | 3h | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -214,6 +215,11 @@ Recent decisions affecting current work:
 - [Phase 13]: 13-01: macOS reason carrier comes only from VkPhysicalDeviceDriverProperties via a forwarding wrapper returned by MetalInterop::CreateBackend; shared engine untouched
 - [Phase 13]: 13-02: ADR 0005 (proposed) keeps MoltenVK to IOSurface as the macOS route; ADR 0004 Decision 3 gains optional via carrier suffix, first-token api parsing unchanged
 - [Phase 14]: 14-02: PickDevice reason split with device names (decision A); frozen harness/vk.txt re-frozen as golden-freeze-14.sha256; known limitation: multi-Vulkan-device dev hosts mismatch the device-not-shareable golden
+- [Phase 14]: 14-03: pe_audit --forbid-angle (imports + ASCII/UTF-16LE byte scan) proven red by synthetic PE samples, wired into verify libmpv, plugin DLL and every bundle DLL; D3D-02 requirements-partial, feat release gate deferred (CI deferral decision)
+
+### CI Deferral
+
+- [2026-10-27] User decision: defer ALL hosted-CI gating (push + gh run watch/dispatch) for Phases 13/14/15 until every phase is done, to save tokens. Executors record `ci-gate: deferred` in SUMMARY and keep local checks; a single milestone-end CI pass runs all deferred gates (list them from SUMMARY frontmatter).
 
 ### Pending Todos
 
@@ -271,8 +277,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T08:14:42.272Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-10-27T12:00:21.873Z
+Stopped at: Completed 14-03-PLAN.md (feat release gate deferred)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
