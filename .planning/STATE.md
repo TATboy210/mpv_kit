@@ -4,17 +4,17 @@ milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 12
 current_phase_name: RenderBackend Seam
-status: executing
-stopped_at: Completed 12-11-PLAN.md
-last_updated: "2026-10-26T23:37:52.340Z"
+status: verifying
+stopped_at: Completed 12-12-PLAN.md
+last_updated: "2026-10-27T02:04:01.432Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 12 execution started
-state_head: c3edb9ee06ed08af15cfca491bdc77b3f3ff3a0f
+state_head: c9d3d4a791d865c5bb1cda5f81e2de801ea4a337
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 
 Phase: 12 (RenderBackend Seam) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-26 — Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -104,6 +104,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P09 | 147 min | 4 tasks | 10 files |
 | Phase 12 P10 | 19 min | 2 tasks | 10 files |
 | Phase 12 P11 | 23 min | 2 tasks | 8 files |
+| Phase 12 P12 | 2h 20m | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -198,10 +199,13 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-10: both hosted CI gates (eec251c, 598d287) deferred by the user; RBE-07/RBE-08 stay Pending until they are ok
 - [Phase 12]: 12-11: every mpv_render_* call after Start runs on the render thread (AcquireFront counts swaps_to_report_; render thread reports them before update and frees the context via RenderBackend::Release before exit); debug assertions + video_renderer_affinity_test prove it
 - [Phase 12]: 12-11: RBE-05/RBE-06 stay Pending until the deferred 12-11 CI gates (c4019dc, c3edb9e) pass; RBE-06 also needs 12-12; swap-on-render-thread timing judged only by 12-12's real 4K run
+- [Phase 12]: 12-12: Phase 12 close approved by the user ("approved"); final-HEAD full CI gate ok on a3dc4c2 (15/15 jobs), seven audits ok, RTX 4060 4K 30 min parity with Phase 4, rendered 4K 600 s drops 0, six harness groups no-new-failure
+- [Phase 12]: 12-12: uhd4k not repeated despite two Modern Standby intervals (in-interval samples 0 drops / 30 fps); d05-on a1 invalid (relative trace path), a2 is the record; rendered avsyncPeakAbs +2.8 us accepted as negligible
+- [Phase 12]: 12-12: second-controller first-frame finding (resize-front round-2 timeout, d05 part-2 probe before-first-frame) carried forward as a pending todo, not fixed in Phase 12
 
 ### Pending Todos
 
-None yet.
+- [2026-10-27] [testing] Diagnose second-controller first-frame stall in resize-front and d05 — [todo file](.planning/todos/pending/2026-10-27-diagnose-second-controller-first-frame-stall-in-resize-front.md)
 
 ### Blockers/Concerns
 
@@ -212,11 +216,12 @@ None yet.
 - 新 CI 作业（patch-drift/pin-check/integration-test）首跑待 push。
 - （v1 遗留）50-cycle Vulkan RSS 45.1 MiB 近门禁；8K 崩溃文档化。
 - **v2.0 收尾遗留**：10-05 soak 中止未复现、未解释（3 次运行 5/5、5/5、25/25 均 exit 0）；D-05 未 settle；`10-VERIFICATION.md` 保持 `gaps_found`，ADR 0003 保持 `inconclusive`。
-- 12-06 Task 2 CI gate on 52341e1 pending (integration-test reason regex); linux x64 apt mirror stall
+- （已解决）12-06 Task 2 CI gate on 52341e1: CI-GATE-ok (attempt 2, recorded by 12-07 in evidence/ci-runs.txt)
 - （已解决）12-07 finding: use after destroy in the 8K ring-7 fallback after a resize. Fixed in de9dcc5 (user decision "a"), regression golden video_renderer_golden_vk_fallback, CI gate ok on de9dcc5; see 12-07-SUMMARY "Follow-up: 8K ring fallback"
-- 12-08 open finding (route to 12-12 or a separate diagnostic): resize-front round 2 - a fresh second controller never gets a 1280x720 resize within 30 s (likely estimated-vf-fps never > 0); candidate link: d05 part-2 pixel probe always before-first-frame/fpsAtProbe null pre- and post-fix, so a second controller in the process may never receive presented frames
+- **Open finding (carried forward from Phase 12, not fixed; todo 2026-10-27-diagnose-second-controller-first-frame-stall-in-resize-front):** resize-front round 2 on a fresh second controller times out 30 s after set-size-1280-done (resizeEvents=3; likely estimated-vf-fps never > 0), and the d05 part-2 pixel probe is always before-first-frame / fpsAtProbe null. Both are unchanged pre-fix (12-04), post-fix (12-08) and post-move (12-12), Impeller on and off; cause not established, candidate link: a second controller in the process may never receive presented frames
+- 12-12 unexplained (recorded, no action): two Modern Standby intervals during the RTX 4060 4K 30-min run (2026-10-27 00:35:45Z-00:36:43Z, 00:40:14Z-00:40:33Z; user chose not to repeat); temp filesystem free space fell 6523 -> 4141 MiB during the runs (not gated)
 - 12-09 plan text is stale: it references pending_front_ and a deferred publish gate that 12-07 f77378f removed (publish gate is now a synchronous wait after render, depth 1); 12-09 must move the current gate as-is
-- 12-10 hosted CI gates pending (deferred by user): Task 1 eec251c and Task 2 598d287; commands in 12-10-SUMMARY deviation 6; RBE-07/RBE-08 to be marked complete once both are ok
+- （已解决）12-10 hosted CI gates eec251c and 598d287, and 12-11 gates c4019dc and c3edb9e: all CI-GATE-ok, run in 12-12 Task 1; RBE-01..08 marked complete at the 12-12 close
 
 ## Deferred Items
 
@@ -247,8 +252,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T23:37:52.265Z
-Stopped at: Completed 12-11-PLAN.md
+Last session: 2026-10-27T02:04:01.365Z
+Stopped at: Completed 12-12-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
