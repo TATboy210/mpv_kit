@@ -66,11 +66,25 @@ struct TargetView {
 /// Deferred-release contract, shared by every backend:
 ///   * Render never writes into the front, in-use or quarantined slot: the
 ///     engine picks the slot.
-///   * AllocTargets keeps only [keep_slot]'s target of the old generation
-///     alive, in a retired generation that stays valid until the engine
-///     calls FreeRetired() (after the first new-size frame was published
-///     and the compositor took quarantine+1 further frames). Every other
-///     old target is released once its last GPU work has completed.
+///   * AllocTargets retires the old generation and builds a new one. What
+///     survives in retirement, and until when, is the backend's choice:
+///       - Vulkan keeps only [keep_slot]'s target; every other old target
+///         is released once its last GPU work has completed. Its next
+///         AllocTargets first releases that survivor (AllocateRing calls
+///         FreeRetired). The engine never hands a survivor out after the
+///         following reallocation (it resets its retired front first), and
+///         an image the compositor still holds is kept alive by the
+///         platform reference (last point below).
+///       - Software keeps the whole old generation, and the one retired
+///         before it, for one more reallocation: CPU pixels have no
+///         platform reference, and the frame of the last AcquireFront()
+///         may lie in either. Its next AllocTargets frees the older one.
+///     A backend whose targets have no platform reference must keep a
+///     target alive while it may back the frame of the last AcquireFront()
+///     (valid until the next AcquireFront(), video_renderer.h).
+///   * FreeRetired releases every retired target. The engine calls it once
+///     the first new-size frame was published and the compositor took
+///     quarantine+1 further frames.
 ///   * Release frees the render context (with the thread bound) before the
 ///     device; the destructor then frees the remaining targets and finally
 ///     the device.

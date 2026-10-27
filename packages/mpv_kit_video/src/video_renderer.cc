@@ -185,15 +185,24 @@ class SoftwareBackend final : public RenderBackend {
                     std::string* error) override {
     // The whole old generation is retired, so keep_slot does not matter:
     // the compositor may still be uploading from its front buffer after its
-    // copy callback returned. Replacing retired_ frees the generation
-    // before it. Allocation does not fail (bad_alloc aside).
+    // copy callback returned. CPU pixels have no platform reference, and the
+    // frame of the last AcquireFront() may lie in the generation retired by
+    // the previous reallocation too: the retired front shown after a failed
+    // render, or a frame taken before two quick resizes (code review CR-01).
+    // So that generation is kept one reallocation longer (older_) and only
+    // the one before it is freed here; FreeRetired() drops both once the
+    // compositor has moved on. Allocation does not fail (bad_alloc aside).
     (void)keep_slot;
     (void)error;
+    older_ = std::move(retired_);
     retired_ = std::move(buffers_);
     buffers_.assign(count, std::vector<uint8_t>(size_t(width) * height * 4));
     return true;
   }
-  void FreeRetired() override { retired_.clear(); }
+  void FreeRetired() override {
+    retired_.clear();
+    older_.clear();
+  }
   TargetView FrameFor(int slot) override {
     TargetView view;
     view.pixels = buffers_[slot].data();
@@ -231,6 +240,8 @@ class SoftwareBackend final : public RenderBackend {
   std::vector<std::vector<uint8_t>> buffers_;
   // Previous generation, kept one resize longer (see AllocTargets).
   std::vector<std::vector<uint8_t>> retired_;
+  // The generation before retired_, kept one more resize (see AllocTargets).
+  std::vector<std::vector<uint8_t>> older_;
 };
 
 }  // namespace
