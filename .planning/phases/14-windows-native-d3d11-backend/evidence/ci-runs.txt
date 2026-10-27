@@ -1,0 +1,3 @@
+sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade workflow=native-verify.yml run=40442377807 conclusion=success
+sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade workflow=flutter-plugin.yml run=40442377813 conclusion=success
+selftest sha=025bdadcc6c757acdddca99de0f2f64111351c8b branch=feat/mpv-master-upgrade gate=14-01/tools/ci_gate.sh args=--jobs-success '^patch-drift' result='CI-GATE ok' (the two lines above are the selftest's own records)
