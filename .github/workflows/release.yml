@@ -295,6 +295,39 @@ jobs:
         run: |
           bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
+      - name: render_d3d11 smoke on the packaged bundle (WARP)
+        # Proves that the bundle's own closure (libmpv, libplacebo's pl_d3d11,
+        # SPIRV-Cross, shaderc) renders through MPV_RENDER_API_TYPE_D3D11 on
+        # the runner's Basic Render Driver: gpu-next, gpu, and the persistent
+        # shader cache. The build prefix is hidden while the smoke runs and
+        # PATH holds only the bundle and the Windows directories, so any
+        # dependency that is not in the bundle fails the load. An exit of 77
+        # (skipped) fails too: the runner always has a D3D11 adapter.
+        run: |
+          export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig"
+          # MSYS2's vulkan.pc points at a directory without the Vulkan
+          # headers (render_vk.h includes them); the prefix has them.
+          export CFLAGS="-I$(cygpath -m "$PWD/prefix")/include"
+          meson setup tests-out native/tests
+          meson compile -C tests-out render_d3d11_smoke
+          mv prefix prefix.hidden
+          bundle_lib="$PWD/dist/libmpv-${{ matrix.target }}/lib"
+          winroot="$(cygpath -u "$SYSTEMROOT")"
+          cache_dir="$(cygpath -m "$(mktemp -d)")/d3d11-shader-cache"
+          status=0
+          for variant in "gpu-next" "gpu" "gpu-next --cache-dir=$cache_dir"; do
+            echo "::group::render_d3d11_smoke $variant"
+            # $variant is split on purpose: renderer and option arguments.
+            PATH="$bundle_lib:$winroot/system32:$winroot" \
+              ./tests-out/render_d3d11_smoke.exe $variant || status=$?
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then
+              echo "render_d3d11_smoke '$variant' failed with exit $status" >&2
+              break
+            fi
+          done
+          mv prefix.hidden prefix
+          exit "$status"
       - name: Format samples (MSYS2 ffmpeg CLI, after packaging)
         run: |
           for i in 1 2 3; do pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-ffmpeg" && break; sleep 20; done
