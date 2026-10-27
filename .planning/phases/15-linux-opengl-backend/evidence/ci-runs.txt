@@ -1,0 +1,5 @@
+# Phase 15 hosted-CI record. All hosted CI is deferred to the milestone end (CI deferral 2026-10-27); nothing below was run.
+plan=15-01 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=native-verify run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
+plan=15-01 render_gl platform=x64 api=gl line=deferred (CI deferral 2026-10-27)
+plan=15-01 render_gl platform=x64 api=gles line=deferred (CI deferral 2026-10-27)
+plan=15-01 render_gl platform=arm64 line=deferred (CI deferral 2026-10-27)

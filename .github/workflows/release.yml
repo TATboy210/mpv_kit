@@ -46,7 +46,8 @@ jobs:
             nasm curl ca-certificates xz-utils git patch patchelf binutils \
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
             libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
-            ffmpeg unzip hwdata
+            ffmpeg unzip hwdata \
+            libegl-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri
           pip3 install 'meson==1.9.1' 'cmake==3.31.6'
       - uses: actions/checkout@v5
       - uses: actions/cache@v4
@@ -148,10 +149,20 @@ jobs:
             | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
+          # GLX-01: GL/EGL adds only host libEGL.so.1 (libglvnd) as a NEEDED
+          # entry; x11/wayland must stay off, so no X11/xcb/wayland library may
+          # appear in libmpv's dependencies.
+          objdump -p dist/libmpv-${{ matrix.target }}/lib/libmpv.so.2 \
+            | awk '$1 == "NEEDED" {print "NEEDED " $2}' | tee needed.txt
+          if grep -Eq 'NEEDED (libX11|libxcb|libwayland)' needed.txt; then
+            echo "NEEDED-GL FAIL: X11/xcb/wayland library in libmpv.so.2 dependencies" >&2
+            exit 1
+          fi
       - name: Test the packaged bundle (build prefix hidden)
         run: |
           mv prefix prefix.hidden
           LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
+          LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_gl_smoke gl || [ $? -eq 77 ]
           mv prefix.hidden prefix
       - uses: dart-lang/setup-dart@v1
       - name: Dart tests and format matrix on the packaged bundle

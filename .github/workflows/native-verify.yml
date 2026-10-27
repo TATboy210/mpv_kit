@@ -54,7 +54,8 @@ jobs:
             libavdevice-dev libswscale-dev libswresample-dev \
             libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
-            mesa-vulkan-drivers vulkan-tools zlib1g-dev
+            mesa-vulkan-drivers vulkan-tools zlib1g-dev \
+            libepoxy-dev libegl-mesa0 libgl1-mesa-dri
         # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
         # needs >=7.360.1 — build the pinned stack with deps.sh instead.
       - uses: actions/cache@v4
@@ -69,10 +70,16 @@ jobs:
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
-          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
+          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib \
+            -Dgl=enabled -Degl=enabled -Dplain-gl=enabled
           meson compile -C out
           meson install -C out
           grep -E "vulkan|gl " out/config.h | head -20 || true
+          # GL render API must really be configured on (not just by default).
+          for f in GL EGL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-GL missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-GL ok"
       - name: ABI audit
         run: |
           nm -D --defined-only prefix/lib/libmpv.so.2 | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
@@ -276,7 +283,7 @@ jobs:
         # needs >=7.360.1 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri
       - uses: actions/cache@v4
         id: deps
         with:
@@ -289,9 +296,14 @@ jobs:
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
-          meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib
+          meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib -Dgl=enabled -Degl=enabled -Dplain-gl=enabled
           meson compile -C out
           meson install -C out
+          # GL render API must really be configured on (not just by default).
+          for f in GL EGL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-GL missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-GL ok"
       - name: Native tests under sanitizers (lavapipe)
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig

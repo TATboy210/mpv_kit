@@ -217,3 +217,22 @@ if host_machine.system() == 'windows'
               '--cache-dir=' + meson.current_build_dir() / 'd3d11-shader-cache'],
        timeout: 240, is_parallel: false)
 endif
+
+# --- OpenGL render API (Linux only) ----------------------------------------------
+#
+# Renders a solid red lavfi frame through MPV_RENDER_API_TYPE_OPENGL into a
+# host FBO on a standalone surfaceless EGL context (Mesa llvmpipe on the
+# hosted runners) and reads it back; mpv must report the "gpu" renderer. The
+# other platforms have no EGL in mpv_kit's chain, so nothing is built there.
+# The release and sanitizer jobs run it too. `gl` is desktop OpenGL, `gles`
+# OpenGL ES 3; exit 77 (skipped) only without an EGL surfaceless display or a
+# context of that API. epoxy is required on Linux (a missing package is a
+# configure error, not a silent skip); system include keeps its headers out
+# of warning_level=3/werror.
+if host_machine.system() == 'linux'
+  epoxy = dependency('epoxy', include_type: 'system')
+  gl_smoke = executable('render_gl_smoke', 'render_gl_smoke.c',
+                        dependencies: [mpv, epoxy, vulkan, threads])
+  test('render_gl_smoke', gl_smoke, args: ['gl'], timeout: 60)
+  test('render_gl_smoke_gles', gl_smoke, args: ['gles'], timeout: 60)
+endif
