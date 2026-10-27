@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 14-03-PLAN.md (feat release gate deferred)
-last_updated: "2026-10-27T12:00:50.094Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-10-27T12:16:58.399Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 14 execution started
-state_head: 378983fcdbf6120081e1219b4c67d8d6ca88a6d1
+state_head: 15c13c4d61d8a1500523fa6ba1ef88c0f1ac6352
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 17
+  completed_plans: 18
   percent: 17
 ---
 
@@ -111,6 +111,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 13 P02 | 14min | 2 tasks | 3 files |
 | Phase 14 P02 | 70min | 2 tasks | 12 files |
 | Phase 14 P03 | 3h | 2 tasks | 8 files |
+| Phase 13 P03 | ~100min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,7 @@ Recent decisions affecting current work:
 - [Phase 13]: 13-02: ADR 0005 (proposed) keeps MoltenVK to IOSurface as the macOS route; ADR 0004 Decision 3 gains optional via carrier suffix, first-token api parsing unchanged
 - [Phase 14]: 14-02: PickDevice reason split with device names (decision A); frozen harness/vk.txt re-frozen as golden-freeze-14.sha256; known limitation: multi-Vulkan-device dev hosts mismatch the device-not-shareable golden
 - [Phase 14]: 14-03: pe_audit --forbid-angle (imports + ASCII/UTF-16LE byte scan) proven red by synthetic PE samples, wired into verify libmpv, plugin DLL and every bundle DLL; D3D-02 requirements-partial, feat release gate deferred (CI deferral decision)
+- [Phase 13]: 13-03: macOS route probe compares HEAD vs 3a5f450 plugin on one runner via toImage (0.02/4.0) and an IOSurface debugFrameProbe (robust bounds 0.01/0.5); all hosted-CI gates deferred by user decision, MAC-02 stays partial
 
 ### CI Deferral
 
@@ -277,8 +279,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T12:00:21.873Z
-Stopped at: Completed 14-03-PLAN.md (feat release gate deferred)
+Last session: 2026-10-27T12:16:57.820Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
