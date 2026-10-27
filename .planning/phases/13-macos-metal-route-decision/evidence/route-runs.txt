@@ -1,3 +1,4 @@
 # ROUTE-* raw lines extracted from gated macos-route runs (13-05 summarises them).
 # ci-gate: deferred (user decision 2026-10-27). No macos-route run exists yet, so no ROUTE-* line has been recorded;
 # append lines here as `run=<id> sha=<sha> <line>` after the deferred CI gate has run.
+# Task 3 additions expected after the deferred CI gate: ROUTE-FRAME (both trees), ROUTE-FRAME-PARITY, ROUTE-SC2, and `unarmed run=<id> sha=<sha> ` INTEGRATION / INTEGRATION-SOAK lines from integration-test (macos) on the same SHA (indirect evidence that the unarmed path is unchanged).

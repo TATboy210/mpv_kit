@@ -5,6 +5,13 @@ Compares the final ROUTE-PIXEL reading of the HEAD plugin with the one of the
 pre-Phase-12 plugin (3a5f450), both measured by `macos_route_test.dart` on the
 same runner, with the same libmpv, Flutter SDK and test file.
 
+Two channels, then one conclusion:
+  ROUTE-PARITY        RepaintBoundary.toImage reading (tolerance based)
+  ROUTE-FRAME-PARITY  IOSurface frame statistics from the plugin's diagnostic
+                      probe (robust non-black bounds only)
+  ROUTE-SC2           pixel=proven channel=toImage|iosurface, or
+                      pixel=not-achieved (a conclusion, not a failure)
+
 Usage (repo root):
   python tools/check_route_probe.py HEAD_LOG PRE12_LOG
   python tools/check_route_probe.py --self-test
@@ -22,6 +29,18 @@ import sys
 # tolerance needs the observed values and a user decision on record).
 PARITY_MAX_NONBLACK_DELTA = 0.02
 PARITY_MAX_MEAN_DELTA = 4.0
+
+# Robust bounds of the IOSurface frame channel. A frame below the minimum is
+# black; from the robust bound up it is plainly bright. A paused testsrc2
+# frame has nearly every pixel non-black (ratio about 1.0) and a black frame
+# is about 0, so 0.5 leaves a wide margin: even a reading that mixes in part
+# of another frame (both are the same paused picture) cannot cross it.
+# Statistics read after the probe is armed may be torn, so they are only an
+# approximate non-black call, never an exact value. The toImage tolerances
+# above are unaffected: that channel reads the composited result and does not
+# go through the buffer the probe keeps.
+FRAME_MIN_NONBLACK = 0.01
+FRAME_ROBUST_NONBLACK = 0.5
 
 TEXTURE_VISIBLE = "texture-visible"
 INDETERMINATE = "indeterminate"
@@ -116,14 +135,113 @@ def compare_pixel(head_text, pre12_text):
     return ok, line
 
 
+def final_frame_record(text, tree):
+    """The single ROUTE-FRAME record of `tree`, or (None, reason)."""
+    records = []
+    for line in text.splitlines():
+        record = raw_json_after(line, "ROUTE-FRAME")
+        if record is not None:
+            records.append(record)
+    if not records:
+        return None, f"missing ROUTE-FRAME in the {tree} log"
+    if len(records) > 1:
+        return None, f"{len(records)} ROUTE-FRAME records in the {tree} log"
+    if records[0].get("tree") != tree:
+        return None, (f"ROUTE-FRAME of the {tree} log has "
+                      f"tree={records[0].get('tree')!r}")
+    return records[0], None
+
+
+def flag(value):
+    """JSON-style boolean text (`true` / `false`) for verdict lines."""
+    return "true" if value else "false"
+
+
+def frame_label(record):
+    """`captured/<nonBlackRatio>` for a captured frame, else `none`."""
+    if not record.get("captured"):
+        return "none"
+    return f"captured/{record.get('nonBlackRatio')}"
+
+
+def frame_verdict(head_text, pre12_text):
+    """Returns (ok, line, informative, blind_reason) for the IOSurface channel.
+
+    Only two robust bounds decide, never the exact numbers: a frame is black
+    below FRAME_MIN_NONBLACK and plainly bright from FRAME_ROBUST_NONBLACK.
+    The nonBlackRatio / mean deltas are printed for the record but do not
+    take part in the verdict, because statistics read after the probe is
+    armed may be torn and are only good for a non-black / approximate call.
+    """
+    head, why = final_frame_record(head_text, "head")
+    if head is None:
+        return False, f"ROUTE-FRAME-PARITY FAIL {why}", False, None
+    pre12, why = final_frame_record(pre12_text, "pre12")
+    if pre12 is None:
+        return False, f"ROUTE-FRAME-PARITY FAIL {why}", False, None
+    if not (head.get("supported") is True and pre12.get("supported") is True):
+        return (False, "ROUTE-FRAME-PARITY FAIL supported "
+                f"head={flag(head.get('supported'))} "
+                f"pre12={flag(pre12.get('supported'))}", False, None)
+    head_cap = head.get("captured") is True
+    pre12_cap = pre12.get("captured") is True
+    if head_cap != pre12_cap:
+        return (False, "ROUTE-FRAME-PARITY FAIL captured "
+                f"head={flag(head_cap)} pre12={flag(pre12_cap)}", False, None)
+    if not head_cap:
+        return (True, "ROUTE-FRAME-PARITY ok head=none pre12=none "
+                "informative=no dNonBlack=n/a dMeanMax=n/a", False,
+                "probe-channels-blind")
+    head_nb = head.get("nonBlackRatio")
+    pre12_nb = pre12.get("nonBlackRatio")
+    try:
+        d_non_black = abs(head_nb - pre12_nb)
+        d_mean_max = max(abs(head[k] - pre12[k]) for k in MEAN_KEYS)
+    except (KeyError, TypeError):
+        return (False, "ROUTE-FRAME-PARITY FAIL statistics missing from a "
+                "captured ROUTE-FRAME", False, None)
+    deltas = f"dNonBlack={fmt(d_non_black)} dMeanMax={fmt(d_mean_max)}"
+    labels = f"head={frame_label(head)} pre12={frame_label(pre12)}"
+    if head_nb >= FRAME_ROBUST_NONBLACK and pre12_nb >= FRAME_ROBUST_NONBLACK:
+        return (True, f"ROUTE-FRAME-PARITY ok {labels} informative=yes "
+                f"{deltas}", True, None)
+    if head_nb < FRAME_MIN_NONBLACK and pre12_nb < FRAME_MIN_NONBLACK:
+        return (True, f"ROUTE-FRAME-PARITY ok {labels} informative=no "
+                f"{deltas}", False, "frames-black")
+    # One tree black and the other bright, or a frame in between: a partly
+    # black frame cannot support a conclusion either way.
+    return (False, f"ROUTE-FRAME-PARITY FAIL nonblack head={head_nb} "
+            f"pre12={pre12_nb}", False, None)
+
+
+def sc2_line(pixel_informative, frame_informative, blind_reason):
+    """The one-line SC2 pixel conclusion."""
+    if pixel_informative:
+        return "ROUTE-SC2 pixel=proven channel=toImage"
+    if frame_informative:
+        # Proves the frame handed to Flutter; how the compositor samples it
+        # is still not observed.
+        return "ROUTE-SC2 pixel=proven channel=iosurface"
+    reason = blind_reason or "probe-channels-blind"
+    return f"ROUTE-SC2 pixel=not-achieved reason={reason}"
+
+
 def evaluate(head_text, pre12_text):
     """Returns (exit code, output lines) for one pair of logs.
 
-    RED stub: only the toImage channel exists, there is no ROUTE-FRAME
-    parsing and no ROUTE-SC2 summary yet.
+    Any parity FAIL gives exit 1 and no ROUTE-SC2 line. `pixel=not-achieved`
+    is a conclusion, not a failure: it exits 0 and is for 13-05 / 13-06 to
+    hand to the user.
     """
-    ok, line = compare_pixel(head_text, pre12_text)
-    return (0 if ok else 1), [line]
+    pixel_ok, pixel_text, pixel_informative = pixel_verdict(
+        head_text, pre12_text)
+    frame_ok, frame_text, frame_informative, blind = frame_verdict(
+        head_text, pre12_text)
+    lines = [pixel_text, frame_text]
+    if not (pixel_ok and frame_ok):
+        return 1, lines
+    lines.append(sc2_line(pixel_informative, frame_informative, blind))
+    return 0, lines
 
 
 def pixel_line(tree, read, final, visibility, tex=None):
@@ -209,8 +327,8 @@ def pixel_pair(head_vis, pre12_vis, head_frame, pre12_frame, tex=None):
 CASES = [
     # --- cases 1-6: toImage channel ---
     ("visible-identical", [(
-        log_of("head", VISIBLE_TEXT, STATS),
-        log_of("pre12", VISIBLE_TEXT, STATS), 0,
+        log_of("head", VISIBLE_TEXT, STATS, frame=BRIGHT),
+        log_of("pre12", VISIBLE_TEXT, STATS, frame=BRIGHT), 0,
         ["ROUTE-PARITY ok head=texture-visible pre12=texture-visible "
          "informative=yes"])]),
     ("black-vs-visible", [(
@@ -219,7 +337,8 @@ CASES = [
         ["ROUTE-PARITY FAIL visibility head=texture-composited-black "
          "pre12=texture-visible"])]),
     ("not-composited-both", [(
-        log_of("head", NOT_COMPOSITED), log_of("pre12", NOT_COMPOSITED), 0,
+        log_of("head", NOT_COMPOSITED, frame=BRIGHT),
+        log_of("pre12", NOT_COMPOSITED, frame=BRIGHT), 0,
         ["ROUTE-PARITY ok head=texture-not-composited "
          "pre12=texture-not-composited informative=no"])]),
     ("missing-final", [(

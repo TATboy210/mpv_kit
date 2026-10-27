@@ -16,6 +16,12 @@
 //                   "defaultHwdec"}
 //   ROUTE-PIXEL {"tree","read","final","visibility","texture","control",
 //                "background","image"}
+//   ROUTE-FRAME {"tree","supported","captured","format","width","height",
+//                "nonBlackRatio","meanR","meanG","meanB"}
+//     (second channel: statistics of the IOSurface frame the plugin handed
+//     to Flutter, read through the plugin's diagnostic `debugFrameProbe`;
+//     statistics read after the probe is armed may be torn, so they only
+//     support a non-black / approximate call)
 //
 // Configuration goes through --dart-define only (environment variables do
 // not reliably reach a sandboxed app):
@@ -37,6 +43,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -237,12 +244,66 @@ void _printIdentity(_RouteSession session) {
   );
 }
 
+/// The plugin's method channel; only the diagnostic method is used here.
+const _channel = MethodChannel('mpv_kit_video');
+
+/// Calls the plugin's `debugFrameProbe`. A missing method means the plugin of
+/// this tree has no frame probe: the line is printed (supported=false) and
+/// the test fails, because both trees must offer the second channel (HEAD
+/// carries it, the pre-Phase-12 tree gets tools/macos_frame_probe.patch).
+Future<Map<String, Object?>?> _frameProbe(
+  _RouteSession session, {
+  required bool arm,
+}) async {
+  try {
+    return await _channel.invokeMapMethod<String, Object?>('debugFrameProbe', {
+      'textureId': session.controller.textureId,
+      'arm': arm,
+    });
+  } on MissingPluginException {
+    print('ROUTE-FRAME ${jsonEncode(_frameRecord(methodMissing: true))}');
+    fail('debugFrameProbe is not implemented by the plugin of tree "$_tree"');
+  }
+}
+
+/// Rounds doubles to 4 decimals so the printed lines stay short.
+Object? _roundStat(Object? value) =>
+    value is double ? double.parse(value.toStringAsFixed(4)) : value;
+
+/// The ROUTE-FRAME record. `captured` means the plugin had kept a frame and
+/// could read it; `supported` is false when the method is missing or the
+/// kept frame has a pixel format the probe does not read.
+Map<String, Object?> _frameRecord({
+  Map<String, Object?>? stats,
+  bool methodMissing = false,
+}) {
+  final supported =
+      !methodMissing && (stats == null || stats['supported'] == true);
+  final captured = supported && stats != null;
+  Object? field(String key) => captured ? _roundStat(stats[key]) : null;
+  return {
+    'tree': _tree,
+    'supported': supported,
+    'captured': captured,
+    'format': field('format'),
+    'width': field('width'),
+    'height': field('height'),
+    'nonBlackRatio': field('nonBlackRatio'),
+    'meanR': field('meanR'),
+    'meanG': field('meanG'),
+    'meanB': field('meanB'),
+  };
+}
+
 /// Pixel section: opens the paused source, waits until the decoder and the
 /// renderer agree on 640x360, then reads the probe tree [_pixelReads] times,
 /// [_readGap] apart, printing one ROUTE-PIXEL line per read.
 Future<void> _pixelSection(_RouteSession session) async {
   final controller = session.controller;
   final player = session.player;
+  // Arm the second channel before the texture is mounted, so the plugin
+  // keeps the first frame the compositor takes and every one after it.
+  await _frameProbe(session, arm: true);
   session.texture.value = controller.textureId;
   await _nextFrame();
 
@@ -287,6 +348,11 @@ Future<void> _pixelSection(_RouteSession session) async {
       'ROUTE-PIXEL ${jsonEncode({'tree': _tree, 'read': read, 'final': read == _pixelReads, 'visibility': result.visibility, 'texture': result.texture?.toJson(), 'control': result.control?.toJson(), 'background': result.background?.toJson(), 'image': result.image})}',
     );
   }
+  // Second channel: statistics of the frame the compositor holds now. They
+  // may be torn (armed reads are approximate), so the verdict script only
+  // uses robust non-black bounds.
+  final stats = await _frameProbe(session, arm: false);
+  print('ROUTE-FRAME ${jsonEncode(_frameRecord(stats: stats))}');
   // A control or background that is not visible means the probe channel
   // itself failed; that must never pass as a measurement.
   expect(

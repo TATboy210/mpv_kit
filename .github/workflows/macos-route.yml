@@ -49,6 +49,13 @@ jobs:
         # produce a verdict.
         shell: bash
         run: python3 tools/check_route_probe.py --self-test
+      - name: Frame probe patch matches HEAD
+        # The patch is the diagnostic method only. Reverse-applying it to HEAD
+        # proves HEAD's plugin contains exactly this patch, so the
+        # pre-Phase-12 tree below gets the same second channel and nothing
+        # else.
+        shell: bash
+        run: git apply --reverse --check tools/macos_frame_probe.patch
       - name: Route probe (HEAD plugin)
         # `flutter test -d macos` builds the example, which makes the
         # mpv_kit_libs hook download the pinned bundle. No libmpv path
@@ -74,6 +81,8 @@ jobs:
           cp example/integration_test/macos_route_test.dart \
              example/integration_test/macos_route_probe.dart \
              "$RUNNER_TEMP/pre12/example/integration_test/"
+          # The only change to the old plugin: the diagnostic frame probe.
+          git -C "$RUNNER_TEMP/pre12" apply "$GITHUB_WORKSPACE/tools/macos_frame_probe.patch"
           cd "$RUNNER_TEMP/pre12"
           flutter pub get
           cd example

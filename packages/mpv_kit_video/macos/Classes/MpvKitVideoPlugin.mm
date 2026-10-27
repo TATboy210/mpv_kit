@@ -11,6 +11,8 @@
 //   setSize {textureId: int, width: int, height: int}
 //   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
+//   debugFrameProbe {textureId: int, arm: bool}: macOS-only diagnostic
+//           method, not part of the Dart public API (Phase 13 route probe).
 // Native -> Dart:
 //   event   {textureId: int, kind: String, message: String}
 #import "MpvKitVideoPlugin.h"
@@ -37,6 +39,8 @@ using mpv_kit::VideoRenderer;
                        renderer:(std::unique_ptr<VideoRenderer>)renderer;
 - (VideoRenderer*)renderer;
 - (void)shutdown;
+- (void)armFrameProbe;
+- (NSDictionary*)readFrameProbe;
 @end
 
 @implementation MpvKitTexture {
@@ -49,6 +53,10 @@ using mpv_kit::VideoRenderer;
   int _swPoolWidth, _swPoolHeight;
   CVPixelBufferRef _swBuffer;
   int _swFrame;
+  // Diagnostic frame probe (debugFrameProbe). Both fields are guarded by
+  // _mutex. Unarmed, the only cost in copyPixelBuffer is one bool test.
+  bool _probeArmed;
+  CVPixelBufferRef _probeBuffer;
 }
 
 - (instancetype)initWithInterop:(std::unique_ptr<MetalInterop>)interop
@@ -61,6 +69,8 @@ using mpv_kit::VideoRenderer;
     _swPoolWidth = _swPoolHeight = 0;
     _swBuffer = nullptr;
     _swFrame = -1;
+    _probeArmed = false;
+    _probeBuffer = nullptr;
   }
   return self;
 }
@@ -80,6 +90,10 @@ using mpv_kit::VideoRenderer;
     std::lock_guard<std::mutex> lock(_mutex);
     if (_dead) return;
     _dead = true;
+    // The probe's extra reference must not outlive the texture.
+    _probeArmed = false;
+    if (_probeBuffer) CVPixelBufferRelease(_probeBuffer);
+    _probeBuffer = nullptr;
   }
   _renderer.reset();  // joins the render thread, frees the image ring
   _interop.reset();
@@ -94,12 +108,21 @@ using mpv_kit::VideoRenderer;
   std::lock_guard<std::mutex> lock(_mutex);
   if (_dead) return nullptr;
   const Frame f = _renderer->AcquireFront();
+  CVPixelBufferRef out = nullptr;
   if (_renderer->backend() == Backend::kVulkan) {
     // Already retained for us in AcquireFront (MetalInterop::RetainFrame).
-    return static_cast<CVPixelBufferRef>(f.platform);
+    out = static_cast<CVPixelBufferRef>(f.platform);
+  } else if (f.pixels) {
+    out = [self copySoftwareFrame:f];
   }
-  if (!f.pixels) return nullptr;
-  return [self copySoftwareFrame:f];
+  if (out && _probeArmed) {
+    // Diagnostic only: keep one extra reference to the latest buffer handed
+    // to Flutter, replacing the previous one (readFrameProbe consumes it).
+    CVPixelBufferRetain(out);
+    if (_probeBuffer) CVPixelBufferRelease(_probeBuffer);
+    _probeBuffer = out;
+  }
+  return out;
 }
 
 - (CVPixelBufferRef)copySoftwareFrame:(const Frame&)f {
@@ -142,6 +165,92 @@ using mpv_kit::VideoRenderer;
   _swBuffer = CVPixelBufferRetain(pb);  // ours; the +1 from the pool is Flutter's
   _swFrame = f.index;
   return pb;
+}
+
+// --- Diagnostic frame probe (Phase 13 route probe) ----------------------
+//
+// Reads whole-frame statistics of the buffer copyPixelBuffer last handed to
+// Flutter, through a path that does not depend on RepaintBoundary.toImage
+// (which may not see external textures). Only aggregate numbers leave the
+// plugin, never pixels.
+//
+// Why this normally does not tear: every copyPixelBuffer replaces
+// _probeBuffer with the buffer it hands out, and a read holds _mutex, which
+// excludes copyPixelBuffer. So at read time _probeBuffer is the buffer from
+// the latest AcquireFront, the one the compositor currently holds (in use or
+// a retired front); by the rules in video_renderer.h the renderer does not
+// write it. The software path hands out copySoftwareFrame's pool buffer,
+// which the renderer never writes at all.
+//
+// Why the result is still treated as possibly torn: quarantine rotates by
+// acquisition count and does not look at reference counts, so the extra
+// reference held here does not stop the renderer from reusing the same
+// IOSurface in a later rotation. Nothing proves every read lands inside the
+// window described above. The statistics read after arming may therefore be
+// torn: they are good for a non-black / approximate call only, never as
+// exact values.
+
+/// Starts keeping the latest frame handed to Flutter.
+- (void)armFrameProbe {
+  std::lock_guard<std::mutex> lock(_mutex);
+  if (_dead) return;
+  if (_probeBuffer) CVPixelBufferRelease(_probeBuffer);
+  _probeBuffer = nullptr;
+  _probeArmed = true;
+}
+
+/// Consumes the kept frame: returns its statistics (nil when no frame was
+/// kept) and disarms. A single full-frame pass under the lock, about 1 ms
+/// for 640x360.
+- (NSDictionary*)readFrameProbe {
+  std::lock_guard<std::mutex> lock(_mutex);
+  CVPixelBufferRef pb = _probeBuffer;
+  _probeBuffer = nullptr;
+  _probeArmed = false;
+  if (_dead || !pb) {
+    if (pb) CVPixelBufferRelease(pb);
+    return nil;
+  }
+  NSDictionary* result = nil;
+  if (CVPixelBufferGetPixelFormatType(pb) != kCVPixelFormatType_32BGRA) {
+    result = @{@"supported" : @NO, @"reason" : @"pixel format"};
+  } else {
+    const size_t width = CVPixelBufferGetWidth(pb);
+    const size_t height = CVPixelBufferGetHeight(pb);
+    CVPixelBufferLockBaseAddress(pb, kCVPixelBufferLock_ReadOnly);
+    const auto* base = static_cast<const uint8_t*>(CVPixelBufferGetBaseAddress(pb));
+    const size_t stride = CVPixelBufferGetBytesPerRow(pb);
+    double sumR = 0, sumG = 0, sumB = 0;
+    size_t nonBlack = 0;
+    if (base) {
+      for (size_t y = 0; y < height; y++) {
+        const uint8_t* px = base + y * stride;
+        for (size_t x = 0; x < width; x++, px += 4) {
+          // BGRA byte order. Non-black: any channel above 8, the same rule
+          // as the Dart probe.
+          const uint8_t b = px[0], g = px[1], r = px[2];
+          if (r > 8 || g > 8 || b > 8) nonBlack++;
+          sumR += r;
+          sumG += g;
+          sumB += b;
+        }
+      }
+    }
+    CVPixelBufferUnlockBaseAddress(pb, kCVPixelBufferLock_ReadOnly);
+    const double pixels = double(width) * double(height);
+    result = @{
+      @"supported" : @(base != nullptr),
+      @"width" : @(width),
+      @"height" : @(height),
+      @"format" : @"32BGRA",
+      @"nonBlackRatio" : @(pixels > 0 ? double(nonBlack) / pixels : 0.0),
+      @"meanR" : @(pixels > 0 ? sumR / pixels : 0.0),
+      @"meanG" : @(pixels > 0 ? sumG / pixels : 0.0),
+      @"meanB" : @(pixels > 0 ? sumB / pixels : 0.0),
+    };
+  }
+  CVPixelBufferRelease(pb);
+  return result;
 }
 
 @end
@@ -192,6 +301,16 @@ using mpv_kit::VideoRenderer;
         p ? std::vector<uint8_t>(bytes, bytes + p.data.length)
           : std::vector<uint8_t>());
     result(nil);
+  } else if ([call.method isEqualToString:@"debugFrameProbe"]) {
+    // Diagnostic only (Phase 13 route probe): arm keeps the latest frame
+    // handed to Flutter, the next call without arm returns its aggregate
+    // statistics (or null when no frame was kept) and disarms.
+    if ([args[@"arm"] boolValue]) {
+      [texture armFrameProbe];
+      result(@{@"armed" : @YES});
+    } else {
+      result([texture readFrameProbe]);  // nil reaches Dart as null
+    }
   } else if ([call.method isEqualToString:@"dispose"]) {
     [_instances removeObjectForKey:textureId];
     [texture shutdown];
