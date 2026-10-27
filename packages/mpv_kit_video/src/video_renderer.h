@@ -33,8 +33,9 @@ RendererChoice ParseRendererChoice(const std::string& name);
 ///   render_error a frame failed; retried with backoff (message: reason)
 ///   recovered    rendering works again after render_error
 ///   gpu_timeout  the GPU did not finish a frame within 1 s
-///   device_lost  Vulkan device lost: rendering stopped for good; recreate
-///                the controller (e.g. with the software renderer)
+///   device_lost  GPU device lost (Vulkan or D3D11): rendering stopped for
+///                good; recreate the controller (e.g. with the software
+///                renderer)
 using EventFn = std::function<void(const char* kind, const std::string& msg)>;
 
 /// Shared frame description handed to the platform texture.

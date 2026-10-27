@@ -250,6 +250,35 @@ Dart sees `MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy).
   `D3D11_QUERY_EVENT` instead. A debug plugin build reads
   `MPV_KIT_D3D11_SYNC=query` to force the query path; release builds never
   read it.
+* **Device removal (D3D-07).** Every `Wait` first asks one function for the
+  removal reason (`GetDeviceRemovedReason()`); a failing `HRESULT`, a fence
+  completed value of `UINT64_MAX` and a query whose `GetData` reports
+  `DXGI_ERROR_DEVICE_REMOVED`/`RESET` all become `WaitResult::kDeviceLost`.
+  The engine turns that into exactly one `device_lost` event, stops
+  drawing (frames are only skipped) and logs
+  `mpv_kit: d3d11 device lost; video rendering stopped (...)`. The
+  controller reports `isBroken`; the Player stays usable and a software
+  controller can be created on it. A failing d3d11 device creation is a
+  `d3d11/<renderer> unavailable: <why>` trail on both d3d11 candidates and
+  the chain continues (ADR 0004).
+* **Failure injection (debug builds only).** `MPV_KIT_D3D11_INJECT=create-fail`
+  makes device creation fail with `DXGI_ERROR_UNSUPPORTED`
+  (`... 0x887A0004 (injected)` in the trail), and
+  `MPV_KIT_D3D11_INJECT=device-removed:<n>` makes the removal reason
+  `DXGI_ERROR_DEVICE_REMOVED` after `n` rendered frames. Only the `HRESULT`
+  source is replaced; the mapping above is the real one, and no real TDR is
+  induced (it cannot be triggered on demand without resetting every device,
+  Flutter's included). Both names are compiled only without `NDEBUG`, so a
+  release plugin does not contain them. `example/integration_test/
+  d3d11_device_lost_test.dart` runs both modes.
+* **Chain golden.** `native/tests/video_renderer_chain_test.cc` (golden
+  `native/tests/golden/chain.txt`, every platform and the sanitizers) drives
+  the engine with fake `d3d11` and `vulkan` backends behind
+  `Interop::CreateBackend`: interleaved candidate order, device-failure
+  trails and propagation (one device initialisation per api), forced
+  `MPV_KIT_VIDEO_API=d3d11` without fallback, and one `device_lost` event
+  with no draw afterwards. The real fallback from d3d11 to Vulkan on
+  hardware is proved separately (14-11).
 * **Threads.** The immediate context is used on the render thread only
   (mpv renders with it and does not restore its state); the raster thread's
   descriptor callback reads the cached shared handle.

@@ -666,8 +666,10 @@ void VideoRenderer::OnRenderResult(RenderResult result,
   }
   if (result == RenderResult::kDeviceLost) {
     device_lost_ = true;
-    log_("mpv_kit: Vulkan device lost; video rendering stopped (" + error +
-         ")");
+    // The api's wire name (vulkan, d3d11, ...): the lost device is not
+    // necessarily a Vulkan one.
+    log_(std::string("mpv_kit: ") + render_backend_->wire_name() +
+         " device lost; video rendering stopped (" + error + ")");
     Emit("device_lost", error);
     return;
   }

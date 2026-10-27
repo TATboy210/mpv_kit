@@ -71,9 +71,9 @@ enum MpvVideoEventKind {
   /// Rendering works again after [renderError] / [gpuTimeout].
   recovered,
 
-  /// The Vulkan device was lost: this controller renders nothing anymore.
-  /// Dispose it and create a new one (for example with
-  /// [MpvVideoRenderer.software]).
+  /// The GPU device was lost (the API is the first token of the controller's
+  /// reason): this controller renders nothing anymore. Dispose it and create
+  /// a new one (for example with [MpvVideoRenderer.software]).
   deviceLost,
 
   /// Dart-side warning: rendering fell back to software ([reason] says
