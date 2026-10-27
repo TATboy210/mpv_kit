@@ -303,3 +303,49 @@ None. No external service configuration is required.
 ---
 *Phase: 12-renderbackend-seam*
 *Completed: 2026-10-27*
+
+## Follow-up: code review CR-01
+
+**Decision.** The code review (`12-REVIEW.md`, ae5c286) found one blocker, CR-01: the software path frees retired pixels that the last `AcquireFront()` handed to the compositor. The user's reply, verbatim: **"a"**. That means: fix CR-01 now, with the same discipline as the earlier fixes, and send the WARNING and INFO findings to a todo.
+
+**Commits** (plan_head_before `ae5c2867a063fd5d9c1449049c9ec3954dc2e9e6`):
+
+| Step | Commit | Content |
+|---|---|---|
+| RED | `2b15969` | New `native/tests/video_renderer_sw_hold_front_test.cc` and its meson registration (test only). The frozen harness and goldens are unchanged. |
+| RED evidence | `84e0952` | `evidence/red-local-12-review-cr01.log` and the `red_local` line |
+| GREEN | `025bdad` | `SoftwareBackend` keeps the generation retired by the previous reallocation for one more reallocation (`older_`), and `FreeRetired()` drops both. `render_backend.h` now states each backend's real release rule (WR-01). |
+| Docs | this commit | ledger lines, follow-up todo, `12-REVIEW-DISPOSITION.md`, this section |
+
+**The test.** It holds the frame of the last `AcquireFront()` the way a compositor does. It watches that frame's heap block through the binary's own global `operator new`/`delete`. The pixels are read only while the block is known to be alive, so the test needs no sanitizer and never reads freed memory. It has three scenarios:
+- resize, failed render, resize;
+- two resizes before an acquire;
+- the retired front held across two resizes.
+
+**RED** (local, on 2b15969 with a clean tree, MSVC):
+- `HOLD invariant scenario=sw-hold-retire-twice: USE AFTER FREE: frame index=-2 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)` (log line 11).
+- The other two scenarios fail the same way, and the binary exits 1.
+- affinity_test, api_test and all seven goldens were OK on the same build.
+
+**GREEN, local:**
+- `HOLD ok scenarios=3`, with every renderer test OK in three runs;
+- clang front end `TIDY rc=0`;
+- `CONSTANTS ok`;
+- golden freeze 5/5.
+
+**GREEN, CI gate** on `025bdad`: native-verify `40442377807` and flutter-plugin `40442377813`, attempt 1, CI-GATE-ok gate_rc=0.
+- All jobs succeeded.
+- `video_renderer_sw_hold_front_test` was OK on linux x64 and arm64, macos-15, windows-2025, windows-11-arm and sanitizers.
+- The final-HEAD expectations still hold (windows golden_vk family OK-or-SKIP).
+- INTEGRATION-SOAK passed on all three platforms.
+- There was no infra rerun, and the macOS vk-gpu-timeout flake did not appear.
+
+**RTX 4060:** `real_plugin_test` passed (`All tests passed!`, `vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU`). GPU load before the run was 2%, and no game appeared in the GPU process list.
+
+**Deferred:**
+- WR-02 through WR-06, IN-01 through IN-06, and the three UI-review warnings;
+- two residuals found during the fix:
+  - CR-01-R1: a frame from three generations back is still freed early, and fixing that needs a seam decision;
+  - CR-01-R2: after resize, failed render, resize, the two retired generations are held until the next resize.
+
+All of these are in `.planning/todos/pending/2026-10-27-phase-12-code-review-followups.md`. `12-REVIEW-DISPOSITION.md` has one row per finding.
