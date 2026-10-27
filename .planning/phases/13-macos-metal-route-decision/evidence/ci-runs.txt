@@ -1,0 +1,11 @@
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+# note: the first native-verify line above has an empty conclusion because the first gate invocation read it while the linux (ubuntu-24.04) job was still running (gh run watch returned early); ci_gate.sh now polls status until completed. The repeated lines are further gate invocations on the same finished runs (a transient gh log download EOF, then a ci_gate.sh --log loop bug fixed in this plan). No workflow was rerun: attempt 1 only, both runs concluded success.

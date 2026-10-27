@@ -110,6 +110,13 @@ watch_run() {
   # --exit-status only shortens the wait on failure; the verdict comes from
   # the conclusion read afterwards.
   gh run watch "$1" --exit-status --interval "$POLL_SECONDS" >/dev/null 2>&1 || true
+  # `gh run watch` can return early (dropped connection) while the run is
+  # still in progress; an empty conclusion must never be judged. Poll the
+  # status until completed (at most 90 x 30 s = 45 minutes).
+  for _ in $(seq 1 90); do
+    [ "$(gh run view "$1" --json status --jq .status)" = completed ] && break
+    sleep "$POLL_SECONDS"
+  done
   gh run view "$1" --json conclusion --jq .conclusion
 }
 
@@ -172,7 +179,7 @@ if [ ${#log_jobs[@]} -gt 0 ] || [ ${#absent_jobs[@]} -gt 0 ]; then
     gh run view "$id" --log >> "$WORK/log.txt"
   done
   cut -f1 "$WORK/log.txt" | sort -u > "$WORK/log_jobs"
-  for i in ${!log_jobs[@]+"${!log_jobs[@]}"}; do
+  for ((i = 0; i < ${#log_jobs[@]}; i++)); do
     jre=${log_jobs[$i]}
     lre=${log_lines[$i]}
     hit=0
@@ -192,7 +199,7 @@ fi
 
 # --log-absent: some job matches JRE, and no matching job has a line
 # matching LRE. Every job's log was gathered above (log_jobs file).
-for i in ${!absent_jobs[@]+"${!absent_jobs[@]}"}; do
+for ((i = 0; i < ${#absent_jobs[@]}; i++)); do
   jre=${absent_jobs[$i]}
   lre=${absent_lines[$i]}
   grep -E -- "$jre" "$WORK/log_jobs" > "$WORK/absent_match" || true
