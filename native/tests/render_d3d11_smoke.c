@@ -15,7 +15,15 @@
 // hosted runners included, has at least the Basic Render Driver, so a skip on
 // CI is a failure of the gate (which requires the OK line).
 //
-// Arguments: [gpu-next|gpu]  the renderer (default gpu-next).
+// Arguments: [gpu-next|gpu] [--cache-dir=<dir>]
+//   renderer     the renderer to use (default gpu-next).
+//   --cache-dir  persistent shader cache test (gpu-next only): mpv and the
+//                device are created twice in a row on the same cache
+//                directory. The first run must write at least one shader_*
+//                file (the compiled DXBC); the second must write no new file
+//                and log at least one cache_load_obj with a non-zero size.
+//                D3DCompile is slow, so a persistent cache that does not hit
+//                is a stutter on every start.
 
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
@@ -27,6 +35,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <mpv/client.h>
@@ -55,6 +64,11 @@
 #define CHANNEL_LOW 64
 #define BLACK_MAX 8
 #define MIN_NON_BLACK_RATIO 0.99
+
+// Shader cache files are shader_<16 hex digits> (vo_gpu_next.c).
+#define CACHE_FILE_PATTERN "shader_*"
+#define MAX_CACHE_FILES 512
+#define PATH_MAX_LEN 1024
 
 // Progress markers go to unbuffered stderr so CI logs show how far we got
 // even if a driver aborts the process.
@@ -182,8 +196,12 @@ static int check_pixels(const D3D11_MAPPED_SUBRESOURCE *m)
 }
 
 // Everything between device and teardown for one renderer. The render
-// context is always freed before mpv, and both before the device.
-static int run(const char *renderer)
+// context is always freed before mpv, and both before the device. With a
+// cache_dir the persistent shader cache is on and mpv logs at debug level to
+// log_path; otherwise the cache is off. first_frame_ms receives the time from
+// loadfile to the first frame being ready (informational).
+static int run(const char *renderer, const char *cache_dir,
+               const char *log_path, double *first_frame_ms)
 {
     Device dev = {0};
     step("create device");
@@ -230,8 +248,16 @@ static int run(const char *renderer)
     mpv_set_option_string(mpv, "msg-level", "all=warn,vo=v");
     // The hosted layer only proves the rendering path, not decoding on a GPU.
     mpv_set_option_string(mpv, "hwdec", "no");
-    // Keep the user's cache directory out of the test.
-    mpv_set_option_string(mpv, "gpu-shader-cache", "no");
+    if (cache_dir) {
+        mpv_set_option_string(mpv, "gpu-shader-cache", "yes");
+        mpv_set_option_string(mpv, "gpu-shader-cache-dir", cache_dir);
+        // The log file is written at debug level whatever msg-level says,
+        // without the event queue's bound: it is where cache_load_obj shows.
+        mpv_set_option_string(mpv, "log-file", log_path);
+    } else {
+        // Keep the user's cache directory out of the test.
+        mpv_set_option_string(mpv, "gpu-shader-cache", "no");
+    }
     if (mpv_initialize(mpv) < 0)
         FAIL("mpv_initialize");
 
@@ -270,12 +296,12 @@ static int run(const char *renderer)
         "color=c=blue:s=64x32:r=30[bottom];[top][bottom]vstack[out0]",
         NULL,
     };
+    double start = now_ms();
     if (mpv_command(mpv, cmd) < 0)
         FAIL("loadfile");
 
     step("wait for frame");
     bool have_frame = false;
-    double start = now_ms();
     while (!have_frame && now_ms() - start < FRAME_TIMEOUT_MS) {
         mpv_event *ev;
         while ((ev = mpv_wait_event(mpv, 0))->event_id != MPV_EVENT_NONE) {
@@ -288,6 +314,7 @@ static int run(const char *renderer)
     }
     if (!have_frame)
         FAIL("no frame within %d s", FRAME_TIMEOUT_MS / 1000);
+    *first_frame_ms = now_ms() - start;
 
     // A redraw must not wait for a vsync report.
     mpv_d3d11_fbo fbo = { .tex = target };
@@ -323,20 +350,162 @@ static int run(const char *renderer)
     return result;
 }
 
+// --- Persistent shader cache ---------------------------------------------------
+
+typedef struct {
+    char names[MAX_CACHE_FILES][64];
+    int count;
+} FileList;
+
+// Joins dir and name with a backslash into out (PATH_MAX_LEN bytes).
+static bool join_path(char *out, const char *dir, const char *name)
+{
+    int n = snprintf(out, PATH_MAX_LEN, "%s\\%s", dir, name);
+    return n > 0 && n < PATH_MAX_LEN;
+}
+
+// Lists the plain files of dir matching pattern, in the file system's order
+// (sorted on NTFS, so two listings of the same set compare equal).
+static bool list_files(const char *dir, const char *pattern, FileList *out)
+{
+    char glob[PATH_MAX_LEN];
+    out->count = 0;
+    if (!join_path(glob, dir, pattern))
+        return false;
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(glob, &fd);
+    if (h == INVALID_HANDLE_VALUE)
+        return GetLastError() == ERROR_FILE_NOT_FOUND;
+    do {
+        if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
+            out->count >= MAX_CACHE_FILES)
+            continue;
+        snprintf(out->names[out->count++], sizeof(out->names[0]), "%s",
+                 fd.cFileName);
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+    return true;
+}
+
+// Creates dir if needed and removes the plain files in it, so the first run
+// starts without a cache.
+static bool reset_cache_dir(const char *dir)
+{
+    if (!CreateDirectoryA(dir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        return false;
+    static FileList files; // large; keep off the stack
+    if (!list_files(dir, "*", &files))
+        return false;
+    for (int i = 0; i < files.count; i++) {
+        char path[PATH_MAX_LEN];
+        if (!join_path(path, dir, files.names[i]) || !DeleteFileA(path))
+            return false;
+    }
+    return true;
+}
+
+// Number of cache_load_obj lines in the debug log that carry a non-zero
+// size: those are the shaders read back from the cache. Returns -1 when the
+// log cannot be read.
+static int count_cache_hits(const char *log_path)
+{
+    FILE *f = fopen(log_path, "rb");
+    if (!f)
+        return -1;
+    int hits = 0;
+    char line[2048];
+    while (fgets(line, sizeof(line), f)) {
+        if (!strstr(line, "cache_load_obj"))
+            continue;
+        const char *size = strstr(line, "size(");
+        if (size && atol(size + 5) > 0)
+            hits++;
+    }
+    fclose(f);
+    return hits;
+}
+
+static bool same_files(const FileList *a, const FileList *b)
+{
+    if (a->count != b->count)
+        return false;
+    for (int i = 0; i < a->count; i++) {
+        if (strcmp(a->names[i], b->names[i]) != 0)
+            return false;
+    }
+    return true;
+}
+
+// Two complete runs (new device, new mpv) on one cache directory.
+static int run_cache_test(const char *renderer, const char *cache_dir)
+{
+    if (strcmp(renderer, "gpu-next") != 0)
+        FAIL("--cache-dir needs the gpu-next renderer");
+    if (!reset_cache_dir(cache_dir))
+        FAIL("cannot prepare cache directory '%s'", cache_dir);
+
+    char log1[PATH_MAX_LEN], log2[PATH_MAX_LEN];
+    snprintf(log1, sizeof(log1), "%s-pass1.log", cache_dir);
+    snprintf(log2, sizeof(log2), "%s-pass2.log", cache_dir);
+
+    double ms1 = 0, ms2 = 0;
+    step("cache pass 1 (cold)");
+    int result = run(renderer, cache_dir, log1, &ms1);
+    if (result != RESULT_OK)
+        return result;
+
+    static FileList after1, after2; // large; keep off the stack
+    if (!list_files(cache_dir, CACHE_FILE_PATTERN, &after1))
+        FAIL("cannot list '%s'", cache_dir);
+    printf("pass 1 wrote %d cache files\n", after1.count);
+    if (after1.count < 1)
+        FAIL("no cache files written");
+
+    step("cache pass 2 (warm)");
+    result = run(renderer, cache_dir, log2, &ms2);
+    if (result != RESULT_OK)
+        return result;
+
+    if (!list_files(cache_dir, CACHE_FILE_PATTERN, &after2))
+        FAIL("cannot list '%s'", cache_dir);
+    printf("pass 2 left %d cache files\n", after2.count);
+    if (!same_files(&after1, &after2))
+        FAIL("pass 2 wrote new cache entries (%d -> %d files)", after1.count, after2.count);
+
+    int hits = count_cache_hits(log2);
+    printf("pass 2 cache hits (cache_load_obj, size > 0) = %d\n", hits);
+    if (hits < 0)
+        FAIL("cannot read the pass 2 log '%s'", log2);
+    if (hits < 1)
+        FAIL("no cache hits logged");
+
+    // Informational only: the point of the cache is the second start.
+    printf("first frame: cold %.0f ms, warm %.0f ms\n", ms1, ms2);
+    return RESULT_OK;
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
     const char *renderer = "gpu-next";
+    const char *cache_dir = NULL;
+    static const char cache_arg[] = "--cache-dir=";
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "gpu-next") == 0 || strcmp(argv[i], "gpu") == 0)
             renderer = argv[i];
+        else if (strncmp(argv[i], cache_arg, sizeof(cache_arg) - 1) == 0)
+            cache_dir = argv[i] + sizeof(cache_arg) - 1;
         else
             FAIL("unknown argument '%s'", argv[i]);
     }
+    if (cache_dir && !cache_dir[0])
+        FAIL("empty --cache-dir");
 
-    int result = run(renderer);
+    double first_frame_ms = 0;
+    int result = cache_dir ? run_cache_test(renderer, cache_dir)
+                           : run(renderer, NULL, NULL, &first_frame_ms);
     if (result == RESULT_OK)
         printf("PASS\n");
     return result;

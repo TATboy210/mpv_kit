@@ -191,6 +191,14 @@ if host_machine.system() == 'windows'
                 cc.find_library('dxguid')]
   d3d11_smoke = executable('render_d3d11_smoke', 'render_d3d11_smoke.c',
                            dependencies: [mpv, vulkan] + d3d11_libs)
+  test('render_d3d11_smoke', d3d11_smoke, timeout: 120,  # gpu-next (default)
+       is_parallel: false)
   test('render_d3d11_smoke_gpu', d3d11_smoke, args: ['gpu'], timeout: 120,
        is_parallel: false)
+  # Persistent shader cache (the compiled DXBC): two runs on one directory;
+  # the second must read the first's files and write none of its own.
+  test('render_d3d11_smoke_cache', d3d11_smoke,
+       args: ['gpu-next',
+              '--cache-dir=' + meson.current_build_dir() / 'd3d11-shader-cache'],
+       timeout: 240, is_parallel: false)
 endif

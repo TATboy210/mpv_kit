@@ -190,6 +190,10 @@ struct priv {
     // the image the API user passed to mpv_render_context_render().
     bool libmpv;
     struct pl_swapchain_frame libmpv_target;
+    // libmpv: the render context did not attach a shader cache to p->gpu (the
+    // D3D11 context has no persistent cache of its own), so preinit() does it,
+    // like the windowed VO.
+    bool libmpv_vo_cache;
     // Decoder queue depth the renderer needs (see update_render_options).
     int req_frames;
 };
@@ -2621,13 +2625,16 @@ static int preinit(struct vo *vo)
     mp_mutex_init(&p->dr_lock);
 
     // libmpv: the Vulkan render context already attached a shader cache
-    // with the same options and file layout to this gpu.
-    if (gl_opts->shader_cache && !p->libmpv)
+    // with the same options and file layout to this gpu. The D3D11 one has
+    // none, so the VO's own cache (which also stores the compiled DXBC) is
+    // used there, like in the windowed VO.
+    const bool ctx_cache = p->libmpv && !p->libmpv_vo_cache;
+    if (gl_opts->shader_cache && !ctx_cache)
         cache_init(vo, &p->shader_cache, 10 << 20, gl_opts->shader_cache_dir);
     if (gl_opts->icc_opts->cache)
         cache_init(vo, &p->icc_cache, 20 << 20, gl_opts->icc_opts->cache_dir);
 
-    if (!p->libmpv)
+    if (!ctx_cache)
         pl_gpu_set_cache(p->gpu, p->shader_cache.cache);
     p->rr = pl_renderer_create(p->pllog, p->gpu);
     p->queue = pl_queue_create(p->gpu);
@@ -3104,12 +3111,16 @@ const struct vo_driver video_out_gpu_next = {
 // libmpv render API backend (mpv_kit extension)
 //
 // Runs this renderer under mpv_render_context_render() with
-// MPV_RENDER_API_TYPE_VULKAN. The Vulkan device import and target wrapping
-// are shared with the gpu renderer (libmpv_gpu_context_vk); this part only
-// adapts the render_backend_fns entry points to the VO code above, which
-// operates on a private struct vo that carries no windowing state.
+// MPV_RENDER_API_TYPE_VULKAN or, on Windows, MPV_RENDER_API_TYPE_D3D11. The
+// device import and target wrapping are shared with the gpu renderer
+// (libmpv_gpu_context_vk / libmpv_gpu_context_d3d11); this part only adapts
+// the render_backend_fns entry points to the VO code above, which operates on
+// a private struct vo that carries no windowing state.
 
 #include "mpv/render_vk.h"
+#if HAVE_D3D11
+#include "mpv/render_d3d11.h"
+#endif
 #include "video/out/gpu/libmpv_gpu.h"
 #include "video/out/libmpv.h"
 
@@ -3121,6 +3132,11 @@ struct libmpv_priv {
     struct mp_image_params params;
     // Owned here: uninit() clears the VO's copy of the pointer.
     pl_log pllog;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    // D3D11: the libplacebo device on the host's ID3D11Device, the same one
+    // the context's ra_d3d11 uses. Owned here; destroyed before that ra.
+    pl_d3d11 d3d11;
+#endif
 };
 
 static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
@@ -3129,7 +3145,19 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     struct libmpv_priv *lp = ctx->priv;
 
     char *api = get_mpv_render_param(params, MPV_RENDER_PARAM_API_TYPE, NULL);
-    if (!api || strcmp(api, MPV_RENDER_API_TYPE_VULKAN) != 0)
+    const struct libmpv_gpu_context_fns *fns = NULL;
+    bool is_d3d11 = false;
+    if (api && strcmp(api, MPV_RENDER_API_TYPE_VULKAN) == 0) {
+        fns = &libmpv_gpu_context_vk;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    } else if (api && strcmp(api, MPV_RENDER_API_TYPE_D3D11) == 0) {
+        // The upstream D3D11 context creates the ra_d3d11 on the host device;
+        // pl_d3d11 is added on the same device below.
+        fns = &libmpv_gpu_context_d3d11;
+        is_d3d11 = true;
+#endif
+    }
+    if (!fns)
         return MPV_ERROR_NOT_IMPLEMENTED;
     const char *renderer =
         get_mpv_render_param(params, MPV_RENDER_PARAM_VULKAN_RENDERER, "gpu-next");
@@ -3144,7 +3172,7 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     *lp->context = (struct libmpv_gpu_context) {
         .global = ctx->global,
         .log = ctx->log,
-        .fns = &libmpv_gpu_context_vk,
+        .fns = fns,
     };
     int err = lp->context->fns->init(lp->context, params);
     if (err < 0)
@@ -3160,8 +3188,31 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     struct priv *p = vo->priv;
     p->libmpv = true;
     p->ra_ctx = lp->context->ra_ctx;
-    p->gpu = ra_pl_get(p->ra_ctx->ra);
     p->pllog = lp->pllog = mppl_log_create(lp, ctx->log);
+    if (!is_d3d11) {
+        p->gpu = ra_pl_get(p->ra_ctx->ra);
+    }
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    else if (p->pllog) {
+        // The ra_d3d11 (hwdec mapping, upstream D3D11 context) and the
+        // pl_d3d11 (this renderer) must share the host's device, exactly as
+        // in gpu_next/context.c. No silent fallback to the gpu renderer: the
+        // API user asked for this one.
+        ID3D11Device *device = ra_d3d11_get_device(p->ra_ctx->ra);
+        if (device) {
+            lp->d3d11 = pl_d3d11_create(p->pllog, pl_d3d11_params(
+                .device = device,
+            ));
+            SAFE_RELEASE(device);
+        }
+        if (lp->d3d11) {
+            p->gpu = lp->d3d11->gpu;
+            p->libmpv_vo_cache = true;
+        } else {
+            MP_ERR(ctx, "Failed to create a libplacebo D3D11 context.\n");
+        }
+    }
+#endif
     if (!p->gpu || !p->pllog) {
         mp_mutex_destroy(&vo->params_mutex);
         lp->vo = NULL;
@@ -3269,14 +3320,51 @@ static int libmpv_get_target_size(struct render_backend *ctx,
     return 0;
 }
 
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+// Wraps MPV_RENDER_PARAM_D3D11_FBO for libplacebo. The texture's bind flags
+// decide what libplacebo may do with it, so "renderable" is checked here: a
+// texture without D3D11_BIND_RENDER_TARGET is the API user's mistake.
+static int wrap_d3d11_fbo(struct render_backend *ctx, pl_gpu gpu,
+                          mpv_render_param *params, pl_tex *out)
+{
+    mpv_d3d11_fbo *fbo =
+        get_mpv_render_param(params, MPV_RENDER_PARAM_D3D11_FBO, NULL);
+    if (!fbo || !fbo->tex)
+        return MPV_ERROR_INVALID_PARAMETER;
+
+    pl_tex tex = pl_d3d11_wrap(gpu, pl_d3d11_wrap_params(.tex = fbo->tex));
+    if (!tex)
+        return MPV_ERROR_UNSUPPORTED;
+    if (!tex->params.renderable) {
+        MP_ERR(ctx, "Texture was not created with D3D11_BIND_RENDER_TARGET\n");
+        pl_tex_destroy(gpu, &tex);
+        return MPV_ERROR_INVALID_PARAMETER;
+    }
+    *out = tex;
+    return 0;
+}
+#endif
+
 static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
                          struct vo_frame *frame)
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
 
-    struct ra_tex *tex;
-    int err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+    pl_tex fbo = NULL;
+    pl_tex d3d11_fbo = NULL; // D3D11: wrapped here, destroyed below
+    int err = 0;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    if (lp->d3d11) {
+        err = wrap_d3d11_fbo(ctx, p->gpu, params, &d3d11_fbo);
+        fbo = d3d11_fbo;
+    } else
+#endif
+    {
+        struct ra_tex *tex;
+        err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+        fbo = err < 0 ? NULL : tex->priv; // the pl_tex wrapped by mppl_wrap_tex()
+    }
     if (err < 0)
         return err;
 
@@ -3284,7 +3372,7 @@ static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
     // The host's image is a plain sRGB-encoded RGB surface, like a Vulkan
     // SDR swapchain image.
     p->libmpv_target = (struct pl_swapchain_frame) {
-        .fbo = tex->priv, // the pl_tex wrapped by mppl_wrap_tex()
+        .fbo = fbo,
         .flipped = flip,
         .color_repr = pl_color_repr_rgb,
         .color_space = {
@@ -3294,6 +3382,13 @@ static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
     };
     draw_frame(lp->vo, frame);
     p->libmpv_target = (struct pl_swapchain_frame) {0};
+
+    if (d3d11_fbo) {
+        // render_d3d11.h: everything is submitted before this returns and no
+        // reference to the host texture is kept.
+        pl_gpu_flush(p->gpu);
+        pl_tex_destroy(p->gpu, &d3d11_fbo);
+    }
 
     if (!lp->context->fns->done_frame(lp->context, frame->display_synced))
         return MPV_ERROR_GENERIC;
@@ -3339,6 +3434,11 @@ static void libmpv_destroy(struct render_backend *ctx)
         lp->vo = NULL;
     }
     ctx->hwdec_devs = NULL;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    // After the renderer and the hwdec mappers, before the context's
+    // ra_d3d11 (VO -> pl_d3d11 -> ra, as in gpu_next/context.c).
+    pl_d3d11_destroy(&lp->d3d11);
+#endif
     pl_log_destroy(&lp->pllog);
 
     if (lp->context) {
