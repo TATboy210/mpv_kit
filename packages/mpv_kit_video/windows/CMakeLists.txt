@@ -25,6 +25,7 @@ set_target_properties(mpv_kit_volk PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_library(${PLUGIN_NAME} SHARED
   "mpv_kit_video_plugin.cpp"
   "d3d11_interop.cpp"
+  "d3d11_backend.cpp"
   "${SHARED_SRC}/video_renderer.cc"
   "${SHARED_SRC}/vulkan_backend.cc"
 )

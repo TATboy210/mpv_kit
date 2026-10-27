@@ -8,6 +8,8 @@
 #include <wrl/client.h>
 
 #include <functional>
+#include <memory>
+#include <vector>
 
 #include "../src/video_renderer.h"
 #include "../src/vulkan_backend.h"
@@ -37,6 +39,12 @@ class D3D11Interop : public Interop, public VulkanInterop {
   void RetainFrame(void* platform) override {
     static_cast<Texture*>(platform)->texture->AddRef();
   }
+  /// Windows chain (kWindowsApiOrder in d3d11_interop.cpp): the Vulkan and
+  /// the native D3D11 backend per renderer tier, then software.
+  std::vector<BackendCandidate> BackendCandidates(
+      RendererChoice choice) const override;
+  /// "d3d11": the native backend on Flutter's adapter; others: nullptr.
+  std::unique_ptr<RenderBackend> CreateBackend(const char* api) override;
 
   // VulkanInterop
   std::vector<const char*> InstanceExtensions() const override { return {}; }
@@ -53,6 +61,9 @@ class D3D11Interop : public Interop, public VulkanInterop {
   };
 
  private:
+  // Flutter's adapter, kept even when this class's own device failed: the
+  // D3D11 backend creates its device on it.
+  Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_;
   Microsoft::WRL::ComPtr<ID3D11Device> device_;
   // Why zero-copy sharing is unavailable (probe failure with the HRESULT),
   // empty when the device came up (OBS-03).

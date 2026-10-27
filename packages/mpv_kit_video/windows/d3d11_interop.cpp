@@ -1,5 +1,7 @@
 #include "d3d11_interop.h"
 
+#include "d3d11_backend.h"
+
 #include <cstring>
 #include <cstdio>
 #include <string>
@@ -14,11 +16,18 @@ constexpr VkExternalMemoryHandleTypeFlagBits kHandleType =
 // Flutter's DXGI shared-handle path expects BGRA8.
 constexpr VkFormat kVkFormat = VK_FORMAT_B8G8R8A8_UNORM;
 constexpr DXGI_FORMAT kDxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+// Graphics APIs of one renderer tier, in preference order (ADR 0004,
+// Decision 5: within a tier the API preference is unchanged until the switch
+// to D3D11-first). Vulkan stays first, so a machine with a usable Vulkan
+// behaves as before and one without it uses D3D11 instead of software. The
+// switch commit (14-11) only reorders this array.
+constexpr const char* kWindowsApiOrder[] = {"vulkan", "d3d11"};
 }  // namespace
 
 D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
                            std::function<void()> frame_ready)
-    : frame_ready_(std::move(frame_ready)) {
+    : adapter_(adapter), frame_ready_(std::move(frame_ready)) {
   if (!adapter) {
     d3d_reason_ = "no DXGI adapter";
     return;
@@ -45,6 +54,28 @@ D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
     snprintf(code, sizeof(code), "0x%08lX", static_cast<unsigned long>(hr));
     d3d_reason_ = std::string("d3d11 device creation failed: ") + code;
   }
+}
+
+std::vector<BackendCandidate> D3D11Interop::BackendCandidates(
+    RendererChoice choice) const {
+  // Renderer quality first (gpu-next, then gpu), then the API order within
+  // each tier, then software; an explicit gpu-next / gpu request has no
+  // other tier, an explicit software request no GPU entry.
+  std::vector<BackendCandidate> chain;
+  const auto tier = [&chain](const char* renderer) {
+    for (const char* api : kWindowsApiOrder) chain.push_back({api, renderer});
+  };
+  if (choice != RendererChoice::kSoftware) {
+    if (choice != RendererChoice::kGpu) tier("gpu-next");
+    if (choice != RendererChoice::kGpuNext) tier("gpu");
+  }
+  chain.push_back({"software", "sw"});
+  return chain;
+}
+
+std::unique_ptr<RenderBackend> D3D11Interop::CreateBackend(const char* api) {
+  if (std::strcmp(api, "d3d11") != 0) return nullptr;
+  return CreateD3D11Backend(adapter_.Get());
 }
 
 std::vector<const char*> D3D11Interop::DeviceExtensions() const {
