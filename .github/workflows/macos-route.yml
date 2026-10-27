@@ -23,6 +23,11 @@ jobs:
     name: route-probe (macos-15)
     runs-on: macos-15
     timeout-minutes: 60
+    env:
+      # Milestone v3.0 roadmap commit: the last product tree before Phase 12.
+      # Same baseline as the constants audit; the full 40-character SHA is
+      # asserted after the worktree is created.
+      PRE12_SHA: 3a5f4500f38577e4dcba2023b73c7f4a4b1b3920
     steps:
       - uses: actions/checkout@v5
         with:
@@ -35,6 +40,15 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
+      - name: Probe unit tests
+        shell: bash
+        working-directory: example
+        run: flutter test test/macos_route_probe_test.dart
+      - name: Parity self-test
+        # Runs before the comparison so a broken verdict script cannot
+        # produce a verdict.
+        shell: bash
+        run: python3 tools/check_route_probe.py --self-test
       - name: Route probe (HEAD plugin)
         # `flutter test -d macos` builds the example, which makes the
         # mpv_kit_libs hook download the pinned bundle. No libmpv path
@@ -46,3 +60,29 @@ jobs:
             --dart-define=MPV_KIT_ROUTE_TREE=head \
             --dart-define=MPV_KIT_ROUTE_SECTIONS=pixel \
             | tee "$RUNNER_TEMP/route-head.log"
+      - name: Route probe (pre-Phase-12 plugin)
+        # Same runner, same Flutter SDK, same bundle tag, same test file:
+        # only the plugin tree differs.
+        shell: bash
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/pre12" "$PRE12_SHA"
+          actual=$(git -C "$RUNNER_TEMP/pre12" rev-parse HEAD)
+          if [ "$actual" != "$PRE12_SHA" ]; then
+            echo "pre12 worktree is at $actual, expected $PRE12_SHA"
+            exit 1
+          fi
+          cp example/integration_test/macos_route_test.dart \
+             example/integration_test/macos_route_probe.dart \
+             "$RUNNER_TEMP/pre12/example/integration_test/"
+          cd "$RUNNER_TEMP/pre12"
+          flutter pub get
+          cd example
+          flutter test integration_test/macos_route_test.dart -d macos \
+            --dart-define=MPV_KIT_ROUTE_TREE=pre12 \
+            --dart-define=MPV_KIT_ROUTE_SECTIONS=pixel \
+            | tee "$RUNNER_TEMP/route-pre12.log"
+      - name: Pixel parity
+        shell: bash
+        run: |
+          python3 tools/check_route_probe.py \
+            "$RUNNER_TEMP/route-head.log" "$RUNNER_TEMP/route-pre12.log"
