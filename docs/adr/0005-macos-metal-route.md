@@ -80,7 +80,9 @@ Choose **(a)**: macOS keeps MoltenVK → IOSurface.
 
 - No new backend code on macOS. Phase 12's `RenderBackend` stays the single
   rollback point.
-- MoltenVK stays in the bundle and its license stays with it [G17].
+- MoltenVK stays in the bundle, linked directly by libmpv, and its license
+  file is installed with it [G17]. The upstream repository declares
+  Apache-2.0 and was not archived at the query date [G17].
 - Hardware decoding on macOS is VideoToolbox through `hwdec_vt_pl`. Whether
   the mapping is zero-copy on the hosted VM is for 13-04 to show; real Apple
   hardware is unverified.
