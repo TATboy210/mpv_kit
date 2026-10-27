@@ -116,6 +116,16 @@ def compare_pixel(head_text, pre12_text):
     return ok, line
 
 
+def evaluate(head_text, pre12_text):
+    """Returns (exit code, output lines) for one pair of logs.
+
+    RED stub: only the toImage channel exists, there is no ROUTE-FRAME
+    parsing and no ROUTE-SC2 summary yet.
+    """
+    ok, line = compare_pixel(head_text, pre12_text)
+    return (0 if ok else 1), [line]
+
+
 def pixel_line(tree, read, final, visibility, tex=None):
     """Builds one ROUTE-PIXEL line the way the Dart test prints it."""
     region = None
@@ -141,56 +151,144 @@ def pixel_line(tree, read, final, visibility, tex=None):
     return "ROUTE-PIXEL " + json.dumps(record, separators=(",", ":"))
 
 
-def log_of(tree, visibility, tex=None, with_final=True):
-    """A three-read log; the third read is the final one unless omitted."""
+def frame_line(tree, supported=True, captured=True, non_black=0.99,
+               mean_g=110.0):
+    """Builds one ROUTE-FRAME line the way the Dart test prints it."""
+    record = {
+        "tree": tree,
+        "supported": supported,
+        "captured": captured,
+        "format": "32BGRA" if captured else None,
+        "width": 640 if captured else None,
+        "height": 360 if captured else None,
+        "nonBlackRatio": non_black if captured else None,
+        "meanR": 100.0 if captured else None,
+        "meanG": mean_g if captured else None,
+        "meanB": 120.0 if captured else None,
+    }
+    return "ROUTE-FRAME " + json.dumps(record, separators=(",", ":"))
+
+
+def log_of(tree, visibility, tex=None, with_final=True, frame=None):
+    """A three-read log; the third read is the final one unless omitted.
+
+    `frame` is a dict of frame_line() keyword arguments, or None for a log
+    without a ROUTE-FRAME line.
+    """
     lines = ["flutter: noise line"]
     for read in (1, 2, 3):
         final = with_final and read == 3
         lines.append(pixel_line(tree, read, final, visibility, tex))
+    if frame is not None:
+        lines.append(frame_line(tree, **frame))
     return "\n".join(lines) + "\n"
 
 
 STATS = (0.99, 100.0, 110.0, 120.0)
 STATS_G5 = (0.99, 100.0, 115.0, 120.0)
+NOT_COMPOSITED = "texture-not-composited"
+VISIBLE_TEXT = "texture-visible"
 
-# (name, head log, pre12 log, expected exit code, expected line prefix)
-CASES_PIXEL = [
-    ("visible-identical", log_of("head", "texture-visible", STATS),
-     log_of("pre12", "texture-visible", STATS), 0,
-     "ROUTE-PARITY ok head=texture-visible pre12=texture-visible "
-     "informative=yes"),
-    ("black-vs-visible", log_of("head", "texture-composited-black", STATS),
-     log_of("pre12", "texture-visible", STATS), 1,
-     "ROUTE-PARITY FAIL visibility head=texture-composited-black "
-     "pre12=texture-visible"),
-    ("not-composited-both", log_of("head", "texture-not-composited"),
-     log_of("pre12", "texture-not-composited"), 0,
-     "ROUTE-PARITY ok head=texture-not-composited "
-     "pre12=texture-not-composited informative=no"),
-    ("missing-final", log_of("head", "texture-visible", STATS),
-     log_of("pre12", "texture-visible", STATS, with_final=False), 1,
-     "ROUTE-PARITY FAIL missing final ROUTE-PIXEL"),
-    ("mean-delta", log_of("head", "texture-visible", STATS),
-     log_of("pre12", "texture-visible", STATS_G5), 1,
-     "ROUTE-PARITY FAIL mean"),
-    ("indeterminate", log_of("head", "indeterminate"),
-     log_of("pre12", "texture-visible", STATS), 1,
-     "ROUTE-PARITY FAIL indeterminate"),
+# Frame readings: a bright frame, a black frame, no capture.
+BRIGHT = {"non_black": 0.99}
+BRIGHT_97_G6 = {"non_black": 0.97, "mean_g": 116.0}
+BLACK = {"non_black": 0.0}
+PARTIAL = {"non_black": 0.3}
+NOT_CAPTURED = {"captured": False}
+
+
+def pixel_pair(head_vis, pre12_vis, head_frame, pre12_frame, tex=None):
+    """Two logs whose toImage reads agree (visible with stats, else none)."""
+    return (log_of("head", head_vis, tex, frame=head_frame),
+            log_of("pre12", pre12_vis, tex, frame=pre12_frame))
+
+
+# Each case: (name, [scenario, ...]); a scenario is
+# (head log, pre12 log, expected exit code, [line prefixes that must appear]).
+# Cases 7-14 may use two scenarios; every scenario must hold.
+CASES = [
+    # --- cases 1-6: toImage channel ---
+    ("visible-identical", [(
+        log_of("head", VISIBLE_TEXT, STATS),
+        log_of("pre12", VISIBLE_TEXT, STATS), 0,
+        ["ROUTE-PARITY ok head=texture-visible pre12=texture-visible "
+         "informative=yes"])]),
+    ("black-vs-visible", [(
+        log_of("head", "texture-composited-black", STATS),
+        log_of("pre12", VISIBLE_TEXT, STATS), 1,
+        ["ROUTE-PARITY FAIL visibility head=texture-composited-black "
+         "pre12=texture-visible"])]),
+    ("not-composited-both", [(
+        log_of("head", NOT_COMPOSITED), log_of("pre12", NOT_COMPOSITED), 0,
+        ["ROUTE-PARITY ok head=texture-not-composited "
+         "pre12=texture-not-composited informative=no"])]),
+    ("missing-final", [(
+        log_of("head", VISIBLE_TEXT, STATS),
+        log_of("pre12", VISIBLE_TEXT, STATS, with_final=False), 1,
+        ["ROUTE-PARITY FAIL missing final ROUTE-PIXEL"])]),
+    ("mean-delta", [(
+        log_of("head", VISIBLE_TEXT, STATS),
+        log_of("pre12", VISIBLE_TEXT, STATS_G5), 1,
+        ["ROUTE-PARITY FAIL mean"])]),
+    ("indeterminate", [(
+        log_of("head", "indeterminate"),
+        log_of("pre12", VISIBLE_TEXT, STATS), 1,
+        ["ROUTE-PARITY FAIL indeterminate"])]),
+    # --- cases 7-11: IOSurface frame channel ---
+    ("frame-tearing-tolerated", [(
+        *pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, BRIGHT, BRIGHT_97_G6), 0,
+        ["ROUTE-FRAME-PARITY ok head=captured/0.99 pre12=captured/0.97 "
+         "informative=yes"])]),
+    ("frame-captured-differs", [(
+        *pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, NOT_CAPTURED, BRIGHT), 1,
+        ["ROUTE-FRAME-PARITY FAIL captured head=false pre12=true"])]),
+    ("frame-neither-captured", [(
+        *pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, NOT_CAPTURED,
+                    NOT_CAPTURED), 0,
+        ["ROUTE-FRAME-PARITY ok head=none pre12=none informative=no"])]),
+    ("frame-nonblack-bounds", [
+        (*pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED,
+                     {"non_black": 0.97}, BLACK), 1,
+         ["ROUTE-FRAME-PARITY FAIL nonblack head=0.97 pre12=0.0"]),
+        (*pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, BRIGHT, PARTIAL), 1,
+         ["ROUTE-FRAME-PARITY FAIL nonblack head=0.99 pre12=0.3"]),
+    ]),
+    ("frame-unsupported", [(
+        *pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED,
+                    {"supported": False, "captured": False}, BRIGHT), 1,
+        ["ROUTE-FRAME-PARITY FAIL supported"])]),
+    # --- cases 12-14: SC2 conclusion ---
+    ("sc2-toimage", [(
+        *pixel_pair(VISIBLE_TEXT, VISIBLE_TEXT, BRIGHT, BRIGHT, tex=STATS), 0,
+        ["ROUTE-SC2 pixel=proven channel=toImage"])]),
+    ("sc2-iosurface", [(
+        *pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, BRIGHT, BRIGHT), 0,
+        ["ROUTE-SC2 pixel=proven channel=iosurface"])]),
+    ("sc2-not-achieved", [
+        (*pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, NOT_CAPTURED,
+                     NOT_CAPTURED), 0,
+         ["ROUTE-SC2 pixel=not-achieved reason=probe-channels-blind"]),
+        (*pixel_pair(NOT_COMPOSITED, NOT_COMPOSITED, BLACK, BLACK), 0,
+         ["ROUTE-SC2 pixel=not-achieved reason=frames-black"]),
+    ]),
 ]
 
 
 def self_test():
     failed = []
-    for name, head, pre12, want_rc, want_prefix in CASES_PIXEL:
-        ok, line = compare_pixel(head, pre12)
-        rc = 0 if ok else 1
-        if rc != want_rc or not line.startswith(want_prefix):
-            failed.append(f"{name}: rc={rc} line={line!r}")
+    for name, scenarios in CASES:
+        for head, pre12, want_rc, want_prefixes in scenarios:
+            rc, lines = evaluate(head, pre12)
+            missing = [w for w in want_prefixes
+                       if not any(line.startswith(w) for line in lines)]
+            if rc != want_rc or missing:
+                failed.append(f"{name}: rc={rc} (want {want_rc}) "
+                              f"missing={missing} lines={lines}")
     if failed:
         for entry in failed:
             print(f"ROUTE-PARITY self-test FAIL {entry}")
         return 1
-    print(f"ROUTE-PARITY self-test ok cases={len(CASES_PIXEL)}")
+    print(f"ROUTE-PARITY self-test ok cases={len(CASES)}")
     return 0
 
 
@@ -204,9 +302,10 @@ def main(argv):
         head = f.read()
     with open(argv[1], encoding="utf-8", errors="replace") as f:
         pre12 = f.read()
-    ok, line = compare_pixel(head, pre12)
-    print(line)
-    return 0 if ok else 1
+    rc, lines = evaluate(head, pre12)
+    for line in lines:
+        print(line)
+    return rc
 
 
 if __name__ == "__main__":
