@@ -51,7 +51,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 **Phase Numbering:** 接续 v2.0（止于 Phase 11），v3.0 从 Phase 12 开始；小数阶段（如 14.1）为计划后的紧急插入。
 
-- [ ] **Phase 12: RenderBackend Seam** - 基线先行的纯重构：Vulkan/软件后端迁到统一生命周期接口，行为逐项不变
+- [x] **Phase 12: RenderBackend Seam** - 基线先行的纯重构：Vulkan/软件后端迁到统一生命周期接口，行为逐项不变 (completed 2026-10-27)
 - [ ] **Phase 13: macOS Metal Route Decision** - ADR 定案 MoltenVK→IOSurface 路线，如实上报 Metal 承载，验证 VideoToolbox 零拷贝
 - [ ] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
 - [ ] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位
@@ -74,7 +74,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 **验证分层**: hosted CI — golden 测试（三平台 + sanitizer 任务）、`render_vk_smoke`、三平台真实插件 integration test、API-freeze 与 wire 校验测试；RTX 4060 — D-05 基线（Impeller 开/关，固定 3.47.8 SDK）与 4K 30 分钟对照 Phase 4 基线。
 **Research**: 标准模式（研究已完整映射代码），无需阶段研究。
-**Plans:** 12/12 plans executed（9 waves）
+**Plans:** 12/12 plans complete（9 waves）
 
 Plans:
 **Wave 1**
@@ -190,7 +190,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. RenderBackend Seam | v3.0 | 12/12 | In Progress | - |
+| 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
 | 13. macOS Metal Route Decision | v3.0 | 0/TBD | Not started | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 0/TBD | Not started | - |
 | 15. Linux OpenGL Backend | v3.0 | 0/TBD | Not started | - |

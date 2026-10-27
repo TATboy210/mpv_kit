@@ -86,11 +86,12 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 - ✓ Windows 外部纹理消费路径的静态取证：两种表面类型都经 ANGLE，DXGI 资源归 mpv_kit 自己的 D3D11 设备，无 fence/keyed mutex；Impeller 仅去掉 Ganesh 每次 resolve 的 flush/reset — COMP-01 / Phase 10
 - ✓ ADR 0003 记录路线判定：3.47.8 上「无 ANGLE」不可验证；Impeller 不等于绕过 — Phase 10
 
+- ✓ 统一 `RenderBackend` 生命周期接口，现有 Vulkan/软件后端迁移且无回归（golden 冻结零改动、常量审计 ok、RTX 4060 4K 与 Phase 4 持平、渲染线程亲和、`MPV_KIT_VIDEO_API`）— RBE-01..08 / Phase 12
+
 ### Active
 
 <!-- v3.0 范围；REQ-ID 见 REQUIREMENTS.md。 -->
 
-- [ ] 统一 `RenderBackend` 生命周期接口，现有 Vulkan/软件后端迁移且无回归
 - [ ] Windows 原生 D3D11 后端（无 ANGLE）+ d3d11va 零拷贝
 - [ ] Linux OpenGL 后端 + vaapi/nvdec 零拷贝
 - [ ] macOS Metal 路线决策与实施
@@ -166,6 +167,8 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 | 合成问题用证据改写,不用口号 | 3.47.8 的 Windows Impeller 是 GLES-over-ANGLE;「启用 Impeller = 无 ANGLE」被二进制证据证伪 | ✓ Phase 10 |
 | `inconclusive` 不得写成「不可行」 | D-05 未跑完时,失败归因于 harness 缺陷而渲染器;结论必须与证据强度匹配 | ✓ Phase 10 |
 | 里程碑收尾允许 `override_closeout` | 用户决定简单收尾;未完成阶段记为未交付,不补跑、不改写已有验证结论 | ✓ v2.0 close |
+| Phase 12 判 human_needed 的三项由用户 UAT 接受（SC1 第二控制器像素探针 0.0 转待办；RTX 4060 渲染 600 s 零掉帧代替 30 分钟渲染；CR-01 修复后不重跑真机） | 根因与重构无关、行为与基线一致；单独排查更高效 | ✓ Phase 12 |
+| mpv_kit 自身链路不经 ANGLE；Flutter 自己的 ANGLE 合成器保留（引擎所有） | GTX 960 + 核显笔记本退回软件渲染（dropped 1046、avsync 23.7 s），由 Phase 14 D3D11 后端解决 | — Pending (Phase 14) |
 
 ## Evolution
 
@@ -185,4 +188,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-26 after starting milestone v3.0*
+*Last updated: 2026-10-27 after Phase 12*

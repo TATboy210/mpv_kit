@@ -2,44 +2,44 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 12
-current_phase_name: RenderBackend Seam
-status: verifying
-stopped_at: Completed 12-12-PLAN.md
-last_updated: "2026-10-27T02:04:01.432Z"
-last_activity: 2026-10-26
-last_activity_desc: Phase 12 execution started
-state_head: c9d3d4a791d865c5bb1cda5f81e2de801ea4a337
+current_phase: 13
+current_phase_name: macOS Metal Route Decision
+status: planning
+stopped_at: Phase 12 complete, ready to plan Phase 13
+last_updated: "2026-10-27T04:35:12.783Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 12 complete, transitioned to Phase 13
+state_head: 435e5b7d5cb7895304ee00701a192f4029f56941
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 12
   completed_plans: 12
-  percent: 0
+  percent: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-26)
+See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 12 — RenderBackend Seam
+**Current focus:** Phase 13 — macOS Metal Route Decision
 
 ## Current Position
 
-Phase: 12 (RenderBackend Seam) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
-Last activity: 2026-10-26 — Phase 12 execution started
+Phase: 13 — macOS Metal Route Decision
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-27 — Phase 12 complete, transitioned to Phase 13
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
+- Total plans completed: 36
 - Average duration: ~15 min
 - Total execution time: ~6 hours
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | 06 | 3 | ~67 min | ~22 min |
 | 07 | 2 | ~135 min | ~68 min |
 | 08 | 1 | ~35 min | ~35 min |
+| 12 | 12 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: 42 min, 40 min, 95 min, 35 min
@@ -202,13 +203,21 @@ Recent decisions affecting current work:
 - [Phase 12]: 12-12: Phase 12 close approved by the user ("approved"); final-HEAD full CI gate ok on a3dc4c2 (15/15 jobs), seven audits ok, RTX 4060 4K 30 min parity with Phase 4, rendered 4K 600 s drops 0, six harness groups no-new-failure
 - [Phase 12]: 12-12: uhd4k not repeated despite two Modern Standby intervals (in-interval samples 0 drops / 30 fps); d05-on a1 invalid (relative trace path), a2 is the record; rendered avsyncPeakAbs +2.8 us accepted as negligible
 - [Phase 12]: 12-12: second-controller first-frame finding (resize-front round-2 timeout, d05 part-2 probe before-first-frame) carried forward as a pending todo, not fixed in Phase 12
+- [Phase 12]: close: verifier human_needed (4/5 SC verified); user UAT passed all three items (SC1 probe 0.0 deferred to todo; RTX 4060 rendered 600 s accepted for the 30-min render; no RTX 4060 rerun after CR-01 025bdad); verification canonicalized to passed
+- [Phase 12]: close: mpv_kit's own chain must not use ANGLE (Flutter's ANGLE compositor stays) — Phase 14 direction, prompted by a GTX 960 + iGPU laptop falling back to software
 
 ### Pending Todos
 
 - [2026-10-27] [testing] Diagnose second-controller first-frame stall in resize-front and d05 — [todo file](.planning/todos/pending/2026-10-27-diagnose-second-controller-first-frame-stall-in-resize-front.md)
+- [2026-10-27] [testing] Phase 12 code-review WARN/INFO follow-ups — [todo file](.planning/todos/pending/2026-10-27-phase-12-code-review-followups.md)
+- [2026-10-27] [testing] Phase 12 Nyquist validation gaps — [todo file](.planning/todos/pending/2026-10-27-phase-12-nyquist-validation-gaps.md)
+- [2026-10-27] [testing] macOS vk-gpu-timeout golden flake — [todo file](.planning/todos/pending/2026-10-27-vk-gpu-timeout-golden-flake-macos.md)
+- [2026-10-27] [native] GTX 960 + iGPU laptop falls back to software rendering, 4K60 unusable (Phase 14 acceptance case) — [todo file](.planning/todos/pending/2026-10-27-gtx960-igpu-laptop-4k-falls-back-to-software.md)
+- [2026-10-27] [example] Larger demo HUD with more diagnostics — [todo file](.planning/todos/pending/2026-10-27-example-hud-larger-more-info.md)
 
 ### Blockers/Concerns
 
+- [Phase 14] GTX 960 + 核显笔记本上 Vulkan 判 `no Vulkan 1.3 device shareable with the compositor`，退回软件渲染，4K60 掉帧 1046、avsync 23.7 s；可能是 Flutter 适配器 LUID 与 GTX 960 不一致，也可能是驱动只到 Vulkan 1.2（未隔离）。作为 Phase 14 验收用例。
 - [v3.0] 唯一真机是 Windows x64 RTX 4060：硬解零拷贝、性能、4K 30 分钟、D-05 基线只能在本机证明；Linux GPU 与 macOS 硬件不可用，HWD-03/HWD-04 与 Linux 真驱动行为须如实标为「未验证」。
 - [v3.0] 本地无 MSYS2/meson 工具链：Phase 14（SPIRV-Cross/shaderc/`-Dd3d11`、0010）与 Phase 15（`-Dgl -Degl`）的 bundle 改动只能经 CI 构建验证，规划时要把 CI 往返计入。
 - [v3.0] D-05（10-05 soak 中止）仍未解释：Phase 12 第一个计划必须先修 harness 并在当前 Vulkan 路径取基线，不得假设中止已修复。
@@ -252,12 +261,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T02:04:01.365Z
-Stopped at: Completed 12-12-PLAN.md
+Last session: 2026-10-27
+Stopped at: Phase 12 complete, ready to plan Phase 13
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
 ## Operator Next Steps
 
-- Review the v3.0 roadmap (`.planning/ROADMAP.md`), then start Phase 12 with `/gsd-discuss-phase 12` (or `/gsd-plan-phase 12`)
-- Phases 14/15/16 should be planned with `--research-phase`
+- Phase 13 (macOS Metal Route Decision): `/gsd-discuss-phase 13` or `/gsd-plan-phase 13`
+- Phases 14/15/16 should be planned with `--research-phase`; Phase 14 must include the GTX 960 + iGPU laptop acceptance case
