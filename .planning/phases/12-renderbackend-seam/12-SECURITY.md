@@ -4,8 +4,8 @@ slug: "renderbackend-seam"
 status: verified
 # threats_open = count of OPEN threats at or above workflow.security_block_on severity (the blocking gate)
 threats_open: 0
-threats_total: 38
-threats_closed: 38
+threats_total: 39
+threats_closed: 39
 asvs_level: 1
 block_on: high
 register_authored_at_plan_time: true
@@ -18,7 +18,7 @@ created: "2026-10-27"
 
 > Per-phase security contract: threat register, accepted risks, and audit trail.
 > Register built from the `<threat_model>` STRIDE tables in `12-01-PLAN.md` .. `12-12-PLAN.md` (authored at plan time).
-> 38 register entries: 27 numbered threats (T-12-01 .. T-12-27; T-12-27 lives in 12-01) plus T-12-SC once per plan (x12).
+> 39 register entries: 27 numbered threats (T-12-01 .. T-12-27; T-12-27 lives in 12-01) plus T-12-SC once per plan (x12).
 
 ---
 
@@ -123,7 +123,7 @@ c. **Warning — macOS golden flake (T-12-11 class).** native-verify run 4043297
 
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
-| 2026-10-27 | 38 | 38 | 0 | Security Audit (gsd-security-auditor, ASVS L1, block_on high), verdict SECURED |
+| 2026-10-27 | 39 | 39 | 0 | Security Audit (gsd-security-auditor, ASVS L1, block_on high), verdict SECURED |
 
 ---
 
