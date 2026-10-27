@@ -109,8 +109,8 @@ case "$(uname -s)" in
         exit 1
       fi
     done
-    # D3D-01: the native D3D11 renderer must really be on; a missing shaderc
-    # or SPIRV-Cross silently leaves d3d11 off despite -Dd3d11=enabled.
+    # D3D-01: HAVE_D3D11, HAVE_SHADERC and HAVE_SPIRV_CROSS must all be 1, so the
+    # bundle cannot ship without the native D3D11 renderer.
     for feature in D3D11 SHADERC SPIRV_CROSS; do
       grep -q "^#define HAVE_$feature 1" "$build/config.h" || {
         echo "error: mpv configured without $feature on Windows; see $build/meson-logs/meson-log.txt" >&2
