@@ -1,348 +1,252 @@
 ---
-last_mapped_commit: 9f90a45322ab3537941540e6b35a76d978669ef5
-last_mapped_at: 2026-10-23
+last_mapped_commit: cd47d6761925b8ccb49e153864bf9789dc3f5039
+last_mapped_at: 2026-10-27
 ---
-<!-- refreshed: 2026-10-23 -->
-
+<!-- refreshed: 2026-10-27 -->
 # Architecture
 
-**Analysis Date:** 2026-10-23
+**Analysis Date:** 2026-10-27
 
 ## System Overview
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ Application (`example/lib/main.dart`)                                │
-│   Player()  +  MpvVideoController.create(player)  +  MpvVideo(...)   │
-├───────────────────────────────┬──────────────────────────────────────┤
-│ mpv_kit_video (Dart)          │ mpv_kit (pure Dart FFI)              │
-│ `lib/src/video_controller.dart`│ `lib/src/core/mpv.dart`              │
-│ `lib/src/mpv_video.dart`      │ `lib/src/player/player.dart`         │
-│                               │ `lib/src/ffi/bindings.dart`          │
-└──────────────┬────────────────┴───────────────┬──────────────────────┘
-               │ MethodChannel "mpv_kit_video"   │ dart:ffi (dynamic)
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Application (Flutter)                       │
+│   `example/lib/main.dart`, `example/lib/hud.dart`                   │
+└───────────────┬───────────────────────────────┬─────────────────────┘
+                │                               │
+                ▼                               ▼
+┌──────────────────────────────┐  ┌─────────────────────────────────────┐
+│ mpv_kit (pure Dart FFI)      │  │ mpv_kit_video (Flutter plugin, Dart)│
+│ player/ -> core/ -> ffi/     │◄─┤ `lib/src/video_controller.dart`     │
+│ `packages/mpv_kit/lib/src/`  │  │ `lib/src/mpv_video.dart`            │
+└──────────────┬───────────────┘  └──────────────┬──────────────────────┘
+               │ dart:ffi                        │ MethodChannel('mpv_kit_video')
+               │                                 │ (handle + 9 render symbol addrs)
                ▼                                 ▼
-┌───────────────────────────────┐   ┌──────────────────────────────────┐
-│ Native plugin (per platform)  │   │ libmpv-2.dll / libmpv.so.2 /     │
-│ windows/mpv_kit_video_plugin.cpp│  │ mpv.2.framework (loaded once by │
-│ linux/mpv_kit_video_plugin.cc │   │ `MpvLibrary`, `ffi/library.dart`)│
-│ macos/Classes/MpvKitVideoPlugin.mm│ └──────────────┬───────────────────┘
-└──────────────┬────────────────┘                  │
-               ▼                                   │
-┌───────────────────────────────────────────────┐  │
-│ Shared renderer (`src/`)                      │  │
-│ `video_renderer.cc` — render thread + ring    │  │
-│ `vulkan_backend.cc` — device, queues, images  │  │
-│ `windows/d3d11_interop.cpp`, `linux/gl_interop.cc`, │
-│ `macos/Classes/metal_interop.mm`              │  │
-└──────────────┬────────────────────────────────┘  │
-               ▼                                   │
-┌───────────────────────────────────────────────┐  │
-│ Flutter compositor texture                    │◄─┘ mpv render API
-│ D3D11 shared handle / FlTextureGL / IOSurface │   (symbols passed from
-│                                               │    Dart, `src/mpv_api.h`)
-└───────────────────────────────────────────────┘
-```
-
-Build-time supply chain (separate from runtime):
-
-```text
-mpv_kit_libs hook/build.dart
-  ├─ pinned GitHub release bundle (lib/src/bundles.dart, sha256)
-  └─ or user define `libmpv_bundle`
-        → code assets (DynamicLoadingBundled) → OS loader resolves default names
-native/build/{deps,ffmpeg,build,package}.sh  → produces those bundles
-native/mpv (upstream 0.41.0-1113) + native/patches/0001..0007 → patched libmpv
+┌──────────────────────────────┐  ┌─────────────────────────────────────┐
+│ libmpv (patched, LGPL)       │◄─┤ Platform plugins                    │
+│ delivered by mpv_kit_libs    │  │ windows/ linux/ macos/ (+ interop)  │
+│ `packages/mpv_kit_libs/hook/`│  ├─────────────────────────────────────┤
+│ built from `native/`         │  │ Shared C++ engine `src/`            │
+└──────────────────────────────┘  │ VideoRenderer -> RenderBackend      │
+                                  │ (SoftwareBackend, VulkanRenderBackend)│
+                                  └─────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| `Mpv` | 1:1 wrapper over the libmpv client API; owns the handle, event loop, observer streams, pending async replies | `packages/mpv_kit/lib/src/core/mpv.dart` |
-| `MpvBindings` | Raw FFI symbol table (54 symbols), memory ownership helpers | `packages/mpv_kit/lib/src/ffi/bindings.dart` |
-| `MpvLibrary` | Process-wide single libmpv load + client API major-version check | `packages/mpv_kit/lib/src/ffi/library.dart` |
-| Event model | Sealed `MpvEventData` hierarchy decoding `mpv_event*` immediately (pointer lifetime) | `packages/mpv_kit/lib/src/core/events.dart` |
-| `node.dart` | Recursive `mpv_node` ↔ Dart values conversion | `packages/mpv_kit/lib/src/core/node.dart` |
-| `StreamBridge` | Custom `protocol://` streams served from Dart via `NativeCallable.listener` | `packages/mpv_kit/lib/src/core/stream_bridge.dart` |
-| `Player` | High-level API: one `MpvState<T>` per mpv property, typed commands, dispose hooks | `packages/mpv_kit/lib/src/player/player.dart` |
-| Models | Typed decode of `track-list`, `video-params`, `audio-params`, playlist, chapters, screenshots | `packages/mpv_kit/lib/src/player/models.dart` |
-| Catalog / options | Generated metadata (`mpvProperties`, `mpvCommands`, `mpvOptions`) and typed `MpvOptions` | `packages/mpv_kit/lib/src/generated/` |
-| `MpvVideoController` | Dart side of video output: creates the native renderer, owns texture id, routes events, sets size/ICC/display-fps | `packages/mpv_kit_video/lib/src/video_controller.dart` |
-| `MpvVideo` | Widget that letterboxes the texture, debounces resizes, follows display refresh rate | `packages/mpv_kit_video/lib/src/mpv_video.dart` |
-| `VideoRenderer` (C++) | Render thread, renderer fallback (gpu-next → gpu → software), frame ring, quarantine, backoff, swap reporting | `packages/mpv_kit_video/src/video_renderer.cc` |
-| `VulkanContext` (C++) | Vulkan instance/device/queues, timeline semaphore, shared-image ring | `packages/mpv_kit_video/src/vulkan_backend.cc` |
-| `Interop` / `VulkanInterop` | Platform abstraction for zero-copy sharing and software pixel order | `packages/mpv_kit_video/src/video_renderer.h`, `src/vulkan_backend.h` |
-| Platform plugins | Method channel contract, Flutter texture registration, event marshalling | `packages/mpv_kit_video/windows/mpv_kit_video_plugin.cpp`, `.../linux/mpv_kit_video_plugin.cc`, `.../macos/Classes/MpvKitVideoPlugin.mm` |
-| Build hook | Resolves/verifies/extracts the libmpv bundle and emits code assets | `packages/mpv_kit_libs/hook/build.dart`, `lib/src/bundle.dart` |
-| Native test harness | C tests for the Vulkan render backend and stream bridge | `native/tests/render_vk_smoke.c`, `native/tests/stream_bridge_test.c` |
+| `MpvLibrary` | Process-wide single libmpv load, client API major 2 gate | `packages/mpv_kit/lib/src/ffi/library.dart` |
+| `MpvBindings` | Hand-written FFI symbol table | `packages/mpv_kit/lib/src/ffi/bindings.dart` |
+| `Mpv` | 1:1 client API wrapper: handle, event loop, observers, async replies | `packages/mpv_kit/lib/src/core/mpv.dart` |
+| Events / node / errors | Sealed `MpvEventData`, `mpv_node` conversion, `MpvException` | `packages/mpv_kit/lib/src/core/events.dart`, `node.dart`, `errors.dart` |
+| `StreamBridge` | Custom `protocol://` sources served from Dart (patch 0006) | `packages/mpv_kit/lib/src/core/stream_bridge.dart` |
+| `Player` | High-level `MpvState<T>` per property, typed commands, dispose hooks | `packages/mpv_kit/lib/src/player/player.dart`, `models.dart` |
+| Generated catalog/options | Property/command/option metadata, typed `MpvOptions` | `packages/mpv_kit/lib/src/generated/` |
+| `MpvVideoController` | Creates native renderer, texture id, event routing, strict `backend` wire-name validation | `packages/mpv_kit_video/lib/src/video_controller.dart` |
+| `MpvVideo` | Widget: letterbox, debounced resize, display refresh follow | `packages/mpv_kit_video/lib/src/mpv_video.dart` |
+| `VideoRenderer` | API-independent engine: render thread, candidate chain, ring/quarantine, publish gate, backoff, swap reporting, idle, events | `packages/mpv_kit_video/src/video_renderer.h`, `video_renderer.cc` |
+| `RenderBackend` | Graphics-API seam: device, render context, render targets | `packages/mpv_kit_video/src/render_backend.h` |
+| `SoftwareBackend` | `MPV_RENDER_API_TYPE_SW` backend | `packages/mpv_kit_video/src/video_renderer.cc` |
+| `VulkanRenderBackend` / `VulkanContext` | Vulkan device, timeline semaphore, shared-image ring | `packages/mpv_kit_video/src/vulkan_backend.h`, `vulkan_backend.cc` |
+| `MpvApi` | Nine render-API function pointers received from Dart | `packages/mpv_kit_video/src/mpv_api.h` |
+| `Interop` / `VulkanInterop` | Platform seam: `FrameReady`, `RetainFrame`, `CompositorLatency`, `BackendCandidates`, `CreateBackend`, shared image creation | `packages/mpv_kit_video/src/video_renderer.h`, `vulkan_backend.h` |
+| Platform plugins | Method channel, texture registration, event marshalling | `packages/mpv_kit_video/windows/mpv_kit_video_plugin.cpp` + `d3d11_interop.cpp`, `linux/mpv_kit_video_plugin.cc` + `gl_interop.cc`, `macos/Classes/MpvKitVideoPlugin.mm` + `metal_interop.mm` |
+| Bundle hook | Resolve, sha256-verify, extract libmpv bundle, emit code assets | `packages/mpv_kit_libs/hook/build.dart`, `lib/src/bundle.dart`, `bundles.dart`, `tar.dart` |
+| Native build | deps -> FFmpeg -> patched mpv -> package | `native/build/*.sh`, `native/patches/`, `native/deps/libplacebo/` |
+| Native tests | Render smoke, stream bridge, renderer golden traces, affinity, API override | `native/tests/` |
 
 ## Pattern Overview
 
-**Overall:** Layered facade over a C library, with a handle-passing Flutter plugin and a callback bridge.
+**Overall:** Layered FFI binding + Flutter plugin with a native engine/backend seam (template method + strategy).
 
-Key characteristics:
-
-- **One library, one handle, one owner per concern.** `MpvLibrary` caches a single `DynamicLibrary`; every `Mpv` wraps an `mpv_handle*`. The video plugin never loads libmpv — Dart passes the handle address and nine render-API symbol addresses across the method channel (`MpvVideoController._symbols` in `packages/mpv_kit_video/lib/src/video_controller.dart`, `MpvApi::Load` in `packages/mpv_kit_video/src/mpv_api.h`).
-- **Generated surface, hand-written behavior.** Properties/commands/options tables are generated from mpv's own docs and option table (`tools/gen_catalog.dart`, `tools/gen_options.dart`); all behavior lives in hand-written `core/` and `player/` files.
-- **Async at the Dart boundary, synchronous at the C boundary.** FFI calls are synchronous and documented thread-safe; native callbacks (`wakeup`, stream requests) enter Dart through `NativeCallable.listener`, never by upcalling a JIT isolate.
-- **Single native render thread per controller.** The compositor, UI and raster threads only request frames; rendering and swap reporting happen on the renderer thread.
-- **Fallback-first rendering.** Vulkan gpu-next → Vulkan gpu → software; every failure is reported as a typed event instead of failing the app.
+**Key Characteristics:**
+- One libmpv mapping per process; the plugin never loads libmpv — Dart passes the handle and render symbol addresses over the method channel.
+- Generated surface (catalog/options), hand-written behaviour.
+- Synchronous C boundary; native callbacks enter Dart only via `NativeCallable.listener`.
+- One native render thread per controller owns every post-`Start` `mpv_render_*` call.
+- Fallback-first rendering as data: an ordered `BackendCandidate` chain, every failure becomes a reason trail or typed event.
+- Public API frozen (`packages/mpv_kit/test/api_freeze_test.dart`, `api_surface_test.dart`); new backends map onto existing `MpvVideoBackend { vulkan, software }` (ADR 0004).
 
 ## Layers
 
-**Generated metadata layer:**
-- Purpose: expose every mpv property, command and option with docs and types matching the bundled binary.
+**Generated:**
+- Purpose: mpv properties/commands/options with docs and types
 - Location: `packages/mpv_kit/lib/src/generated/`
-- Contains: `catalog.dart` (4346 lines), `catalog_types.dart`, `option_types.dart`, `options.dart` (7617 lines).
-- Depends on: nothing but `dart:core`.
-- Used by: `Mpv.getOptionValue`/`setOptionValue`, `Player`, application code. Never edited by hand.
+- Contains: `catalog.dart`, `catalog_types.dart`, `options.dart`, `option_types.dart`
+- Depends on: `dart:core` only
+- Used by: `Mpv`, `Player`, apps. Regenerate via `tools/gen_catalog.dart`, `tools/gen_options.dart`
 
-**FFI layer:**
-- Purpose: declare libmpv symbols and locate/load the library.
+**FFI:**
+- Purpose: symbol declarations and library resolution
 - Location: `packages/mpv_kit/lib/src/ffi/`
-- Contains: `bindings.dart` (raw symbol table, opaque types, enums), `library.dart` (resolution order, API version gate).
-- Depends on: `package:ffi`, `dart:ffi`, `dart:io`.
-- Used by: `Mpv`, `StreamBridge`, `MpvVideoController` (symbol lookup for the plugin).
+- Depends on: `dart:ffi`, `package:ffi`
+- Used by: `core/`, `MpvVideoController` (symbol lookup)
 
-**Core client layer:**
-- Purpose: represent libmpv semantics safely in Dart.
+**Core:**
+- Purpose: safe libmpv semantics in Dart
 - Location: `packages/mpv_kit/lib/src/core/`
-- Contains: `mpv.dart`, `events.dart`, `node.dart`, `errors.dart`, `stream_bridge.dart`.
-- Depends on: FFI layer, generated option types.
-- Used by: `Player`, application code, `mpv_kit_video`.
+- Depends on: `ffi/`, `generated/`
+- Used by: `player/`, `mpv_kit_video`
 
-**High-level player layer:**
-- Purpose: ergonomic state and commands for applications.
+**Player:**
+- Purpose: ergonomic state and commands
 - Location: `packages/mpv_kit/lib/src/player/`
-- Contains: `player.dart`, `models.dart`.
-- Depends on: `core/mpv.dart`, `core/events.dart`, `core/errors.dart`.
-- Used by: applications and `mpv_kit_video` (controller registers a dispose hook on `Player`).
+- Depends on: `core/`
+- Used by: apps, `mpv_kit_video`
 
-**Dart video-output layer:**
-- Purpose: connect an `Mpv` instance to a Flutter texture and expose diagnostics.
+**Video Dart:**
+- Purpose: Flutter texture + diagnostics
 - Location: `packages/mpv_kit_video/lib/src/`
-- Contains: `video_controller.dart`, `mpv_video.dart`.
-- Depends on: `package:mpv_kit`, Flutter services/widgets.
-- Used by: applications that render video.
+- Depends on: `package:mpv_kit`, Flutter services/widgets
+- Used by: apps (barrel re-exports `mpv_kit`)
 
-**Native renderer layer (platform-independent):**
-- Purpose: own the mpv render context, render thread, frame ring and Vulkan device.
+**Native engine:**
+- Purpose: render context, render thread, frame ring, backends
 - Location: `packages/mpv_kit_video/src/`
-- Contains: `video_renderer.h/.cc`, `vulkan_backend.h/.cc`, `mpv_api.h`, vendored mpv render headers (`src/include/mpv/`).
-- Depends on: vendored Vulkan headers + volk (`third_party/`).
-- Used by: every platform plugin.
+- Depends on: `src/include/mpv/` (vendored render headers), `third_party/` (Vulkan-Headers, volk)
+- Used by: all platform plugins (macOS compiles it via `macos/Classes/shared_sources.cpp`, `volk_unity.c`)
 
-**Platform interop/plugin layer:**
-- Purpose: Flutter texture registration, compositor sharing, event marshalling.
-- Location: `packages/mpv_kit_video/windows/`, `linux/`, `macos/`.
-- Contains: plugin entry points, `d3d11_interop.*`, `gl_interop.*`, `metal_interop.*`.
-- Depends on: native renderer layer, Flutter embedding APIs.
-- Used by: Flutter engine.
+**Platform plugins:**
+- Purpose: Flutter texture registrar, compositor sharing, event marshalling
+- Location: `packages/mpv_kit_video/{windows,linux,macos}/`
+- Depends on: native engine, Flutter embedder APIs
 
-**Build/packaging layer:**
-- Purpose: deliver libmpv and its dependency closure, verify integrity, produce release artifacts.
+**Distribution/tooling:**
 - Location: `packages/mpv_kit_libs/`, `native/build/`, `tools/`, `.github/workflows/`
-- Contains: build hook, tar reader, manifest verification, pinning tool, shell build scripts, ABI audit.
-- Depends on: GitHub release assets; no runtime code.
+- No runtime Dart code in `mpv_kit_libs`
 
-**Vendored upstream layer:**
-- Purpose: buildable mpv source plus mpv_kit patches and upstream-tracking notes.
-- Location: `native/mpv/`, `native/patches/`, `native/tests/`
-- Contains: full mpv tree (963 tracked files), `UPSTREAM.md`, 7 patches, C smoke tests.
-- Depends on: nothing at runtime; only the release workflow builds it.
+**Vendored upstream:**
+- `native/mpv/`: full upstream mpv source tree (963 tracked files, version in `native/mpv/MPV_VERSION`), third-party, never edited directly; downstream changes live as patches in `native/patches/` (0001–0004, 0006–0009) tracked in `native/patches/UPSTREAM.md`, checked by `tools/check_patches.sh`. libplacebo backports in `native/deps/libplacebo/` with `SHA256SUMS`.
 
 ## Data Flow
 
-### Property observation (primary state path)
+### Property observation
 
-1. `Player` constructor binds each state: `_bind(name, state, parse)` calls `mpv.observeProperty(name)` (`packages/mpv_kit/lib/src/player/player.dart:641`).
-2. `Mpv.observeProperty` allocates a `reply_userdata` id and a sync `StreamController`; on first listen it calls `mpv_observe_property(..., MPV_FORMAT_NODE)` (`packages/mpv_kit/lib/src/core/mpv.dart:392`).
-3. mpv fires the wakeup callback on a native thread; the `NativeCallable.listener` posts to the owning isolate (`mpv.dart:25`, `mpv.dart:521`).
-4. `_onWakeup` drains `mpv_wait_event(handle, 0)` until `MPV_EVENT_NONE`, decodes each event immediately (`events.dart:19`), and dispatches.
-5. `_dispatch` routes `PropertyChangeEvent` to the observer controller by `replyUserdata`, completes async requests, then broadcasts on `Mpv.events` (`mpv.dart:529`).
-6. `Player`'s `_bind` parser updates the `MpvState<T>`, whose sync broadcast stream notifies widgets.
-
-`time-pos` is deliberately throttled to 100 ms with a 250 ms jump bypass before updating `position` (`player.dart:120-129`).
+1. `Player` registers observers through `Mpv.observeProperty` (`packages/mpv_kit/lib/src/core/mpv.dart`)
+2. libmpv wakeup callback -> `NativeCallable.listener` -> `Mpv` drains `mpv_wait_event`, decodes immediately into `MpvEventData` (`core/events.dart`, `core/node.dart`)
+3. Property-change events update `MpvState<T>` (sync broadcast, deduplicated) (`player/player.dart`)
 
 ### Video frame path
 
-1. `Player` is created with `vo=libmpv` (`player.dart:85`); mpv forwards frames to the render context created by the plugin.
-2. `MpvVideoController.create` applies a shader cache dir, reads `player.mpv.handle.address`, resolves the nine render symbols, and invokes `create` on channel `mpv_kit_video` (`video_controller.dart:154-173`).
-3. The platform plugin builds an `Interop`, a `VideoRenderer`, calls `Start(choice)`, registers a `TextureVariant` (`GpuSurfaceTexture` for Vulkan, `PixelBufferTexture` for software), and returns `{textureId, backend, reason}` (`windows/mpv_kit_video_plugin.cpp:176-246`).
-4. `VideoRenderer::Start` creates the mpv render context (Vulkan gpu-next, Vulkan gpu, then software), sets the update callback, and launches the render thread (`src/video_renderer.cc:42`).
-5. mpv's update callback only flags and signals; the render thread calls `mpv_render_context_update` → `mpv_render_context_render` into a ring image (`video_renderer.cc:282`, `:410`).
-6. `Interop::FrameReady` marks the Flutter texture dirty (`MarkTextureFrameAvailable` / `textureFrameAvailable` / `g_idle_add` depending on platform).
-7. When the compositor pulls the texture, the plugin calls `VideoRenderer::AcquireFront()` under the renderer lock and returns the shared image (`windows/mpv_kit_video_plugin.cpp:273`, `:224`).
-8. Swap reporting is deferred to actual presentation (compositor take, or 50 ms timeout), so mpv timing follows Flutter's compositor (`src/video_renderer.h:156-166`).
+1. `MpvVideoController.create` sends handle + render symbol addresses to the plugin (`video_controller.dart`); `MpvApi::Load` requires all nine (`src/mpv_api.h`)
+2. `VideoRenderer::Start` builds candidates (`Interop::BackendCandidates`, default `DefaultCandidates(choice)`), applies `MPV_KIT_VIDEO_API` filter, per api creates one backend (`Interop::CreateBackend` or built-in), calls `RenderBackend::Create` per renderer; `_create`/`_get_info` run on the caller thread (`src/video_renderer.cc`)
+3. Render thread: `BindThread`, update callback signals CV, reports due swaps, `mpv_render_context_update`, `RenderBackend::Render` into a free slot, `Wait` if `pipelined()`, publish, `Interop::FrameReady`
+4. Compositor/raster thread calls `AcquireFront()` under the renderer lock: returns front `Frame` (via `FrameFor`), counts a due swap (`swaps_to_report_`), wakes render thread — makes no libmpv call
+5. Render thread calls `mpv_render_context_report_swap` for each counted swap before next update (`video_renderer.cc:533`)
+6. On destroy: platform sets quit and joins; render thread removes update callback, `RenderBackend::Release` (`render_context_free`), `UnbindThread`, exits; backend destroyed afterwards (device last)
 
-### Controller resize / display sync
+### Resize / reallocation
 
-1. `MpvVideo` computes the visible video rect from `player.videoParams`, `BoxFit`, rotation and pixel aspect (`mpv_video.dart:44-93`).
-2. Size requests are debounced 80 ms; the first size is sent immediately (`mpv_video.dart:53-67`).
-3. `MpvVideoController.setSize` no-ops on unchanged sizes and invokes `setSize` on the channel (`video_controller.dart:340`).
-4. `MpvVideo` also calls `syncDisplayRefreshRate` on every build from `View.display.refreshRate`; initial creation asks the native plugin (`getDisplayRefreshRate`) because Flutter reports 0 on Windows (`video_controller.dart:215`, `windows/mpv_kit_video_plugin.cpp:118`).
+1. `MpvVideo` debounces size, controller sends physical size
+2. Render thread calls `AllocTargets(count, w, h, keep_slot)`; old generation retires (Vulkan keeps only `keep_slot`; software keeps old + previous generation)
+3. `FreeRetired` after first new-size frame published and compositor took quarantine+1 frames
+
+### Reason / backend reporting (ADR 0004)
+
+1. Winner's `wire_name` (`vulkan`, `software`; reserved `d3d11`, `opengl`) returned as `backend`; Dart matches exactly or throws `PlatformException('render_init')`
+2. `reason` = winner head + trails of earlier candidates, e.g. `software (sw) on cpu; vulkan/gpu-next unavailable: ...`
 
 ### Custom stream protocol
 
-1. Application calls `Mpv.registerStreamProtocol(protocol, opener)` (`mpv.dart:462`).
-2. `StreamBridge.register` checks for `mpv_kit_stream_add`, creates a `NativeCallable.listener`, and registers the protocol (`stream_bridge.dart:132`).
-3. mpv's demuxer thread calls open/read/seek/close; the bridge posts the request and blocks that mpv thread until `mpv_kit_stream_complete` (`stream_bridge.dart:192`).
-4. Dart claims the request with `mpv_kit_stream_begin` before touching the buffer, awaits the `MpvStreamSource`, then completes it (`stream_bridge.dart:205-263`).
-5. `Mpv.dispose` calls `StreamBridge.shutdown` before `mpv_terminate_destroy` so no mpv thread waits on the disposing isolate (`mpv.dart:168-176`).
+1. `Mpv.registerStreamProtocol` -> `StreamBridge` registers native callbacks (patch 0006)
+2. mpv demuxer thread requests -> `NativeCallable.listener` -> `MpvStreamSource` async -> completion back to native; failures mapped to mpv error codes
 
-### Dispose ordering
-
-1. `MpvVideoController.create` registers `controller.dispose` via `Player.addDisposeHook` (`video_controller.dart:186`).
-2. `Player.dispose` awaits all hooks first (`player.dart:620-627`).
-3. The controller's hook invokes `dispose` on the channel; the plugin stops the render thread, frees the render context, unregisters the texture, and defers deleting `Instance` until the texture registrar confirms no raster callback is running (`windows/mpv_kit_video_plugin.cpp:159-170`, `:250`).
-4. Only then does `Player.dispose` cancel subscriptions and call `mpv.dispose()` (`mpv_terminate_destroy`).
-
-**State Management:** `MpvState<T>` per property in `Player`; `Mpv.events` + per-observer streams at the low level; `MpvVideoController.events` for native diagnostics. No global app state container.
+**State Management:**
+- Mutable state concentrated in `MpvState<T>`, `Mpv`, `Player`, `MpvVideoController` (static `_live` registry keyed by texture id), and `VideoRenderer` (under renderer lock).
 
 ## Key Abstractions
 
-**`Mpv` (client handle):**
-- Purpose: exact client-API mirror with safe lifetime and event delivery.
-- Examples: `packages/mpv_kit/lib/src/core/mpv.dart`
-- Pattern: facade + native callback registration; IDs are monotonic ints used as `reply_userdata`.
+**RenderBackend:**
+- Purpose: one graphics API behind a `VideoRenderer`
+- Examples: `packages/mpv_kit_video/src/render_backend.h`, `SoftwareBackend` in `video_renderer.cc`, `VulkanRenderBackend` in `vulkan_backend.cc`
+- Pattern: strategy interface (`wire_name`, `frame_kind`, `pipelined`, `BindThread/UnbindThread`, `Create`, `device_failed`, `device_name`, `RendererName`, `AllocTargets`, `FreeRetired`, `FrameFor`, `Render`, `Wait`, `Release`) with a documented deferred-release contract
 
-**`MpvState<T>`:**
-- Purpose: current value + change stream for one observed property.
-- Examples: `packages/mpv_kit/lib/src/player/player.dart:16`
-- Pattern: value object with sync broadcast controller; deduplicates equal values; resets on `ShutdownEvent`.
+**BackendCandidate / DefaultCandidates:**
+- Purpose: ordered `{api, renderer}` chain; `auto` = vulkan/gpu-next, vulkan/gpu, software/sw
+- Examples: `render_backend.h`, `video_renderer.cc:253`
+- Pattern: data-driven fallback; renderer quality first, API second (ADR 0004 Decision 5)
 
-**`MpvOption<T>`:**
-- Purpose: typed option with declared choices/range validation.
-- Examples: `packages/mpv_kit/lib/src/generated/option_types.dart`, `options.dart`
-- Pattern: const value object generated from the running library's option table.
+**Interop:**
+- Purpose: platform seam (texture dirty, retain, compositor latency, candidate override, platform backend factory)
+- Examples: `video_renderer.h:54`, `windows/d3d11_interop.*`, `linux/gl_interop.*`, `macos/Classes/metal_interop.*`
 
-**`MpvVideoController`:**
-- Purpose: lifetime and identity of one native renderer + Flutter texture.
-- Examples: `packages/mpv_kit_video/lib/src/video_controller.dart`
-- Pattern: static registry `_live` keyed by `textureId` for event routing; create/dispose returns through the method channel.
+**Mpv / Player / MpvState<T>:**
+- Purpose: client-API mirror and high-level state
+- Examples: `packages/mpv_kit/lib/src/core/mpv.dart`, `packages/mpv_kit/lib/src/player/player.dart`
 
-**`VideoRenderer` / `Interop` / `VulkanInterop`:**
-- Purpose: platform-independent rendering with a narrow platform seam.
-- Examples: `packages/mpv_kit_video/src/video_renderer.h`, `src/vulkan_backend.h`
-- Pattern: template-method (platform objects implement `CreateImage`, `DestroyImage`, `FrameReady`, `CompositorLatency`) plus a render-thread state machine.
-
-**`MpvStreamSource`:**
-- Purpose: host-provided byte stream for custom protocols.
-- Examples: `packages/mpv_kit/lib/src/core/stream_bridge.dart:26`, `MpvMemoryStreamSource`
-- Pattern: async interface with one in-flight call per stream, enforced by mpv's synchronous reads.
+**MpvStreamSource:**
+- Purpose: host-provided byte streams
+- Examples: `packages/mpv_kit/lib/src/core/stream_bridge.dart`
 
 ## Entry Points
 
-**Application entry:**
-- Location: `example/lib/main.dart`
-- Triggers: `flutter run -d windows|linux|macos`
-- Responsibilities: create `Player`, create `MpvVideoController`, render `MpvVideo`, display live stats and renderer events.
-
-**Dart package entry:**
+**Package barrels:**
 - Location: `packages/mpv_kit/lib/mpv_kit.dart`, `packages/mpv_kit_video/lib/mpv_kit_video.dart`, `packages/mpv_kit_libs/lib/mpv_kit_libs.dart`
-- Triggers: import by applications.
-- Responsibilities: barrel exports; `mpv_kit_video` re-exports all of `mpv_kit`, so apps depend on one package.
+- Responsibilities: public API exports
 
-**Flutter plugin registration:**
-- Location: `packages/mpv_kit_video/windows/mpv_kit_video_plugin.cpp:304` (`MpvKitVideoPluginCApiRegisterWithRegistrar`), `linux/mpv_kit_video_plugin.cc`, `macos/Classes/MpvKitVideoPlugin.mm:144`
-- Triggers: Flutter plugin registrant generated at build time (`example/windows/flutter/generated_plugin_registrant.cc`).
-- Responsibilities: install the `mpv_kit_video` method channel, texture registrar, and platform event transport.
+**Plugin registration:**
+- Location: `packages/mpv_kit_video/windows/mpv_kit_video_plugin.cpp` (`MpvKitVideoPluginCApiRegisterWithRegistrar`), `linux/mpv_kit_video_plugin.cc`, `macos/Classes/MpvKitVideoPlugin.mm`
+- Triggers: generated plugin registrant
 
-**Build hook entry:**
-- Location: `packages/mpv_kit_libs/hook/build.dart`
-- Triggers: `flutter pub get` / `flutter build` native-assets hook.
-- Responsibilities: resolve bundle source, verify hashes, emit `CodeAsset`s.
+**Build hook:** `packages/mpv_kit_libs/hook/build.dart` (native-assets build)
 
-**Native test executables:**
-- Location: `native/tests/meson.build`, `native/tests/render_vk_smoke.c`, `native/tests/stream_bridge_test.c`
-- Triggers: `meson test` in `native/tests`.
-- Responsibilities: exercise the Vulkan render backend and asynchronous stream bridge against a locally built patched libmpv.
+**Example app:** `example/lib/main.dart`; integration tests in `example/integration_test/`
 
-**Tooling entry points:**
-- `tools/gen_catalog.dart` — regenerate property/command/option catalog from `native/mpv/DOCS/man`.
-- `tools/gen_options.dart` — regenerate typed options by querying a running libmpv.
-- `tools/pin_bundles.dart` — update `bundles.dart` from a release's `SHA256SUMS`.
-- `tools/rea_abi_audit/pe_audit.py` — verify the Windows DLL export set and GPL-free imports.
-- `native/build/build.sh` — full release build (deps → FFmpeg → patched mpv → package).
+**Native tests:** `native/tests/meson.build`
+
+**Tools:** `tools/gen_catalog.dart`, `tools/gen_options.dart`, `tools/pin_bundles.dart`, `tools/check_consistency.dart`, `tools/check_patches.sh`, `tools/bench_decode.dart`, `tools/rea_abi_audit/pe_audit.py`, `native/build/build.sh`
 
 ## Architectural Constraints
 
-- **Single libmpv mapping:** `MpvLibrary._bindings` is a static cache; a later `open(path:)` with a different path is ignored. Changing the library requires a new process (`packages/mpv_kit/lib/src/ffi/library.dart:29-56`).
-- **Client API major version 2 only:** `MpvLibrary._checkApiVersion` rejects other majors before any handle is created (`library.dart:75`).
-- **Plugin never links or loads libmpv:** all render symbols arrive as addresses over the method channel; `MpvApi::Load` requires exactly nine non-null addresses (`packages/mpv_kit_video/src/mpv_api.h:22`).
-- **Rendering is confined to one native thread per controller:** `mpv_render_context_render` must be called from the renderer thread; UI/raster callbacks only publish frames (`packages/mpv_kit_video/src/video_renderer.cc:282`).
-- **Render context must die before the mpv core:** enforced by the `Player.addDisposeHook` contract; bypassing it causes libmpv to wait/fail (`docs/ARCHITECTURE.md:76-90`).
-- **Frame ring quarantine:** an image the compositor returned stays quarantined for `Interop::CompositorLatency()` acquisitions — Windows 4 (ring 7), others 2 (ring 5); ring = front + in use + quarantine + one free (`packages/mpv_kit_video/src/video_renderer.h:197-230`).
-- **No cross-API fences:** correctness relies on the quarantine + Vulkan timeline waits; there is no keyed mutex/fence with ANGLE or Metal (`docs/ARCHITECTURE.md:96-119`).
-- **Stream requests block mpv's demuxer thread:** a source that never completes a request stalls playback; every registered protocol is shut down before core destruction (`packages/mpv_kit/lib/src/core/stream_bridge.dart`, `mpv.dart:168`).
-- **Platform event marshalling:** native render events must reach the platform thread before the method channel — `PostMessage` (Windows), `g_idle_add` (Linux), `dispatch_async(main)` (macOS).
-- **Native asset bundling only:** `mpv_kit_libs` has no runtime Dart code; `mpv_kit` resolves the bundle by default library names via the OS loader (`docs/ARCHITECTURE.md:23-27`).
-- **Workspace resolution:** root `pubspec.yaml` lists all packages plus `example` under `workspace:`; each package uses `resolution: workspace` and versions are kept in lockstep (`0.1.0-dev.3`).
-- **Dart/Flutter floor differs per package:** `mpv_kit` requires Dart `^3.8.0`; `mpv_kit_video` and `mpv_kit_libs` require Dart `^3.10.0` / Flutter `>=3.38.0` because of native assets (`packages/*/pubspec.yaml`).
+- **Threading:** Dart single isolate event loop; native callbacks via `NativeCallable.listener`. Native: after `Start`, every `mpv_render_*` call (update, render, set_parameter, report_swap, final set_update_callback(nullptr), render_context_free) runs on the controller's render thread; only `_create`/`_get_info`/first update callback run on the `Start` caller. Debug asserts plus `native/tests/video_renderer_affinity_test.cc` enforce this. Required for a future OpenGL backend.
+- **Global state:** `MpvLibrary` static binding cache (`library.dart`); `MpvVideoController._live` registry (`video_controller.dart`).
+- **Single libmpv mapping:** later `open(path:)` with a different path is ignored.
+- **Dispose order:** render context must be freed before the mpv core — enforced by `Player.addDisposeHook`.
+- **Frame ring quarantine:** compositor-returned image stays quarantined for `CompositorLatency()` acquisitions (Windows 4, ring 7; others 2, ring 5) (`video_renderer.h`); no cross-API fences.
+- **`MPV_KIT_VIDEO_API`:** read once per `Start`, `^[a-z0-9-]{1,16}$`, strict — no fallback; mismatch -> `render_init` (`video_renderer.cc:53`).
+- **Frozen public API:** `MpvVideoBackend` stays `{vulkan, software}`; wire names private, exact match.
+- **Golden freeze:** `native/tests/golden/*.txt` and existing golden test files are frozen; new tests go in new files.
+- **Circular imports:** none; dependencies point inward (`player/` -> `core/` -> `ffi/`, `generated/`).
 
 ## Anti-Patterns
 
-### Loading libmpv from the plugin or a second location
+### Calling libmpv render API off the render thread
 
-**What happens:** calling `DynamicLibrary.open('libmpv-2.dll')` inside native code, or calling `MpvLibrary.open(path:)` with a new path after the first load.
-**Why it's wrong:** creates a second copy of the library, so render symbols and the handle belong to different cores; the cached `MpvLibrary` silently ignores the new path.
-**Do this instead:** pass `player.mpv.handle.address` and `library.lookup()` addresses across the channel, as `MpvVideoController.create` does (`packages/mpv_kit_video/lib/src/video_controller.dart:168-173`).
+**What happens:** Adding `mpv_render_context_*` calls in `AcquireFront`, platform callbacks or the destructor.
+**Why it's wrong:** Breaks render.h threading rules and the affinity test; impossible for OpenGL.
+**Do this instead:** Count work under the lock and wake the render thread, as swap reporting does in `packages/mpv_kit_video/src/video_renderer.cc`.
 
-### Disposing the player before the controller
+### Adding a backend via control flow or public enum
 
-**What happens:** calling `mpv.dispose()`/`Mpv.dispose()` directly while an `MpvVideoController` exists.
-**Why it's wrong:** libmpv requires every render context to be freed before `mpv_terminate_destroy`; ordering violations hang or crash.
-**Do this instead:** always call `await player.dispose()`; the controller's dispose hook runs first (`packages/mpv_kit/lib/src/player/player.dart:613-631`).
+**What happens:** Branching in `VideoRenderer` per API, or adding an `MpvVideoBackend` value.
+**Why it's wrong:** Violates the API freeze and ADR 0004.
+**Do this instead:** Implement `RenderBackend`, add a `BackendCandidate` via `Interop::BackendCandidates`/`CreateBackend`, add wire name to Dart's exact-match set first.
 
-### Editing generated files
+### Loading libmpv from the plugin / disposing player before controller / editing generated files
 
-**What happens:** hand-editing `catalog.dart`, `options.dart`, `catalog_types.dart` or `option_types.dart`.
-**Why it's wrong:** they are regenerated wholesale from mpv docs/option table and will be overwritten; types/ranges must match the bundled binary.
-**Do this instead:** change `tools/gen_catalog.dart` / `tools/gen_options.dart` and regenerate.
-
-### Awaiting long work inside a stream source without regard to the demuxer
-
-**What happens:** a `MpvStreamSource` performs a blocking synchronous operation or never completes a read/seek.
-**Why it's wrong:** the mpv demuxer thread is blocked for the whole request; playback stalls and `Mpv.dispose` waits on `shutdown`.
-**Do this instead:** return promptly (async is fine), keep one request in flight per stream, and honor `close`/shutdown.
-
-### Treating Flutter's display refresh rate as reliable on Windows
-
-**What happens:** relying only on `View.display.refreshRate` to drive `display-fps-override`.
-**Why it's wrong:** Flutter reports 0 on Windows (flutter/flutter #158721), silently disabling `video-sync=display-*`.
-**Do this instead:** use `MpvVideoController.syncDisplayRefreshRate` and the plugin's `getDisplayRefreshRate` fallback (`video_controller.dart:215-230`).
-
-### Rendering a texture at the widget's logical size
-
-**What happens:** requesting `setSize` with logical pixels.
-**Why it's wrong:** mpv would render at half resolution on HiDPI displays, defeating its scalers.
-**Do this instead:** multiply by `devicePixelRatio` as `MpvVideo._requestSize` does (`packages/mpv_kit_video/lib/src/mpv_video.dart:53`).
+**Do this instead:** Pass symbols over the channel (`mpv_api.h`); rely on dispose hooks; regenerate with `tools/gen_*.dart`.
 
 ## Error Handling
 
-**Strategy:** errors are typed at each boundary; recoverable rendering problems become events; unrecoverable conditions throw.
+**Strategy:** Typed exceptions in Dart, typed events and reason trails in native.
 
 **Patterns:**
-- libmpv negative return codes → `MpvException` with `MpvError` enum, operation label and `mpv_error_string` text (`packages/mpv_kit/lib/src/core/errors.dart`).
-- “Unavailable” reads use `tryGetProperty` returning null for `propertyUnavailable`/`propertyNotFound`, rethrowing everything else (`mpv.dart:322`).
-- Unknown option names during `Mpv.create` are tolerated only for `optionNotFound` (feature compiled out), so older builds still work (`mpv.dart:58-76`).
-- Async request failures complete their futures with `MpvException`; `Mpv.dispose` completes pending futures with `StateError`.
-- Library loading aggregates every attempted path/reason in `MpvLibraryNotFound`.
-- Stream bridge maps source failures to mpv error codes (`loadingFailed`, `unsupported`, `generic`) instead of throwing across FFI (`stream_bridge.dart:221-279`).
-- Native renderer: failed frames are advanced with `SKIP_RENDERING` and retried with exponential backoff 100 ms → 5 s; device loss stops rendering permanently and emits `device_lost` (`packages/mpv_kit_video/src/video_renderer.h:172-191`).
-- Dart controller surfaces `PlatformException` on failed creation and emits `softwareFallback` as an explicit event (`video_controller.dart:174-204`).
+- Negative libmpv codes -> `MpvException` (`core/errors.dart`); `tryGetProperty` returns null for unavailable.
+- Stream bridge maps source failures to mpv error codes, never throws across FFI.
+- Renderer: failed frames -> `SKIP_RENDERING` + backoff 100 ms -> 5 s; device loss stops rendering, emits `device_lost`.
+- Creation failure -> `PlatformException('render_init')` with trails; unknown wire name also `render_init`.
 
 ## Cross-Cutting Concerns
 
-**Logging:** mpv log messages are opt-in via `Player.setLogLevel`/`Mpv.requestLogMessages`, exposed as `Player.logs` and `Mpv.events`. Renderer diagnostics are emitted as `MpvVideoEvent`s and also written natively (`OutputDebugStringA` + stderr on Windows, plugin logging elsewhere). The resolved backend is printed once with `debugPrint` at create time (`video_controller.dart:188`).
+**Logging:** One line per controller creation in `video_controller.dart`; diagnostics as `MpvVideoEvent` / `Player.logs`; native `log_` callback in `VideoRenderer`.
+**Validation:** Boundary checks (`MpvOption.check`, `MpvApi::Load`, `MPV_KIT_VIDEO_API` charset, strict wire names, bundle sha256).
+**Authentication:** Not applicable.
 
-**Validation:** `MpvOption.check` validates choices/range before runtime property writes (`packages/mpv_kit/lib/src/generated/option_types.dart`); `Mpv.command` accepts lists or named maps and converts through `writeNode`; `openPlaylist` uses `RangeError.checkValidIndex`. Dart packages use `strict-casts`, `strict-inference`, `strict-raw-types` and lint sets (`packages/*/analysis_options.yaml`).
-
-**Authentication:** Not applicable — this is a client-side media library with no network service, credentials, or auth layer.
-
-**Language of comments:** Public API docs are English; several newer explanatory comments and doc blocks (notably `Player` defaults and native hardware-decoding notes) are in Chinese. Preserve surrounding language when editing a file.
+Further reading: `docs/ARCHITECTURE.md`, `docs/ARCHITECTURE-diagrams.md`, `docs/adr/0001`–`0004`.
 
 ---
 
-*Architecture analysis: 2026-10-23*
+*Architecture analysis: 2026-10-27*
