@@ -848,12 +848,16 @@ class FakeVulkanInterop : public mpv_kit::VulkanInterop {
   std::vector<const char*> DeviceExtensions() const override { return {}; }
 
   bool AcceptDevice(VkPhysicalDevice device) override {
-    if (!accept_) return false;
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(device, &props);
-    std::lock_guard<std::mutex> lock(mu_);
-    names_.emplace_back(props.deviceName);
-    return true;
+    {
+      // Record the name before deciding: a rejected device's name also lands
+      // in the backend reason ("<name> is not the compositor adapter") and
+      // NormalizeReason must be able to replace it with `<device>`.
+      std::lock_guard<std::mutex> lock(mu_);
+      names_.emplace_back(props.deviceName);
+    }
+    return accept_;
   }
 
   /// The `k`-th CreateImage from now (1 = the next one) fails, once.
@@ -862,7 +866,8 @@ class FakeVulkanInterop : public mpv_kit::VulkanInterop {
     fail_in_ = k;
   }
 
-  /// Names of the devices accepted so far (for NormalizeReason).
+  /// Names of the devices AcceptDevice was asked about so far, accepted or
+  /// rejected (for NormalizeReason).
   std::vector<std::string> device_names() const {
     std::lock_guard<std::mutex> lock(mu_);
     return names_;

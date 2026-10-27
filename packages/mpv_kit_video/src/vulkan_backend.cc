@@ -171,6 +171,15 @@ bool VulkanContext::Init(std::string* error) {
   return PickDevice(error) && CreateDevice(error);
 }
 
+// When no device is picked, `*error` lists why each one was rejected, in
+// enumeration order, joined with ", ": "Vulkan < 1.3 on <deviceName>" for a
+// device below Vulkan 1.3, and "<deviceName> is not the compositor adapter"
+// when Interop::AcceptDevice refused it. The Windows AcceptDevice checks both
+// the adapter LUID and the KMT BGRA8 import capability; both are reported as
+// "not the compositor adapter" (the two categories the user asked to tell
+// apart: driver version vs adapter mismatch). With no physical device at all
+// the original wording is kept. VulkanRenderBackend::Create passes the whole
+// string through SanitizeReasonField, so device names need no cleaning here.
 bool VulkanContext::PickDevice(std::string* error) {
   uint32_t n = 0;
   vkEnumeratePhysicalDevices(instance_, &n, nullptr);
@@ -180,11 +189,22 @@ bool VulkanContext::PickDevice(std::string* error) {
   // Prefer the device the compositor uses (interop decides), then discrete.
   VkPhysicalDevice best = VK_NULL_HANDLE;
   int best_score = -1;
+  std::string rejected;
+  auto reject = [&rejected](const std::string& why) {
+    if (!rejected.empty()) rejected += ", ";
+    rejected += why;
+  };
   for (VkPhysicalDevice pd : devices) {
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(pd, &props);
-    if (props.apiVersion < VK_API_VERSION_1_3) continue;
-    if (!interop_->AcceptDevice(pd)) continue;
+    if (props.apiVersion < VK_API_VERSION_1_3) {
+      reject(std::string("Vulkan < 1.3 on ") + props.deviceName);
+      continue;
+    }
+    if (!interop_->AcceptDevice(pd)) {
+      reject(std::string(props.deviceName) + " is not the compositor adapter");
+      continue;
+    }
     int score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU   ? 3
                 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2
                                                                             : 1;
@@ -195,7 +215,9 @@ bool VulkanContext::PickDevice(std::string* error) {
     }
   }
   if (!best) {
-    *error = "no Vulkan 1.3 device shareable with the compositor";
+    *error = rejected.empty()
+                 ? "no Vulkan 1.3 device shareable with the compositor"
+                 : rejected;
     return false;
   }
   physical_device_ = best;

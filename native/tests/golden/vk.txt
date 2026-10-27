@@ -54,7 +54,7 @@ start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavaila
 create-attempts vulkan/gpu-next,vulkan/gpu,sw
 teardown frees=1 live-images=0
 case device-not-shareable
-start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: no Vulkan 1.3 device shareable with the compositor; vulkan/gpu unavailable: no Vulkan 1.3 device shareable with the compositor"
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: <device> is not the compositor adapter; vulkan/gpu unavailable: <device> is not the compositor adapter"
 create-attempts sw
 teardown frees=1 live-images=0
 case get-info-fails

@@ -484,7 +484,8 @@ std::string Probe() {
     if (rig.renderer->backend() != mpv_kit::Backend::kVulkan &&
         (reason.find("Vulkan loader") != std::string::npos ||
          reason.find("vkCreateInstance failed") != std::string::npos ||
-         reason.find("no Vulkan 1.3 device") != std::string::npos))
+         reason.find("no Vulkan 1.3 device") != std::string::npos ||
+         reason.find("Vulkan < 1.3 on") != std::string::npos))
       skip = reason;
   }
   return skip;

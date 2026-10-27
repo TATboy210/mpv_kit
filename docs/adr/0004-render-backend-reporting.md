@@ -89,6 +89,14 @@ trail = api "/" renderer " unavailable: " why
   - a device initialisation error verbatim, for example
     `Vulkan loader not found` or
     `no Vulkan 1.3 device shareable with the compositor`
+  - the Vulkan device pick, split by rejection reason (Phase 14): one entry
+    per enumerated device, in enumeration order, joined with `, `.
+    `Vulkan < 1.3 on <deviceName>` for a device whose driver is below
+    Vulkan 1.3, and `<deviceName> is not the compositor adapter` for a device
+    the platform interop refused. For example
+    `NVIDIA GeForce GTX 960M is not the compositor adapter, Vulkan < 1.3 on Intel(R) HD Graphics 530`.
+    The original `no Vulkan 1.3 device shareable with the compositor` stays
+    for the case where no physical device is enumerated at all
   - `platform interop unavailable: <why>`
   - `platform has no Vulkan interop`
   - `platform has no <api> backend` (the platform's chain names an api
