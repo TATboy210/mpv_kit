@@ -300,6 +300,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 | 261025-rkk | 0009 upstream backports (4 mpv commits) | 2026-10-25 | a2f7c0d | .planning/quick\\261025-rkk-add-native-patches-0009-upstream-backports-patch-with-upstre |
 | 261027-or3 | Linux release build against libdrm 2.4.113 (patch 0012) + LIBDRM-FLOOR guard; unblocks 14-03 | 2026-10-27 | 2b9f6e2 | [261027-or3-fix-linux-release-build-libdrm-2-4-114](./quick/261027-or3-fix-linux-release-build-libdrm-2-4-114/) |
 | 261028-moj | strict MpvLibrary.open: explicit path / MPV_KIT_LIBMPV_PATH never fall back; libmpv_guard removed; macOS CI step fixed | 2026-10-28 | dd75d28 | [261028-moj-strict-mpvlibrary-open-for-explicit-path](./quick/261028-moj-strict-mpvlibrary-open-for-explicit-path/) |
+| 261028-otr | macOS integration leg loads the branch libmpv (staged dylib, sandbox off on runner, software renderer, client API 2.6 asserted); pinned-bundle Vulkan run kept; branch+Vulkan app unverified | 2026-10-28 | 5522944 | [261028-otr-macos-integration-test-loads-the-verify-](./quick/261028-otr-macos-integration-test-loads-the-verify-/) |
 
 ## Session Continuity
 
