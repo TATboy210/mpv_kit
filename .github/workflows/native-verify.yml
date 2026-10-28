@@ -55,7 +55,7 @@ jobs:
             libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
             mesa-vulkan-drivers vulkan-tools zlib1g-dev \
-            libepoxy-dev libegl-mesa0 libgl1-mesa-dri
+            libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
         # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
         # needs >=7.360.1 — build the pinned stack with deps.sh instead.
       - uses: actions/cache@v4
@@ -298,7 +298,7 @@ jobs:
         # needs >=7.360.1 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
       - uses: actions/cache@v4
         id: deps
         with:

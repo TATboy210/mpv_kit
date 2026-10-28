@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dlfcn.h>
 #include <pthread.h>
 #include <time.h>
 
@@ -92,6 +93,19 @@ static void *get_proc_address(void *ctx, const char *name)
     void *p;
     memcpy(&p, &fn, sizeof p);
     return p;
+}
+
+// libepoxy resolves every GLES entry point by dlopen("libGLESv2.so.2") and
+// abort()s the process when that fails, so a host without the library (Ubuntu:
+// package libgles2) cannot be probed by calling a GLES function. Checked first
+// instead, so the absence is a reported SKIP line rather than a SIGABRT.
+static bool gles_runtime_available(void)
+{
+    void *h = dlopen("libGLESv2.so.2", RTLD_LAZY | RTLD_LOCAL);
+    if (!h)
+        return false;
+    dlclose(h);
+    return true;
 }
 
 // --- Handoff phase ---------------------------------------------------------------
@@ -439,6 +453,13 @@ static bool load_stacked_source(mpv_handle *mpv, mpv_render_context *rc)
 // The whole handoff phase. Returns 0, or 1 on a setup failure or a hang.
 static int run_handoff(mpv_handle *mpv, handoff_env *e, const char *gl_version)
 {
+    // The consumer thread is a GLES 2 context (see consumer_main): without the
+    // GLES library epoxy would abort it. The handoff is report-only, so say so
+    // and let the render verdict stand.
+    if (!gles_runtime_available()) {
+        printf("RENDER_GL handoff api=%s skipped=no-libGLESv2.so.2\n", e->api);
+        return 0;
+    }
     step("handoff: export target");
     if (!create_export_target(e))
         FAIL("export FBO is not complete");
@@ -490,6 +511,8 @@ int main(int argc, char **argv)
     if (!has_ext(dpy_ext, "EGL_KHR_surfaceless_context"))
         SKIP("EGL_KHR_surfaceless_context not available");
 
+    if (gles && !gles_runtime_available())
+        SKIP("libGLESv2.so.2 not available (libepoxy would abort)");
     if (!eglBindAPI(gles ? EGL_OPENGL_ES_API : EGL_OPENGL_API))
         SKIP("eglBindAPI(%s) failed", gles ? "OpenGL ES" : "OpenGL");
 
