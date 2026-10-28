@@ -252,18 +252,29 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
+      - name: Let the example app read the staged libmpv's dependencies (macOS)
+        # The staged libmpv.2.dylib links Homebrew dylibs by absolute path
+        # (/opt/homebrew/opt/libass/...), which the sandboxed example app
+        # (DebugProfile.entitlements) may not open ("file system sandbox
+        # blocked open()"). package.sh cannot make this artifact
+        # self-contained (it demands the LGPL FFmpeg from the build prefix and
+        # rejects GPL libraries; this job builds against Homebrew's FFmpeg), so
+        # the sandbox is switched off for the test build only. The edit is to
+        # the runner's checkout and is never committed; shipped entitlements
+        # stay as they are.
+        if: matrix.target == 'macos'
+        run: /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' example/macos/Runner/DebugProfile.entitlements
       - name: Real-plugin integration test
         shell: bash
         env:
-          # macOS: the example app is sandboxed (DebugProfile.entitlements),
-          # which blocks the staged dylib's Homebrew dependencies
-          # (/opt/homebrew/opt/libass/...: "file system sandbox blocked
-          # open()"). MpvLibrary is strict about MPV_KIT_LIBMPV_PATH and no
-          # longer falls through to the bundled copy, so the variable is left
-          # unset there (an empty value counts as unset) and the app loads
-          # the mpv_kit_libs bundle, exactly what the old fall-through ran.
-          # Linux/Windows load the staged build through the path as before.
-          MPV_KIT_LIBMPV_PATH: ${{ matrix.target != 'macos' && format('{0}/stage/{1}', github.workspace, matrix.libname) || '' }}
+          # MpvLibrary is strict about MPV_KIT_LIBMPV_PATH: it loads this
+          # build or throws MpvLibraryNotFound, never the pinned bundle's
+          # copy. macOS is no exception (sandbox lifted by the step above).
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          # The test compares the loaded library's client API with this
+          # (branch build 2.6 after patch 0010; the pinned v0.1.0-dev.3
+          # bundle is 2.5) and prints it in the INTEGRATION line.
+          MPV_KIT_EXPECT_LIBMPV_API: ${{ matrix.target == 'macos' && '2.6' || '' }}
           STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
           MPV_KIT_REQUIRE_LIBMPV: '1'
         run: |

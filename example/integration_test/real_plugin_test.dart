@@ -27,6 +27,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -144,7 +145,21 @@ void main() {
               'until the render loop presents)');
       expect(fps, isA<num>());
 
+      // Which libmpv is this? The branch build reports client API 2.6 (patch
+      // 0010); the pinned release bundle reports 2.5. CI sets
+      // MPV_KIT_EXPECT_LIBMPV_API so a silent fall-back to the bundled copy
+      // fails the test instead of passing on the wrong library.
+      final (apiMajor, apiMinor) = MpvLibrary.apiVersion(player.mpv.bindings);
+      final libmpvApi = '$apiMajor.$apiMinor';
+      final expectedApi = Platform.environment['MPV_KIT_EXPECT_LIBMPV_API'];
+      if (expectedApi != null && expectedApi.isNotEmpty) {
+        expect(libmpvApi, expectedApi,
+            reason: 'the loaded libmpv is not the expected build');
+      }
+
       print('INTEGRATION ${jsonEncode({
+            'libmpvApi': libmpvApi,
+            'mpvVersion': player.mpv.tryGetProperty('mpv-version'),
             'backend': controller.backend.name,
             'reason': controller.reason,
             'elapsedMs': elapsedMs,
