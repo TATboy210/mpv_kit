@@ -233,7 +233,22 @@ Plans:
 
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
 **Research**: 需要阶段研究（`/gsd-plan-phase 16 --research-phase`）：混合 GPU 上的 vaapi render node 选择、P010 dma-buf modifier、Vulkan gpu-next 侧 vaapi 所需的 0004 native-resource 补充、`d3d11va-zero-copy` 的取舍（8K 门禁本身仍延后）。
-**Plans**: TBD
+**Plans:** 6 plans（4 waves）
+
+Plans:
+**Wave 1**
+- [ ] 16-01-PLAN.md — 推送授权检查点 + HWDEC 判定助手与真实样本（hwdec-samples job）+ ubuntu opengl / windows d3d11 腿 + macOS 默认行修正 + hosted spike
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 16-02-PLAN.md — 默认列表决策检查点 + 按平台零拷贝优先的 Player 默认 hwdec（用户覆盖优先）+ README/ADR 0006/CHANGELOG
+- [ ] 16-03-PLAN.md — 0004 gpu-next 注册 drm_params_v2 + render_vk/render_gl 的 --drm 变体 + 验证层编入 vaapi + build.sh 必需特性
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 16-04-PLAN.md — Linux render node 解析（EGL 与 Vulkan DRM 属性）+ DRM_DISPLAY_V2 传参与 fd 生命周期 golden + 未验证清单
+- [ ] 16-05-PLAN.md — HWD-05 口径检查点 + 所有 soak/集成测试的 HWDEC 断言 + hwdec=no 每后端（d3d11/opengl/vulkan/software）腿
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 16-06-PLAN.md — HWD-02 口径检查点 + 最终全量门与 release dispatch + RTX 4060 强制 d3d11 的 4K HEVC 10-bit 零拷贝验收（可与 14-09 同一会话）+ 文档与审计
 
 ### Phase 17: Fallback Hardening & UHD Regression
 
