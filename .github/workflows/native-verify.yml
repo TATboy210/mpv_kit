@@ -255,10 +255,19 @@ jobs:
       - name: Real-plugin integration test
         shell: bash
         env:
-          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          # macOS: the example app is sandboxed (DebugProfile.entitlements),
+          # which blocks the staged dylib's Homebrew dependencies
+          # (/opt/homebrew/opt/libass/...: "file system sandbox blocked
+          # open()"). MpvLibrary is strict about MPV_KIT_LIBMPV_PATH and no
+          # longer falls through to the bundled copy, so the variable is left
+          # unset there (an empty value counts as unset) and the app loads
+          # the mpv_kit_libs bundle, exactly what the old fall-through ran.
+          # Linux/Windows load the staged build through the path as before.
+          MPV_KIT_LIBMPV_PATH: ${{ matrix.target != 'macos' && format('{0}/stage/{1}', github.workspace, matrix.libname) || '' }}
+          STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
           MPV_KIT_REQUIRE_LIBMPV: '1'
         run: |
-          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          libdir="$(cd "$(dirname "$STAGED_LIBMPV")" && pwd)"
           export PATH="$libdir:$PATH"
           case "${{ matrix.target }}" in
             linux)
