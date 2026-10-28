@@ -44,6 +44,9 @@
 // robust context, see Wait().
 
 #include <mpv/render_gl.h>
+// MPV_RENDER_PARAM_VULKAN_RENDERER, which mpv also answers for the GL render
+// API (RendererName).
+#include <mpv/render_vk.h>
 
 #include <cassert>
 #include <cstdint>
