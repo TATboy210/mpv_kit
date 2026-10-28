@@ -1,5 +1,13 @@
 ## 0.1.0-dev.4
 
+- Changed: `MpvLibrary.open` (and so `Mpv.create`/`Player` with `libraryPath`)
+  is strict about explicitly named libraries. An explicit `path`, else a
+  non-empty `MPV_KIT_LIBMPV_PATH`, is tried alone; if it fails to load
+  (missing file, unresolved dependency, incompatible client API) it throws
+  `MpvLibraryNotFound` carrying the loader's reason instead of silently
+  falling back to the next candidate (which ran the wrong libmpv). The
+  platform default names are only tried when neither is given. Signatures are
+  unchanged.
 - Fixed: disposing an `Mpv` while clients created from it were still alive
   hung forever; `dispose()` now disposes those clients first.
 - Fixed: custom stream protocols always answer a claimed request: a source
