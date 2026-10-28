@@ -39,13 +39,21 @@ key-decisions:
   - "pl_d3d11 is created from ra_d3d11_get_device(ra) (one device, as gpu_next/context.c); failure returns MPV_ERROR_UNSUPPORTED, no silent fallback."
   - "Public ABI of 0010 untouched; no new render parameter: MPV_RENDER_PARAM_VULKAN_RENDERER documents D3D11 use."
 
-requirements-completed: []
-requirements-partial: [D3D-04, D3D-05]  # code, tests and local drift gates done; no Windows compile of the patched mpv and no smoke run exist (ci-gate: deferred)
+requirements-completed: [D3D-04, D3D-05]
 
-deferred_ci_gates:
-  - "ci-gate: deferred. Task 1 scratch: push ci/14-gpunext, `gh workflow run native-verify.yml --ref ci/14-gpunext`, then `CI_GATE_BRANCH=ci/14-gpunext bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^windows \\(windows-2025' 'render_d3d11_smoke_gpu +OK' --log '^windows \\(windows-11-arm' 'render_d3d11_smoke_gpu +OK' --log '^windows \\(windows-2025' 'render_vk_smoke_gpu +(OK|SKIP)'`. The first compile of render_d3d11_smoke.c against meson/MSYS2 (find_library d3d11/dxgi/dxguid, -Werror) and of the 0004 D3D11 branch is unverified."
-  - "ci-gate: deferred. Task 2 feat gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^windows \\(windows-2025' 'render_d3d11_smoke +OK' --log '^windows \\(windows-2025' 'render_d3d11_smoke_gpu +OK' --log '^windows \\(windows-2025' 'render_d3d11_smoke_cache +OK' --log '^windows \\(windows-11-arm' 'render_d3d11_smoke +OK' --log '^windows \\(windows-11-arm' 'render_d3d11_smoke_cache +OK' --log '^linux \\(ubuntu-24\\.04\\)' 'render_vk_smoke +OK' --log '^linux \\(ubuntu-24\\.04\\)' 'video_renderer_golden_vk +OK' --log '^patch-drift' 'PATCH-DRIFT OK .*patches=10'`. Flagged assumptions to settle there: MSYS2 libplacebo has PL_HAVE_D3D11 and pl_d3d11 + ra_d3d11 coexist on WARP; hosted d3dcompiler_47.dll runs the gpu-next shaders."
-  - "ci-gate: deferred. Task 3: `gh workflow run release.yml --ref ci/14-gpunext` then on feat `gh workflow run release.yml --ref feat/mpv-master-upgrade`, then `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --workflow release.yml --jobs-success '.' --log '^windows \\(windows-2025' '\\[smoke\\] device ' --log '^windows \\(windows-11-arm' '\\[smoke\\] device '`."
+ci_gates_passed:
+  - gate: "Task 1 scratch variant: render_d3d11_smoke_gpu OK on windows-2025 and windows-11-arm, render_vk_smoke_gpu OK|SKIP on windows-2025 (SKIP, exit 77)"
+    result: "CI-GATE ok"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 2 feat gate: render_d3d11_smoke, _gpu, _cache OK on windows-2025; render_d3d11_smoke + _cache OK on windows-11-arm; render_vk_smoke OK and video_renderer_golden_vk OK on linux; PATCH-DRIFT OK patches=10"
+    result: "CI-GATE ok (flagged assumptions settled: pl_d3d11 + ra_d3d11 coexist on WARP, hosted d3dcompiler runs the gpu-next shaders)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3 release gate: [smoke] device line on both windows jobs"
+    result: "matched `[smoke] device Microsoft Basic Render Driver (hardware bgra+video)`; six build jobs success, publish skipped"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
 
 duration: about 45 min
 completed: 2026-10-27
@@ -106,3 +114,8 @@ None. T-14-15 accepted (same cache trust model as 0003); T-14-16 mitigated in co
 
 - Files present: render_d3d11_smoke.c, 0004 patch with `pl_d3d11_wrap`, release.yml step.
 - Commits eb98e0e, be6240b, e280980 are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-04/D3D-05: on WARP (`Microsoft Basic Render Driver`) `render_d3d11_smoke` (gpu), `render_d3d11_smoke_gpu` (gpu-next) and `render_d3d11_smoke_cache` (shader cache) are OK on windows-2025 and windows-11-arm.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)

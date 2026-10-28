@@ -41,14 +41,25 @@ key-decisions:
   - "shaderc is installed into a staging directory and only its header, import library, DLL and shaderc.pc are copied into PREFIX, so the glslang that shaderc builds from the same sources cannot overwrite the optimizer-less glslang libplacebo links."
   - "shaderc tag v2026.4 (newest tag, confirmed with gh api); SPIRV-Tools of the SDK tag equals shaderc's own DEPS pin ef96ed76."
 
-requirements-completed: []
-requirements-partial: [D3D-01]  # code, pins, patches done locally; Windows build, bundle audit and feat gates are ci-gate: deferred
+requirements-completed: [D3D-01]
 
-deferred_ci_gates:
-  - "Task 1 spike (never run): scratch ci/14-bundle, `gh workflow run release.yml --ref ci/14-bundle`, wait with `CI_GATE_BRANCH=ci/14-bundle bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --workflow release.yml --jobs-success '^windows \\('`; record `attempt n=<k> run=<id> target=<x64|arm64> ...`, `dlls`, `bundle_total`, `have_d3d11` lines in bundle-spike.txt. Open questions: shaderc on glslang 16.6.0, shaderc on CLANGARM64, DLL names/sizes."
-  - "Task 3 release gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --workflow release.yml --jobs-success '.' --log '^windows \\(windows-2025' '#define HAVE_D3D11 1' --log '^windows \\(windows-11-arm' '#define HAVE_D3D11 1' --log '^windows \\(windows-2025' 'ANGLE-FREE .*spirv-cross' --log '^windows \\(windows-11-arm' 'ANGLE-FREE .*spirv-cross'` on feat HEAD after `gh workflow run release.yml --ref feat/mpv-master-upgrade`."
-  - "Task 3 PR gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.'` (native-verify and flutter-plugin; Linux deps cache rebuilds because the deps.sh hash changed, the Linux path is unchanged)."
-  - "Task 3 step 5: download libmpv-windows-x64 / -arm64, check MANIFEST.txt lists every lib/*.dll including the two new ones, share/licenses has spirv-cross, shaderc, spirv-tools, spirv-headers; append `final target=<..> run=<id> dlls=<n> manifest_ok=<yes|no> licenses=<list>` to bundle-spike.txt."
+ci_gates_passed:
+  - gate: "Task 1 spike (never run as a scratch branch): superseded by the real release runs. Open questions answered: shaderc builds on glslang 16.6.0 and on CLANGARM64 (run 40616262900 windows jobs success), DLLs libshaderc_shared.dll + libspirv-cross-c-shared.dll, bundle lib dir 49636 KiB x64 / 40544 KiB arm64"
+    result: "answered, recorded in evidence/bundle-spike.txt (attempt/dlls/bundle_total/have_d3d11 lines)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386, release.yml 40616262900"
+  - gate: "Task 3 release gate: HAVE_D3D11 1 and ANGLE-FREE spirv-cross on windows-2025 and windows-11-arm"
+    result: "all --log expectations held; six build jobs success; publish skipped (tag-only)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
+  - gate: "Task 3 PR gate: --jobs-success ."
+    result: "CI-GATE ok"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3 step 5: MANIFEST.txt lists all 24 lib/*.dll incl. the two new ones; licenses spirv-cross, shaderc, spirv-tools, spirv-headers present"
+    result: "manifest_ok=yes on both targets (downloaded artifacts libmpv-windows-x64 / -arm64 of run 40618740386)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
 
 duration: about 1h (no hosted CI waits)
 completed: 2026-10-27
@@ -120,3 +131,8 @@ None beyond the plan's register: T-14-09 (pinned sha256, official orgs, tags ver
 
 - Files present: 0015/0016 patches, SHA256SUMS entries, deps.sh `spirv-cross-c-shared` block, build.sh `HAVE_SPIRV_CROSS`, bundle-spike.txt `decision=shared`, NOTICE paragraph.
 - Commits 5f4bfae, 6b0665d, 73ce42a, ea17bcc are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-01: `#define HAVE_D3D11 1` and `Run-time dependency shaderc found: YES 2026.4.1` / `spirv-cross-c-shared found: YES 0.68.0` on both Windows targets, 24 DLLs per bundle, `final target=x64|arm64 ... manifest_ok=yes` in `evidence/bundle-spike.txt`.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)

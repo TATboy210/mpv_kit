@@ -23,13 +23,13 @@
 
 ### Windows 原生 D3D11（D3D）
 
-- [ ] **D3D-01**: Windows bundle 构建加入 SPIRV-Cross（共享 DLL，列入 MANIFEST/ABI 审计/许可证）与 shaderc，libplacebo 与 mpv 打开 `-Dd3d11`，`HAVE_D3D11` 生效，仍为 LGPL-only
-- [ ] **D3D-02**: 构建显式关闭全部 ANGLE/EGL/WGL-GL 选项，`pe_audit.py` 新规则：任何 bundle DLL 导入 `libEGL.dll`/`libGLESv2.dll` 或引用 `eglGetPlatformDisplayEXT` 即 CI 失败
-- [ ] **D3D-03**: 上游 D3D11 render API（PR #17764 的 4 个提交）以 `0010-upstream-d3d11-render-api.patch` 引入，ABI 与上游逐字节一致（params 21/22、client API 2.6），与 0001/0004 的 `done_frame` bool 签名兼容，PATCH-DRIFT 门禁绿
-- [ ] **D3D-04**: patch 0004 增加 gpu-next D3D11 分支（`ra_d3d11` + `pl_d3d11` 同一设备、`pl_d3d11_wrap` 宿主纹理），0003 持久化 shader cache 覆盖 DXBC
-- [ ] **D3D-05**: 新的 `render_d3d11_smoke` 原生测试在 windows runner（WARP）上渲染出非黑像素，gpu 与 gpu-next 两种变体
+- [x] **D3D-01**: Windows bundle 构建加入 SPIRV-Cross（共享 DLL，列入 MANIFEST/ABI 审计/许可证）与 shaderc，libplacebo 与 mpv 打开 `-Dd3d11`，`HAVE_D3D11` 生效，仍为 LGPL-only
+- [x] **D3D-02**: 构建显式关闭全部 ANGLE/EGL/WGL-GL 选项，`pe_audit.py` 新规则：任何 bundle DLL 导入 `libEGL.dll`/`libGLESv2.dll` 或引用 `eglGetPlatformDisplayEXT` 即 CI 失败
+- [x] **D3D-03**: 上游 D3D11 render API（PR #17764 的 4 个提交）以 `0010-upstream-d3d11-render-api.patch` 引入，ABI 与上游逐字节一致（params 21/22、client API 2.6），与 0001/0004 的 `done_frame` bool 签名兼容，PATCH-DRIFT 门禁绿
+- [x] **D3D-04**: patch 0004 增加 gpu-next D3D11 分支（`ra_d3d11` + `pl_d3d11` 同一设备、`pl_d3d11_wrap` 宿主纹理），0003 持久化 shader cache 覆盖 DXBC
+- [x] **D3D-05**: 新的 `render_d3d11_smoke` 原生测试在 windows runner（WARP）上渲染出非黑像素，gpu 与 gpu-next 两种变体
 - [ ] **D3D-06**: `D3D11Backend`：每控制器独立 `ID3D11Device`（Flutter 适配器 LUID、`BGRA_SUPPORT|VIDEO_SUPPORT`、多线程保护、非 SINGLETHREADED），KMT `MISC_SHARED` 共享纹理环交给 `GpuSurfaceTexture`，渲染后 `ID3D11Fence`（回落 `D3D11_QUERY_EVENT`）完成后才发布，隔离期保持 4
-- [ ] **D3D-07**: D3D11 设备移除映射为 `device_lost` 事件；创建失败按 auto 链回退到 Vulkan 并在 `reason` 中说明
+- [x] **D3D-07**: D3D11 设备移除映射为 `device_lost` 事件；创建失败按 auto 链回退到 Vulkan 并在 `reason` 中说明
 - [ ] **D3D-08**: Windows auto 链改为 d3d11/gpu-next → vulkan/gpu-next → d3d11/gpu → vulkan/gpu → software，作为独立提交，在 CI 与 RTX 4060 验证通过后落地
 
 ### Linux OpenGL（GLX）
@@ -93,13 +93,13 @@
 | RBE-06 | Phase 12 | Complete |
 | RBE-07 | Phase 12 | Complete |
 | RBE-08 | Phase 12 | Complete |
-| D3D-01 | Phase 14 | Pending |
-| D3D-02 | Phase 14 | Pending |
-| D3D-03 | Phase 14 | Pending |
-| D3D-04 | Phase 14 | Pending |
-| D3D-05 | Phase 14 | Pending |
+| D3D-01 | Phase 14 | Complete |
+| D3D-02 | Phase 14 | Complete |
+| D3D-03 | Phase 14 | Complete |
+| D3D-04 | Phase 14 | Complete |
+| D3D-05 | Phase 14 | Complete |
 | D3D-06 | Phase 14 | Pending |
-| D3D-07 | Phase 14 | Pending |
+| D3D-07 | Phase 14 | Complete |
 | D3D-08 | Phase 14 | Pending |
 | GLX-01 | Phase 15 | Pending |
 | GLX-02 | Phase 15 | Pending |

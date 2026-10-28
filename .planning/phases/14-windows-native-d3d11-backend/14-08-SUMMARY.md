@@ -45,13 +45,21 @@ key-decisions:
   - "Both debug variable names exist only under #ifndef NDEBUG (release object file has zero MPV_KIT_D3D11 strings; the debug plugin DLL has the name); 14-10 re-checks the Release DLL."
   - "create-fail test accepts a vulkan head (machine with Vulkan, pre-switch chain) and then does not assert the d3d11 trails (report field trailsChecked=false); the hosted software case asserts both."
 
-requirements-completed: []
-requirements-partial: [D3D-07]  # code, chain golden (local MSVC) and docs done; no real-plugin injection run and no CI run of the chain golden on other platforms (ci-gate: deferred)
+requirements-completed: [D3D-07]
 
-deferred_ci_gates:
-  - "ci-gate: deferred. Task 1 tracer (scratch ci/14-lost, then feat): push ci/14-lost, `gh workflow run native-verify.yml --ref ci/14-lost` and flutter-plugin.yml, then `CI_GATE_BRANCH=ci/14-lost bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^integration-test \\(windows' 'D3D11-INJECT \\{.*\"mode\":\"device-removed' --log '^integration-test \\(windows' 'D3D11-INJECT \\{.*\"recoveredWithSoftware\":true' --log '^integration-test \\(windows' 'D3D11-INJECT \\{.*d3d11/gpu-next unavailable: d3d11 device creation failed: 0x887A0004 \\(injected\\)'`; on green, the same without CI_GATE_BRANCH on feat. Unverified until then: the whole d3d11_device_lost_test.dart on WARP (exactly one deviceLost after frame 30, software recovery on the same Player, create-fail trails), a libmpv with patches 0010/0004 D3D11 is required. Expansion past the tracer was NOT gated on this (CI deferral)."
-  - "ci-gate: deferred. Task 2 feat gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^linux \\(ubuntu-24\\.04\\)' 'video_renderer_chain_test +OK' --log '^linux \\(ubuntu-24\\.04-arm\\)' 'video_renderer_chain_test +OK' --log '^macos \\(macos-15\\)' 'video_renderer_chain_test +OK' --log '^windows \\(windows-2025' 'video_renderer_chain_test +OK' --log '^sanitizers' 'video_renderer_chain_test +OK'` at feat HEAD after the push. Unverified: the meson registration (no local meson) and the test under linux/macos/sanitizers."
-  - "ci-gate: deferred. Task 3 feat gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^build \\(windows' 'tests passed\\.[[:space:]]*$'` at feat HEAD after the push."
+ci_gates_passed:
+  - gate: "Task 1 tracer: D3D11-INJECT device-removed:30 (deviceLost event, recoveredWithSoftware true) and create-fail trail `d3d11 device creation failed: 0x887A0004 (injected)` on integration-test (windows)"
+    result: "CI-GATE ok --jobs-success ."
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 2: video_renderer_chain_test OK on linux (ubuntu-24.04 and -arm), macos-15, windows-2025, sanitizers"
+    result: "CI-GATE ok (also OK on windows-11-arm)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3: --jobs-success . and build (windows) `tests passed.` (25 tests passed)"
+    result: "CI-GATE ok"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
 
 duration: about 60 min
 completed: 2026-10-27
@@ -114,3 +122,8 @@ None. T-14-21 (post-loss path is skips only, golden pins one draw and one free),
 
 - Files present: d3d11_device_lost_test.dart, video_renderer_chain_test.cc, golden/chain.txt, local-14-08-chain.log, this summary.
 - Commits 0419a4d, 8c38200, a3a4070, 72752f5 are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-07: injected device removal yields exactly the `deviceLost` event and software recovery on the same Player; injected create failure falls through the auto chain with the d3d11 reason trail.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)

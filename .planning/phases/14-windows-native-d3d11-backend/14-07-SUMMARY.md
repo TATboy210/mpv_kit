@@ -48,12 +48,20 @@ key-decisions:
   - "Windows chain is data (kWindowsApiOrder); 14-11 reorders one array. CompositorLatency() line untouched (quarantine 4)."
 
 requirements-completed: []
-requirements-partial: [D3D-06]  # code, MSVC /W4 /WX compile (debug+release), ANGLE-free audit, docs done locally; no run of the backend against a D3D11-capable libmpv exists (ci-gate: deferred)
+requirements-partial: [D3D-06]  # code, MSVC compile, ANGLE-free audit and the WARP CI runs (fence + query paths) are done; the RTX 4060 tracer run (local hardware, 14-09) is still open
 
-deferred_ci_gates:
+deferred_ci_gates:  # still open: local RTX 4060 hardware run (14-09); a d3d11-capable bundle exists now (libmpv-windows-x64 artifact of run 40618740386)
   - "ci-gate: deferred. Task 1 tracer, RTX 4060 local: fetch the libmpv-windows-x64 artifact of a release.yml run at feat HEAD (contains 0010 + 0004 D3D11 branch), then in example/ with MPV_KIT_LIBMPV_PATH=<dir>/libmpv-2.dll MPV_KIT_REQUIRE_LIBMPV=1: MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/real_plugin_test.dart -d windows, then the same without MPV_KIT_VIDEO_API, both tee'd to evidence/local-14-07-real-plugin-d3d11.log. Verify: grep -Eq 'INTEGRATION \\{.*\"reason\":\"d3d11 \\(gpu-next\\) on NVIDIA GeForce RTX 4060' L && grep -Eq 'INTEGRATION \\{.*\"reason\":\"vulkan \\(gpu-next\\) on NVIDIA GeForce RTX 4060' L && test \"$(grep -cE 'tests passed\\.[[:space:]]*$' L)\" -ge 2. Expansion past the tracer was NOT gated on this (CI deferral)."
-  - "ci-gate: deferred. Task 2 scratch: push ci/14-backend, `gh workflow run native-verify.yml --ref ci/14-backend` and flutter-plugin.yml, then `CI_GATE_BRANCH=ci/14-backend bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^integration-test \\(windows' 'D3D11-BACKEND \\{.*\"reason\":\"d3d11 \\(gpu-next\\) on ' --log '^integration-test \\(windows' 'INTEGRATION \\{.*\"reason\":\"d3d11 \\(gpu-next\\) on [^\"]*; vulkan/gpu-next unavailable: ' --log '^build \\(windows' 'ANGLE-FREE .*mpv_kit_video_plugin\\.dll'` and `... --jobs-success '^integration-test \\(windows' --log '^integration-test \\(windows' 'D3D11-BACKEND \\{.*\"syncEnv\":\"default\"' --log '^integration-test \\(windows' 'D3D11-BACKEND \\{.*\"syncEnv\":\"query\"'`; on green, the same on feat. Unverified until then: WARP shows the fence path as the spikes gate says, toImage reads the external texture on the runner (flagged assumption: if the probe reads black while frames flow, stop and report, do not loosen thresholds), the auto-chain trail text."
-  - "ci-gate: deferred. Task 3 feat gate: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.'` at feat HEAD after the push."
+
+ci_gates_passed:
+  - gate: "Task 2: --jobs-success . with D3D11-BACKEND (reason d3d11 (gpu-next) on ...), INTEGRATION auto-chain trail `d3d11 (gpu-next) on ...; vulkan/gpu-next unavailable: ...`, ANGLE-FREE mpv_kit_video_plugin.dll; syncEnv default and query on integration-test (windows)"
+    result: "CI-GATE ok (WARP; both sync paths probe non-black: redTop 1.0 blueBottom 1.0, resize 640x360 and 320x180)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3 feat gate: --jobs-success ."
+    result: "CI-GATE ok"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
 
 duration: about 40 min
 completed: 2026-10-27
@@ -115,3 +123,8 @@ None. T-14-17 (render-thread-only context, multithread protection), T-14-18 (own
 
 - Files present: d3d11_backend.h/.cpp, d3d11_backend_test.dart, local-14-07 log, this summary.
 - Commits 482d8b0, 8e7f937, 2963f35 are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-06 stays partial: Task 2/3 gates passed (WARP, both sync paths) but the Task 1 RTX 4060 hardware gate has not run.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)

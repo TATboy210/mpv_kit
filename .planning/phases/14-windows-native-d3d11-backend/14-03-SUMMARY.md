@@ -40,8 +40,17 @@ key-decisions:
   - "Byte scan lower-cases the file once, so DLL names match case-insensitively in ASCII and UTF-16LE; eglGetPlatformDisplayEXT stays case-sensitive"
   - "build.sh does not repeat -Dgl/-Degl in the MINGW arm (the common line already has them); only the remaining ANGLE/WGL options were added, plus a Windows-only config.h assertion"
 
-requirements-completed: []
-requirements-partial: [D3D-02]  # code and scratch evidence done; feat release gate deferred, so REQUIREMENTS.md was not ticked
+requirements-completed: [D3D-02]
+
+ci_gates_passed:
+  - gate: "Task 2 PR gate: --jobs-success ^patch-drift ^windows ^build + ANGLE-FREE libmpv-2.dll (both windows jobs) and mpv_kit_video_plugin.dll"
+    result: "CI-GATE ok"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 2 release gate on feat (windows/linux/macos jobs success, ANGLE-FREE on libmpv-2.dll x64+arm64 and libplacebo)"
+    result: "CI-GATE ok (publish skipped by design)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
 
 duration: about 3h (mostly hosted CI waits)
 completed: 2026-10-27
@@ -104,3 +113,8 @@ None. T-14-06 and T-14-08 are mitigated as planned (regression samples including
 
 - Files present: pe_audit.py (`--forbid-angle`), test_pe_audit.py, red-local-14-03-angle-sample.log, build.sh (`egl-angle-win32=disabled`), package.sh (`--forbid-angle`).
 - Commits ffe2e09, 96792f2, 7d3967f are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-02: release run 40618740386 printed `ANGLE-FREE` for every Windows bundle DLL (x64 and arm64, including libshaderc_shared.dll and libspirv-cross-c-shared.dll); the native-verify windows jobs print it for libmpv-2.dll and flutter-plugin build (windows) for mpv_kit_video_plugin.dll.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)

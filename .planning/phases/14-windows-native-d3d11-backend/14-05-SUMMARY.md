@@ -37,13 +37,21 @@ key-files:
 key-decisions:
   - "User decision 2026-10-27 (option 1): include the two prerequisite upstream commits 44be29945 and d802fab36 verbatim in 0010 instead of advancing the vendor or hand-adapting 2a97b84b39."
 
-requirements-completed: []
-requirements-partial: [D3D-03]  # patch, vendor tree, ABI identity and PATCH-DRIFT done locally; two-layer Windows compile and feat/release CI are ci-gate: deferred
+requirements-completed: [D3D-03]
 
-deferred_ci_gates:
-  - "Task 1 scratch: push ci/14-0010 (0010 + vendor tree), `gh workflow run native-verify.yml --ref ci/14-0010` and `gh workflow run release.yml --ref ci/14-0010`, then `CI_GATE_BRANCH=ci/14-0010 bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.'` (patch-drift, both windows verify jobs, linux/macos/sanitizers) and the same with `--workflow release.yml`. First compile of libmpv_d3d11.c is unverified; if a compile fails fix only the adaptation, never the public headers."
-  - "Task 2 PR gate on feat: `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --jobs-success '.' --log '^patch-drift' 'PATCH-DRIFT OK .*patches=10'`"
-  - "Task 2 release gate on feat: after `gh workflow run release.yml --ref feat/mpv-master-upgrade`, `bash .planning/phases/14-windows-native-d3d11-backend/tools/ci_gate.sh --workflow release.yml --jobs-success '.'`, plus ABI audit / expected_symbols unchanged."
+ci_gates_passed:
+  - gate: "Task 1 scratch (ci/14-0010 native-verify + release): superseded by the feat PR run (patch-drift, both windows verify jobs, linux/macos/sanitizers all success) and the feat release dispatch; libmpv_d3d11.c compiled on both Windows targets"
+    result: "CI-GATE ok --jobs-success . (PR) / release six build jobs success"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54 (PR), b40cdff9262e32f884f4c71b31d3306a4fa37e49 (release)
+    runs: "native-verify 40627862148, flutter-plugin 40627862039; release.yml 40618740386"
+  - gate: "Task 2 PR gate: --jobs-success . --log ^patch-drift PATCH-DRIFT OK .*patches=10"
+    result: "CI-GATE ok (PATCH-DRIFT OK base=b2c255c13e8e37952dbac6c34da56a690560378b patches=10)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 2 release gate: release.yml jobs, ABI audit / expected_symbols unchanged"
+    result: "six build jobs success, publish skipped; pe_audit in package.sh passed on every Windows DLL (libmpv-2.dll exports(mpv_*): 58 on both targets); tools/rea_abi_audit/expected_symbols.txt last changed in d5bbd20 (before Phase 14)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
 
 duration: about 40 min
 completed: 2026-10-27
@@ -104,3 +112,8 @@ None. T-14-13/T-14-14 mitigated locally (official-repo commits via `cherry-pick 
 
 - Files present: 0010 patch, `render_d3d11.h` (vendor and plugin), `libmpv_d3d11.c`, abi-0010.txt.
 - Commits 4f4e49d and 32e78f3 are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated by this phase's unmodified `tools/ci_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the libmpv bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed. `--jobs-success .` on release.yml fails literally only on the tag-only `publish` job (skipped by design); all build jobs and every `--log` expectation held. D3D-03: PATCH-DRIFT OK with patches=10 on the PR run; libmpv-2.dll with the 0010 D3D11 render API built and audited on x64 and arm64 in the release run.
+Evidence: `evidence/ci-runs.txt` (backfill block with the raw matched lines)
