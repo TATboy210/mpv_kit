@@ -1,9 +1,18 @@
-# Phase 15 hosted-CI record. All hosted CI is deferred to the milestone end (CI deferral 2026-10-27); nothing below was run.
-plan=15-01 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=native-verify run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
-plan=15-01 render_gl platform=x64 api=gl line=deferred (CI deferral 2026-10-27)
-plan=15-01 render_gl platform=x64 api=gles line=deferred (CI deferral 2026-10-27)
-plan=15-01 render_gl platform=arm64 line=deferred (CI deferral 2026-10-27)
+# Phase 15 hosted-CI record.
+# Backfilled 2026-10-28 from the COMPLETED milestone runs of PR #1 at feat HEAD 091228a (native-verify 40627862148, flutter-plugin 40627862039). The gates were evaluated by this phase's unmodified tools/ci_gate.sh against the cached logs of those runs (nothing was dispatched, rerun or pushed). The first two sha= lines are the gate's own record lines.
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify.yml run=40627862148 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=flutter-plugin.yml run=40627862039 conclusion=success
+plan=15-01 task=3 ci-gate=pass sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify run=40627862148 conclusion=success (CI-GATE ok: linux, sanitizers, build jobs success; CONFIG-GL ok; RENDER_GL ok gl+gles renderer=gpu on ubuntu-24.04; RENDER_GL ok on ubuntu-24.04-arm and sanitizers)
+render_gl platform=x64 api=gl line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl platform=x64 api=gles line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl platform=arm64 api=gl line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 128 bits)" pixel=254,0,0
+render_gl platform=arm64 api=gles line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 128 bits)" pixel=254,0,0
+render_gl platform=sanitizers api=gl line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl platform=sanitizers api=gles line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+plan=15-01 release-linux sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 workflow=release.yml run=40618740386 conclusion=success (release.yml linux-x64 and linux-arm64 success, publish skipped; package.sh allowlist and ABI audit green with GL/EGL on, `NEEDED libEGL.so.1` printed, no NEEDED libX11/libxcb/libwayland, packaged smoke `RENDER_GL ok api=gl` exit 0; raw lines in release-runs.txt)
 plan=15-01 milestone-ci round=1 workflow=native-verify run=40616234093 sha=943f0be pr=1 conclusion=failed
 plan=15-01 round=1 failure=render_gl_smoke (gl) and render_gl_smoke_gles jobs=linux-x64,linux-arm64,sanitizers line="Couldn't open libGLESv2.so.2: libGLESv2.so.2: cannot open shared object file" (SIGABRT from libepoxy; gl variant rendered and read back, aborted at "handoff: capability probe")
 plan=15-01 round=1 cause=libgles2 not installed on the runners (confirmed by the log line)
 plan=15-01 round=1 fix=e51148f ci(15-01): libgles2 in native-verify linux and sanitizers plus dlopen probe in the smoke; 2de0089 ci(15-01): libgles2 in release.yml linux container; hosted re-run pending
+plan=15-01 milestone-ci round=final workflow=native-verify run=40627862148 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 pr=1 conclusion=success
+plan=15-01 round=final note=round-1 failure (libgles2 missing) fixed by e51148f and 2de0089; hosted re-run green

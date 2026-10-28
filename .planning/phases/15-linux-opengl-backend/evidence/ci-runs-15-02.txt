@@ -1,6 +1,24 @@
-# Phase 15 plan 15-02 hosted-CI record. All hosted CI is deferred to the milestone end (CI deferral 2026-10-27); nothing below was run.
-plan=15-02 task=1 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=native-verify run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
-plan=15-02 render_gl_handoff platform=x64 line=deferred (CI deferral 2026-10-27)
-plan=15-02 render_gl_handoff platform=arm64 line=deferred (CI deferral 2026-10-27)
-plan=15-02 render_gl_handoff platform=sanitizers line=deferred (CI deferral 2026-10-27)
-plan=15-02 task=2 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) run=deferred (CI deferral 2026-10-27)
+# Phase 15 plan 15-02 hosted-CI record. Raw lines are quoted exactly; format is the one the plan verify greps expect.
+# Backfilled 2026-10-28 from the COMPLETED milestone runs of PR #1 at feat HEAD 091228a (native-verify 40627862148, flutter-plugin 40627862039). The gates were evaluated by this phase's unmodified tools/ci_gate.sh against the cached logs of those runs (nothing was dispatched, rerun or pushed). The first two sha= lines are the gate's own record lines.
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify.yml run=40627862148 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=flutter-plugin.yml run=40627862039 conclusion=success
+plan=15-02 task=1 ci-gate=pass sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify run=40627862148 conclusion=success (CI-GATE ok: linux + sanitizers jobs success; RENDER_GL ok gl and gles; RENDER_GL ext api=gl; RENDER_GL handoff api=gl|gles flip_y=0|1 on ubuntu-24.04)
+render_gl_handoff platform=x64 line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=x64 line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=arm64 line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=arm64 line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=sanitizers line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=sanitizers line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+plan=15-02 task=2 ci-gate=pending sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 note=the hard-assertion change to native/tests/render_gl_smoke.c (RENDER_GL handoff ok api=<variant>) is committed but has not run on CI yet; it needs one more native-verify run. Gate to run after pushing: ci_gate.sh --jobs-success ^linux --jobs-success ^sanitizers --log ^linux \(ubuntu-24\.04\) RENDER_GL handoff ok api=gl

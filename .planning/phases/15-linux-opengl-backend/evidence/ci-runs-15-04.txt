@@ -1,7 +1,12 @@
-# Phase 15 plan 15-04 hosted-CI record. All hosted CI is deferred to the milestone end (CI deferral 2026-10-27); nothing below was run.
-plan=15-04 task=2 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=native-verify run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
-plan=15-04 task=3 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=native-verify run=deferred (CI deferral 2026-10-27) conclusion=deferred (CI deferral 2026-10-27)
+# Phase 15 plan 15-04 hosted-CI record.
+# Backfilled 2026-10-28 from the COMPLETED milestone runs of PR #1 at feat HEAD 091228a (native-verify 40627862148, flutter-plugin 40627862039). The gates were evaluated by this phase's unmodified tools/ci_gate.sh against the cached logs of those runs (nothing was dispatched, rerun or pushed). The first two sha= lines are the gate's own record lines.
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify.yml run=40627862148 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=flutter-plugin.yml run=40627862039 conclusion=success
+plan=15-04 task=2 ci-gate=pass sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify run=40627862148 conclusion=success (CI-GATE ok: LINUX-CHAIN ok on ubuntu-24.04, windows-2025, macos-15, sanitizers; video_renderer_golden_vk OK on ubuntu-24.04)
+plan=15-04 task=3 ci-gate=pass sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify run=40627862148 conclusion=success (CI-GATE ok: BIND ok on ubuntu-24.04, windows-2025, macos-15, sanitizers; AFFINITY ok sw on ubuntu-24.04; LINUX-CHAIN ok; integration-test ubuntu `INTEGRATION {"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)","elapsedMs":211,"fps":3...`)
 plan=15-04 milestone-ci round=1 workflow=native-verify run=40616234093 sha=943f0be pr=1 conclusion=failed
 plan=15-04 round=1 failure=video_renderer_bind_test jobs=linux-x64,linux-arm64,sanitizers,macos-15 lines="BIND violation: render thread is the RunBound thread" / "BIND violation: the render thread bound the backend before the RunBound thread unbound it" (passed locally on Windows/MSVC)
 plan=15-04 round=1 cause=std::thread::id of the joined RunBound thread reused by the render thread on glibc/macOS (inferred from the two messages, which are exactly what id equality gives; not reproduced on Windows, where ids are not recycled)
 plan=15-04 round=1 fix=cd877c1 fix(15-04): bind test tells threads apart by token, not std::thread::id; local MSVC /W4 /WX: BIND ok, 30 repeats rc=0, all renderer tests rc=0, mutation (RunBound skips unbind) still fails; hosted re-run pending
+plan=15-04 milestone-ci round=final workflow=native-verify run=40627862148 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 pr=1 conclusion=success
+plan=15-04 round=final note=round-1 bind-test failure fixed by cd877c1 (token instead of std::thread::id); BIND ok on all four jobs in the final run
