@@ -17,8 +17,9 @@ app
                     (mpv 0.41.0-1115 + native/patches, FFmpeg 8.1.3 LGPL)
 ```
 
-* **mpv_kit** opens libmpv once per process (`MpvLibrary.open`: explicit
-  path → `MPV_KIT_LIBMPV_PATH` → platform default names) and checks the
+* **mpv_kit** opens libmpv once per process (`MpvLibrary.open`: an explicit
+  path, else `MPV_KIT_LIBMPV_PATH`, is tried alone and never fallen back from;
+  only with neither given, the platform default names) and checks the
   client API major version (2). It never loads a second copy.
 * **mpv_kit_libs** has no runtime code. Its `hook/build.dart` emits the
   libraries as bundled code assets (pinned release download verified by

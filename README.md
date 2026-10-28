@@ -93,7 +93,8 @@ The tests need a real libmpv unless they are pure-Dart. Two supported ways:
    `libmpv.so.2` (e.g. from the hook cache under
    `.dart_tool/hooks_runner/shared/mpv_kit_libs/build/`) **and put that
    directory on `PATH`** — on Windows the dependency DLLs must be reachable
-   or loading silently falls back to another libmpv. Git Bash note: `PATH`
+   or loading fails with `MpvLibraryNotFound` (an explicit path is never
+   fallen back from). Git Bash note: `PATH`
    entries must use the POSIX form (`/d/mpv_kit/...`); a `D:/...` entry is
    not converted and dependency resolution fails.
 
@@ -117,9 +118,13 @@ to enable them explicitly.
 
 ### Locating libmpv
 
-`MpvLibrary.open()` tries, in order: an explicit `libraryPath`, the
-`MPV_KIT_LIBMPV_PATH` environment variable, then the platform default names
-(`libmpv-2.dll`; `@rpath/mpv.2.framework/mpv.2`, `libmpv.2.dylib`;
+`MpvLibrary.open()` is strict about libraries you name: an explicit
+`libraryPath` is tried alone; otherwise a non-empty `MPV_KIT_LIBMPV_PATH`
+environment variable is tried alone. If that library cannot be loaded (missing
+file, unresolved dependency DLL, incompatible client API) it throws
+`MpvLibraryNotFound` with the loader's reason and does **not** fall back to
+another copy. Only when neither is given are the platform default names tried
+in order (`libmpv-2.dll`; `@rpath/mpv.2.framework/mpv.2`, `libmpv.2.dylib`;
 `libmpv.so.2`), which resolve to the copy bundled by `mpv_kit_libs`. A local
 bundle can be supplied with the `libmpv_bundle` hook user define (see
 [mpv_kit_libs](packages/mpv_kit_libs/README.md)).
