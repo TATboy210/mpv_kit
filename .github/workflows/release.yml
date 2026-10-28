@@ -47,7 +47,7 @@ jobs:
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
             libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
             ffmpeg unzip hwdata \
-            libegl-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri
+            libegl-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
           pip3 install 'meson==1.9.1' 'cmake==3.31.6'
       - uses: actions/checkout@v5
       - uses: actions/cache@v4
