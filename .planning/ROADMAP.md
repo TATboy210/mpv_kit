@@ -52,9 +52,9 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 **Phase Numbering:** 接续 v2.0（止于 Phase 11），v3.0 从 Phase 12 开始；小数阶段（如 14.1）为计划后的紧急插入。
 
 - [x] **Phase 12: RenderBackend Seam** - 基线先行的纯重构：Vulkan/软件后端迁到统一生命周期接口，行为逐项不变 (completed 2026-10-27)
-- [ ] **Phase 13: macOS Metal Route Decision** - ADR 定案 MoltenVK→IOSurface 路线，如实上报 Metal 承载，验证 VideoToolbox 零拷贝
+- [x] **Phase 13: macOS Metal Route Decision** - ADR 定案 MoltenVK→IOSurface 路线，如实上报 Metal 承载，验证 VideoToolbox 零拷贝 (completed 2026-10-28)
 - [ ] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
-- [ ] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位
+- [x] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位 (completed 2026-10-28)
 - [ ] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝
 - [ ] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak
 
@@ -258,8 +258,8 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
-| 13. macOS Metal Route Decision | v3.0 | 6/6 | In Progress | - |
+| 13. macOS Metal Route Decision | v3.0 | 6/6 | Complete    | 2026-10-28 |
 | 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
-| 15. Linux OpenGL Backend | v3.0 | 7/7 | In Progress | - |
+| 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
