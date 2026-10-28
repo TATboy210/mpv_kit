@@ -32,14 +32,22 @@ key-files:
 key-decisions:
   - "Task 2 (D-GL-API / D-FLIP-MPV / D-SYNC and the hard-assertion switch) not started: it is defined as a function of CI log lines and none exist. spike-gl.txt carries deferred placeholders only, so 15-05 cannot silently read a guessed value."
 
-requirements-completed: []
-requirements-partial: [GLX-01, GLX-02, GLX-03]
+requirements-completed: [GLX-01]
+requirements-partial: [GLX-02, GLX-03]  # GLX-02 waits for the CI run of the hard handoff assertions; GLX-03 needs 15-05..07
 
-ci-gate: deferred
+ci-gate: partial 2026-10-28: Task 1 and Task 3 passed; Task 2 hard assertions committed, needs one more native-verify run
 deferred_ci_gates:
-  - "Task 1 (after pushing HEAD at milestone end): `CI_GATE_EVIDENCE=.planning/phases/15-linux-opengl-backend/evidence/ci-runs-15-02.txt bash .planning/phases/15-linux-opengl-backend/tools/ci_gate.sh --jobs-success '^linux \\(' --jobs-success '^sanitizers' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL ok api=gl renderer=gpu ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL ok api=gles renderer=gpu ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL ext api=gl ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL handoff api=gl flip_y=0 ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL handoff api=gl flip_y=1 ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL handoff api=gles flip_y=0 ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL handoff api=gles flip_y=1 '`; then append the raw `RENDER_GL ext` / `RENDER_GL handoff` lines (x64, arm64, sanitizers) to evidence/ci-runs-15-02.txt as `render_gl_handoff platform=<..> line=<..>`."
-  - "Task 2 (after Task 1 evidence exists): write spike-gl.txt from those lines (D-GL-API, D-FLIP-MPV, D-SYNC, EXT-*, ARM64, SANITIZERS), turn the passing variants into hard assertions in render_gl_smoke.c (`RENDER_GL handoff ok api=<variant>`), push, run the plan's two verify commands (spike-gl.txt greps; ci_gate with `RENDER_GL handoff ok api=<first variant>`)."
-  - "Task 3 (milestone end, release_dispatch=yes): `bash .planning/phases/15-linux-opengl-backend/tools/release_gate.sh --jobs-success '^linux \\(' --jobs-skipped '^publish' --log '^linux \\(.*linux-x64\\)' 'NEEDED libEGL\\.so\\.1' --log '^linux \\(.*linux-x64\\)' 'packaged [0-9]+ libraries into' --log '^linux \\(.*linux-x64\\)' 'requires GLIBC_2\\.(2[0-9]|3[0-5])([^0-9]|$)' --log '^linux \\(.*linux-x64\\)' 'RENDER_GL ok api=gl renderer=gpu ' --log '^linux \\(.*linux-arm64\\)' 'packaged [0-9]+ libraries into' --log '^linux \\(.*linux-arm64\\)' 'RENDER_GL (ok|SKIP)'`; then append the `release_line target=<..> line=<..>` records to evidence/release-runs.txt."
+  - "RAN-PARTIALLY 2026-10-28: the spike-gl.txt part is done (D-GL-API=gl,gles, D-FLIP-MPV=row0-top-when-flip_y=0, D-SYNC=fence+client-wait ok) and the hard assertions in render_gl_smoke.c are committed; STILL OPEN: one more native-verify run on a pushed commit with `ci_gate.sh ... --log ^linux \\(ubuntu-24\\.04\\) RENDER_GL handoff ok api=gl` (and gles). Original text: Task 2 (after Task 1 evidence exists): write spike-gl.txt from those lines (D-GL-API, D-FLIP-MPV, D-SYNC, EXT-*, ARM64, SANITIZERS), turn the passing variants into hard assertions in render_gl_smoke.c (`RENDER_GL handoff ok api=<variant>`), push, run the plan's two verify commands (spike-gl.txt greps; ci_gate with `RENDER_GL handoff ok api=<first variant>`)."
+
+ci_gates_passed:
+  - gate: "Task 1: --jobs-success ^linux ^sanitizers + RENDER_GL ok gl/gles, RENDER_GL ext api=gl, RENDER_GL handoff api=gl|gles flip_y=0|1 (ubuntu-24.04)"
+    result: "CI-GATE ok; all four handoff variants image=ok sync=ok import=ok on x64, arm64 and sanitizers"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3: release_gate.sh --jobs-success ^linux ^publish skipped, NEEDED libEGL.so.1, packaged N libraries, requires GLIBC_2.(2x|3[0-5]), RENDER_GL ok api=gl (x64), packaged + RENDER_GL (ok|SKIP) (arm64)"
+    result: "RELEASE-GATE ok (release_runs.txt: publish:skipped, linux-x64 + linux-arm64 success, GLIBC_2.35)"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
 
 duration: about 25 min (no hosted CI waits)
 completed: 2026-10-28
@@ -86,3 +94,8 @@ None (the evidence placeholders are intentional deferral records).
 None.
 
 ## Self-Check: PASSED
+
+## CI backfill (2026-10-28)
+
+Spike values (from run 40627862148, llvmpipe only): D-GL-API=gl,gles; D-FLIP-MPV=row0-top-when-flip_y=0; D-SYNC=fence+client-wait ok. Both variants passed on x64, arm64 and sanitizers, so `native/tests/render_gl_smoke.c` now hard-asserts the row0-top round for both (`RENDER_GL handoff ok api=<variant>`). **That code change has not run on CI yet: it needs one more native-verify run** (15-02 Task 2 second automated check, and the GLX-02 tick).
+Evidence: `evidence/ci-runs-15-02.txt, release-runs.txt, spike-gl.txt`. The gates were evaluated by this phase's unmodified `tools/ci_gate.sh` / `tools/release_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the linux bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed.

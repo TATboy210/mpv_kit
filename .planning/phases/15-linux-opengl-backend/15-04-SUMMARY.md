@@ -44,12 +44,18 @@ key-decisions:
   - "decision=sc3-interpretation choice=runbound: create-time calls run in RunBound with the context current; SC3 wording is not edited here (15-07 proposes the update)."
 
 requirements-completed: []
-requirements-partial: [GLX-03, GLX-04]  # engine seam and chain data done and locally green; plugin wiring is 15-05 and hosted CI is deferred (ci-gate: deferred)
+requirements-partial: [GLX-03, GLX-04]  # engine seam and chain data verified on hosted CI (LINUX-CHAIN, BIND, AFFINITY ok); plugin wiring is 15-05/15-06 so the requirements stay open
 
-ci-gate: deferred
-deferred_ci_gates:
-  - "Task 2 (at milestone end, after pushing HEAD): `CI_GATE_EVIDENCE=.planning/phases/15-linux-opengl-backend/evidence/ci-runs-15-04.txt bash .planning/phases/15-linux-opengl-backend/tools/ci_gate.sh --jobs-success '^linux \\(' --jobs-success '^macos \\(' --jobs-success '^windows \\(' --jobs-success '^sanitizers' --log '^linux \\(ubuntu-24\\.04\\)' 'LINUX-CHAIN ok' --log '^windows \\(windows-2025' 'LINUX-CHAIN ok' --log '^macos \\(macos-15\\)' 'LINUX-CHAIN ok' --log '^sanitizers' 'LINUX-CHAIN ok' --log '^linux \\(ubuntu-24\\.04\\)' 'video_renderer_golden_vk +OK'`. Unverified until then: the meson registrations (no local meson), both new tests under linux, macos and the sanitizers."
-  - "Task 3 (same run): `CI_GATE_EVIDENCE=.planning/phases/15-linux-opengl-backend/evidence/ci-runs-15-04.txt bash .planning/phases/15-linux-opengl-backend/tools/ci_gate.sh --jobs-success '^linux \\(' --jobs-success '^macos \\(' --jobs-success '^windows \\(' --jobs-success '^sanitizers' --jobs-success '^integration-test' --log '^linux \\(ubuntu-24\\.04\\)' 'BIND ok' --log '^windows \\(windows-2025' 'BIND ok' --log '^macos \\(macos-15\\)' 'BIND ok' --log '^sanitizers' 'BIND ok' --log '^linux \\(ubuntu-24\\.04\\)' 'AFFINITY ok sw' --log '^linux \\(ubuntu-24\\.04\\)' 'LINUX-CHAIN ok' --log '^integration-test \\(ubuntu' '\"reason\":\"vulkan \\(gpu-next\\) on llvmpipe'`. Unverified until then: the Linux default Vulkan head after the Start change, and the sanitizer runs."
+ci-gate: passed 2026-10-28 (sha 091228a, runs native-verify 40627862148 / flutter-plugin 40627862039)
+ci_gates_passed:
+  - gate: "Task 2: --jobs-success ^linux ^macos ^windows ^sanitizers + LINUX-CHAIN ok on ubuntu-24.04, windows-2025, macos-15, sanitizers + video_renderer_golden_vk OK on ubuntu-24.04"
+    result: "CI-GATE ok (golden_vk OK also on arm, macos-15, sanitizers)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "Task 3: BIND ok on ubuntu-24.04, windows-2025, macos-15, sanitizers; AFFINITY ok sw (ubuntu-24.04); LINUX-CHAIN ok; integration-test ubuntu `vulkan (gpu-next) on llvmpipe`"
+    result: "CI-GATE ok (the Linux default head is still vulkan gpu-next for the first controller; the sanitizer runs are green)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
 
 duration: about 45 min
 completed: 2026-10-27
@@ -108,3 +114,8 @@ None. T-15-11 (Vulkan/software unchanged: frozen goldens, affinity, constants au
 
 - Files present: linux_candidates.h, linux_chain_test.cc, golden/linux_chain.txt, bind_test.cc, three evidence logs, ci-runs-15-04.txt, this summary.
 - Commits 02ac6dd, a654348, 01eee6f are ancestors of HEAD.
+
+## CI backfill (2026-10-28)
+
+The round-1 failure (`BIND violation` from std::thread::id reuse) is fixed by cd877c1; BIND ok, LINUX-CHAIN ok and AFFINITY ok sw are now on the hosted lines.
+Evidence: `evidence/ci-runs-15-04.txt`. The gates were evaluated by this phase's unmodified `tools/ci_gate.sh` / `tools/release_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the linux bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed.

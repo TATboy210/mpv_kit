@@ -40,14 +40,23 @@ key-decisions:
   - "bundle-egl = adopt (user): libmpv.so.2 gets a NEEDED on host libEGL.so.1 (package.sh allowlist, never bundled); GLX-01 text is met as written."
   - "Push authorization = push-green-only+dispatch, effective only at the milestone-end CI pass; no push or dispatch happened during this plan."
 
-requirements-completed: []
-requirements-partial: [GLX-01, GLX-02]  # code and gates written locally; Linux build, smoke run and bundle audit are ci-gate: deferred
+requirements-completed: [GLX-01]
+requirements-partial: [GLX-02]  # 15-01 gates all passed; GLX-02 is ticked in REQUIREMENTS.md only after the 15-02 hard-assertion CI run
 
-ci-gate: deferred
-deferred_ci_gates:
-  - "Task 3 CI gate (after pushing feat HEAD at milestone end): `bash .planning/phases/15-linux-opengl-backend/tools/ci_gate.sh --jobs-success '^linux \\(' --jobs-success '^sanitizers' --jobs-success '^build \\(' --log '^linux \\(ubuntu-24\\.04\\)' 'CONFIG-GL ok' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL ok api=gl renderer=gpu ' --log '^linux \\(ubuntu-24\\.04\\)' 'RENDER_GL ok api=gles renderer=gpu ' --log '^linux \\(ubuntu-24\\.04-arm\\)' 'RENDER_GL (ok|SKIP)' --log '^sanitizers' 'RENDER_GL ok api=gl '`; then append the `render_gl platform=<x64|arm64> api=<gl|gles> line=<raw line>` records to evidence/ci-runs.txt."
-  - "release.yml linux job on the feat ref (`gh workflow run release.yml --ref feat/mpv-master-upgrade`, covered by release_dispatch=yes): package.sh allowlist and ABI audit green with GL/EGL on, `NEEDED libEGL.so.1` printed, no libX11/libxcb/libwayland, `render_gl_smoke gl` on the packaged bundle exits 0 or 77."
-  - "Ancestry check of the Task 3 fourth automated verify (authorization commit f1ecca0 must be an ancestor of the first ci-runs.txt `sha=` record) runs once a real record exists."
+ci-gate: passed 2026-10-28 (sha 091228a, runs native-verify 40627862148 / flutter-plugin 40627862039; release.yml 40618740386 at b40cdff)
+ci_gates_passed:
+  - gate: "Task 3 CI gate: --jobs-success ^linux ^sanitizers ^build + CONFIG-GL ok, RENDER_GL ok api=gl and api=gles renderer=gpu on ubuntu-24.04, RENDER_GL (ok|SKIP) on ubuntu-24.04-arm, RENDER_GL ok api=gl on sanitizers"
+    result: "CI-GATE ok (RENDER_GL ok on x64, arm64 and sanitizers for gl and gles; Mesa 25.2.8 llvmpipe, pixel=254,0,0)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
+  - gate: "release.yml linux job on feat: package.sh allowlist + ABI audit green with GL/EGL on, NEEDED libEGL.so.1 printed, no libX11/libxcb/libwayland, render_gl_smoke gl on the packaged bundle exits 0 or 77"
+    result: "linux-x64 and linux-arm64 success, publish skipped; `packaged 17 libraries`, `NEEDED libEGL.so.1`, `requires GLIBC_2.35`, packaged smoke `RENDER_GL ok api=gl renderer=gpu` (Mesa 23.2.1 llvmpipe, exit 0) on both"
+    sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
+    runs: "release.yml 40618740386"
+  - gate: "Ancestry check of the Task 3 fourth automated verify: authorization commit f1ecca0 is an ancestor of the first ci-runs.txt sha= record"
+    result: "ok (git merge-base --is-ancestor f1ecca0 091228a)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039"
 
 duration: about 40 min (no hosted CI waits)
 completed: 2026-10-28
@@ -98,3 +107,8 @@ None.
 None beyond the plan's register (new apt packages are from the runner's Ubuntu archive; no new Actions or package-manager installs).
 
 ## Self-Check: PASSED
+
+## CI backfill (2026-10-28)
+
+GLX-01 is proven (bundle with GL/EGL on, libEGL.so.1 the only new NEEDED, release linux jobs green); GLX-02 render part is proven too, its tick waits for the 15-02 hard-assertion run.
+Evidence: `evidence/ci-runs.txt, release-runs.txt`. The gates were evaluated by this phase's unmodified `tools/ci_gate.sh` / `tools/release_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the linux bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed.
