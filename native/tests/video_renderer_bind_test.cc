@@ -24,6 +24,14 @@
 //     every thread;
 //   * render_context_free runs exactly once.
 //
+// Threads are told apart by a per-thread token (a counter value taken on a
+// thread's first use), never by std::thread::id: the RunBound thread has
+// exited and been joined before the render thread starts, and glibc and macOS
+// recycle the id of an exited thread at once, so two different threads can
+// share one std::thread::id (CI run 40616234093). The test logs the calls
+// itself, with the token, instead of reading the harness's call log (whose
+// thread field is a std::thread::id).
+//
 // The fake backend delegates all rendering to the engine's software backend
 // and only adds the thread model, so no GPU, EGL or libmpv is needed.
 //
@@ -70,17 +78,37 @@ constexpr golden::Ms kRasterPeriod{2};
 
 // --- Thread binding model -----------------------------------------------------
 
+/// A thread's identity for this test: unique over the process lifetime, so
+/// unlike std::thread::id it is never handed to a later thread. 0 = none.
+using Token = int;
+
+std::atomic<Token> g_next_token{1};
+thread_local Token t_token = 0;
+
+/// The calling thread's token, assigned on first use.
+Token ThisToken() {
+  if (t_token == 0) t_token = g_next_token.fetch_add(1);
+  return t_token;
+}
+
 /// One BindThread or UnbindThread of the fake backend, in global order.
 struct BindEvent {
   int seq;
-  std::thread::id thread;
+  Token thread;
   bool bind;
+};
+
+/// One mpv_render_* call the renderer made, in global order.
+struct CallEvent {
+  std::string what;
+  Token thread;
 };
 
 std::mutex g_mu;
 std::vector<BindEvent> g_events;                 // guarded by g_mu
+std::vector<CallEvent> g_calls;                  // guarded by g_mu
 std::vector<std::string> g_violations;           // guarded by g_mu
-std::thread::id g_runbound_thread;               // guarded by g_mu
+Token g_runbound_thread = 0;                     // guarded by g_mu
 int g_runbound_calls = 0;                        // guarded by g_mu
 // Whether the calling thread is between its BindThread and UnbindThread:
 // the stand-in for "mpv's GL context is current on this thread".
@@ -89,21 +117,25 @@ thread_local bool t_bound = false;
 void ResetState() {
   std::lock_guard<std::mutex> lock(g_mu);
   g_events.clear();
+  g_calls.clear();
   g_violations.clear();
-  g_runbound_thread = std::thread::id();
+  g_runbound_thread = 0;
   g_runbound_calls = 0;
 }
 
 void RecordBind(bool bind) {
   std::lock_guard<std::mutex> lock(g_mu);
-  g_events.push_back({static_cast<int>(g_events.size()),
-                      std::this_thread::get_id(), bind});
+  g_events.push_back(
+      {static_cast<int>(g_events.size()), ThisToken(), bind});
 }
 
-/// Checked on entry of every mpv_render_* call: the thread must be bound.
+/// Run on entry of every mpv_render_* call: logs the call with the calling
+/// thread's token, and the thread must be bound.
 void CheckBound(const char* call) {
-  if (t_bound) return;
+  const Token token = ThisToken();
   std::lock_guard<std::mutex> lock(g_mu);
+  g_calls.push_back({call, token});
+  if (t_bound) return;
   g_violations.push_back(std::string(call) +
                          " called on a thread the backend has not bound");
 }
@@ -185,7 +217,7 @@ class AffinityBackend final : public mpv_kit::RenderBackend {
     std::thread worker([this, &fn] {
       {
         std::lock_guard<std::mutex> lock(g_mu);
-        g_runbound_thread = std::this_thread::get_id();
+        g_runbound_thread = ThisToken();
         g_runbound_calls++;
       }
       if (BindThread()) {
@@ -303,8 +335,7 @@ bool Is(const std::string& what, const char* prefix) {
 }
 
 /// Who made a call, for the report.
-std::string Role(std::thread::id t, std::thread::id runbound,
-                 std::thread::id render, std::thread::id main) {
+std::string Role(Token t, Token runbound, Token render, Token main) {
   if (t == runbound) return "RunBound thread";
   if (t == render) return "render thread";
   if (t == main) return "main thread";
@@ -329,8 +360,7 @@ struct ThreadBinds {
   bool paired = true;
 };
 
-ThreadBinds BindsOf(const std::vector<BindEvent>& events,
-                    std::thread::id thread) {
+ThreadBinds BindsOf(const std::vector<BindEvent>& events, Token thread) {
   ThreadBinds out;
   bool bound = false;
   for (const BindEvent& e : events) {
@@ -351,15 +381,17 @@ ThreadBinds BindsOf(const std::vector<BindEvent>& events,
 
 /// Checks the fake libmpv's call log and the bind events against the rule in
 /// the file header.
-void Check(Problems& p, const std::vector<golden::Call>& calls,
-           std::thread::id main) {
+void Check(Problems& p, const std::vector<golden::Call>& harness_calls,
+           Token main) {
   std::vector<BindEvent> events;
+  std::vector<CallEvent> calls;
   std::vector<std::string> violations;
-  std::thread::id runbound;
+  Token runbound = 0;
   int runbound_calls = 0;
   {
     std::lock_guard<std::mutex> lock(g_mu);
     events = g_events;
+    calls = g_calls;
     violations = g_violations;
     runbound = g_runbound_thread;
     runbound_calls = g_runbound_calls;
@@ -369,9 +401,15 @@ void Check(Problems& p, const std::vector<golden::Call>& calls,
     p.Add("RunBound ran " + std::to_string(runbound_calls) +
           " time(s) (expected: once)");
 
-  std::thread::id render;
+  // A context the renderer did not create shows as "(bad ctx)" only in the
+  // fake libmpv's own log, whose thread ids are not used here.
+  for (const golden::Call& c : harness_calls)
+    if (c.what.find("(bad ctx)") != std::string::npos)
+      p.Add(c.what + ": not the renderer's render context");
+
+  Token render = 0;
   bool any_render = false;
-  for (const golden::Call& c : calls) {
+  for (const CallEvent& c : calls) {
     if (!Is(c.what, "render_context_render")) continue;
     render = c.thread;
     any_render = true;
@@ -386,11 +424,9 @@ void Check(Problems& p, const std::vector<golden::Call>& calls,
   if (runbound == main) p.Add("RunBound ran on the main thread");
 
   int frees = 0, swaps = 0, set_parameters = 0, updates = 0, callbacks = 0;
-  for (const golden::Call& c : calls) {
+  for (const CallEvent& c : calls) {
     const std::string where =
         c.what + " on the " + Role(c.thread, runbound, render, main);
-    if (c.what.find("(bad ctx)") != std::string::npos)
-      p.Add(where + ": not the renderer's render context");
     if (Is(c.what, "render_context_create") ||
         Is(c.what, "render_context_get_info")) {
       if (c.thread != runbound)
@@ -443,7 +479,7 @@ void Check(Problems& p, const std::vector<golden::Call>& calls,
 /// an ICC profile, kFrames frames with a resize halfway, then the main
 /// thread destroys the renderer.
 void Scenario(Problems& p) {
-  const std::thread::id main = std::this_thread::get_id();
+  const Token main = ThisToken();
   BindInterop interop;
   auto renderer = std::make_unique<VideoRenderer>(
       MakeCheckedApi(), golden::FakeHandle(), &interop,
