@@ -46,6 +46,8 @@ requirements-completed: []
 requirements-partial: [GLX-03, GLX-04]  # still open work in 15-06 (ProbeGl on a helper thread, Vulkan-unavailable auto proof) and 15-07
 
 ci-gate: passed 2026-10-28 (Task 1 sha e047c4d: native-verify 40647806493, flutter-plugin 40647806590; Task 2 sha a76c714: native-verify 40649428663, flutter-plugin 40649428568 -- see the Task 2 gate deviation)
+ci_gates_passed:
+  - "15-05 Task 2 `PROBE {\"api\":\"vulkan\"` expectation (deviation 2) met by 15-06 on sha fbcd55a: native-verify 40653685694, flutter-plugin 40653685682; default probe api vulkan, supported, nonBlackRatio 1.0, upright before and after the resize (D-ORIENT=upright)."
 status: complete
 completed: 2026-10-28
 ---

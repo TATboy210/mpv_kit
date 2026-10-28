@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 15
 current_phase_name: Linux OpenGL Backend
 status: executing
-stopped_at: Completed 15-05-PLAN.md
-last_updated: "2026-10-28T07:39:24.644Z"
+stopped_at: Completed 15-06-PLAN.md
+last_updated: "2026-10-28T08:18:22.793Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 15 execution started
-state_head: 8ebf844736941300c6a810d94aa95c943d8c96a1
+state_head: fbcd55a4406d70dfcdfe6da32ebacaeb623bf027
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 15 (Linux OpenGL Backend) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 15 execution started
 
@@ -122,6 +122,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 15 P03 | 20min | 2 tasks | 6 files |
 | Phase 15 P04 | 45min | 3 tasks | 11 files |
 | Phase 15 P05 | about 2h (incl. CI waits) | 2 tasks | 9 files |
+| Phase 15 P06 | 70min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -237,6 +238,7 @@ Recent decisions affecting current work:
 - [Phase 15]: [15-01] Push authorization push-green-only+dispatch is effective only at the milestone-end CI pass; Phase 14 14-09..14-11 and 13-06 deferred until after that CI pass
 - [Phase 15]: [15-04] Linux chain decision A (auto vulkan/gpu-next, opengl/gpu, vulkan/gpu, software; gpu opengl first); SC3 interpreted as runbound (create-time calls in RenderBackend::RunBound)
 - [Phase 15]: 15-05: FLIP_Y=0 for OpenGLBackend (D-ORIENT unknown -> D-FLUTTER-ORIGIN top-left -> D-FLIP-MPV); verified upright on llvmpipe by the mounted probe
+- [Phase 15]: [15-06] ProbeGl runs on a short-lived thread (GDK display from the platform thread); SECOND-CONTROLLER asserts every controller gets the first one's backend
 
 ### CI Deferral
 
@@ -298,8 +300,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T07:39:24.075Z
-Stopped at: Completed 15-05-PLAN.md
+Last session: 2026-10-28T08:18:22.156Z
+Stopped at: Completed 15-06-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
