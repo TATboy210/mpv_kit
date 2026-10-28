@@ -32,12 +32,11 @@ key-files:
 key-decisions:
   - "Task 2 (D-GL-API / D-FLIP-MPV / D-SYNC and the hard-assertion switch) not started: it is defined as a function of CI log lines and none exist. spike-gl.txt carries deferred placeholders only, so 15-05 cannot silently read a guessed value."
 
-requirements-completed: [GLX-01]
-requirements-partial: [GLX-02, GLX-03]  # GLX-02 waits for the CI run of the hard handoff assertions; GLX-03 needs 15-05..07
+requirements-completed: [GLX-01, GLX-02]  # GLX-02 ticked 2026-10-28 after native-verify run 40632866758 (hard assertions green on x64, arm64, sanitizers)
+requirements-partial: [GLX-03]  # GLX-03 needs 15-05..07
 
-ci-gate: partial 2026-10-28: Task 1 and Task 3 passed; Task 2 hard assertions committed, needs one more native-verify run
-deferred_ci_gates:
-  - "RAN-PARTIALLY 2026-10-28: the spike-gl.txt part is done (D-GL-API=gl,gles, D-FLIP-MPV=row0-top-when-flip_y=0, D-SYNC=fence+client-wait ok) and the hard assertions in render_gl_smoke.c are committed; STILL OPEN: one more native-verify run on a pushed commit with `ci_gate.sh ... --log ^linux \\(ubuntu-24\\.04\\) RENDER_GL handoff ok api=gl` (and gles). Original text: Task 2 (after Task 1 evidence exists): write spike-gl.txt from those lines (D-GL-API, D-FLIP-MPV, D-SYNC, EXT-*, ARM64, SANITIZERS), turn the passing variants into hard assertions in render_gl_smoke.c (`RENDER_GL handoff ok api=<variant>`), push, run the plan's two verify commands (spike-gl.txt greps; ci_gate with `RENDER_GL handoff ok api=<first variant>`)."
+ci-gate: "pass 2026-10-28 - Task 1, Task 2 and Task 3 gates all passed (Task 2 hard assertions proven by native-verify run 40632866758 at 893b34f)"
+deferred_ci_gates: []  # closed 2026-10-28: the one open gate (hard-assertion CI run) passed, see ci_gates_passed
 
 ci_gates_passed:
   - gate: "Task 1: --jobs-success ^linux ^sanitizers + RENDER_GL ok gl/gles, RENDER_GL ext api=gl, RENDER_GL handoff api=gl|gles flip_y=0|1 (ubuntu-24.04)"
@@ -48,6 +47,10 @@ ci_gates_passed:
     result: "RELEASE-GATE ok (release_runs.txt: publish:skipped, linux-x64 + linux-arm64 success, GLIBC_2.35)"
     sha: b40cdff9262e32f884f4c71b31d3306a4fa37e49
     runs: "release.yml 40618740386"
+  - gate: "Task 2: hard handoff assertions (52b8a56) run on CI: --jobs-success ^linux ^sanitizers + --log ^linux (ubuntu-24.04) RENDER_GL handoff ok api=gl (and api=gles)"
+    result: "`RENDER_GL handoff ok api=gl` and `api=gles` on linux (ubuntu-24.04), linux (ubuntu-24.04-arm) and sanitizers; jobs success"
+    sha: 893b34f133de42bbf79bb3f54ce98e78a4eb60f9
+    runs: "native-verify 40632866758"
 
 duration: about 25 min (no hosted CI waits)
 completed: 2026-10-28
@@ -99,3 +102,7 @@ None.
 
 Spike values (from run 40627862148, llvmpipe only): D-GL-API=gl,gles; D-FLIP-MPV=row0-top-when-flip_y=0; D-SYNC=fence+client-wait ok. Both variants passed on x64, arm64 and sanitizers, so `native/tests/render_gl_smoke.c` now hard-asserts the row0-top round for both (`RENDER_GL handoff ok api=<variant>`). **That code change has not run on CI yet: it needs one more native-verify run** (15-02 Task 2 second automated check, and the GLX-02 tick).
 Evidence: `evidence/ci-runs-15-02.txt, release-runs.txt, spike-gl.txt`. The gates were evaluated by this phase's unmodified `tools/ci_gate.sh` / `tools/release_gate.sh` against completed runs (PR runs at feat HEAD 091228a: native-verify 40627862148, flutter-plugin 40627862039; release.yml dispatch 40618740386 at b40cdff, valid for the linux bundle because b40cdff..091228a only touched the native-verify windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests and notes). A gh shim served the cached logs; nothing was dispatched, rerun or pushed.
+
+## Hard-assertion CI pass (2026-10-28)
+
+native-verify run 40632866758 at sha 893b34f (success; linux x64, linux arm64 and sanitizers jobs success) contains the 52b8a56 change and prints `RENDER_GL handoff ok api=gl` and `RENDER_GL handoff ok api=gles` on all three, next to the unchanged `RENDER_GL ok ... pixel=254,0,0` lines. This closes the open gate above; 15-02 has no open gates. GLX-02 (render_gl_smoke renders non-black pixels on the ubuntu runner, EGL surfaceless plus llvmpipe) is ticked. Scope stays llvmpipe only; real GL drivers remain unverified. Raw lines: `evidence/ci-runs-15-02.txt`.

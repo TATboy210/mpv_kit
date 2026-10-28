@@ -35,7 +35,7 @@
 ### Linux OpenGL（GLX）
 
 - [x] **GLX-01**: Linux bundle 打开 mpv `-Dgl -Degl -Dplain-gl`（x11/wayland 仍关闭），使用上游 `MPV_RENDER_API_TYPE_OPENGL`
-- [ ] **GLX-02**: 新的 `render_gl_smoke` 原生测试在 ubuntu runner（EGL surfaceless + llvmpipe）上渲染出非黑像素
+- [x] **GLX-02**: 新的 `render_gl_smoke` 原生测试在 ubuntu runner（EGL surfaceless + llvmpipe）上渲染出非黑像素
 - [ ] **GLX-03**: `OpenGLBackend`：渲染线程上独立 EGL context（Flutter 的 `EGLDisplay`、不入 Flutter share group），mpv 渲染到私有纹理再 blit 到独立导出纹理，`EGLImage` 交给 `FlTextureGL`，`EGLSync` 完成后才发布；populate 回调内不渲染
 - [ ] **GLX-04**: Linux auto 链为 vulkan/gpu-next → opengl/gpu → vulkan/gpu → software，`reason` 在 vo_gpu 服务时如实写 `gpu`
 
@@ -102,7 +102,7 @@
 | D3D-07 | Phase 14 | Complete |
 | D3D-08 | Phase 14 | Pending |
 | GLX-01 | Phase 15 | Complete |
-| GLX-02 | Phase 15 | Pending |
+| GLX-02 | Phase 15 | Complete |
 | GLX-03 | Phase 15 | Pending |
 | GLX-04 | Phase 15 | Pending |
 | MAC-01 | Phase 13 | Complete |
