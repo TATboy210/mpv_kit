@@ -3117,6 +3117,7 @@ const struct vo_driver video_out_gpu_next = {
 // the render_backend_fns entry points to the VO code above, which operates on
 // a private struct vo that carries no windowing state.
 
+#include "mpv/render_gl.h" // mpv_opengl_drm_params_v2 (type only)
 #include "mpv/render_vk.h"
 #if HAVE_D3D11
 #include "mpv/render_d3d11.h"
@@ -3188,6 +3189,26 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     struct priv *p = vo->priv;
     p->libmpv = true;
     p->ra_ctx = lp->context->ra_ctx;
+
+    // Hand the host's DRM render node to hwdec (VA-API). The gpu renderer's
+    // libmpv_gpu.c registers every native resource on the ra before
+    // gl_video_init_hwdecs(). preinit() below loads all hwdecs
+    // (libmpv load_all), so the resource must be on the ra before it, or
+    // hwdec_vaapi's create_drm_va_display() finds no render node. Only
+    // drm_params_v2 is registered: x11/wayland are disabled in mpv_kit builds
+    // and drm_draw_surface_size only serves the drmprime overlay (the host
+    // passes fd=-1, which skips it). The struct is copied like libmpv_gpu.c
+    // does; the fds stay owned by the host, which closes them after the render
+    // context is freed. (mpv_kit, Phase 16 HWD-03)
+    mpv_opengl_drm_params_v2 *drm =
+        get_mpv_render_param(params, MPV_RENDER_PARAM_DRM_DISPLAY_V2, NULL);
+    if (drm) {
+        drm = talloc_memdup(lp, drm, sizeof(*drm));
+        ra_add_native_resource(p->ra_ctx->ra, "drm_params_v2", drm);
+        MP_VERBOSE(ctx, "gpu-next: native resource drm_params_v2 (render_fd %d)\n",
+                   drm->render_fd);
+    }
+
     p->pllog = lp->pllog = mppl_log_create(lp, ctx->log);
     if (!is_d3d11) {
         p->gpu = ra_pl_get(p->ra_ctx->ra);

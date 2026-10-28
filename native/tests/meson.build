@@ -11,6 +11,10 @@ smoke = executable('render_vk_smoke', 'render_vk_smoke.c',
                    dependencies: [mpv, vulkan, threads])
 test('render_vk_smoke', smoke, timeout: 60)  # gpu-next (default)
 test('render_vk_smoke_gpu', smoke, args: ['gpu'], timeout: 60)
+# Phase 16 (HWD-03): MPV_RENDER_PARAM_DRM_DISPLAY_V2 reaches the ra as the
+# drm_params_v2 native resource under both renderers.
+test('render_vk_smoke_drm', smoke, args: ['gpu-next', '--drm'], timeout: 60)
+test('render_vk_smoke_gpu_drm', smoke, args: ['gpu', '--drm'], timeout: 60)
 
 # Asynchronous custom-stream bridge (include/mpv/stream_bridge.h): playback
 # through a host thread that answers requests, plus shutdown while pending.
