@@ -412,7 +412,11 @@ void main() {
     // ADR 0004: d3d11/opengl/vulkan are private wire names of the GPU
     // zero-copy backend; the real API stays visible as reason's first token.
     for (final name in const ['d3d11', 'opengl', 'vulkan']) {
-      final reason = '$name (gpu-next) on test';
+      // Realistic reason: the OpenGL backend is served by vo_gpu (renderer
+      // gpu), never gpu-next, so a log grep for `opengl (gpu-next)` only
+      // matches a real defect (15-06 gate).
+      final renderer = name == 'opengl' ? 'gpu' : 'gpu-next';
+      final reason = '$name ($renderer) on test';
       messenger.setMockMethodCallHandler(_channel, (call) async {
         calls.add(call);
         if (call.method == 'create') {
