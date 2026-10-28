@@ -17,6 +17,10 @@
 // afterResizeNonBlackRatio, afterResizeOrientation, textureId, renderErrors,
 // events.
 //
+// A second controller is then created on the same player and must report the
+// same api as the first: one `SECOND-CONTROLLER {json}` line (first, second,
+// secondReason).
+//
 // Assertions (15-05): video params arrive, the presentation gate passes
 // within 30 s, no device is lost, there is no render error, the textureId does
 // not change across the resize, and BOTH reads are supported and non-black
@@ -300,8 +304,28 @@ void main() {
       texture.value = null;
       await _nextFrame();
       await controller.dispose();
+
+      // A second controller on the same player must get the same backend as
+      // the first. evidence/spike-flutter-linux.txt D-THREAD: the Linux
+      // interop probe used to fail on the platform thread in later
+      // controllers (EGL_BAD_ACCESS), silently dropping them off the
+      // backend the first one had; this guards that defect (15-06).
+      final secondController = await MpvVideoController.create(player);
+      final secondReason = secondController.reason;
+      final secondApi = secondReason.split(' ').first;
+      print(
+        'SECOND-CONTROLLER ${jsonEncode({'first': report['api'], 'second': secondApi, 'secondReason': secondReason})}',
+      );
+      await secondController.dispose();
       await player.dispose();
       await sub.cancel();
+      expect(
+        secondApi,
+        report['api'],
+        reason:
+            'the second controller must report the backend of the first: '
+            'first "$reason", second "$secondReason"',
+      );
       expect(events, isNot(contains(MpvVideoEventKind.deviceLost)));
       expect(
         events,

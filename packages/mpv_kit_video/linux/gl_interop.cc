@@ -45,38 +45,6 @@ void FreeImages(const std::vector<GlInterop::Image*>& images) {
   }
 }
 
-/// Restores whatever EGL context the calling thread had current.
-class EglCurrentGuard {
- public:
-  EglCurrentGuard()
-      : api_(eglQueryAPI()),
-        display_(eglGetCurrentDisplay()),
-        draw_(eglGetCurrentSurface(EGL_DRAW)),
-        read_(eglGetCurrentSurface(EGL_READ)),
-        context_(eglGetCurrentContext()) {}
-  ~EglCurrentGuard() {
-    // The current context is tracked per client API: restore that first.
-    eglBindAPI(api_);
-    if (context_ != EGL_NO_CONTEXT) {
-      eglMakeCurrent(display_, draw_, read_, context_);
-    } else if (fallback_ != EGL_NO_DISPLAY) {
-      eglMakeCurrent(fallback_, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                     EGL_NO_CONTEXT);
-    }
-  }
-  void set_fallback(EGLDisplay d) { fallback_ = d; }
-  /// The calling thread's state at construction, for diagnostics.
-  bool had_context() const { return context_ != EGL_NO_CONTEXT; }
-  EGLenum api() const { return api_; }
-
- private:
-  EGLenum api_;
-  EGLDisplay display_;
-  EGLSurface draw_, read_;
-  EGLContext context_;
-  EGLDisplay fallback_ = EGL_NO_DISPLAY;
-};
-
 /// Outcome of one throwaway-context attempt: the failing EGL call (null on
 /// success) and its eglGetError() value, read straight after the failure.
 struct ProbeAttempt {
@@ -118,64 +86,58 @@ ProbeAttempt TryProbeContext(EGLDisplay display, EGLContext* out_ctx) {
   return attempt;
 }
 
-/// Diagnostic only: repeats the probe on a brand-new thread (no EGL state of
-/// its own) and reports `ok` or `<call> failed (<error>)`. Run only after the
-/// calling thread's probe failed, to tell "EGL is unusable here" from "this
-/// thread's EGL state is the problem". Never used to enable interop.
-std::string FreshThreadProbe(EGLDisplay display) {
-  std::string result = "not run";
-  try {
-    std::thread worker([display, &result] {
-      eglBindAPI(EGL_OPENGL_ES_API);
-      EGLContext ctx = EGL_NO_CONTEXT;
-      const ProbeAttempt attempt = TryProbeContext(display, &ctx);
-      if (attempt.failed_call) {
-        result = std::string(attempt.failed_call) + " failed (" +
-                 EglErrorText(attempt.error) + ")";
-      } else {
-        result = "ok";
-        eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                       EGL_NO_CONTEXT);
-        eglDestroyContext(display, ctx);
-      }
-      eglReleaseThread();  // drops this thread's EGL bookkeeping
-    });
-    worker.join();  // result is read only after the join
-  } catch (const std::exception&) {
-    result = "not run (thread creation failed)";
-  }
-  return result;
-}
+/// What the probe thread found; written there, read only after the join.
+struct GlProbeResult {
+  bool ok = false;
+  /// Empty on success. One line, no semicolons (the reason trail uses them
+  /// as field separators and SanitizeReasonField would rewrite them).
+  std::string reason;
+  std::vector<std::array<uint8_t, 16>> device_uuids;
+  std::array<uint8_t, 16> driver_uuid{};
+};
 
-/// The `cannot create a probe EGL context` reason with its diagnosis: the
-/// failing call and EGL error, what the calling thread had current (EGL
-/// context and bound API, GDK GL context) and the fresh-thread result. One
-/// line, comma-separated, no semicolons (the reason trail uses them as field
-/// separators and SanitizeReasonField would rewrite them).
-///
-/// The fresh-thread run happens only on failure: success needs no diagnosis
-/// and the extra thread would cost every healthy create. Its result is
-/// informational. gl_ok_ stays decided by the calling thread's probe, because
-/// the engine's populate runs on a thread with the same constraints; enabling
-/// interop from a different thread's success would hide the failure instead
-/// of explaining it (15-06 acts on this spike's conclusion).
-std::string DescribeProbeFailure(EGLDisplay display,
-                                 const EglCurrentGuard& guard,
-                                 const ProbeAttempt& attempt) {
-  const EGLenum api = guard.api();
-  const char* api_name = api == EGL_OPENGL_ES_API ? "OPENGL_ES"
-                         : api == EGL_OPENGL_API  ? "OPENGL"
-                                                  : "NONE";
-  std::string text = "cannot create a probe EGL context: ";
-  text += attempt.failed_call;
-  text += " failed (" + EglErrorText(attempt.error) + "), ";
-  text += std::string("calling thread EGL context: ") +
-          (guard.had_context() ? "current" : "none") + " (api " + api_name +
-          "), ";
-  text += std::string("GDK GL context: ") +
-          (gdk_gl_context_get_current() ? "current" : "none") + ", ";
-  text += "fresh thread: " + FreshThreadProbe(display);
-  return text;
+/// The probe proper: runs on a thread of its own (see GlInterop::ProbeGl), so
+/// no context is current on entry and none needs restoring on exit. Creates
+/// a throwaway context on [display], reads the extension support and the GL
+/// device/driver UUIDs, and destroys the context again.
+GlProbeResult ProbeOnThisThread(EGLDisplay display) {
+  GlProbeResult result;
+  // eglInitialize on an initialized display is a no-op. Never terminate it:
+  // the handle is shared with Flutter's engine.
+  if (!eglInitialize(display, nullptr, nullptr)) {
+    result.reason = "no EGL display";
+    return result;
+  }
+  eglBindAPI(EGL_OPENGL_ES_API);
+  // Mirror the engine's context (ES 2 request; drivers return the highest
+  // compatible ES version) so extension support matches what populate sees.
+  EGLContext ctx = EGL_NO_CONTEXT;
+  const ProbeAttempt attempt = TryProbeContext(display, &ctx);
+  if (attempt.failed_call) {
+    result.reason = std::string("cannot create a probe EGL context: ") +
+                    attempt.failed_call + " failed (" +
+                    EglErrorText(attempt.error) + ")";
+    return result;
+  }
+  if (!epoxy_has_gl_extension("GL_EXT_memory_object") ||
+      !epoxy_has_gl_extension("GL_EXT_memory_object_fd")) {
+    result.reason = "GL lacks GL_EXT_memory_object_fd";
+  } else {
+    GLint n = 0;
+    glGetIntegerv(GL_NUM_DEVICE_UUIDS_EXT, &n);
+    for (GLint i = 0; i < n; i++) {
+      std::array<uint8_t, 16> uuid{};
+      glGetUnsignedBytei_vEXT(GL_DEVICE_UUID_EXT, static_cast<GLuint>(i),
+                              uuid.data());
+      result.device_uuids.push_back(uuid);
+    }
+    glGetUnsignedBytevEXT(GL_DRIVER_UUID_EXT, result.driver_uuid.data());
+    result.ok = !result.device_uuids.empty();
+    if (!result.ok) result.reason = "GL reports no device UUID";
+  }
+  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+  eglDestroyContext(display, ctx);
+  return result;
 }
 
 void ClearGlErrors() {
@@ -261,7 +223,9 @@ std::string EglErrorText(EGLint error) {
 
 GlInterop::GlInterop(std::function<void()> frame_ready)
     : frame_ready_(std::move(frame_ready)) {
-  ProbeGl();
+  // Platform thread: the one place GDK may be used. The display handle is
+  // all the probe needs from it.
+  ProbeGl(FlutterEglDisplay());
 }
 
 std::unique_ptr<RenderBackend> GlInterop::CreateBackend(const char* api) {
@@ -269,45 +233,38 @@ std::unique_ptr<RenderBackend> GlInterop::CreateBackend(const char* api) {
   return nullptr;
 }
 
-void GlInterop::ProbeGl() {
-  EGLDisplay display = FlutterEglDisplay();
-  // eglInitialize on an initialized display is a no-op. Never terminate it:
-  // the handle is shared with Flutter's engine.
-  if (display == EGL_NO_DISPLAY || !eglInitialize(display, nullptr, nullptr)) {
+// The probe runs on a short-lived thread of its own, never on the platform
+// thread. evidence/spike-flutter-linux.txt D-THREAD (native-verify run
+// 40627862148): on the platform thread, eglMakeCurrent of a fresh context
+// failed with EGL_BAD_ACCESS in 11 of 12 controllers of that job, while the
+// very same steps succeeded on a fresh thread. What
+// the platform thread has current (GDK/Flutter state) is not ours to reason
+// about, so the probe needs a thread that has nothing current. This is the
+// principle OpenGLBackend::RunBound already follows for its create-time EGL
+// work. The thread is always joined before this function returns, and the
+// result is copied into the members here, on the platform thread, only after
+// the join.
+void GlInterop::ProbeGl(EGLDisplay display) {
+  if (display == EGL_NO_DISPLAY) {
     gl_reason_ = "no EGL display";
     return;
   }
-  EglCurrentGuard guard;
-  guard.set_fallback(display);
-  eglBindAPI(EGL_OPENGL_ES_API);
-  // Mirror the engine's context (ES 2 request; drivers return the highest
-  // compatible ES version) so extension support matches what populate sees.
-  EGLContext ctx = EGL_NO_CONTEXT;
-  const ProbeAttempt attempt = TryProbeContext(display, &ctx);
-  if (attempt.failed_call) {
-    // gl_ok_ stays false: the verdict is the calling thread's alone.
-    gl_reason_ = DescribeProbeFailure(display, guard, attempt);
+  GlProbeResult result;
+  std::thread worker;
+  try {
+    worker = std::thread([display, &result] {
+      result = ProbeOnThisThread(display);
+      eglReleaseThread();  // drops this thread's EGL bookkeeping
+    });
+  } catch (const std::exception&) {
+    gl_reason_ = "cannot start the EGL probe thread";
     return;
   }
-
-  if (!epoxy_has_gl_extension("GL_EXT_memory_object") ||
-      !epoxy_has_gl_extension("GL_EXT_memory_object_fd")) {
-    gl_reason_ = "GL lacks GL_EXT_memory_object_fd";
-  } else {
-    GLint n = 0;
-    glGetIntegerv(GL_NUM_DEVICE_UUIDS_EXT, &n);
-    for (GLint i = 0; i < n; i++) {
-      std::array<uint8_t, 16> uuid{};
-      glGetUnsignedBytei_vEXT(GL_DEVICE_UUID_EXT, static_cast<GLuint>(i),
-                              uuid.data());
-      gl_device_uuids_.push_back(uuid);
-    }
-    glGetUnsignedBytevEXT(GL_DRIVER_UUID_EXT, gl_driver_uuid_.data());
-    gl_ok_ = !gl_device_uuids_.empty();
-    if (!gl_ok_) gl_reason_ = "GL reports no device UUID";
-  }
-  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-  eglDestroyContext(display, ctx);
+  worker.join();
+  gl_ok_ = result.ok;
+  gl_reason_ = std::move(result.reason);
+  gl_device_uuids_ = std::move(result.device_uuids);
+  gl_driver_uuid_ = result.driver_uuid;
 }
 
 std::vector<const char*> GlInterop::DeviceExtensions() const {

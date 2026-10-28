@@ -121,9 +121,11 @@ class GlInterop : public Interop, public VulkanInterop {
   const char* gl_reason() const { return gl_reason_.c_str(); }
 
  private:
-  /// Probes Flutter's EGL display with a throwaway context: extension
-  /// support and the GL device/driver UUIDs to match against Vulkan.
-  void ProbeGl();
+  /// Probes Flutter's EGL [display] (taken on the platform thread) with a
+  /// throwaway context created on a short-lived thread of its own: extension
+  /// support and the GL device/driver UUIDs to match against Vulkan. The
+  /// members are written after that thread has been joined.
+  void ProbeGl(EGLDisplay display);
 
   std::function<void()> frame_ready_;
   std::mutex graveyard_mutex_;
