@@ -297,6 +297,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 | 261025-rkf | keep host ICC across option changes in gpu-next libmpv | 2026-10-25 | 13c130b | .planning/quick\\261025-rkf-fix-gpu-next-libmpv-state-bugs-in-vo-gpu-next-c-patch-0004-k |
 | 261025-rkk | 0009 upstream backports (4 mpv commits) | 2026-10-25 | a2f7c0d | .planning/quick\\261025-rkk-add-native-patches-0009-upstream-backports-patch-with-upstre |
 | 261027-or3 | Linux release build against libdrm 2.4.113 (patch 0012) + LIBDRM-FLOOR guard; unblocks 14-03 | 2026-10-27 | 2b9f6e2 | [261027-or3-fix-linux-release-build-libdrm-2-4-114](./quick/261027-or3-fix-linux-release-build-libdrm-2-4-114/) |
+| 261028-moj | strict MpvLibrary.open: explicit path / MPV_KIT_LIBMPV_PATH never fall back; libmpv_guard removed; macOS CI step fixed | 2026-10-28 | dd75d28 | [261028-moj-strict-mpvlibrary-open-for-explicit-path](./quick/261028-moj-strict-mpvlibrary-open-for-explicit-path/) |
 
 ## Session Continuity
 
