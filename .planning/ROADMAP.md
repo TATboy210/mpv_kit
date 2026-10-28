@@ -233,11 +233,11 @@ Plans:
 
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
 **Research**: 需要阶段研究（`/gsd-plan-phase 16 --research-phase`）：混合 GPU 上的 vaapi render node 选择、P010 dma-buf modifier、Vulkan gpu-next 侧 vaapi 所需的 0004 native-resource 补充、`d3d11va-zero-copy` 的取舍（8K 门禁本身仍延后）。
-**Plans:** 6 plans（4 waves）
+**Plans:** 1/6 plans executed（4 waves）
 
 Plans:
 **Wave 1**
-- [ ] 16-01-PLAN.md — 推送授权检查点 + HWDEC 判定助手与真实样本（hwdec-samples job）+ ubuntu opengl / windows d3d11 腿 + macOS 默认行修正 + hosted spike
+- [x] 16-01-PLAN.md — 推送授权检查点 + HWDEC 判定助手与真实样本（hwdec-samples job）+ ubuntu opengl / windows d3d11 腿 + macOS 默认行修正 + hosted spike
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 16-02-PLAN.md — 默认列表决策检查点 + 按平台零拷贝优先的 Player 默认 hwdec（用户覆盖优先）+ README/ADR 0006/CHANGELOG
@@ -292,5 +292,5 @@ Plans:
 | 13. macOS Metal Route Decision | v3.0 | 6/6 | Complete    | 2026-10-28 |
 | 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
-| 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
+| 16. Hardware-Decode Zero-Copy | v3.0 | 1/6 | In Progress | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |

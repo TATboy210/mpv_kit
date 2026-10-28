@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 15
-current_phase_name: Linux OpenGL Backend
-status: verifying
-stopped_at: Completed 15-07-PLAN.md
-last_updated: "2026-10-28T09:42:56.919Z"
+current_phase: 16
+current_phase_name: Hardware Decode Zero Copy
+status: executing
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-10-28T14:36:44.903Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 15 execution started
-state_head: 5c26e10a363403c0d2387dad29331bb15d7c3055
+last_activity_desc: Phase 16 execution started
+state_head: 57d0efe237a71080105a257e8b2e606f0c60e21c
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 36
-  completed_plans: 33
-  percent: 17
+  completed_phases: 3
+  total_plans: 47
+  completed_plans: 34
+  percent: 50
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 15 — Linux OpenGL Backend
+**Current focus:** Phase 16 — Hardware Decode Zero Copy
 
 ## Current Position
 
-Phase: 15 (Linux OpenGL Backend) — EXECUTING
-Plan: 7 of 7
-Status: Phase complete — ready for verification
-Last activity: 2026-10-28 — Phase 15 execution started
+Phase: 16 (Hardware Decode Zero Copy) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-10-28 — Phase 16 execution started
 
-Progress: [██░░░░░░░░] 17%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 15 P05 | about 2h (incl. CI waits) | 2 tasks | 9 files |
 | Phase 15 P06 | 70min | 2 tasks | 6 files |
 | Phase 15 P07 | ~2h (CI waits) | 2 tasks | 5 files |
+| Phase 16 P01 | 55min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -241,6 +242,8 @@ Recent decisions affecting current work:
 - [Phase 15]: 15-05: FLIP_Y=0 for OpenGLBackend (D-ORIENT unknown -> D-FLUTTER-ORIGIN top-left -> D-FLIP-MPV); verified upright on llvmpipe by the mounted probe
 - [Phase 15]: [15-06] ProbeGl runs on a short-lived thread (GDK display from the platform thread); SECOND-CONTROLLER asserts every controller gets the first one's backend
 - [Phase 15]: 15-07: docs state the RunBound create-time exception; GLX-04 ticked, GLX-03 held until the SC3 wording proposal is decided; all Phase 15 evidence is llvmpipe only
+- [Phase 16]: 16-01: zero-copy is classified only from hwdec-current + hardware pixelformat + non-empty hw-pixelformat; push authorization push-green-only+dispatch with ci_mode=live
+- [Phase 16]: 16-01: hosted spike - macOS default list vulkan,d3d11va-copy,auto-safe reaches VideoToolbox zero-copy (Phase 13 software reading was a List.toString scaffold artifact); linux llvmpipe and windows WARP default list ends in software
 
 ### CI Deferral
 
@@ -257,6 +260,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [Phase 16 start, 2026-10-28] Phase 16 now owns the global plan pointer. Phase 14 plans 14-09, 14-10 and 14-11 remain PENDING user hardware sessions (RTX 4060 fence run, auto-chain switch, final gate); they are not abandoned. Phase 13's 13-06 stays deferred as well.
 - [Phase 14] GTX 960 + 核显笔记本上 Vulkan 判 `no Vulkan 1.3 device shareable with the compositor`，退回软件渲染，4K60 掉帧 1046、avsync 23.7 s；可能是 Flutter 适配器 LUID 与 GTX 960 不一致，也可能是驱动只到 Vulkan 1.2（未隔离）。作为 Phase 14 验收用例。
 - [v3.0] 唯一真机是 Windows x64 RTX 4060：硬解零拷贝、性能、4K 30 分钟、D-05 基线只能在本机证明；Linux GPU 与 macOS 硬件不可用，HWD-03/HWD-04 与 Linux 真驱动行为须如实标为「未验证」。
 - [v3.0] 本地无 MSYS2/meson 工具链：Phase 14（SPIRV-Cross/shaderc/`-Dd3d11`、0010）与 Phase 15（`-Dgl -Degl`）的 bundle 改动只能经 CI 构建验证，规划时要把 CI 往返计入。
@@ -304,8 +308,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T09:42:56.055Z
-Stopped at: Completed 15-07-PLAN.md
+Last session: 2026-10-28T14:36:43.621Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
