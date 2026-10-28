@@ -38,6 +38,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'libmpv_guard.dart';
+
 /// Upper bound for the injected device removal to reach Dart.
 const _lostTimeout = Duration(seconds: 20);
 
@@ -128,6 +130,7 @@ void main() {
           'ao': 'null',
         },
       );
+      expectConfiguredLibmpv();
       final controller = await MpvVideoController.create(player);
       final events = <MpvVideoEventKind>[];
       controller.events.listen(

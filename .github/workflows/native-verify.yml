@@ -228,6 +228,23 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: stage
+      - name: Bundle the artifact into the example (windows)
+        # Windows searches the executable's directory before PATH, and the
+        # mpv_kit_libs hook would put its pinned bundle there. Its same-name
+        # dependency DLLs (libharfbuzz-0.dll without DirectWrite, ...) shadow
+        # the artifact's msys2 closure, so MPV_KIT_LIBMPV_PATH fails to load
+        # ("The specified procedure could not be found") and MpvLibrary falls
+        # through to the pinned bundle's libmpv, which has no D3D11 render
+        # API (run 40617697855: "mpv_render_context_create: operation not
+        # implemented"). Pointing the hook at the artifact makes the
+        # executable directory carry the one consistent closure.
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          mkdir -p bundle/lib
+          cp stage/*.dll bundle/lib/
+          printf '\nhooks:\n  user_defines:\n    mpv_kit_libs:\n      libmpv_bundle: %s\n' \
+            "$(cygpath -m "$PWD/bundle")" >> pubspec.yaml
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

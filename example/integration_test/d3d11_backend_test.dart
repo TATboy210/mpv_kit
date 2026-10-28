@@ -41,6 +41,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'libmpv_guard.dart';
+
 /// Logical size of the probed box. The texture is stretched into it whatever
 /// size the renderer was asked for, so the probe image is always this size.
 const _boxWidth = 320.0;
@@ -252,6 +254,7 @@ void main() {
           'ao': 'null',
         },
       );
+      expectConfiguredLibmpv();
       final controller = await MpvVideoController.create(player);
       final sub = controller.events.listen(
         (e) => kinds.add(e.kind),
