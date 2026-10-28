@@ -6,7 +6,10 @@
 //   MPV_KIT_D3D11_INJECT=device-removed:30 flutter test integration_test/d3d11_device_lost_test.dart -d windows
 //   MPV_KIT_D3D11_INJECT=create-fail       flutter test integration_test/d3d11_device_lost_test.dart -d windows
 // with MPV_KIT_LIBMPV_PATH pointing at a libmpv that has the D3D11 render API
-// (patch 0010) and the gpu-next D3D11 branch (patch 0004).
+// (patch 0010) and the gpu-next D3D11 branch (patch 0004). MpvLibrary.open is
+// strict about that path: a libmpv that fails to load throws
+// MpvLibraryNotFound with the loader's reason instead of falling back to the
+// bundled copy, which has no D3D11 render API.
 //
 // The injection replaces only the HRESULT source of the plugin's device
 // removal check (and the device creation result); the mapping to device_lost
@@ -37,8 +40,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
-
-import 'libmpv_guard.dart';
 
 /// Upper bound for the injected device removal to reach Dart.
 const _lostTimeout = Duration(seconds: 20);
@@ -130,7 +131,6 @@ void main() {
           'ao': 'null',
         },
       );
-      expectConfiguredLibmpv();
       final controller = await MpvVideoController.create(player);
       final events = <MpvVideoEventKind>[];
       controller.events.listen(

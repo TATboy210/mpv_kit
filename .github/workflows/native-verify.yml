@@ -233,11 +233,12 @@ jobs:
         # mpv_kit_libs hook would put its pinned bundle there. Its same-name
         # dependency DLLs (libharfbuzz-0.dll without DirectWrite, ...) shadow
         # the artifact's msys2 closure, so MPV_KIT_LIBMPV_PATH fails to load
-        # ("The specified procedure could not be found") and MpvLibrary falls
-        # through to the pinned bundle's libmpv, which has no D3D11 render
-        # API (run 40617697855: "mpv_render_context_create: operation not
-        # implemented"). Pointing the hook at the artifact makes the
-        # executable directory carry the one consistent closure.
+        # ("The specified procedure could not be found"). MpvLibrary is
+        # strict about MPV_KIT_LIBMPV_PATH and throws MpvLibraryNotFound; it
+        # used to fall through to the pinned bundle's libmpv, which has no
+        # D3D11 render API (run 40617697855: "mpv_render_context_create:
+        # operation not implemented"). Pointing the hook at the artifact makes
+        # the executable directory carry the one consistent closure.
         if: matrix.target == 'windows'
         shell: bash
         run: |

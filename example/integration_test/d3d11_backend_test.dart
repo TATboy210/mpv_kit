@@ -4,7 +4,11 @@
 // (the controller must come up on the d3d11 backend, with no fallback):
 //   MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
 // with MPV_KIT_LIBMPV_PATH pointing at a libmpv that has the D3D11 render API
-// (patch 0010) and the gpu-next D3D11 branch (patch 0004). A debug plugin
+// (patch 0010) and the gpu-next D3D11 branch (patch 0004). MpvLibrary.open is
+// strict about that path: if it cannot be loaded (e.g. a dependency DLL next
+// to the executable shadows the artifact's), creating the Player throws
+// MpvLibraryNotFound with the loader's reason instead of falling back to the
+// bundled libmpv, which has no D3D11 render API. A debug plugin
 // build also honours MPV_KIT_D3D11_SYNC=query, which forces the
 // D3D11_QUERY_EVENT completion path instead of the ID3D11Fence path; the
 // value is echoed in the report line.
@@ -40,8 +44,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
-
-import 'libmpv_guard.dart';
 
 /// Logical size of the probed box. The texture is stretched into it whatever
 /// size the renderer was asked for, so the probe image is always this size.
@@ -254,7 +256,6 @@ void main() {
           'ao': 'null',
         },
       );
-      expectConfiguredLibmpv();
       final controller = await MpvVideoController.create(player);
       final sub = controller.events.listen(
         (e) => kinds.add(e.kind),
