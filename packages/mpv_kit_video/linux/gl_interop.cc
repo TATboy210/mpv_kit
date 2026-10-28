@@ -264,6 +264,11 @@ GlInterop::GlInterop(std::function<void()> frame_ready)
   ProbeGl();
 }
 
+std::unique_ptr<RenderBackend> GlInterop::CreateBackend(const char* api) {
+  if (std::strcmp(api, "opengl") == 0) return CreateOpenGLBackend(this);
+  return nullptr;
+}
+
 void GlInterop::ProbeGl() {
   EGLDisplay display = FlutterEglDisplay();
   // eglInitialize on an initialized display is a no-op. Never terminate it:

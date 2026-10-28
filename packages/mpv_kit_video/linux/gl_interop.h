@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 
+#include "../src/linux_candidates.h"
 #include "../src/video_renderer.h"
 #include "../src/vulkan_backend.h"
 // After the project headers on purpose: EGL's platform header pulls in Xlib,
@@ -65,6 +66,14 @@ class GlInterop : public Interop, public VulkanInterop {
   }
   bool SoftwareIsBgra() const override { return false; }  // GL_RGBA8
   void FrameReady() override { frame_ready_(); }
+  /// The Linux chain (decision A of 15-04): Vulkan and OpenGL candidates.
+  std::vector<BackendCandidate> BackendCandidates(
+      RendererChoice choice) const override {
+    return LinuxBackendCandidates(choice);
+  }
+  /// "opengl" is this platform's own backend; the built-in "vulkan" and
+  /// "software" return nullptr.
+  std::unique_ptr<RenderBackend> CreateBackend(const char* api) override;
 
   // VulkanInterop
   std::vector<const char*> InstanceExtensions() const override { return {}; }

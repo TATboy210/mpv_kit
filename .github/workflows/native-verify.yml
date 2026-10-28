@@ -286,6 +286,20 @@ jobs:
               MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
               ;;
           esac
+      # Phase 15 (GLX-03/GLX-04): the whole real-plugin test with the OpenGL
+      # backend forced (no fallback), under xvfb on llvmpipe.
+      - name: Real-plugin integration test (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
       # Phase 15 (GLX-03) spike: mounted-texture pixel/orientation probe on the
       # existing Vulkan path (MPV_KIT_VIDEO_API unset: auto chain). Report-only;
       # prints `PROBE {json}` and the Flutter version line.
