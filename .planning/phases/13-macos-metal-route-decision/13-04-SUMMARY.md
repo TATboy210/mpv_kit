@@ -15,7 +15,7 @@ provides:
   - 判定函数与 32 个本地单元测试（先红后绿）
 affects: [13-05, 13-06]
 
-requirements-partial: [HWD-04]
+requirements-completed: [HWD-04]
 
 actuals:
   tokens: 13200
@@ -48,19 +48,17 @@ key-decisions:
   - "阈值 routeFrameMaxMeanAbsDiff = 8.0 与结论表在任何 CI 结果之前提交，之后不得据结果调整"
   - "截图模块（prefix screenshot）的行不计入失败证据：回落消息含 falling back，但与解码无关"
 
-deferred_ci_gates:
+ci_gates_passed:
   - task: 1
-    purpose: "样本生成、h264 参照有效、被测结论在允许集合内、pre12 的 hwdec 跳过行、13-03 的 parity 不丢"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '^route-probe' --log '^route-probe' 'ROUTE-SAMPLES ffmpeg=' --log '^route-probe' 'ROUTE-SAMPLES name=hevc-10bit\.mp4 codec=hevc pix_fmt=yuv420p10le' --log '^route-probe' 'ROUTE-HWDEC-REF \{"tree":"head","sample":"h264-8bit".*"valid":true' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"h264-8bit","hwdec":"videotoolbox","outcome":"(zero-copy|zero-copy-render-unverified|unavailable)","gate":true' --log '^route-probe' 'ROUTE-SECTION \{"tree":"pre12","name":"hwdec","skipped":"not-requested"\}' --log '^route-probe' 'ROUTE-PARITY ok head='
-    acceptance: "ci-gate: deferred"
+    purpose: "samples generated, h264 reference valid, tested outcome in the allowed set, pre12 hwdec skip line, 13-03 parity kept"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
   - task: 2
-    purpose: "三个样本的被测结论、10-bit 的 p010 字段、默认列表行、flutterFrame 字段、pre12 无 hwdec 行；随后把 ROUTE- 行追加到 evidence/route-runs.txt"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '^route-probe' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"h264-8bit","hwdec":"videotoolbox","outcome":"(zero-copy|zero-copy-render-unverified|unavailable)","gate":true' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"hevc-8bit","hwdec":"videotoolbox","outcome":"(zero-copy|zero-copy-render-unverified|unavailable)","gate":true' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"hevc-10bit","hwdec":"videotoolbox","outcome":"(zero-copy|zero-copy-render-unverified|unavailable)","gate":true.*"p010":(true|false)' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"h264-8bit","hwdec":"default","outcome":"[a-z-]+","gate":false' --log '^route-probe' '"flutterFrame":"(match|mismatch|blind)"' --log '^route-probe' 'ROUTE-HWDEC-REF \{"tree":"head","sample":"hevc-10bit".*"valid":true' --log-absent '^route-probe' 'ROUTE-HWDEC \{"tree":"pre12"' --log '^route-probe' 'ROUTE-PARITY ok head='
-    follow_up: |
-      R=.planning/phases/13-macos-metal-route-decision/evidence/route-runs.txt; for s in h264-8bit hevc-8bit hevc-10bit; do grep -q "ROUTE-HWDEC {\"tree\":\"head\",\"sample\":\"$s\",\"hwdec\":\"videotoolbox\"" "$R" || { echo "missing $s"; exit 1; }; done && grep -q '"hwdec":"default"' "$R"
-    acceptance: "ci-gate: deferred"
+    purpose: "three samples classified (all zero-copy), hevc-10bit p010:true, default-list row (software, gate:false), flutterFrame match, no pre12 hwdec line"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
 ---
 
 # Phase 13 Plan 04: VideoToolbox 零拷贝探针（本地完成，托管 CI 推迟）Summary
@@ -124,3 +122,8 @@ STATE.md 的全局计划指针属于 Phase 14，没有运行 `state.advance-plan
 
 - 文件存在：`example/integration_test/route_samples/README.md`、`example/integration_test/macos_route_test.dart`、`example/integration_test/macos_route_probe.dart`、`example/test/macos_route_probe_test.dart`、`.github/workflows/macos-route.yml`、`evidence/red-local-13-04-classify.log`。
 - 提交存在于 HEAD 祖先链：4305699、b1ccb4b、78a67d5、3cd71ec。
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated against the completed milestone runs at feat HEAD 091228abd70b22fbe2f425fdd1efb75eb8cfcb54 (native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041; PR #1) with this phase's unmodified `tools/ci_gate.sh` (a gh shim served the cached logs, nothing was dispatched or rerun). Both gates passed. HWD-04 outcomes (run 40627862041): h264-8bit zero-copy (nv12), hevc-8bit zero-copy (nv12), hevc-10bit zero-copy (p010, p010 true); identical in the two earlier runs.
+Raw lines: `evidence/route-runs.txt`; gate records: `evidence/ci-runs.txt`.

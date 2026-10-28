@@ -15,7 +15,7 @@ provides:
   - macOS 插件私有诊断方法 debugFrameProbe 与 tools/macos_frame_probe.patch
 affects: [13-04, 13-05, 13-06]
 
-requirements-partial: [MAC-02]
+requirements-completed: [MAC-02]
 
 actuals:
   tokens: 15700
@@ -52,24 +52,22 @@ key-decisions:
   - "parity 阈值（0.02 / 4.0）与 IOSurface 稳健界（0.01 / 0.5）都在任何 CI 运行之前提交，之后不得据结果调整"
   - "自检用例 1 与 3 补入 ROUTE-FRAME 行：缺少 ROUTE-FRAME 记录按计划判为 FAIL，所以不带帧行的日志不再是合法输入"
 
-deferred_ci_gates:
+ci_gates_passed:
   - task: 1
-    purpose: "HEAD 路线探针：bundle 身份、via MoltenVK reason、最终像素读数；integration-test (macos) 成功"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '^route-probe' --jobs-success '^integration-test \(macos' --log '^route-probe' 'ROUTE-IDENTITY \{"tree":"head","libmpv":"@rpath/mpv\.2\.framework/mpv\.2"' --log '^route-probe' 'ROUTE-IDENTITY \{"tree":"head".*"reason":"vulkan \(gpu-next\) on [^"]+ via MoltenVK"' --log '^route-probe' 'ROUTE-PIXEL \{"tree":"head","read":3,"final":true,"visibility":"(texture-visible|texture-composited-black|texture-not-composited)"'
-    follow_up: |
-      test "$(grep -c 'ROUTE-PIXEL {"tree":"head"' .planning/phases/13-macos-metal-route-decision/evidence/route-runs.txt)" -ge 3 && grep -q 'ROUTE-IDENTITY {"tree":"head"' .planning/phases/13-macos-metal-route-decision/evidence/route-runs.txt
-    acceptance: "ci-gate: deferred"
+    purpose: "HEAD route probe: bundle identity, via MoltenVK reason, final pixel read; integration-test (macos) success"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
   - task: 2
-    purpose: "同一 runner 上的 pre12 对照与 toImage parity"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '^route-probe' --log '^route-probe' 'ROUTE-PARITY self-test ok cases=[0-9]+' --log '^route-probe' 'ROUTE-IDENTITY \{"tree":"pre12","libmpv":"@rpath/mpv\.2\.framework/mpv\.2"' --log '^route-probe' 'ROUTE-PIXEL \{"tree":"pre12","read":3,"final":true' --log '^route-probe' 'ROUTE-PIXEL \{"tree":"head","read":3,"final":true' --log '^route-probe' 'ROUTE-PARITY ok head='
-    acceptance: "ci-gate: deferred"
+    purpose: "same-runner pre12 reference and toImage parity (ROUTE-PARITY ok head=texture-visible pre12=texture-visible informative=yes)"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
   - task: 3
-    purpose: "IOSurface 第二通道、SC2 结论行，以及同一 SHA 上未 armed 路径不变的间接证据"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '^route-probe' --jobs-success '^build \(macos' --jobs-success '^integration-test \(macos' --log '^integration-test \(macos' '"reason":"vulkan \(gpu-next\) on [^"]+ via MoltenVK","elapsedMs"' --log '^integration-test \(macos' 'INTEGRATION-SOAK \{"resizeEvents":[0-9]+,"cycles":10,"renderErrors":0,"deviceLost":0\}' --log '^route-probe' 'ROUTE-PARITY self-test ok cases=14' --log '^route-probe' 'ROUTE-FRAME \{"tree":"head","supported":true' --log '^route-probe' 'ROUTE-FRAME \{"tree":"pre12","supported":true' --log '^route-probe' 'ROUTE-FRAME-PARITY ok head=' --log '^route-probe' 'ROUTE-SC2 pixel=(proven channel=(toImage|iosurface)|not-achieved reason=(probe-channels-blind|frames-black))' --log '^route-probe' 'ROUTE-PARITY ok head='
-    acceptance: "ci-gate: deferred"
+    purpose: "IOSurface second channel, ROUTE-SC2 pixel=proven channel=toImage, unarmed INTEGRATION-SOAK on the same sha"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
 ---
 
 # Phase 13 Plan 03: macOS 路线探针与像素一致性（本地完成，托管 CI 推迟）Summary
@@ -146,3 +144,8 @@ STATE.md 的全局计划指针属于 Phase 14，没有运行 `state.advance-plan
 
 - 文件存在：`.github/workflows/macos-route.yml`、`example/integration_test/macos_route_test.dart`、`example/integration_test/macos_route_probe.dart`、`example/test/macos_route_probe_test.dart`、`tools/check_route_probe.py`、`tools/macos_frame_probe.patch`、`evidence/red-local-13-03-parity.log`、`evidence/red-local-13-03-frame.log`、`evidence/route-runs.txt`。
 - 提交存在于 HEAD 祖先链：3fcac3d、3ed6e97、c71c3d9、11f1754、206be66。
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated against the completed milestone runs at feat HEAD 091228abd70b22fbe2f425fdd1efb75eb8cfcb54 (native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041; PR #1) with this phase's unmodified `tools/ci_gate.sh` (a gh shim served the cached logs, nothing was dispatched or rerun). All three gates passed; `ROUTE-SC2 pixel=proven channel=toImage` (identical in the two earlier macos-route runs 40617697853 and 40616234145).
+Raw lines: `evidence/route-runs.txt`; gate records: `evidence/ci-runs.txt`.

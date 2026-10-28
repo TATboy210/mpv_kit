@@ -146,12 +146,15 @@ Conclusions per Phase 13 success criterion (details and raw lines in
 - **SC1:** decided here, (a) MoltenVK → IOSurface. Status stays `proposed`
   until the user decision of 13-06.
 - **SC2:** the `via MoltenVK` reason is proven on hosted macos-15 (native-verify
-  run 40465908724, sha 8103bebfde1031b5a68ba000989448fce9407654). The pixel
-  parity part against the pre-Phase-12 plugin is not measured yet
-  (`ci-gate: deferred`: all hosted CI is deferred until phases 13-17 are done).
-- **SC3:** VideoToolbox on MoltenVK is not measured for h264-8bit, hevc-8bit or
-  hevc-10bit (`ci-gate: deferred`). There is neither a zero-copy result nor
-  evidence of unreachability yet.
+  run 40627862148, sha 091228abd70b22fbe2f425fdd1efb75eb8cfcb54). The pixel
+  parity part against the pre-Phase-12 plugin is proven through the `toImage`
+  channel (macos-route run 40627862041, same sha: `ROUTE-PARITY ok ...
+  informative=yes`, `ROUTE-SC2 pixel=proven channel=toImage`), identical in two
+  earlier runs.
+- **SC3:** VideoToolbox on MoltenVK is `zero-copy` on the hosted macos-15 VM for
+  h264-8bit, hevc-8bit and hevc-10bit (P010 included; run 40627862041, same
+  sha). Whether Apple's hardware engine or its software decoder ran inside the
+  VM is not distinguishable; Apple hardware is unverified.
 
 The project has no macOS hardware, so every real-hardware conclusion stays
 `unverified`.

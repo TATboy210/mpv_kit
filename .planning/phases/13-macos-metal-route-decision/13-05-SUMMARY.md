@@ -14,7 +14,7 @@ provides:
   - evidence/phase-audit.txt, eight local audits ok
 affects: [13-06]
 
-requirements-partial: [MAC-02, HWD-04]
+requirements-completed: [MAC-02, HWD-04]
 
 actuals:
   tokens: 9000
@@ -23,15 +23,18 @@ actuals:
 plan_head_before: 090ee390d1ecd1cc87374357f3f1a2d9d87b3551
 plan_head_after: d4c5b2e
 
-deferred_ci_gates:
+ci_gates_passed:
   - task: 2
-    purpose: "Final HEAD full gate (native-verify, flutter-plugin, macos-route, every job success) plus ROUTE-* extraction as `final run=` lines and the run-to-run comparison against the verification table"
-    command: |
-      CI_GATE_WORKFLOWS="native-verify.yml flutter-plugin.yml macos-route.yml" bash .planning/phases/13-macos-metal-route-decision/tools/ci_gate.sh --jobs-success '.' --log '^integration-test \(macos' '"reason":"vulkan \(gpu-next\) on [^"]+ via MoltenVK","elapsedMs"' --log-absent '^integration-test \((ubuntu|windows)' '"reason":"[a-z0-9-]+ \([^)]*\) on [^";]* via [^";]+("|; )' --log '^route-probe' 'ROUTE-PARITY ok head=' --log '^route-probe' 'ROUTE-HWDEC \{"tree":"head","sample":"hevc-10bit","hwdec":"videotoolbox","outcome":"(zero-copy|zero-copy-render-unverified|unavailable)","gate":true' --log '^route-probe' 'ROUTE-SC2 pixel=(proven channel=(toImage|iosurface)|not-achieved reason=(probe-channels-blind|frames-black))' --log '^macos \(macos-15\)' 'video_renderer_golden_vk +OK'
-    acceptance: "ci-gate: deferred"
+    purpose: "final HEAD full gate (every job success of native-verify, flutter-plugin, macos-route; macOS via MoltenVK reason; ubuntu/windows reasons unchanged; ROUTE-PARITY, hevc-10bit outcome, ROUTE-SC2, golden_vk OK)"
+    result: "CI-GATE ok (ci_gate.sh of this phase evaluated against the completed runs, 2026-10-28)"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
+    note: "jobs-success . passed on all three workflows; ROUTE lines recorded as `final run=` in route-runs.txt; run-to-run comparison against runs 40617697853 and 40616234145 shows identical gate:true outcomes"
   - task: 1
-    purpose: "Replace the three `deferred` HWD-04 rows and the SC2 pixel wording in the verification record with classified outcomes quoted from `run=<id> sha=<sha>` ROUTE-* lines (13-03 and 13-04 deferred gates must run first)"
-    acceptance: "ci-gate: deferred"
+    purpose: "HWD-04 rows and SC2 pixel wording in docs/perf/macos-route-verification.md replaced by classified outcomes quoted from run=40627862041 sha=091228a ROUTE-* lines (doc check: three rows, final outcomes equal, SC2 wording matches)"
+    result: "documentation done 2026-10-28; the Task 1 automated doc check passes (headings, three rows, 未验证, v0.1.0-dev.3, run ids, debugFrameProbe, SC2 wording) and the Task 2 second check (final outcomes equal the table) passes"
+    sha: 091228abd70b22fbe2f425fdd1efb75eb8cfcb54
+    runs: "native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041"
 ---
 
 # Phase 13 Plan 05: Verification record and phase audit (local, hosted CI deferred) Summary
@@ -70,3 +73,8 @@ None.
 
 - Files exist: `docs/perf/macos-route-verification.md`, `docs/adr/0005-macos-metal-route.md`, `evidence/phase-audit.txt`.
 - Commits in HEAD ancestry: ea6e26a, 2c3a44b.
+
+## CI backfill (2026-10-28)
+
+The deferred hosted gates were evaluated against the completed milestone runs at feat HEAD 091228abd70b22fbe2f425fdd1efb75eb8cfcb54 (native-verify 40627862148, flutter-plugin 40627862039, macos-route 40627862041; PR #1) with this phase's unmodified `tools/ci_gate.sh` (a gh shim served the cached logs, nothing was dispatched or rerun). Verification record rewritten with real outcome classes (HWD-04: three `zero-copy`; SC2 pixel `proven channel=toImage`; weakest of the three runs is the same). ADR 0005 stays `Status: proposed`: the user decision of 13-06 is still pending.
+Raw lines: `evidence/route-runs.txt`; gate records: `evidence/ci-runs.txt`.
