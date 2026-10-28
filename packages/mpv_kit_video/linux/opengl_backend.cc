@@ -92,7 +92,12 @@ constexpr ContextApi kContextApis[] = {
 // library itself.
 void* GetProcAddress(void* ctx, const char* name) {
   (void)ctx;
-  return reinterpret_cast<void*>(eglGetProcAddress(name));
+  // memcpy: ISO C++ has no function-pointer to void* conversion.
+  auto fn = eglGetProcAddress(name);
+  void* p = nullptr;
+  static_assert(sizeof(p) == sizeof(fn), "function and object pointers differ");
+  std::memcpy(&p, &fn, sizeof(p));
+  return p;
 }
 
 /// True if [name] is one of the space-separated tokens of an EGL extension
