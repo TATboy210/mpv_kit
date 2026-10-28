@@ -278,3 +278,24 @@ bind_test = executable('video_renderer_bind_test',
                        link_with: renderer,
                        dependencies: threads)
 test('video_renderer_bind_test', bind_test, timeout: 120)
+
+# DRM render node hand-over for VA-API (Phase 16, HWD-03): a separate binary
+# because the golden set above is frozen. drm_render_node.h resolves/opens
+# render nodes (POSIX fds, /dev/dri), so it is built on Linux only, and it also
+# runs under the sanitizers. DRM-RESOLVE proves the helpers (allowlist, device
+# number lookup in a temporary directory of links to /dev/null); DRM-PARAMS
+# proves, with the fake libmpv and a fake Vulkan interop that injects an fd,
+# that every Vulkan create carries MPV_RENDER_PARAM_DRM_DISPLAY_V2 and that the
+# fd is closed exactly once after the last render_context_free. The DRM-PARAMS
+# scenarios need golden_vk's Vulkan 1.3 device and are skipped on their own
+# without one.
+if host_machine.system() == 'linux'
+  drm_params_test = executable('video_renderer_drm_params_test',
+                               'video_renderer_drm_params_test.cc',
+                               include_directories: [renderer_inc, vulkan_inc],
+                               cpp_args: renderer_defines,
+                               link_with: renderer,
+                               dependencies: threads)
+  test('video_renderer_drm_params_test', drm_params_test, env: golden_vk_env,
+       timeout: 120)
+endif

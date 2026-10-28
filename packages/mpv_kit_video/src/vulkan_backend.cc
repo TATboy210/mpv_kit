@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 
+#include "drm_render_node.h"
 #include "render_backend.h"
 
 namespace mpv_kit {
@@ -451,6 +452,11 @@ namespace {
 class VulkanRenderBackend final : public RenderBackend {
  public:
   explicit VulkanRenderBackend(VulkanInterop* interop) : interop_(interop) {}
+  // Runs after Release freed the render context (render_backend.h contract),
+  // so mpv and libva no longer use the render node fd when it is closed.
+  ~VulkanRenderBackend() override {
+    if (drm_fd_ >= 0) interop_->CloseDrmRenderNode(drm_fd_);
+  }
 
   const char* wire_name() const override { return "vulkan"; }
   Backend frame_kind() const override { return Backend::kVulkan; }
@@ -487,6 +493,16 @@ class VulkanRenderBackend final : public RenderBackend {
     init.queue_transfer = {vk.transfer_queues().index,
                            vk.transfer_queues().count};
 
+    // VA-API interop (Phase 16): the render node of the device this backend
+    // renders on, resolved once. Every create (gpu-next and the gpu fallback)
+    // gets it; libmpv copies the struct but not the fd (see ~VulkanRenderBackend).
+    if (!drm_resolved_) {
+      drm_fd_ = interop_->OpenDrmRenderNode(vk.physical_device());
+      drm_resolved_ = true;
+    }
+    mpv_opengl_drm_params_v2 drm{};
+    FillDrmDisplayParams(drm_fd_, &drm);
+
     int advanced = 1;
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE,
@@ -494,8 +510,10 @@ class VulkanRenderBackend final : public RenderBackend {
         {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
         {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},  // replaced when there is an fd
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
+    if (drm_fd_ >= 0) params[4] = {MPV_RENDER_PARAM_DRM_DISPLAY_V2, &drm};
     const int err = api.render_context_create(out, handle, params);
     if (err < 0) {
       *why = "mpv_render_context_create: " +
@@ -588,6 +606,8 @@ class VulkanRenderBackend final : public RenderBackend {
   std::unique_ptr<VulkanContext> vk_;  // destroyed last, with this backend
   bool device_failed_ = false;
   std::string device_error_;  // why Init failed, sanitized
+  int drm_fd_ = -1;           // DRM render node (VA-API), -1: none
+  bool drm_resolved_ = false;  // OpenDrmRenderNode was asked once
 };
 
 }  // namespace

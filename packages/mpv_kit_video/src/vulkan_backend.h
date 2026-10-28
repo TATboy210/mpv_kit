@@ -44,6 +44,17 @@ class VulkanInterop {
   virtual bool CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,
                            int height, SharedImage* out) = 0;
   virtual void DestroyImage(VkDevice dev, SharedImage* img) = 0;
+  /// Linux (VA-API interop, Phase 16): opens the DRM render node of [device]
+  /// and returns its fd, or -1 for none. The caller owns the fd and hands it
+  /// back through CloseDrmRenderNode after the render context is freed; mpv
+  /// receives it as MPV_RENDER_PARAM_DRM_DISPLAY_V2 and does not dup it.
+  /// Default (Windows, macOS): -1.
+  virtual int OpenDrmRenderNode(VkPhysicalDevice device) {
+    (void)device;
+    return -1;
+  }
+  /// Closes an fd returned by OpenDrmRenderNode. Default: nothing to close.
+  virtual void CloseDrmRenderNode(int fd) { (void)fd; }
 };
 
 /// Instance, device and queues configured for libplacebo + Vulkan video.
