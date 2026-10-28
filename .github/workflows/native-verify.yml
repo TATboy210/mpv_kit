@@ -314,6 +314,8 @@ jobs:
         shell: bash
         run: |
           ls -la ~/Library/Logs/DiagnosticReports/ || true
+          find / -name 'mpv_kit_example*' \( -name '*.ips' -o -name '*.crash' \) -mmin -30 2>/dev/null | head
+          log show --last 10m --style compact --predicate 'process == "mpv_kit_example" OR senderImagePath CONTAINS "mpv_kit_example" OR eventMessage CONTAINS "mpv_kit_example"' 2>/dev/null | grep -v "^Timestamp" | tail -120 || true
           for f in ~/Library/Logs/DiagnosticReports/mpv_kit_example*; do
             [ -f "$f" ] && { echo "=== $f"; head -c 12000 "$f"; }
           done
