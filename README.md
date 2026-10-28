@@ -17,7 +17,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
 Prebuilt libmpv runs on Windows 10+, macOS 12+ and Linux with glibc 2.35+
-(x64 and arm64). Coming from media_kit? See
+and libEGL.so.1 (libglvnd; x64 and arm64). Coming from media_kit? See
 [docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
 
 ## Quick start
@@ -175,9 +175,16 @@ machine without one (no driver, an old GPU) renders on `d3d11` instead of
 falling back to software. Making D3D11 the first choice on Windows is a
 separate, later change.
 
+On Linux, mpv can also render through its upstream OpenGL render API (native
+`opengl` backend: a context of its own on Flutter's `EGLDisplay`, frames
+handed to Flutter as an `EGLImage`; it serves mpv's `gpu` renderer only, never
+`gpu-next`). `auto` tries `vulkan/gpu-next`, `opengl/gpu`, `vulkan/gpu`, then
+software, so a machine where Vulkan 1.3 is unusable renders on `opengl`
+instead of the CPU. `MPV_KIT_VIDEO_API=opengl` forces it.
+
 The native environment variable **`MPV_KIT_VIDEO_API`** forces one graphics
-API (`vulkan` or `software`; `d3d11` on Windows since Phase 14, `opengl` on
-Linux once that backend lands). It is strict: only that API is tried, there is
+API (`vulkan` or `software` everywhere, `d3d11` on Windows, `opengl` on
+Linux). It is strict: only that API is tried, there is
 no fallback to any other API (software included), and `create` throws
 `PlatformException(code: 'render_init')` when it cannot be used or does not
 match the selected renderer. Leave it unset in shipped apps; it exists for
@@ -199,7 +206,10 @@ decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
 * **Which renderer is active?** `controller.backend` / `controller.reason`
   (the first token of `reason` is the graphics API); force a renderer with
   `MPV_KIT_VIDEO_RENDERER`, or a graphics API, with no fallback, with
-  `MPV_KIT_VIDEO_API`.
+  `MPV_KIT_VIDEO_API`. On Linux `opengl (gpu) on <GL_RENDERER>; vulkan/gpu-next
+  unavailable: <why>` means mpv renders through OpenGL and the Vulkan reason
+  is in the trail. The OpenGL backend is verified on Mesa llvmpipe only; real
+  GPU drivers and Wayland are not verified.
 * **Is hardware decoding active?** `player.hwdecCurrent.value` or
   `player.mpv.getProperty('hwdec-current')`.
 * **Dropped frames:** read mpv's statistics properties such as

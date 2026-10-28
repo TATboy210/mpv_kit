@@ -52,17 +52,23 @@ Each `MpvVideoController` owns one native `VideoRenderer`
   gpu-next, then gpu, then software, depending on the requested
   `MpvVideoRenderer`; see [RenderBackend seam](#renderbackend-seam)) and
   starts a dedicated thread. mpv's update callback only sets a flag and
-  signals a condition variable. After `Start()`, every `mpv_render_*` call
-  runs on the render thread: `mpv_render_context_update` / `_render` /
+  signals a condition variable. After the render thread has started, every
+  `mpv_render_*` call runs on it: `mpv_render_context_update` / `_render` /
   `_set_parameter` / `_report_swap`, and finally the removal of the update
-  callback and `mpv_render_context_free`. Only `_create` and `_get_info`
-  run earlier, in `Start()` on the caller's thread, before the render
-  thread exists. The UI and raster threads never call into the render
-  context. render.h allows one `mpv_render_*` call at a time and, for
-  OpenGL, only on the thread whose context is current, so this is what
-  lets an OpenGL backend (Phase 15) work at all. Debug builds assert the
-  render thread at every call site; `video_renderer_affinity_test`
-  (native/tests) checks the same rule from a fake libmpv's call log.
+  callback and `mpv_render_context_free`. The calls that run before the
+  render thread exists are the create-time calls: `_create`, `_get_info`,
+  the first `_set_update_callback`, and the release of a context the render
+  thread never owned. They run inside `RenderBackend::RunBound`: on the
+  caller's thread for Vulkan, software and D3D11 (the default `RunBound`),
+  and on a short-lived helper thread of the backend, with its context
+  current, for OpenGL (see "Linux OpenGL backend"). So "every `mpv_render_*`
+  call is on the render thread" holds from the first frame on, not for
+  these create-time calls. The UI and raster threads never call into the
+  render context. render.h allows one `mpv_render_*` call at a time and, for
+  OpenGL, only on the thread whose context is current. Debug builds assert
+  the render thread at every call site; `video_renderer_affinity_test`
+  checks the rule above and `video_renderer_bind_test` the `RunBound`
+  contract (native/tests), both from a fake libmpv's call log.
 * **Frame hand-off.** After a frame completes, the platform `Interop`
   marks its Flutter texture dirty (`FrameReady`, called from the render
   thread). When the compositor pulls the texture, `AcquireFront()` returns
@@ -126,14 +132,17 @@ on the API sits behind `RenderBackend` (`src/render_backend.h`):
 | Method | Job | Thread |
 |---|---|---|
 | `wire_name`, `frame_kind`, `pipelined` | API name for reasons and the method channel; what a frame carries (shared image or CPU pixels); whether a frame needs a GPU wait before it is published | any |
+| `RunBound` | runs the create-time calls (every candidate's `Create`, the winner's `RendererName` and first `set_update_callback`, and the release of a context the render thread never owned) where the backend can make them; the default runs them between `BindThread` and `UnbindThread`, which are no-ops for Vulkan and software | caller of `Start` (default), or a thread of the backend with its context current (OpenGL) |
 | `BindThread` / `UnbindThread` | thread affinity (an OpenGL context made current); no-ops for Vulkan and software | render thread, at start and before exit |
-| `Create`, `device_failed`, `device_name`, `RendererName` | device on the first call, then the mpv render context for one renderer; the reason head's device and renderer | caller of `Start` |
+| `Create`, `device_failed`, `device_name`, `RendererName` | device on the first call, then the mpv render context for one renderer; the reason head's device and renderer | inside `RunBound` |
 | `AllocTargets`, `FreeRetired`, `FrameFor` | the ring of render targets, the retired generation, one slot's platform object or pixels | render thread (`FrameFor` under the renderer lock, also from `AcquireFront`) |
 | `Render`, `Wait` | `mpv_render_context_render` into one slot; its bounded GPU completion | render thread |
 | `Release` | `mpv_render_context_free`, before the device goes | render thread, before it exits |
 
 Built-in backends: `SoftwareBackend` (`MPV_RENDER_API_TYPE_SW`,
-video_renderer.cc) and `VulkanRenderBackend` (vulkan_backend.cc). The
+video_renderer.cc) and `VulkanRenderBackend` (vulkan_backend.cc); the Linux
+plugin adds `OpenGLBackend` (linux/opengl_backend.cc), the Windows plugin
+`D3D11RenderBackend`. The
 platform keeps what is genuinely platform work: `Interop::FrameReady`
 (mark the Flutter texture dirty), `RetainFrame`, `CompositorLatency` and,
 for Vulkan, the `VulkanInterop` that creates images shared with the
@@ -145,13 +154,26 @@ entries (`api`, `renderer`). `DefaultCandidates(choice)` gives
 `gpu` request keeps only its own Vulkan entry; `software` only the last).
 A platform changes the chain by overriding `Interop::BackendCandidates` and
 supplies its own API's backend through `Interop::CreateBackend(api)`; the
-Windows interop overrides both since Phase 14 (see "D3D11 backend"). One backend instance (one device
+Windows interop overrides both since Phase 14 (see "D3D11 backend"), the
+Linux interop since Phase 15: `Interop::BackendCandidates` returns
+`LinuxBackendCandidates(choice)` (`src/linux_candidates.h`):
+
+| Choice | Linux chain |
+|---|---|
+| `auto` | `vulkan/gpu-next`, `opengl/gpu`, `vulkan/gpu`, `software/sw` |
+| `gpu` | `opengl/gpu`, `vulkan/gpu`, `software/sw` |
+| `gpuNext` | `vulkan/gpu-next`, `software/sw` |
+| `software` | `software/sw` |
+
+OpenGL has a `gpu` entry only: mpv's GL render API is served by vo_gpu, so
+the reason says `opengl (gpu)` and never `opengl (gpu-next)` (gpu-next over
+GL is a separate, later item). One backend instance (one device
 initialisation) serves all candidates of its api, and an api's backend is
 released before the next api is tried.
 
 **`MPV_KIT_VIDEO_API`.** A native environment variable read once per
-`Start`. Set to an api's wire name (`vulkan`, `software`, and `d3d11` on
-Windows since Phase 14; `opengl` follows), it restricts the chain to that api and the requested renderer,
+`Start`. Set to an api's wire name (`vulkan`, `software`, `d3d11` on
+Windows since Phase 14 and `opengl` on Linux since Phase 15), it restricts the chain to that api and the requested renderer,
 with no fallback; every other candidate becomes an
 `excluded by MPV_KIT_VIDEO_API=<value>` trail. It exists so CI can verify
 each backend on its own.
@@ -159,7 +181,9 @@ each backend on its own.
 **Reason.** The winner's head and the trails of every candidate ranked
 before it follow the grammar of
 [ADR 0004](adr/0004-render-backend-reporting.md) (Decision 3), for example
-`software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed`.
+`software (sw) on cpu; vulkan/gpu-next unavailable: vkCreateInstance failed`
+or, on Linux with Vulkan unusable,
+`opengl (gpu) on <GL_RENDERER>; vulkan/gpu-next unavailable: <why>`.
 The plugin's create response carries the winner's `wire_name` as `backend`;
 when nothing works, `render_init` carries the trails as details.
 
@@ -219,7 +243,7 @@ Platform sharing:
 | Platform | Shared image | Flutter texture |
 |---|---|---|
 | Windows | D3D11 texture (KMT handle) imported into Vulkan, or rendered into directly by mpv's D3D11 render API (`d3d11`) | `GpuSurfaceTexture` (DXGI shared handle) |
-| Linux | Vulkan `OPAQUE_FD` memory imported with `GL_EXT_memory_object_fd` | `FlTextureGL` |
+| Linux | Vulkan `OPAQUE_FD` memory imported with `GL_EXT_memory_object_fd`; OpenGL: `EGLImage` of an export texture | `FlTextureGL` |
 | macOS | IOSurface `CVPixelBuffer` bound by MoltenVK (`VK_EXT_metal_objects`) | `FlutterTexture` |
 
 ## D3D11 backend (Windows, Phase 14)
@@ -294,6 +318,73 @@ Dart sees `MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy).
   `mpv_kit: compositor pickup avg/over 120 frames: <avg>ms max=<max>ms
   backend=<wire name>` every 120 frames: the time from the renderer's
   `FrameReady` to the compositor asking for the frame. Measurement only.
+
+## Linux OpenGL backend (Phase 15)
+
+`packages/mpv_kit_video/linux/opengl_backend.cc` is a `RenderBackend`
+(`wire_name()` is `opengl`) that lets mpv render through its upstream OpenGL
+render API (`MPV_RENDER_API_TYPE_OPENGL`) and hands each frame to Flutter as
+an `EGLImage` inside the same `FlTextureGL` the Vulkan path uses. Dart sees
+`MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy). The libmpv bundle
+is built with `-Dgl -Degl -Dplain-gl` (x11 and wayland stay off), so the
+host needs `libEGL.so.1` (libglvnd) at run time; `libvulkan.so.1` is still
+loaded lazily.
+
+* **Context.** A context of its own on Flutter's `EGLDisplay`
+  (`FlutterEglDisplay()`), created with share context `EGL_NO_CONTEXT`: it
+  is not in Flutter's share group, so mpv's GL state changes cannot reach
+  Flutter's context, and the two sides exchange only `EGLImage` storage.
+  Context APIs are tried in the order desktop GL, then GLES 3
+  (`kContextApis`), as the hosted spike found both usable and GLES the one
+  with driver-dependent vo_gpu precision.
+* **Threads.** The create-time calls run in `RunBound` on a short-lived
+  thread of the backend with the context current: `eglMakeCurrent` on the
+  platform thread failed with `EGL_BAD_ACCESS` on the hosted runner (a GDK
+  GL context is current there) and succeeded on a fresh thread. `RunBound`
+  unbinds before it returns; the render thread then binds the same context
+  for its whole life (`BindThread` ... `Release` ... `UnbindThread`). Every
+  later `mpv_render_*` call is on the render thread with mpv's context
+  current. `GlInterop::ProbeGl` uses the same fresh-thread rule, so every
+  controller gets the same backend as the first.
+* **Per frame.** mpv renders into a private texture (`OPENGL_FBO`), which is
+  blitted with `glBlitFramebuffer` into the slot's own export texture; the
+  slot's `EGLImage` is made from that export texture, never from the render
+  target (on Mesa an `EGLImage` of the texture mpv renders into can read back
+  black). `FLIP_Y` is 0: with it the first row of the export texture is the
+  image top, which is what Flutter shows at the top.
+* **Publish gate.** After the blit the render thread creates an EGL fence;
+  `Wait(slot)` waits on it for 1 s at most and the engine publishes the slot
+  as front only after it succeeded (`pipelined()` is true). There is no
+  robust context, so a stuck or lost GPU surfaces as a timeout, not as
+  device loss.
+* **populate.** `FlTextureGL::populate` (raster thread, Flutter's context)
+  only imports each slot's `EGLImage` once with
+  `glEGLImageTargetTexture2DOES`; it never renders and never waits for the
+  GPU.
+* **Release.** Freed slots queue their import in the texture's graveyard,
+  drained by the next populate (images of disposed players become orphans
+  any populate frees), as for Vulkan. The ring (5) and the quarantine (2)
+  are unchanged.
+Renderer by backend:
+
+| Backend | `gpu-next` | `gpu` | `sw` |
+|---|---|---|---|
+| `vulkan` | yes | yes | |
+| `opengl` | | yes | |
+| `software` | | | yes |
+
+**Verification boundary.** Proved on the hosted ubuntu runners (xvfb and
+Mesa llvmpipe, software GL and Vulkan) only: `render_gl_smoke` (gl and
+gles, x64, arm64, sanitizers), the bind and chain tests, and the real
+plugin with `MPV_KIT_VIDEO_API=opengl` (non-black upright frames after
+resize, soak without epoxy aborts or `EGL_BAD_ACCESS`) and with Vulkan made
+unavailable (auto lands on `opengl (gpu)` with the Vulkan reason in the
+trail). **Not verified:** NVIDIA, AMD and Intel drivers, Mesa Xe2's
+`EGLImage` black frame (avoided by the blit, not proved on that hardware),
+Wayland's EGL platform, libglvnd with GLX on a real X11 desktop, GL device
+loss and context reset, and the arm64 plugin run. A failed `EGLImage`
+import in populate only logs a `g_warning`. The list with reasons is
+`.planning/phases/15-linux-opengl-backend/evidence/unverified.txt`.
 
 ## Stream bridge (patch 0006)
 

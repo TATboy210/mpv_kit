@@ -12,7 +12,7 @@ images the Flutter compositor samples — no per-frame copies:
 | Platform | Shared image | Flutter texture |
 |---|---|---|
 | Windows | D3D11 texture (KMT handle) imported into Vulkan, or rendered by mpv directly through its D3D11 render API (`d3d11`) | `GpuSurfaceTexture` (DXGI shared handle) |
-| Linux | Vulkan `OPAQUE_FD` memory imported with `GL_EXT_memory_object_fd` | `FlTextureGL` |
+| Linux | Vulkan `OPAQUE_FD` memory imported with `GL_EXT_memory_object_fd`, or mpv's OpenGL render API into an export texture shared as an `EGLImage` (`opengl`) | `FlTextureGL` |
 | macOS | IOSurface `CVPixelBuffer` bound by MoltenVK (`VK_EXT_metal_objects`) | `FlutterTexture` |
 
 Real-hardware testing so far: Windows x64 (NVIDIA RTX 4060). The other
@@ -68,8 +68,14 @@ one: `MPV_KIT_VIDEO_API=d3d11` forces it. `auto` currently tries
 software: where Vulkan works nothing changes, and where it does not (no
 driver, older GPUs) D3D11 renders instead of the CPU.
 
+On Linux the plugin has an OpenGL backend next to the Vulkan one (mpv's
+`gpu` renderer only): `auto` tries `vulkan/gpu-next`, `opengl/gpu`,
+`vulkan/gpu`, then software, and `MPV_KIT_VIDEO_API=opengl` forces it. It
+needs libEGL.so.1 and is verified on Mesa llvmpipe only (real GPU drivers and
+Wayland are not verified).
+
 `MPV_KIT_VIDEO_API` (read by the native plugin) forces one graphics API,
-for example `vulkan`, `d3d11` (Windows) or `software`, for CI and
+for example `vulkan`, `d3d11` (Windows), `opengl` (Linux) or `software`, for CI and
 diagnostics. It never falls back: if that API cannot be used, `create` throws `render_init`. See
 [ADR 0004](https://github.com/TATboy210/mpv_kit/blob/main/docs/adr/0004-render-backend-reporting.md)
 for the `reason` grammar and the exact semantics.
