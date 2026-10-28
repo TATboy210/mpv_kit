@@ -3,3 +3,7 @@ plan=15-01 ci-gate=deferred sha=deferred (CI deferral 2026-10-27) workflow=nativ
 plan=15-01 render_gl platform=x64 api=gl line=deferred (CI deferral 2026-10-27)
 plan=15-01 render_gl platform=x64 api=gles line=deferred (CI deferral 2026-10-27)
 plan=15-01 render_gl platform=arm64 line=deferred (CI deferral 2026-10-27)
+plan=15-01 milestone-ci round=1 workflow=native-verify run=40616234093 sha=943f0be pr=1 conclusion=failed
+plan=15-01 round=1 failure=render_gl_smoke (gl) and render_gl_smoke_gles jobs=linux-x64,linux-arm64,sanitizers line="Couldn't open libGLESv2.so.2: libGLESv2.so.2: cannot open shared object file" (SIGABRT from libepoxy; gl variant rendered and read back, aborted at "handoff: capability probe")
+plan=15-01 round=1 cause=libgles2 not installed on the runners (confirmed by the log line)
+plan=15-01 round=1 fix=e51148f ci(15-01): libgles2 in native-verify linux and sanitizers plus dlopen probe in the smoke; 2de0089 ci(15-01): libgles2 in release.yml linux container; hosted re-run pending
