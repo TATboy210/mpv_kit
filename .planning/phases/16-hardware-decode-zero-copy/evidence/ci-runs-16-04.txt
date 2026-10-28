@@ -5,3 +5,10 @@ drm-params job="linux (ubuntu-24.04-arm)" line=DRM-PARAMS ok scenarios=4 | DRM-R
 drm-params job="sanitizers" line=DRM-PARAMS ok scenarios=4 | DRM-RESOLVE ok cases=17
 plan=16-04 task=1 ci-gate=pass sha=d74219385737de80d7bb0211fecc8e56531c23ca native-verify run=40731973239 flutter-plugin run=40731973273 (CI-GATE ok; no reruns; ^build \( jobs success on the flutter-plugin run: ubuntu, windows, macos)
 local task=1 cl /W4 /WX (build/phase16/build_drm.bat): DRM-RESOLVE ok cases=10 (portable part), DRM-PARAMS ok scenarios=4 on the host GPU; api_test 10, golden_vk 8, golden_vk_fallback 1, affinity ok, linux_chain 10 unchanged; mutation (params[4] line removed) turns drm-fd and drm-fd-fallback red
+sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c workflow=native-verify.yml run=40735294585 conclusion=failure
+sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c workflow=flutter-plugin.yml run=40735294363 conclusion=success
+rerun sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c run=40735294585 attempt=2 (macos macos-15 job cancelled with no steps after queueing; infra)
+sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c workflow=native-verify.yml run=40735294585 conclusion=success
+sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c workflow=flutter-plugin.yml run=40735294363 conclusion=success
+hwdec-compare job="integration-test (ubuntu-24.04)" sample=hevc-10bit api=opengl at=end requested=vulkan,vaapi,auto-safe: outcome=software hwdecInterop=null reason="opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); ..." identical to the 16-03 row (hwdec-vaapi-built, ci-runs-16-03.txt); HWDEC-RUN playedToEnd=true deviceLost=0, no "outcome":"unexpected" anywhere
+plan=16-04 task=2 ci-gate=pass sha=f2297e85b4683cea4767e5e9f7cbaa393ebfb02c native-verify run=40735294585 (1 infra rerun: macos-15 job cancelled with no steps) flutter-plugin run=40735294363 (CI-GATE ok; ^build \( ubuntu, windows, macos success)

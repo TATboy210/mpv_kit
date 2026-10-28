@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 16
 current_phase_name: Hardware Decode Zero Copy
 status: executing
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-10-28T16:54:12.769Z"
+stopped_at: Completed 16-04-PLAN.md
+last_updated: "2026-10-28T17:53:03.179Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 16 execution started
-state_head: 01af48479e09118412096e27998ccd313834d28d
+state_head: f2297e85b4683cea4767e5e9f7cbaa393ebfb02c
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 47
-  completed_plans: 36
+  completed_plans: 37
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 16 (Hardware Decode Zero Copy) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 16 execution started
 
@@ -127,6 +127,7 @@ Progress: [█████░░░░░] 50%
 | Phase 16 P01 | 55min | 3 tasks | 11 files |
 | Phase 16 P02 | ~2h | 3 tasks | 11 files |
 | Phase 16 P03 | ~2h (CI waits) | 2 tasks | 9 files |
+| Phase 16 P04 | n/a | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -247,6 +248,7 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-01: zero-copy is classified only from hwdec-current + hardware pixelformat + non-empty hw-pixelformat; push authorization push-green-only+dispatch with ci_mode=live
 - [Phase 16]: 16-01: hosted spike - macOS default list vulkan,d3d11va-copy,auto-safe reaches VideoToolbox zero-copy (Phase 13 software reading was a List.toString scaffold artifact); linux llvmpipe and windows WARP default list ends in software
 - [Phase 16]: 16-02: per-platform default hwdec lists adopted (windows vulkan,d3d11va,d3d11va-copy,auto-safe; linux vulkan,vaapi,auto-safe; macos videotoolbox,auto-safe); d3d11va-zero-copy stays mpv default (ADR 0006)
+- [Phase 16]: 16-04: render node resolver reasons are not logged; GL/Vulkan cross-check and GL UUID fallback not implemented (unverified.txt)
 
 ### CI Deferral
 
@@ -311,8 +313,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T16:54:11.630Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-10-28T17:53:02.053Z
+Stopped at: Completed 16-04-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
