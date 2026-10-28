@@ -10,3 +10,16 @@ drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu native_r
 drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
 drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
 drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+sha=01af48479e09118412096e27998ccd313834d28d workflow=native-verify.yml run=40727372337 conclusion=success
+sha=01af48479e09118412096e27998ccd313834d28d workflow=flutter-plugin.yml run=40727372347 conclusion=success
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=display-not-created
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=display-not-created
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=interop-unavailable
+drm-smoke job="sanitizers" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=no-log
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+hwdec-vaapi-built line=HWDEC {"schema":"hwdec-1","test":"hwdec_zero_copy","sample":"hevc-10bit","at":"end","api":"opengl","requested":"no","hwdecCurrent":"no","hwdecInterop":null,"pixelformat":"yuv420p10","hwPixelformat":null,"d3d11vaZeroCopy":null,"outcome":"software","zeroCopy":false,"reason":"opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl"}
+plan=16-03 task=2 ci-gate=pass sha=01af48479e09118412096e27998ccd313834d28d native-verify run=40727372337 flutter-plugin run=40727372347 (CI-GATE ok; no reruns)
