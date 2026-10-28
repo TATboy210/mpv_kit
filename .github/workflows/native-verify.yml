@@ -287,7 +287,7 @@ jobs:
               ;;
             macos)
               export DYLD_LIBRARY_PATH="$libdir${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-              cd example && flutter test integration_test/real_plugin_test.dart -d macos
+              cd example && flutter test -v integration_test/real_plugin_test.dart -d macos
               ;;
             *)
               cd example
@@ -307,6 +307,17 @@ jobs:
               MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
               ;;
           esac
+      - name: macOS app crash reports
+        # `No tests were found` with no exception means the example app died;
+        # its crash report names the faulting library.
+        if: failure() && matrix.target == 'macos'
+        shell: bash
+        run: |
+          ls -la ~/Library/Logs/DiagnosticReports/ || true
+          for f in ~/Library/Logs/DiagnosticReports/mpv_kit_example*; do
+            [ -f "$f" ] && { echo "=== $f"; head -c 12000 "$f"; }
+          done
+          exit 0
       # Phase 15 (GLX-03/GLX-04): the whole real-plugin test with the OpenGL
       # backend forced (no fallback), under xvfb on llvmpipe.
       - name: Real-plugin integration test (linux, MPV_KIT_VIDEO_API=opengl)
