@@ -447,9 +447,12 @@ class D3D11RenderBackend final : public RenderBackend {
     const auto deadline = Clock::now() + std::chrono::milliseconds(kWaitTimeoutMs);
     for (int poll = 0;; poll++) {
       BOOL done = FALSE;
-      // DONOTFLUSH: Render already flushed; S_FALSE means not finished yet.
-      const HRESULT hr = context_->GetData(s->query.Get(), &done, sizeof(done),
-                                           D3D11_ASYNC_GETDATA_DONOTFLUSH);
+      // No D3D11_ASYNC_GETDATA_DONOTFLUSH: Render flushed already, but on the
+      // RTX 4060 the event query then stayed S_FALSE for the whole 1 s wait
+      // in 5 of 6 runs (gpu_timeout); letting GetData flush as well completed
+      // it every time (6 of 6). S_FALSE means not finished yet.
+      const HRESULT hr =
+          context_->GetData(s->query.Get(), &done, sizeof(done), 0);
       if (hr == S_OK) {
         s->pending = false;
         return WaitResult::kOk;
