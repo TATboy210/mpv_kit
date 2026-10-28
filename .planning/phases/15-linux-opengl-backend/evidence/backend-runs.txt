@@ -1,0 +1,12 @@
+# Phase 15 plan 15-05 hosted-CI evidence: native-verify run 40647806493, sha e047c4defe9b05a06c7e373eca6d389545297ce3, job integration-test (ubuntu-24.04, linux), llvmpipe only (xvfb).
+# Raw lines, ANSI-free, from /tmp/gsd-bak/ci/it-ubuntu-e047c4d.log (gh run view --log --job 122682846118). Earlier push ddbb9d6 failed the Linux plugin build (missing render_vk.h include for MPV_RENDER_PARAM_VULKAN_RENDERER; run 40646593067) and was fixed in e047c4d.
+# Default run (MPV_KIT_VIDEO_API unset), first controller, then its soak loop:
+INTEGRATION {"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)","elapsedMs":209,"fps":30.0,"events":[]}
+INTEGRATION-SOAK {"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
+# Forced run (MPV_KIT_VIDEO_API=opengl):
+INTEGRATION {"backend":"vulkan","reason":"opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl","elapsedMs":212,"fps":30.0,"events":[]}
+INTEGRATION-SOAK {"resizeEvents":30,"cycles":10,"renderErrors":0,"deviceLost":0}
+# mpv_kit_video: lines, de-duplicated with counts (default run: 1 vulkan then 11 opengl after ProbeGl failed on the platform thread, i.e. 15-06 scope; forced run: 11 opengl):
+count=11 mpv_kit_video: vulkan (opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl)
+count=11 mpv_kit_video: vulkan (opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: platform interop unavailable: cannot create a probe EGL context: eglMakeCurrent failed (EGL_BAD_ACCESS 0x3002), calling thread EGL context: none (api OPENGL_ES), GDK GL context: current, fresh thread: ok)
+count=1 mpv_kit_video: vulkan (vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits))

@@ -16,3 +16,9 @@ plan=15-01 round=1 cause=libgles2 not installed on the runners (confirmed by the
 plan=15-01 round=1 fix=e51148f ci(15-01): libgles2 in native-verify linux and sanitizers plus dlopen probe in the smoke; 2de0089 ci(15-01): libgles2 in release.yml linux container; hosted re-run pending
 plan=15-01 milestone-ci round=final workflow=native-verify run=40627862148 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 pr=1 conclusion=success
 plan=15-01 round=final note=round-1 failure (libgles2 missing) fixed by e51148f and 2de0089; hosted re-run green
+sha=ddbb9d6470625e9fb46624a08d379eed6952ea69 workflow=native-verify.yml run=40646593109 conclusion=cancelled
+sha=ddbb9d6470625e9fb46624a08d379eed6952ea69 workflow=flutter-plugin.yml run=40646593067 conclusion=failure
+sha=e047c4defe9b05a06c7e373eca6d389545297ce3 workflow=native-verify.yml run=40647806493 conclusion=success
+sha=e047c4defe9b05a06c7e373eca6d389545297ce3 workflow=native-verify.yml run=40647806493 conclusion=success
+sha=e047c4defe9b05a06c7e373eca6d389545297ce3 workflow=flutter-plugin.yml run=40647806590 conclusion=success
+sha=e047c4defe9b05a06c7e373eca6d389545297ce3 workflow=flutter-plugin.yml run=40647806590 conclusion=success
