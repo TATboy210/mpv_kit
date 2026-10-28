@@ -195,7 +195,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Linux bundle 以 mpv `-Dgl -Degl -Dplain-gl` 构建（x11/wayland 仍关闭），使用上游 `MPV_RENDER_API_TYPE_OPENGL`，系统库 allowlist 与 ABI 审计绿；`render_gl_smoke` 在 ubuntu runner（EGL surfaceless + llvmpipe）上渲染出非黑像素。
   2. `MPV_KIT_VIDEO_API=opengl` 时，ubuntu runner（xvfb + llvmpipe）上的真实插件测试渲染出非黑帧：mpv 渲染到私有纹理，再 blit 到独立导出纹理交给 `FlTextureGL`，`EGLSync` 完成后才发布；`populate` 回调内不发生 mpv 渲染；resize 不换 texture id。
-  3. GL context 建在 Flutter 的 `EGLDisplay` 上、不加入 Flutter share group，所有 `mpv_render_*` 调用都在渲染线程且 mpv 的 context 为当前；create/dispose 与 resize/dispose soak 中没有 epoxy abort 或 `EGL_BAD_ACCESS`。
+  3. GL context 建在 Flutter 的 `EGLDisplay` 上、不加入 Flutter share group；渲染线程启动之后的所有 `mpv_render_*` 调用都在渲染线程上，create 期的调用（`mpv_render_context_create`、`_get_info`、首次 `_set_update_callback`）在 `RunBound` 的线程上，且两处 mpv 的 context 均为当前；create/dispose 与 resize/dispose soak 中没有 epoxy abort 或 `EGL_BAD_ACCESS`。（措辞经用户 2026-10-28 批准更新，sc3-interpretation=runbound）
   4. Linux auto 链为 vulkan/gpu-next → opengl/gpu → vulkan/gpu → software；由 vo_gpu 服务时 `reason` 写 `opengl (gpu) on <device>`，从不冒称 gpu-next；Vulkan 不可用时自动落到 GL，并在 `reason` 中写明原因。
 
 **验证分层**: hosted ubuntu runner（xvfb + Mesa llvmpipe）证明全部渲染路径；项目没有 Linux GPU 硬件，NVIDIA/AMD/Intel 真驱动行为（包括 Mesa Xe2 的 EGLImage 黑帧问题）在验证记录中明确标为未验证；RTX 4060 不涉及。
