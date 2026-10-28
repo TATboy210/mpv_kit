@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 16
 current_phase_name: Hardware Decode Zero Copy
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-10-28T14:36:44.903Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-10-28T15:50:00.276Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 16 execution started
-state_head: 57d0efe237a71080105a257e8b2e606f0c60e21c
+state_head: f23777f0efa66558799e5227408d9f6d922ec992
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 47
-  completed_plans: 34
+  completed_plans: 35
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 16 (Hardware Decode Zero Copy) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 16 execution started
 
@@ -125,6 +125,7 @@ Progress: [█████░░░░░] 50%
 | Phase 15 P06 | 70min | 2 tasks | 6 files |
 | Phase 15 P07 | ~2h (CI waits) | 2 tasks | 5 files |
 | Phase 16 P01 | 55min | 3 tasks | 11 files |
+| Phase 16 P02 | ~2h | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -244,6 +245,7 @@ Recent decisions affecting current work:
 - [Phase 15]: 15-07: docs state the RunBound create-time exception; GLX-04 ticked, GLX-03 held until the SC3 wording proposal is decided; all Phase 15 evidence is llvmpipe only
 - [Phase 16]: 16-01: zero-copy is classified only from hwdec-current + hardware pixelformat + non-empty hw-pixelformat; push authorization push-green-only+dispatch with ci_mode=live
 - [Phase 16]: 16-01: hosted spike - macOS default list vulkan,d3d11va-copy,auto-safe reaches VideoToolbox zero-copy (Phase 13 software reading was a List.toString scaffold artifact); linux llvmpipe and windows WARP default list ends in software
+- [Phase 16]: 16-02: per-platform default hwdec lists adopted (windows vulkan,d3d11va,d3d11va-copy,auto-safe; linux vulkan,vaapi,auto-safe; macos videotoolbox,auto-safe); d3d11va-zero-copy stays mpv default (ADR 0006)
 
 ### CI Deferral
 
@@ -308,8 +310,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T14:36:43.621Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-10-28T15:49:59.068Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
