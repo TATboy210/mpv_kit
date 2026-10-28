@@ -180,13 +180,44 @@ jobs:
           flutter analyze --fatal-infos
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_video line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
 
+  # Phase 16 (HWD-05): real encoded media for the hardware-decode probes.
+  # The GPL encoders (x264/x265) only make test media here and never enter
+  # the LGPL libmpv bundle. The 640x360 files become app assets of the
+  # integration-test job; the 4K HEVC Main10 file is only an artifact, for
+  # the RTX 4060 session of 16-06 to download.
+  hwdec-samples:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Generate hwdec samples
+        shell: bash
+        run: |
+          bash tools/make_hwdec_samples.sh "$RUNNER_TEMP/hwdec-samples"
+          bash tools/make_hwdec_samples.sh --uhd "$RUNNER_TEMP/hwdec-samples-uhd"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hwdec-samples
+          path: ${{ runner.temp }}/hwdec-samples/*.mp4
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hwdec-samples-uhd
+          path: ${{ runner.temp }}/hwdec-samples-uhd/*.mp4
+          if-no-files-found: error
+          retention-days: 30
+
   # VERIFY-01: run the real-plugin integration test (create -> render a
   # frame -> dispose; no channel mocks) on real Flutter runners of every
   # OS, against the libmpv the verify tier above just built (artifacts,
   # never rebuilt). A failure on any OS fails the workflow: no
   # continue-on-error.
   integration-test:
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, hwdec-samples]
     strategy:
       fail-fast: false
       matrix:
@@ -246,6 +277,12 @@ jobs:
           cp stage/*.dll bundle/lib/
           printf '\nhooks:\n  user_defines:\n    mpv_kit_libs:\n      libmpv_bundle: %s\n' \
             "$(cygpath -m "$PWD/bundle")" >> pubspec.yaml
+      - name: Download hwdec samples (app assets)
+        # Bundled at build time, so the macOS sandbox does not matter.
+        uses: actions/download-artifact@v4
+        with:
+          name: hwdec-samples
+          path: example/integration_test/route_samples
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -332,6 +369,20 @@ jobs:
           export PATH="$libdir:$PATH"
           export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
+      # Phase 16 (HWD-05): the Player's default hwdec list against real
+      # encoded samples with the OpenGL backend forced; prints HWDEC lines.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
       # Phase 15 (GLX-03) spike: mounted-texture pixel/orientation probe on the
       # default chain (MPV_KIT_VIDEO_API unset). Hard assertions since 15-05;
       # prints `PROBE {json}` and the Flutter version line.
