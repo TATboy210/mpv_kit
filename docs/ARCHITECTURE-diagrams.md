@@ -38,7 +38,7 @@ D:\mpv_kit\
 │                                    adr/0001-vulkan-render-backend.md、adr/0002-lgpl-self-built-binaries.md、
 │                                    reverse-engineering/01-libmpv-render-pipeline.md、
 │                                    reverse-engineering/02-flutter-windows-external-texture.md
-├── example/                       ← 三平台示例 app(显式 hwdec='vulkan,auto-safe')
+├── example/                       ← 三平台示例 app(hwdec 用 Player 默认,见 ADR 0006)
 └── .github/workflows/             ← native-verify.yml(六目标编译+冒烟+ABI+Dart 测试+ASan/UBSan)
                                      release.yml(LGPL 依赖栈出包) flutter-plugin.yml(示例编译)
 ```
@@ -76,8 +76,8 @@ D:\mpv_kit\
 │   core/stream_bridge.dart (280) │←── 对应 native 补丁 0006          │
 │   core/node.dart      (135)     │   mpv_node ↔ Dart 转换            │
 │   core/errors.dart    ( 61)     │                                   │
-│   player/player.dart            │   typed Player(hwdec=vulkan,      │
-│   player/models.dart            │     auto-safe 默认)               │
+│   player/player.dart            │   typed Player(按平台 hwdec 列表, │
+│   player/models.dart            │     零拷贝优先,ADR 0006)          │
 │   generated/catalog.dart (4346) │   mpv 属性/命令/选项全目录(生成)  │
 │   generated/options.dart (7617) │                                   │
 └─────────────┬───────────────────┘                                   │
@@ -394,7 +394,7 @@ video/out\
         loadfile.c 装载 ──▶ demux.c(cache 线程+hysteresis)
                                 │ packet(packet_pool GC 管理)
                                 ▼
-                          vd_lavc.c:hwdec='vulkan,auto-safe'
+                          vd_lavc.c:hwdec=按平台列表(ADR 0006)
                                 │ Vulkan Video (hwdec_vulkan.c ★0002)
                                 │ 解码面直接是 VkImage(零拷贝)
                                 ▼

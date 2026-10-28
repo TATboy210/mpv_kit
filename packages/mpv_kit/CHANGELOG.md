@@ -17,6 +17,12 @@
 - Changed: `Player` no longer hardware-decodes FFV1 by default
   (`hwdec-codecs` excludes `ffv1`, mpv #18255); override it through
   `options`.
+- Changed (behavior): `Player` now defaults `hwdec` to a per-platform,
+  zero-copy-first list instead of one shared list: Windows
+  `vulkan,d3d11va,d3d11va-copy,auto-safe`, Linux `vulkan,vaapi,auto-safe`,
+  macOS `videotoolbox,auto-safe`, other `auto-safe` (was
+  `vulkan,d3d11va-copy,auto-safe` everywhere). An explicit `hwdec` in `options`
+  still wins. See ADR 0006.
 
 ## 0.1.0-dev.3
 

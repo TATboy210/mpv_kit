@@ -42,7 +42,7 @@ class VideoPage extends StatefulWidget {
 }
 
 class _VideoPageState extends State<VideoPage> {
-  final player = Player(); // vo=libmpv, hwdec=auto-safe, keep-open=yes
+  final player = Player(); // vo=libmpv, per-platform zero-copy hwdec, keep-open=yes
   MpvVideoController? video;
 
   @override
@@ -193,13 +193,32 @@ CI and diagnostics. See
 
 ## Hardware decoding defaults
 
-`Player()` sets `hwdec=auto-safe`: mpv picks a hardware decoder it
-considers safe for the platform (for example `d3d11va`, `videotoolbox`,
-VA-API, or Vulkan video where supported). Override at creation with
-`Player(options: {'hwdec': 'vulkan'})`, or at runtime with
-`player.setHardwareDecoding('no')` (applies to the next decoder). The
-decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
-`no` means software decoding).
+`Player()` sets a per-platform, zero-copy-first `hwdec` list
+([ADR 0006](docs/adr/0006-hwdec-defaults.md)):
+
+| Platform | Default `hwdec` | Zero-copy on | Falls back to |
+|---|---|---|---|
+| Windows | `vulkan,d3d11va,d3d11va-copy,auto-safe` | `vulkan` (Vulkan Video) on the Vulkan backend, `d3d11va` on the D3D11 backend | `d3d11va-copy`, then `auto-safe` |
+| Linux | `vulkan,vaapi,auto-safe` | `vulkan` (Vulkan Video) or `vaapi` (dma-buf; not verified on real hardware) | `vaapi-copy` inside `auto-safe`, then software |
+| macOS | `videotoolbox,auto-safe` | `videotoolbox` | `auto-safe`, then software |
+| Other | `auto-safe` | n/a | software |
+
+This is a behavior change from the old single list on every platform
+(`vulkan,d3d11va-copy,auto-safe`). mpv tries the entries in order. An entry
+without an interop on the active renderer is skipped (it never copies back),
+while `-copy` entries and `auto-safe` decode on their own device and copy the
+frames back to system memory, so they come last. Override the list at creation
+with `Player(options: {'hwdec': 'vulkan'})` (your value always wins), or at
+runtime with `player.setHardwareDecoding('no')` (applies to the next decoder).
+
+To tell zero-copy from a copy-back, read the decoder in use,
+`player.hwdecCurrent` (`hwdec-current`; null or `no` means software), together
+with `video-params/pixelformat` (`player.mpv.getProperty('video-params/pixelformat')`):
+a hardware format name such as `videotoolbox` means the frame stays on the GPU,
+a software format such as `nv12` means it was copied back. With mpv's default
+`d3d11va-zero-copy=no`, `hwdec-current=d3d11va` includes one GPU-memory copy
+per frame (no CPU round trip). Windows only benefits on the D3D11 backend; the
+Vulkan backend behaves as before.
 
 ## Troubleshooting
 
@@ -211,7 +230,9 @@ decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
   is in the trail. The OpenGL backend is verified on Mesa llvmpipe only; real
   GPU drivers and Wayland are not verified.
 * **Is hardware decoding active?** `player.hwdecCurrent.value` or
-  `player.mpv.getProperty('hwdec-current')`.
+  `player.mpv.getProperty('hwdec-current')`. Also check
+  `video-params/pixelformat`: a hardware format name means the frame stays on
+  the GPU, `nv12` and the like mean it was copied back.
 * **Dropped frames:** read mpv's statistics properties such as
   `frame-drop-count`, `decoder-frame-drop-count`, `vo-delayed-frame-count`,
   `estimated-vf-fps` and `display-fps` with `player.mpv.getProperty(...)` or
