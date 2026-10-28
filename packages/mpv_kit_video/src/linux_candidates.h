@@ -2,9 +2,8 @@
 //
 // Header-only and platform-free on purpose: the portable chain test
 // (native/tests/video_renderer_linux_chain_test.cc) compiles it on every
-// platform, and 15-05 returns it from the Linux GlInterop's
-// Interop::BackendCandidates. Nothing in the plugin includes it yet, so the
-// chain a Linux user gets is unchanged until that wiring lands.
+// platform, and the Linux GlInterop returns it from
+// Interop::BackendCandidates (gl_interop.h).
 #pragma once
 
 #include <vector>

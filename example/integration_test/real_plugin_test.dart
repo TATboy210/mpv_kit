@@ -96,7 +96,6 @@ void main() {
     );
     await tester.runAsync(() async {
       final events = <MpvVideoEventKind>[];
-      print('INTEGRATION-STAGE creating player');
       final player = Player(
         options: const {
           'vo': 'libmpv',
@@ -107,7 +106,6 @@ void main() {
           'ao': 'null',
         },
       );
-      print('INTEGRATION-STAGE player created, creating controller');
       final controller = await MpvVideoController.create(player);
       final sub = controller.events
           .listen((e) => events.add(e.kind), onError: (Object _) {});
