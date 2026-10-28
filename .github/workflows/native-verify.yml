@@ -329,6 +329,27 @@ jobs:
           export PATH="$libdir:$PATH"
           export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 15 (GLX-04): the auto chain on a host without a Vulkan driver.
+      # Both loader variables name a manifest that does not exist (the new and
+      # the old loader each read one of them), so vkCreateInstance fails like
+      # on a runner with no ICD, and vulkan/gpu-next loses. GL comes from Mesa
+      # llvmpipe through EGL and does not depend on any Vulkan ICD, so
+      # opengl/gpu must win with the Vulkan reason in its trail; the probe's
+      # assertions (non-black, upright, resize, same api for a second
+      # controller) are hard here too. MPV_KIT_VIDEO_API stays unset.
+      - name: Texture probe (linux, Vulkan unavailable)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          VK_DRIVER_FILES: ${{ runner.temp }}/no-vulkan-icd.json
+          VK_ICD_FILENAMES: ${{ runner.temp }}/no-vulkan-icd.json
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
