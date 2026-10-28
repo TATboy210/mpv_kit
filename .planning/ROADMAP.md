@@ -263,7 +263,23 @@ Plans:
 
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。
-**Plans**: TBD
+**Plans:** 5 plans（5 waves）
+
+Plans:
+**Wave 1**
+- [ ] 17-01-PLAN.md — 推送授权与三项口径检查点（ver01 / vk-flake / uhd-source）+ fake 后端故障注入 golden（7 个场景：创建期走链、完整回退链、device lost 与重建走链、超时风暴、分配失败三种）+ vk-gpu-timeout flake 处理
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 17-02-PLAN.md — 三平台强制后端矩阵（texture_probe_test + tools/backend_matrix.sh，hosted windows 的 vulkan 断言为不可用）+ softwareFallback 送达修复 + MPV_KIT_REQUIRE_HWDEC 守卫与 hosted 负向腿
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 17-03-PLAN.md — 预先登记的内存平稳规则 + 平台无关 100 轮 soak（ubuntu 强制 opengl，RSS 平稳）+ RTX 会话工具与干跑 + 会话输入溯源
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 17-04-PLAN.md — RTX 4060 用户会话：真机矩阵格子、守卫正负向、三后端 soak 显存曲线、D3D11 与 Vulkan 各 4K 1800 s（可选 HEVC 硬解长跑）
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 17-05-PLAN.md — 文档与未验证清单、最终全量门、收口审计与 SC1 措辞建议、阶段末人工检查
 
 ## Progress
 
