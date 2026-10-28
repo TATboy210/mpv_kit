@@ -200,7 +200,7 @@ Plans:
 
 **验证分层**: hosted ubuntu runner（xvfb + Mesa llvmpipe）证明全部渲染路径；项目没有 Linux GPU 硬件，NVIDIA/AMD/Intel 真驱动行为（包括 Mesa Xe2 的 EGLImage 黑帧问题）在验证记录中明确标为未验证；RTX 4060 不涉及。
 **Research**: 需要阶段研究（`/gsd-plan-phase 15 --research-phase`）：Flutter 3.47 Linux 光栅线程身份、EGL 与 GLX 下的 `EGL_BAD_ACCESS`、FLIP_Y、隔离 context 用 GLES 还是桌面 GL。gpu-next over GL（patch 0011，GLX-F1）不在本阶段核心范围。用户选择跳过阶段研究直接规划：上述未知由 15-02（原生交接 spike）与 15-03（Flutter Linux spike）在早期取证，结论门控 15-05。
-**Plans:** 4/7 plans executed（5 waves）
+**Plans:** 5/7 plans executed（5 waves）
 
 Plans:
 **Wave 1**
@@ -212,7 +212,7 @@ Plans:
 - [x] 15-04-PLAN.md — Linux 链决策检查点 + `LinuxBackendCandidates` golden + `RenderBackend::RunBound` 接缝（本地先红后绿）
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 15-05-PLAN.md — OpenGLBackend 示踪（强制 opengl 真实插件）+ 链接入 + 硬断言探针
+- [x] 15-05-PLAN.md — OpenGLBackend 示踪（强制 opengl 真实插件）+ 链接入 + 硬断言探针
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 15-06-PLAN.md — Vulkan 不可用时 auto 落到 OpenGL 的证明 + 探测移到新线程（第二控制器一致）
@@ -260,6 +260,6 @@ Plans:
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
 | 13. macOS Metal Route Decision | v3.0 | 6/6 | In Progress | - |
 | 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
-| 15. Linux OpenGL Backend | v3.0 | 4/7 | In Progress | - |
+| 15. Linux OpenGL Backend | v3.0 | 5/7 | In Progress | - |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 0/TBD | Not started | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
