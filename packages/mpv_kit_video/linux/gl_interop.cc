@@ -34,31 +34,15 @@ std::vector<GlInterop::Image*> orphans;
 void FreeImages(const std::vector<GlInterop::Image*>& images) {
   for (GlInterop::Image* img : images) {
     if (img->texture) glDeleteTextures(1, &img->texture);
+    // OpenGL backend: the producer's export texture was deleted on its render
+    // thread already; the EGLImage (display-level, so any thread may destroy
+    // it) goes after the Flutter-side texture that was bound to it.
+    if (img->egl_image != EGL_NO_IMAGE_KHR)
+      eglDestroyImageKHR(img->egl_display, img->egl_image);
     if (img->memory) glDeleteMemoryObjectsEXT(1, &img->memory);
     if (img->fd >= 0) close(img->fd);  // never imported
     delete img;
   }
-}
-
-/// The same EGL display Flutter's engine renders on (see the engine's
-/// fl_opengl_manager.cc): EGL returns one handle per native display.
-EGLDisplay FlutterEglDisplay() {
-  GdkDisplay* display = gdk_display_get_default();
-  if (!display) return EGL_NO_DISPLAY;
-#ifdef GDK_WINDOWING_WAYLAND
-  if (GDK_IS_WAYLAND_DISPLAY(display)) {
-    return eglGetPlatformDisplayEXT(
-        EGL_PLATFORM_WAYLAND_EXT, gdk_wayland_display_get_wl_display(display),
-        nullptr);
-  }
-#endif
-#ifdef GDK_WINDOWING_X11
-  if (GDK_IS_X11_DISPLAY(display)) {
-    return eglGetPlatformDisplayEXT(
-        EGL_PLATFORM_X11_EXT, gdk_x11_display_get_xdisplay(display), nullptr);
-  }
-#endif
-  return EGL_NO_DISPLAY;
 }
 
 /// Restores whatever EGL context the calling thread had current.
@@ -92,33 +76,6 @@ class EglCurrentGuard {
   EGLContext context_;
   EGLDisplay fallback_ = EGL_NO_DISPLAY;
 };
-
-/// "EGL_BAD_ACCESS 0x3002": the error's name and hexadecimal code, so a
-/// reason line identifies it even for codes missing from the table.
-std::string EglErrorText(EGLint error) {
-  const char* name = "EGL_UNKNOWN";
-  switch (error) {
-    case EGL_SUCCESS: name = "EGL_SUCCESS"; break;
-    case EGL_NOT_INITIALIZED: name = "EGL_NOT_INITIALIZED"; break;
-    case EGL_BAD_ACCESS: name = "EGL_BAD_ACCESS"; break;
-    case EGL_BAD_ALLOC: name = "EGL_BAD_ALLOC"; break;
-    case EGL_BAD_ATTRIBUTE: name = "EGL_BAD_ATTRIBUTE"; break;
-    case EGL_BAD_CONFIG: name = "EGL_BAD_CONFIG"; break;
-    case EGL_BAD_CONTEXT: name = "EGL_BAD_CONTEXT"; break;
-    case EGL_BAD_CURRENT_SURFACE: name = "EGL_BAD_CURRENT_SURFACE"; break;
-    case EGL_BAD_DISPLAY: name = "EGL_BAD_DISPLAY"; break;
-    case EGL_BAD_MATCH: name = "EGL_BAD_MATCH"; break;
-    case EGL_BAD_NATIVE_PIXMAP: name = "EGL_BAD_NATIVE_PIXMAP"; break;
-    case EGL_BAD_NATIVE_WINDOW: name = "EGL_BAD_NATIVE_WINDOW"; break;
-    case EGL_BAD_PARAMETER: name = "EGL_BAD_PARAMETER"; break;
-    case EGL_BAD_SURFACE: name = "EGL_BAD_SURFACE"; break;
-    case EGL_CONTEXT_LOST: name = "EGL_CONTEXT_LOST"; break;
-    default: break;
-  }
-  char hex[16];
-  std::snprintf(hex, sizeof(hex), "0x%04x", static_cast<unsigned>(error));
-  return std::string(name) + " " + hex;
-}
 
 /// Outcome of one throwaway-context attempt: the failing EGL call (null on
 /// success) and its eglGetError() value, read straight after the failure.
@@ -227,7 +184,80 @@ void ClearGlErrors() {
   }
 }
 
+/// Raster thread, Flutter's context current: wraps the EGLImage of an
+/// OpenGL-backend image in a GL texture (once per image; the texture then
+/// follows the shared storage as the producer re-renders it). 0 on failure,
+/// logged once and not retried, like the memory-object import.
+uint32_t ImportEglImage(GlInterop::Image* img) {
+  if (img->failed) return 0;
+  ClearGlErrors();
+  glGenTextures(1, &img->texture);
+  glBindTexture(GL_TEXTURE_2D, img->texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, img->egl_image);
+  const bool ok = glGetError() == GL_NO_ERROR;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  if (!ok) {
+    glDeleteTextures(1, &img->texture);
+    img->texture = 0;
+    img->failed = true;
+    g_warning("mpv_kit: glEGLImageTargetTexture2DOES failed; video stays black");
+  }
+  return img->texture;
+}
+
 }  // namespace
+
+// See gl_interop.h. EGL returns one handle per native display, so this is
+// the display of the engine's fl_opengl_manager.cc.
+EGLDisplay FlutterEglDisplay() {
+  GdkDisplay* display = gdk_display_get_default();
+  if (!display) return EGL_NO_DISPLAY;
+#ifdef GDK_WINDOWING_WAYLAND
+  if (GDK_IS_WAYLAND_DISPLAY(display)) {
+    return eglGetPlatformDisplayEXT(
+        EGL_PLATFORM_WAYLAND_EXT, gdk_wayland_display_get_wl_display(display),
+        nullptr);
+  }
+#endif
+#ifdef GDK_WINDOWING_X11
+  if (GDK_IS_X11_DISPLAY(display)) {
+    return eglGetPlatformDisplayEXT(
+        EGL_PLATFORM_X11_EXT, gdk_x11_display_get_xdisplay(display), nullptr);
+  }
+#endif
+  return EGL_NO_DISPLAY;
+}
+
+// The error's name and hexadecimal code (see gl_interop.h), so a reason line
+// identifies it even for codes missing from the table.
+std::string EglErrorText(EGLint error) {
+  const char* name = "EGL_UNKNOWN";
+  switch (error) {
+    case EGL_SUCCESS: name = "EGL_SUCCESS"; break;
+    case EGL_NOT_INITIALIZED: name = "EGL_NOT_INITIALIZED"; break;
+    case EGL_BAD_ACCESS: name = "EGL_BAD_ACCESS"; break;
+    case EGL_BAD_ALLOC: name = "EGL_BAD_ALLOC"; break;
+    case EGL_BAD_ATTRIBUTE: name = "EGL_BAD_ATTRIBUTE"; break;
+    case EGL_BAD_CONFIG: name = "EGL_BAD_CONFIG"; break;
+    case EGL_BAD_CONTEXT: name = "EGL_BAD_CONTEXT"; break;
+    case EGL_BAD_CURRENT_SURFACE: name = "EGL_BAD_CURRENT_SURFACE"; break;
+    case EGL_BAD_DISPLAY: name = "EGL_BAD_DISPLAY"; break;
+    case EGL_BAD_MATCH: name = "EGL_BAD_MATCH"; break;
+    case EGL_BAD_NATIVE_PIXMAP: name = "EGL_BAD_NATIVE_PIXMAP"; break;
+    case EGL_BAD_NATIVE_WINDOW: name = "EGL_BAD_NATIVE_WINDOW"; break;
+    case EGL_BAD_PARAMETER: name = "EGL_BAD_PARAMETER"; break;
+    case EGL_BAD_SURFACE: name = "EGL_BAD_SURFACE"; break;
+    case EGL_CONTEXT_LOST: name = "EGL_CONTEXT_LOST"; break;
+    default: break;
+  }
+  char hex[16];
+  std::snprintf(hex, sizeof(hex), "0x%04x", static_cast<unsigned>(error));
+  return std::string(name) + " " + hex;
+}
 
 GlInterop::GlInterop(std::function<void()> frame_ready)
     : frame_ready_(std::move(frame_ready)) {
@@ -413,6 +443,7 @@ void GlInterop::Orphan() {
 
 uint32_t GlInterop::TextureFor(Image* img) {
   if (img->texture) return img->texture;
+  if (img->egl_image != EGL_NO_IMAGE_KHR) return ImportEglImage(img);
   if (img->failed || img->fd < 0) return 0;
   ClearGlErrors();
   glCreateMemoryObjectsEXT(1, &img->memory);
