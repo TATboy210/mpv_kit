@@ -79,6 +79,11 @@ class GlInterop : public Interop, public VulkanInterop {
   std::vector<const char*> InstanceExtensions() const override { return {}; }
   std::vector<const char*> DeviceExtensions() const override;
   bool AcceptDevice(VkPhysicalDevice device) override;
+  /// The DRM render node of [device] for VA-API interop (HWD-03), from its
+  /// VkPhysicalDeviceDrmPropertiesEXT; -1 when the driver, the device or
+  /// /dev/dri offers none (llvmpipe/lavapipe, hosted runners).
+  int OpenDrmRenderNode(VkPhysicalDevice device) override;
+  void CloseDrmRenderNode(int fd) override;
   bool CreateImage(VkPhysicalDevice pd, VkDevice dev, int width, int height,
                    SharedImage* out) override;
   void DestroyImage(VkDevice dev, SharedImage* img) override;

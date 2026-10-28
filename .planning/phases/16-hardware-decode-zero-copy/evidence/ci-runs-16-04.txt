@@ -1,0 +1,7 @@
+sha=d74219385737de80d7bb0211fecc8e56531c23ca workflow=native-verify.yml run=40731973239 conclusion=success
+sha=d74219385737de80d7bb0211fecc8e56531c23ca workflow=flutter-plugin.yml run=40731973273 conclusion=success
+drm-params job="linux (ubuntu-24.04)" line=DRM-PARAMS ok scenarios=4 | DRM-RESOLVE ok cases=17
+drm-params job="linux (ubuntu-24.04-arm)" line=DRM-PARAMS ok scenarios=4 | DRM-RESOLVE ok cases=17 (vk scenarios ran on lavapipe)
+drm-params job="sanitizers" line=DRM-PARAMS ok scenarios=4 | DRM-RESOLVE ok cases=17
+plan=16-04 task=1 ci-gate=pass sha=d74219385737de80d7bb0211fecc8e56531c23ca native-verify run=40731973239 flutter-plugin run=40731973273 (CI-GATE ok; no reruns; ^build \( jobs success on the flutter-plugin run: ubuntu, windows, macos)
+local task=1 cl /W4 /WX (build/phase16/build_drm.bat): DRM-RESOLVE ok cases=10 (portable part), DRM-PARAMS ok scenarios=4 on the host GPU; api_test 10, golden_vk 8, golden_vk_fallback 1, affinity ok, linux_chain 10 unchanged; mutation (params[4] line removed) turns drm-fd and drm-fd-fallback red

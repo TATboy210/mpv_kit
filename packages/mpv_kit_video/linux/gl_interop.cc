@@ -18,6 +18,9 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
+
+#include "../src/drm_render_node.h"
 
 namespace mpv_kit {
 namespace {
@@ -301,6 +304,50 @@ bool GlInterop::AcceptDevice(VkPhysicalDevice device) {
     return false;
   return ext_props.externalMemoryProperties.externalMemoryFeatures &
          VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
+}
+
+int GlInterop::OpenDrmRenderNode(VkPhysicalDevice device) {
+  // [device] is the physical device AcceptDevice selected by Flutter's GL
+  // device UUID, i.e. the GPU Flutter's EGL context runs on, so its render
+  // node is the one VA-API must decode on for dma-buf interop. llvmpipe,
+  // lavapipe and hosts without /dev/dri end in -1 below: mpv then gets no
+  // DRM_DISPLAY_V2 and its vaapi hwdec is skipped ("Could not create a VA
+  // display."), leaving copy/software decoding.
+  uint32_t count = 0;
+  if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr) !=
+      VK_SUCCESS)
+    return -1;
+  std::vector<VkExtensionProperties> extensions(count);
+  if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count,
+                                           extensions.data()) < 0)
+    return -1;
+  const bool has_drm_properties = std::any_of(
+      extensions.begin(), extensions.begin() + count,
+      [](const VkExtensionProperties& e) {
+        return std::strcmp(e.extensionName,
+                           VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME) == 0;
+      });
+  if (!has_drm_properties) return -1;
+
+  VkPhysicalDeviceDrmPropertiesEXT drm{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT};
+  VkPhysicalDeviceProperties2 props{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &drm};
+  vkGetPhysicalDeviceProperties2(device, &props);
+  if (!drm.hasRender || drm.renderMajor < 0 || drm.renderMinor < 0) return -1;
+
+  // The reasons are not logged (no new log lines, ADR 0004): a missing node
+  // is the normal answer on hosted runners.
+  std::string why;
+  const std::string path = RenderNodePathForDevnum(
+      kDrmDirectory, static_cast<uint32_t>(drm.renderMajor),
+      static_cast<uint32_t>(drm.renderMinor), &why);
+  if (path.empty()) return -1;
+  return OpenRenderNode(path, &why);
+}
+
+void GlInterop::CloseDrmRenderNode(int fd) {
+  if (fd >= 0) close(fd);
 }
 
 bool GlInterop::CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,

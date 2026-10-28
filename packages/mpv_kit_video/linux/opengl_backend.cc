@@ -58,6 +58,7 @@
 #include <utility>
 #include <vector>
 
+#include "../src/drm_render_node.h"
 #include "../src/render_backend.h"
 #include "gl_interop.h"
 // Last on purpose (see gl_interop.h): EGL's platform header pulls in Xlib.
@@ -116,6 +117,60 @@ bool HasEglExtension(const char* list, const char* name) {
   return false;
 }
 
+// EGL_EXT_device_query / EGL_EXT_device_drm_render_node tokens. Defined here
+// when the headers predate them (Khronos registry, EGL_EXT_device_query and
+// EGL_EXT_device_drm_render_node).
+#ifndef EGL_DEVICE_EXT
+#define EGL_DEVICE_EXT 0x322C
+#endif
+#ifndef EGL_DRM_RENDER_NODE_FILE_EXT
+#define EGL_DRM_RENDER_NODE_FILE_EXT 0x3377
+#endif
+
+/// Looks up an EGL entry point by name; null when the driver lacks it.
+template <typename Fn>
+Fn LoadEglFunction(const char* name) {
+  auto address = eglGetProcAddress(name);
+  Fn fn = nullptr;
+  static_assert(sizeof(fn) == sizeof(address), "function pointer sizes differ");
+  std::memcpy(&fn, &address, sizeof(fn));
+  return fn;
+}
+
+/// Opens the DRM render node of the GPU behind Flutter's EGL [display] (the
+/// GPU the compositor imports dma-bufs on), or -1: the device is queried with
+/// EGL_EXT_device_query and its render node with
+/// EGL_EXT_device_drm_render_node; software devices (llvmpipe) report no
+/// path. The path comes from the driver, is checked against the
+/// /dev/dri/renderD<N> allowlist by OpenRenderNode and is opened
+/// O_RDWR|O_CLOEXEC. The second fallback of the research (GL device UUID ->
+/// Vulkan DRM properties) is not implemented (evidence/unverified.txt).
+int OpenEglRenderNode(EGLDisplay display) {
+  const char* client_extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+  if (!HasEglExtension(client_extensions, "EGL_EXT_device_query") &&
+      !HasEglExtension(client_extensions, "EGL_EXT_device_base"))
+    return -1;
+  using QueryDisplayAttrib = EGLBoolean (*)(EGLDisplay, EGLint, intptr_t*);
+  using QueryDeviceString = const char* (*)(void*, EGLint);
+  const auto query_display =
+      LoadEglFunction<QueryDisplayAttrib>("eglQueryDisplayAttribEXT");
+  const auto query_device =
+      LoadEglFunction<QueryDeviceString>("eglQueryDeviceStringEXT");
+  if (!query_display || !query_device) return -1;
+  intptr_t device_handle = 0;
+  if (!query_display(display, EGL_DEVICE_EXT, &device_handle) ||
+      device_handle == 0)
+    return -1;
+  void* const device = reinterpret_cast<void*>(device_handle);
+  if (!HasEglExtension(query_device(device, EGL_EXTENSIONS),
+                       "EGL_EXT_device_drm_render_node"))
+    return -1;
+  const char* path = query_device(device, EGL_DRM_RENDER_NODE_FILE_EXT);
+  if (!path) return -1;  // a software device: no render node
+  std::string why;       // not logged: a missing node is the normal answer
+  return OpenRenderNode(path, &why);
+}
+
 /// One ring slot: the export texture that the slot's EGLImage is made from,
 /// its FBO (the blit target) and the fence of the slot's latest render.
 struct Slot {
@@ -150,6 +205,9 @@ class OpenGLBackend final : public RenderBackend {
     // never existed).
     assert(ring_.empty() && retired_.empty() && private_.texture == 0);
     if (context_ != EGL_NO_CONTEXT) eglDestroyContext(display_, context_);
+    // Release freed mpv's render context long before this runs, so neither
+    // mpv nor libva uses the render node any more (libmpv never dups it).
+    if (drm_fd_ >= 0) close(drm_fd_);
   }
 
   const char* wire_name() const override { return "opengl"; }
@@ -228,6 +286,13 @@ class OpenGLBackend final : public RenderBackend {
     AssertCurrent();
     mpv_opengl_init_params init{};
     init.get_proc_address = &GetProcAddress;
+    // VA-API interop (Phase 16): the render node of Flutter's EGL device.
+    // dma-buf EGLImages are imported on Flutter's display, so the node must
+    // be the same GPU, otherwise the import fails and the renderer falls back
+    // after a few frames (research 3.3, Pitfall 7). libmpv copies the struct
+    // but not the fd; it is closed in the destructor.
+    mpv_opengl_drm_params_v2 drm{};
+    FillDrmDisplayParams(drm_fd_, &drm);
     // Same promise as the Vulkan and software backends: the render thread
     // only calls mpv_render_*, so render.h's advanced-control rules hold.
     int advanced = 1;
@@ -236,8 +301,10 @@ class OpenGLBackend final : public RenderBackend {
          const_cast<char*>(MPV_RENDER_API_TYPE_OPENGL)},
         {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &init},
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},  // replaced when there is an fd
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
+    if (drm_fd_ >= 0) params[3] = {MPV_RENDER_PARAM_DRM_DISPLAY_V2, &drm};
     const int err = api.render_context_create(out, handle, params);
     if (err < 0) {
       *why = "mpv_render_context_create: " +
@@ -402,7 +469,10 @@ class OpenGLBackend final : public RenderBackend {
     }
     std::string last_error = "no OpenGL context API";
     for (const ContextApi& api : kContextApis) {
-      if (TryContext(api, extensions, &last_error)) return;
+      if (TryContext(api, extensions, &last_error)) {
+        drm_fd_ = OpenEglRenderNode(display_);
+        return;
+      }
     }
     Fail(last_error);
   }
@@ -592,6 +662,9 @@ class OpenGLBackend final : public RenderBackend {
   bool device_failed_ = false;
   std::string device_error_;  // why the device failed, one sanitized line
   std::string device_name_;   // GL_RENDERER, sanitized
+  // DRM render node of Flutter's EGL device for VA-API, -1: none. Opened once
+  // in EnsureDevice, closed in the destructor after the render context.
+  int drm_fd_ = -1;
 
   // Render thread only, after BindThread.
   bool render_thread_bound_ = false;
