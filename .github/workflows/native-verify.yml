@@ -55,7 +55,7 @@ jobs:
             libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
             mesa-vulkan-drivers vulkan-tools zlib1g-dev \
-            libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
+            libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2 libva-dev
         # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
         # needs >=7.360.1 — build the pinned stack with deps.sh instead.
       - uses: actions/cache@v4
@@ -70,8 +70,13 @@ jobs:
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
+          # VA-API is compiled in explicitly (Phase 16, HWD-03): the release
+          # build (native/build/build.sh) already enables it, and the
+          # verification tier must match so that the hosted "no /dev/dri,
+          # safe fallback" runs happen on a libmpv that really contains vaapi.
           meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib \
-            -Dgl=enabled -Degl=enabled -Dplain-gl=enabled
+            -Dgl=enabled -Degl=enabled -Dplain-gl=enabled \
+            -Dvaapi=enabled -Dvaapi-drm=enabled -Ddrm=enabled
           meson compile -C out
           meson install -C out
           grep -E "vulkan|gl " out/config.h | head -20 || true
@@ -80,6 +85,12 @@ jobs:
             grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-GL missing HAVE_$f"; exit 1; }
           done
           echo "CONFIG-GL ok"
+          # Same for the VA-API chain: VADisplay from a DRM render node plus
+          # the GL dma-buf interop (needs egl and libdrm).
+          for f in VAAPI VAAPI_DRM DMABUF_INTEROP_GL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-VAAPI missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-VAAPI ok"
       - name: ABI audit
         run: |
           nm -D --defined-only prefix/lib/libmpv.so.2 | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
@@ -159,7 +170,8 @@ jobs:
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
             libass-dev libvulkan-dev libegl-dev libgl-dev \
-            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev \
+            libva-dev
       - uses: actions/download-artifact@v4
         with:
           name: libmpv-verify-linux-ubuntu-24.04
@@ -249,7 +261,8 @@ jobs:
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
             libass-dev libvulkan-dev libegl-dev libgl-dev \
-            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev \
+            libva-dev
           # Same runtime set as flutter-video-coverage: the verify-tier
           # libmpv.so.2 links the distro FFmpeg/libass/Vulkan/EGL.
       - name: macOS runtime dependencies

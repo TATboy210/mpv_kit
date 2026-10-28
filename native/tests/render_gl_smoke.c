@@ -12,6 +12,11 @@
 // no context of the requested API; meson "skip"). Every skip prints one
 // "RENDER_GL SKIP: <reason>" line first, so CI can tell a skip from a pass.
 // Argument: the API, "gl" (desktop OpenGL, the default) or "gles" (OpenGL ES 3).
+// Optional second argument "--drm" (Phase 16, HWD-03): also passes
+// MPV_RENDER_PARAM_DRM_DISPLAY_V2 with render_fd = -1 (a host without a render
+// node); the context must still be created and render red. mpv's verbose
+// render-context/VA-API log lines are only reported ("vaapi=..."): on a hosted
+// llvmpipe runner without /dev/dri they do not show that VA-API interop works.
 //
 // The render part reads one solid-colour pixel with FLIP_Y 0 (orientation is
 // not examined there). It is followed by a HANDOFF phase that replays what the
@@ -71,6 +76,40 @@ static void sleep_ms(int ms)
 {
     struct timespec ts = { .tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000L };
     nanosleep(&ts, NULL);
+}
+
+// --drm: what mpv's verbose log said about VA-API (information only).
+struct drm_scan {
+    bool no_display;    // hwdec_vaapi: "Could not create a VA display."
+    bool no_interop;    // hwdec_vaapi: no OpenGL/Vulkan dma-buf interop
+};
+
+static void scan_log(struct drm_scan *s, const mpv_event *ev)
+{
+    if (ev->event_id != MPV_EVENT_LOG_MESSAGE)
+        return;
+    const mpv_event_log_message *m = ev->data;
+    if (strstr(m->text, "Could not create a VA display."))
+        s->no_display = true;
+    if (strstr(m->text, "VAAPI hwdec only works with OpenGL or Vulkan backends."))
+        s->no_interop = true;
+}
+
+// Reads queued events for at most `ms` milliseconds, scanning log messages.
+// Stops early once the queue has been idle for 50 ms.
+static void drain_logs(mpv_handle *mpv, struct drm_scan *s, int ms)
+{
+    struct timespec t0, now;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (;;) {
+        mpv_event *ev = mpv_wait_event(mpv, 0.05);
+        if (ev->event_id == MPV_EVENT_NONE)
+            return;
+        scan_log(s, ev);
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if ((now.tv_sec - t0.tv_sec) * 1000 + (now.tv_nsec - t0.tv_nsec) / 1000000 >= ms)
+            return;
+    }
 }
 
 // True if `name` is one of the space-separated tokens of an EGL extension
@@ -633,16 +672,31 @@ int main(int argc, char **argv)
     mpv_set_option_string(mpv, "ao", "null");
     mpv_set_option_string(mpv, "config", "no");
     mpv_set_option_string(mpv, "terminal", "yes");
-    mpv_set_option_string(mpv, "msg-level", "all=warn,vo=v");
+    const bool drm = argc > 2 && strcmp(argv[2], "--drm") == 0;
+    struct drm_scan scan = { 0 };
+    // --drm needs the verbose render-context and VA-API lines. Only those
+    // modules go verbose: mpv's log queue drops the OLDEST entries on overflow.
+    mpv_set_option_string(mpv, "msg-level",
+        drm ? "all=warn,vo=v,libmpv_render=v,vaapi=v" : "all=warn,vo=v");
     if (mpv_initialize(mpv) < 0)
         FAIL("mpv_initialize");
+    if (drm)
+        mpv_request_log_messages(mpv, "v");
 
     mpv_opengl_init_params glp = { .get_proc_address = get_proc_address };
     int advanced = 1;  // same promise the plugin makes (update + render discipline)
+    // A host without a DRM render node: the parameter is accepted by vo_gpu's
+    // libmpv_gpu.c, VA-API just cannot create a display from fd -1.
+    mpv_opengl_drm_params_v2 drm_params = {
+        .fd = -1, .crtc_id = 0, .connector_id = 0,
+        .atomic_request_ptr = NULL, .render_fd = -1,
+    };
+    // Without --drm the 4th entry has type INVALID (0): it ends the list.
     mpv_render_param params[] = {
         { MPV_RENDER_PARAM_API_TYPE, (void *)MPV_RENDER_API_TYPE_OPENGL },
         { MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &glp },
         { MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced },
+        { drm ? MPV_RENDER_PARAM_DRM_DISPLAY_V2 : MPV_RENDER_PARAM_INVALID, &drm_params },
         { 0 },
     };
     step("create render context");
@@ -650,6 +704,8 @@ int main(int argc, char **argv)
     int err = mpv_render_context_create(&rc, mpv, params);
     if (err < 0)
         FAIL("mpv_render_context_create: %s", mpv_error_string(err));
+    if (drm)
+        drain_logs(mpv, &scan, 2000);
 
     // The GL render API is served by vo_gpu's renderer, never gpu-next.
     step("query active renderer");
@@ -671,6 +727,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 1000 && !have_frame; i++) {
         mpv_event *ev;
         while ((ev = mpv_wait_event(mpv, 0))->event_id != MPV_EVENT_NONE) {
+            scan_log(&scan, ev);
             if (ev->event_id == MPV_EVENT_END_FILE)
                 FAIL("playback ended before a frame was rendered");
         }
@@ -730,6 +787,12 @@ int main(int argc, char **argv)
 
     if (!is_red)
         FAIL("rendered pixel is not red: %u,%u,%u", px[0], px[1], px[2]);
+    if (drm) {
+        // Information only (research Pitfall 4): llvmpipe without /dev/dri.
+        printf("RENDER_GL drm ok api=%s renderer=%s vaapi=%s\n", api, renderer,
+               scan.no_interop ? "interop-unavailable"
+                               : scan.no_display ? "display-not-created" : "no-log");
+    }
     printf("RENDER_GL ok api=%s renderer=%s gl_version=\"%s\" gl_renderer=\"%s\" pixel=%u,%u,%u\n",
            api, renderer, gl_version, gl_renderer, px[0], px[1], px[2]);
     return 0;

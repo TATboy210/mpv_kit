@@ -242,6 +242,8 @@ if host_machine.system() == 'linux'
                         dependencies: [mpv, epoxy, vulkan, threads, dl])
   test('render_gl_smoke', gl_smoke, args: ['gl'], timeout: 60)
   test('render_gl_smoke_gles', gl_smoke, args: ['gles'], timeout: 60)
+  # Phase 16 (HWD-03): the GL render API accepts DRM_DISPLAY_V2 (no render node).
+  test('render_gl_smoke_drm', gl_smoke, args: ['gl', '--drm'], timeout: 60)
 endif
 
 # Linux candidate chain (Phase 15, GLX-04): a separate binary because the

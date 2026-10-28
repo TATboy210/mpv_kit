@@ -40,7 +40,11 @@ case "$(uname -s)" in
     # path. egl-drm needs gbm, which libmpv does not use: off explicitly so a
     # host that happens to have gbm cannot change what ships.
     mpv_args+=(-Dgl=enabled -Degl=enabled -Dplain-gl=enabled -Degl-drm=disabled)
-    required_features="$required_features GL EGL"
+    # VA-API zero copy needs the DRM VADisplay (VAAPI_DRM) and the GL dma-buf
+    # interop (DMABUF_INTEROP_GL: decided by egl + libdrm, not by egl-drm,
+    # meson.build "dmabuf-interop-gl"); assert them so a missing libva-dev or
+    # libdrm cannot silently ship a software-only bundle (Phase 16, HWD-03).
+    required_features="$required_features GL EGL VAAPI VAAPI_DRM DMABUF_INTEROP_GL"
     ;;
   Darwin)
     export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-12.0}
@@ -126,7 +130,9 @@ case "$(uname -s)" in
     done
     # D3D-01: HAVE_D3D11, HAVE_SHADERC and HAVE_SPIRV_CROSS must all be 1, so the
     # bundle cannot ship without the native D3D11 renderer.
-    for feature in D3D11 SHADERC SPIRV_CROSS; do
+    # D3D_HWACCEL: hwdec_d3d11va.c is only compiled in when d3d-hwaccel and
+    # d3d11 are both on (meson.build), and hardware decode (HWD-02) needs it.
+    for feature in D3D11 SHADERC SPIRV_CROSS D3D_HWACCEL; do
       grep -q "^#define HAVE_$feature 1" "$build/config.h" || {
         echo "error: mpv configured without $feature on Windows; see $build/meson-logs/meson-log.txt" >&2
         exit 1
@@ -136,6 +142,6 @@ case "$(uname -s)" in
 esac
 meson compile -C "$build"
 meson install -C "$build" --strip
-grep -E "HAVE_(VULKAN|LIBPLACEBO|GL|EGL|X11|WAYLAND|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|D3D_HWACCEL|D3D11|SHADERC|SPIRV_CROSS|VIDEOTOOLBOX_PL) " \
+grep -E "HAVE_(VULKAN|LIBPLACEBO|GL|EGL|X11|WAYLAND|UCHARDET|ICONV|LCMS2|PULSE|ALSA|PIPEWIRE|COREAUDIO|WASAPI|VAAPI|VAAPI_DRM|DMABUF_INTEROP_GL|D3D_HWACCEL|D3D11|SHADERC|SPIRV_CROSS|VIDEOTOOLBOX_PL) " \
   "$build/config.h" || true
 echo "libmpv installed to $prefix"
