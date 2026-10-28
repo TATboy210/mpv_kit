@@ -1,6 +1,7 @@
 # ADR 0005 — macOS Metal route
 
-Status: proposed
+Status: accepted
+Accepted: 2026-10-28 by the user at the Phase 13 close (.planning/phases/13-macos-metal-route-decision/evidence/route-decision.txt)
 Date: 2026-10-27
 Related: ADR 0001 (Vulkan render backend), ADR 0004 (render backend
 reporting), `.planning/REQUIREMENTS.md` MAC-01 / MAC-02 / HWD-04,
@@ -143,8 +144,9 @@ The evidence for this ADR comes from Phase 13's hosted CI:
 Conclusions per Phase 13 success criterion (details and raw lines in
 [`../perf/macos-route-verification.md`](../perf/macos-route-verification.md)):
 
-- **SC1:** decided here, (a) MoltenVK → IOSurface. Status stays `proposed`
-  until the user decision of 13-06.
+- **SC1:** decided here, (a) MoltenVK → IOSurface. Accepted by the user on
+  2026-10-28 (13-06, `decision=accept`); Apple hardware readings remain
+  unverified.
 - **SC2:** the `via MoltenVK` reason is proven on hosted macos-15 (native-verify
   run 40627862148, sha 091228abd70b22fbe2f425fdd1efb75eb8cfcb54). The pixel
   parity part against the pre-Phase-12 plugin is proven through the `toImage`

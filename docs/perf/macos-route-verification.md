@@ -13,7 +13,7 @@ Runs used (all `success`):
 
 ## Summary
 
-- **SC1 decided (ADR 0005, `Status: proposed`):** MoltenVK to IOSurface is chosen over CGL plus IOSurface and an own Metal backend, with five re-evaluation triggers ([ADR 0005](../adr/0005-macos-metal-route.md)). The ADR becomes `accepted` only after the user decision in 13-06.
+- **SC1 decided (ADR 0005, `Status: accepted`):** MoltenVK to IOSurface is chosen over CGL plus IOSurface and an own Metal backend, with five re-evaluation triggers ([ADR 0005](../adr/0005-macos-metal-route.md)). The user accepted the ADR, the HWD-04 classification and the SC2 result on 2026-10-28 (13-06, `evidence/route-decision.txt`: `decision=accept`, `sc2_pixel=proven`); this acceptance does not turn any item under `## Not verified` into a verified one.
 - **SC2 reason proven; SC2 像素部分已证明（通道：toImage）:** the `via MoltenVK` reason is proven on hosted macos-15, and the HEAD plugin and the pre-Phase-12 plugin (3a5f450) read the same frame through the `toImage` channel (`ROUTE-PARITY ok ... informative=yes`, `ROUTE-SC2 pixel=proven channel=toImage`, run `40627862041`). The same result holds in the two earlier runs.
 - **SC3 zero-copy for all three samples on the hosted VM:** h264-8bit `zero-copy`, hevc-8bit `zero-copy`, hevc-10bit `zero-copy` with P010 (run `40627862041`; identical in runs `40617697853` and `40616234145`). Apple real hardware 未验证.
 
