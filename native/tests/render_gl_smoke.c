@@ -28,10 +28,16 @@
 // The source is 64x32 red stacked on 64x32 blue; every round (FLIP_Y 0 and 1)
 // prints which colour sits in texture row 0 (the first row in memory), which
 // is mpv's side of the FLIP_Y decision.
-// In this version the handoff results are only REPORTED (one "RENDER_GL
-// handoff" line per round); the exit code still reflects the render part, a
-// crash or a hang. Which variants become hard assertions is decided from CI
-// evidence (evidence/spike-gl.txt).
+// Every round prints one "RENDER_GL handoff" line. For the variants listed in
+// kHardVariants (decided from CI evidence, evidence/spike-gl.txt: run
+// 40627862148, sha 091228abd70b22fbe2f425fdd1efb75eb8cfcb54, D-GL-API=gl,gles)
+// the round whose row 0 is the image top (D-FLIP-MPV=row0-top-when-flip_y=0)
+// is a HARD assertion: image, sync and import must be "ok" and the imported
+// texture must read red in row 0 and blue in the last row, otherwise the test
+// fails; on success it prints "RENDER_GL handoff ok api=<variant>". Any variant
+// not in the table stays report-only (the exit code then reflects only the
+// render part, a crash or a hang). Both variants passed on x64, arm64 and the
+// sanitizers job, so the table currently lists both.
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE  // pthread_timedjoin_np: the consumer join must be bounded
@@ -395,10 +401,32 @@ static EGLImageKHR export_image(const handoff_env *e, char *image_st, char *sync
     return image;
 }
 
-// One round of the handoff for one FLIP_Y value; prints the report line.
-// False only when the consumer thread hung.
-static bool handoff_round(const handoff_env *e, int flip_y)
+// Variants whose handoff round is a hard assertion (see the file header and
+// evidence/spike-gl.txt, run 40627862148). Desktop GL first: GLES vo_gpu has
+// driver-dependent precision issues, so it is only a fallback ordering.
+static const char *const kHardVariants[] = { "gl", "gles" };
+// FLIP_Y value under which texture row 0 (first row in memory) is the image
+// top: spike-gl.txt D-FLIP-MPV=row0-top-when-flip_y=0.
+#define MPV_ROW0_TOP_FLIP_Y 0
+
+static bool is_hard_variant(const char *api)
 {
+    for (size_t i = 0; i < sizeof kHardVariants / sizeof kHardVariants[0]; i++)
+        if (!strcmp(api, kHardVariants[i]))
+            return true;
+    return false;
+}
+
+// Outcome of one handoff round.
+enum { HANDOFF_OK = 0, HANDOFF_HUNG = 1, HANDOFF_ASSERT = 2 };
+
+// One round of the handoff for one FLIP_Y value; prints the report line and,
+// for a hard variant on the row0-top round, enforces the assertion. Returns
+// HANDOFF_HUNG when the consumer thread hung, HANDOFF_ASSERT when a hard
+// assertion failed, HANDOFF_OK otherwise.
+static int handoff_round(const handoff_env *e, int flip_y)
+{
+    const bool hard = is_hard_variant(e->api) && flip_y == MPV_ROW0_TOP_FLIP_Y;
     unsigned char p0[4], pl[4];
     char image_st[64], sync_st[64];
     consumer_job job = { .dpy = e->dpy, .image = EGL_NO_IMAGE_KHR };
@@ -406,7 +434,11 @@ static bool handoff_round(const handoff_env *e, int flip_y)
     if (!render_stacked(e, flip_y, p0, pl)) {
         printf("RENDER_GL handoff api=%s flip_y=%d image=failed:render sync=failed:render "
                "import=skipped row0=none last=none\n", e->api, flip_y);
-        return true;
+        if (hard) {
+            fprintf(stderr, "FAIL: handoff api=%s: mpv render into P failed\n", e->api);
+            return HANDOFF_ASSERT;
+        }
+        return HANDOFF_OK;
     }
     job.image = export_image(e, image_st, sync_st, sizeof image_st);
     bool joined = true;
@@ -420,7 +452,22 @@ static bool handoff_round(const handoff_env *e, int flip_y)
            e->api, flip_y, image_st, sync_st, job.import_status,
            job.read ? classify(job.row0) : "none", job.read ? classify(job.last) : "none",
            classify(p0), classify(pl));
-    return joined;
+    if (!joined)
+        return HANDOFF_HUNG;
+    if (hard) {
+        // Non-black proof: the stacked source is red over blue, so a correct
+        // import reads red in row 0 and blue in the last row.
+        const bool pass = !strcmp(image_st, "ok") && !strcmp(sync_st, "ok") &&
+                          !strcmp(job.import_status, "ok") && job.read &&
+                          !strcmp(classify(job.row0), "red") && !strcmp(classify(job.last), "blue");
+        if (!pass) {
+            fprintf(stderr, "FAIL: handoff api=%s flip_y=%d image=%s sync=%s import=%s\n",
+                    e->api, flip_y, image_st, sync_st, job.import_status);
+            return HANDOFF_ASSERT;
+        }
+        printf("RENDER_GL handoff ok api=%s\n", e->api);
+    }
+    return HANDOFF_OK;
 }
 
 // Creates the export texture E and FBO_E. False if the FBO is incomplete.
@@ -454,8 +501,8 @@ static bool load_stacked_source(mpv_handle *mpv, mpv_render_context *rc)
 static int run_handoff(mpv_handle *mpv, handoff_env *e, const char *gl_version)
 {
     // The consumer thread is a GLES 2 context (see consumer_main): without the
-    // GLES library epoxy would abort it. The handoff is report-only, so say so
-    // and let the render verdict stand.
+    // GLES library epoxy would abort it. Without it the handoff cannot run at
+    // all, so say so and let the render verdict stand.
     if (!gles_runtime_available()) {
         printf("RENDER_GL handoff api=%s skipped=no-libGLESv2.so.2\n", e->api);
         return 0;
@@ -471,8 +518,11 @@ static int run_handoff(mpv_handle *mpv, handoff_env *e, const char *gl_version)
         FAIL("stacked source: no frame");
     for (int flip_y = 0; flip_y <= 1; flip_y++) {
         step(flip_y ? "handoff: FLIP_Y=1" : "handoff: FLIP_Y=0");
-        if (!handoff_round(e, flip_y))
+        const int r = handoff_round(e, flip_y);
+        if (r == HANDOFF_HUNG)
             FAIL("consumer thread did not finish within %d s", JOIN_TIMEOUT_S);
+        if (r == HANDOFF_ASSERT)
+            FAIL("hard handoff assertion failed for api=%s (see the RENDER_GL handoff line above)", e->api);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &e->fbo_e);
