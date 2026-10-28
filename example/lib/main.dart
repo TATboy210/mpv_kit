@@ -39,8 +39,7 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   final player = Player(options: {
-    // Vulkan Video decoding where available, else the safe platform default.
-    'hwdec': 'vulkan,d3d11va-copy,auto-safe',
+    // hwdec: the example uses the Player's per-platform default (ADR 0006).
     // video-sync 用 Player 默认(audio):display-* 的相位调度与渲染桥
     // 异步发布链不合拍,实测积压 603 帧,见 Player 的 doc 注释。
     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:mpv_kit/mpv_kit.dart';
+import 'package:mpv_kit/src/player/hwdec_defaults.dart';
 import 'package:test/test.dart';
 
 const _lavfi = 'av://lavfi:testsrc2=size=320x240:rate=30:duration=2';
@@ -434,6 +435,24 @@ void main() {
       });
       addTearDown(p.dispose);
       expect(p.mpv.getPropertyString('hwdec-codecs'), 'all');
+    });
+
+    // mpv reports `hwdec` as a string list; join it back to option text.
+    String hwdecText(Object? v) => v is List ? v.join(',') : '$v';
+
+    test('hwdec default is the per-platform list (HWD-01, ADR 0006)',
+        () async {
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      expect(hwdecText(p.mpv.getProperty('hwdec')), platformDefaultHwdec());
+    });
+
+    test('hwdec default yields to an explicit user hwdec option', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hwdec': 'no',
+      });
+      addTearDown(p.dispose);
+      expect(p.mpv.getProperty('hwdec'), anyOf('no', ['no']));
     });
 
     // A 7680x16 source exercises the width condition without 8K frames.
