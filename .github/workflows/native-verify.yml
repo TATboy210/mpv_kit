@@ -252,29 +252,13 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
-      - name: Let the example app read the staged libmpv's dependencies (macOS)
-        # The staged libmpv.2.dylib links Homebrew dylibs by absolute path
-        # (/opt/homebrew/opt/libass/...), which the sandboxed example app
-        # (DebugProfile.entitlements) may not open ("file system sandbox
-        # blocked open()"). package.sh cannot make this artifact
-        # self-contained (it demands the LGPL FFmpeg from the build prefix and
-        # rejects GPL libraries; this job builds against Homebrew's FFmpeg), so
-        # the sandbox is switched off for the test build only. The edit is to
-        # the runner's checkout and is never committed; shipped entitlements
-        # stay as they are.
-        if: matrix.target == 'macos'
-        run: /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' example/macos/Runner/DebugProfile.entitlements
       - name: Real-plugin integration test
         shell: bash
         env:
           # MpvLibrary is strict about MPV_KIT_LIBMPV_PATH: it loads this
           # build or throws MpvLibraryNotFound, never the pinned bundle's
-          # copy. macOS is no exception (sandbox lifted by the step above).
+          # copy. The macOS case unsets it below (see there).
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
-          # The test compares the loaded library's client API with this
-          # (branch build 2.6 after patch 0010; the pinned v0.1.0-dev.3
-          # bundle is 2.5) and prints it in the INTEGRATION line.
-          MPV_KIT_EXPECT_LIBMPV_API: ${{ matrix.target == 'macos' && '2.6' || '' }}
           STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
           MPV_KIT_REQUIRE_LIBMPV: '1'
         run: |
@@ -286,8 +270,12 @@ jobs:
               cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
               ;;
             macos)
-              export DYLD_LIBRARY_PATH="$libdir${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-              cd example && flutter test -v integration_test/real_plugin_test.dart -d macos
+              # The sandboxed example app cannot read the staged dylib's
+              # Homebrew dependencies (/opt/homebrew/opt/libass/...: "file
+              # system sandbox blocked open()"), so this run uses the
+              # mpv_kit_libs bundle (Vulkan renderer, pinned v0.1.0-dev.3);
+              # the branch build is exercised by the next step.
+              cd example && env -u MPV_KIT_LIBMPV_PATH flutter test integration_test/real_plugin_test.dart -d macos
               ;;
             *)
               cd example
@@ -307,19 +295,29 @@ jobs:
               MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
               ;;
           esac
-      - name: macOS app crash reports
-        # `No tests were found` with no exception means the example app died;
-        # its crash report names the faulting library.
-        if: failure() && matrix.target == 'macos'
+      - name: Real-plugin integration test (macOS, branch libmpv, software renderer)
+        # Loads THIS branch's libmpv (the staged artifact) in the real app and
+        # asserts it by client API (2.6 after patch 0010; the pinned bundle is
+        # 2.5). Two limits, both measured (runs 40668191795, 40673113177):
+        #  * the example's sandbox (DebugProfile.entitlements) blocks the
+        #    staged dylib's /opt/homebrew dependencies, so it is switched off
+        #    on this runner's checkout only (never committed);
+        #  * with the Vulkan renderer the app dies in MpvVideoController.create
+        #    (after the staged libmpv loaded: the Homebrew Vulkan loader the
+        #    artifact links and the bundled MoltenVK the plugin loads are two
+        #    stacks in one process), so the renderer is forced to software.
+        #    The branch build's Vulkan path on macOS is covered by the
+        #    render_vk smoke test in the macos job, not by this app.
+        if: matrix.target == 'macos'
         shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_EXPECT_LIBMPV_API: '2.6'
+          MPV_KIT_VIDEO_RENDERER: software
+          MPV_KIT_REQUIRE_LIBMPV: '1'
         run: |
-          ls -la ~/Library/Logs/DiagnosticReports/ || true
-          find / -name 'mpv_kit_example*' \( -name '*.ips' -o -name '*.crash' \) -mmin -30 2>/dev/null | head
-          log show --last 10m --style compact --predicate 'process == "mpv_kit_example" OR senderImagePath CONTAINS "mpv_kit_example" OR eventMessage CONTAINS "mpv_kit_example"' 2>/dev/null | grep -v "^Timestamp" | tail -120 || true
-          for f in ~/Library/Logs/DiagnosticReports/mpv_kit_example*; do
-            [ -f "$f" ] && { echo "=== $f"; head -c 12000 "$f"; }
-          done
-          exit 0
+          /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' example/macos/Runner/DebugProfile.entitlements
+          cd example && flutter test integration_test/real_plugin_test.dart -d macos
       # Phase 15 (GLX-03/GLX-04): the whole real-plugin test with the OpenGL
       # backend forced (no fallback), under xvfb on llvmpipe.
       - name: Real-plugin integration test (linux, MPV_KIT_VIDEO_API=opengl)
