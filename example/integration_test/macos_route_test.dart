@@ -32,10 +32,14 @@
 //   ROUTE-HWDEC {"tree","sample","hwdec","outcome","gate","hwdecCurrent",
 //                "hwdecInterop","pixelformat","hwPixelformat","p010",
 //                "screenshot","screenshotPath","screenshotDiff",
-//                "failureEvidence","evidence","flutterFrame"}
+//                "failureEvidence","evidence","flutterFrame",
+//                "requestedHwdec"}
 //     (`hwdec` is "videotoolbox" (gate:true, asserted) or "default" (the
-//     Player's own list, gate:false, recorded only); `flutterFrame` is the
-//     toImage read of the mounted texture against the reference, recorded
+//     Player's own list, gate:false, recorded only); `requestedHwdec` is
+//     only on the default line: the Player's list as option text, read when
+//     the session was created, before any file was loaded; `flutterFrame`
+//     is the toImage read of the mounted texture against the reference,
+//     recorded
 //     but never asserted: match | mismatch | blind)
 //     (hosted macos-15 is an Apple Silicon VM: this proves the interop chain
 //     CVPixelBuffer -> MTLTexture -> VkImage -> libplacebo, not Apple's
@@ -124,6 +128,16 @@ Future<void> _settleFor(Duration duration) async {
   }
 }
 
+/// A hwdec property value as option text. mpv's `hwdec` is a string list and
+/// `List.toString()` would print brackets: Phase 13 fed that text back as the
+/// per-file option and "measured" a software default that never existed.
+/// Null (property unavailable) falls back to mpv's `auto-safe`.
+String _hwdecText(Object? value) => switch (value) {
+  final List<Object?> list => list.map((e) => '$e').join(','),
+  final String text when text.isNotEmpty => text,
+  _ => 'auto-safe',
+};
+
 /// The single Player / controller pair every section shares.
 final class _RouteSession {
   const _RouteSession({
@@ -131,10 +145,15 @@ final class _RouteSession {
     required this.controller,
     required this.texture,
     required this.boundaryKey,
+    required this.defaultHwdec,
   });
 
   final Player player;
   final MpvVideoController controller;
+
+  /// The Player's own hwdec list as option text, read when the session was
+  /// created: no file has been loaded yet, so it is the configured default.
+  final String defaultHwdec;
 
   /// The texture mounted in the probe tree; null shows nothing.
   final ValueNotifier<int?> texture;
@@ -636,6 +655,7 @@ String _flutterFrame(_HwdecRun reference, _HwdecRun run) {
   required _HwdecRun reference,
   required bool referenceValid,
   required _HwdecRun run,
+  String? requestedHwdec,
 }) {
   final shot = run.screenshot;
   final refFrame = reference.screenshot;
@@ -657,7 +677,7 @@ String _flutterFrame(_HwdecRun reference, _HwdecRun run) {
     referenceValid: referenceValid,
   );
   final line =
-      'ROUTE-HWDEC ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdec': requested, 'outcome': outcome, 'gate': requested == 'videotoolbox', 'hwdecCurrent': run.hwdecCurrent, 'hwdecInterop': run.hwdecInterop, 'pixelformat': run.pixelformat, 'hwPixelformat': run.hwPixelformat, 'p010': run.hwPixelformat == 'p010', 'screenshot': check.name, 'screenshotPath': run.screenshotPath, 'screenshotDiff': _round4Opt(diff), 'failureEvidence': run.failureEvidence, 'evidence': run.evidence.length, 'flutterFrame': _flutterFrame(reference, run)})}';
+      'ROUTE-HWDEC ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdec': requested, 'outcome': outcome, 'gate': requested == 'videotoolbox', 'hwdecCurrent': run.hwdecCurrent, 'hwdecInterop': run.hwdecInterop, 'pixelformat': run.pixelformat, 'hwPixelformat': run.hwPixelformat, 'p010': run.hwPixelformat == 'p010', 'screenshot': check.name, 'screenshotPath': run.screenshotPath, 'screenshotDiff': _round4Opt(diff), 'failureEvidence': run.failureEvidence, 'evidence': run.evidence.length, 'flutterFrame': _flutterFrame(reference, run), 'requestedHwdec': ?requestedHwdec})}';
   return (line, outcome);
 }
 
@@ -682,9 +702,9 @@ Future<void> _hwdecSection(_RouteSession session) async {
   var gatedLines = 0;
   try {
     player.setLogLevel('v');
-    // The Player's own default list, as ROUTE-IDENTITY reports it; used for
-    // the recorded default-list run.
-    final defaultHwdec = _stringProperty(player, 'hwdec') ?? 'auto-safe';
+    // The Player's own default list, captured when the session was created
+    // (before any file was loaded); used for the recorded default-list run.
+    final defaultHwdec = session.defaultHwdec;
     // The samples are app assets (the example app is sandboxed and cannot
     // read the workspace); copy them into the container's temp directory.
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
@@ -743,6 +763,12 @@ Future<void> _hwdecSection(_RouteSession session) async {
           defaultHwdec,
         );
         _printEvidence(sample, 'default', defaults);
+        // The value fed to mpv is option text, never a list's toString.
+        expect(
+          defaultHwdec,
+          isNot(contains('[')),
+          reason: 'the default hwdec list must be plain option text',
+        );
         print(
           _hwdecLine(
             sample: sample,
@@ -750,6 +776,7 @@ Future<void> _hwdecSection(_RouteSession session) async {
             reference: ref,
             referenceValid: refValid,
             run: defaults,
+            requestedHwdec: defaultHwdec,
           ).$1,
         );
       }
@@ -796,6 +823,8 @@ void main() {
           controller: controller,
           texture: texture,
           boundaryKey: boundaryKey,
+          // Captured before any loadfile, at the ROUTE-IDENTITY moment.
+          defaultHwdec: _hwdecText(player.mpv.tryGetProperty('hwdec')),
         );
         _printIdentity(session);
         expect(
