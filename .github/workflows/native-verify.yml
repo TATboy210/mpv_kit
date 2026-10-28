@@ -301,7 +301,7 @@ jobs:
           export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
       # Phase 15 (GLX-03) spike: mounted-texture pixel/orientation probe on the
-      # existing Vulkan path (MPV_KIT_VIDEO_API unset: auto chain). Report-only;
+      # default chain (MPV_KIT_VIDEO_API unset). Hard assertions since 15-05;
       # prints `PROBE {json}` and the Flutter version line.
       - name: Texture probe (linux)
         if: matrix.target == 'linux'
@@ -314,6 +314,20 @@ jobs:
           export PATH="$libdir:$PATH"
           export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           echo "FLUTTER-VERSION $(flutter --version | head -n 1)"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 15 (GLX-03): the same probe with the OpenGL backend forced; its
+      # assertions (non-black, upright, resize, no render error) are hard.
+      - name: Texture probe (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)

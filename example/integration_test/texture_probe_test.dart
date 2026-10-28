@@ -17,12 +17,22 @@
 // afterResizeNonBlackRatio, afterResizeOrientation, textureId, renderErrors,
 // events.
 //
-// This version only REPORTS. It asserts that video params arrive, that the
-// presentation gate passes within 30 s and that no device is lost; it makes
-// no claim about nonBlackRatio or orientation. 15-05 turns them into hard
-// assertions once `D-PROBE` (spike-flutter-linux.txt) says whether toImage can
-// see an external texture on Linux at all. A black or unsupported read must
-// never be counted as a rendered frame.
+// Assertions (15-05): video params arrive, the presentation gate passes
+// within 30 s, no device is lost, there is no render error, the textureId does
+// not change across the resize, and BOTH reads are supported and non-black
+// (nonBlackRatio >= 0.01, the threshold of Phase 12). When the winning api is
+// opengl, both reads must also be `upright`. A black or unsupported read is
+// never counted as a rendered frame.
+//
+// Why the pixel assertions are on: evidence/spike-flutter-linux.txt has
+// D-PROBE=unknown (its control ran on software), but the first run of this
+// probe on the OpenGL path (evidence/backend-runs.txt, native-verify run
+// 40647806493) read supported=true, nonBlackRatio=1.0, upright, before and
+// after the resize, so toImage does see the external texture on Linux.
+// Orientation of the Vulkan path (D-ORIENT is unknown) is only reported, not
+// asserted: a flipped Vulkan texture would be an existing defect outside
+// Phase 15. Everything here ran on Mesa llvmpipe only; other drivers are
+// unverified.
 //
 // Only one testWidgets per file: a second one in the same file hangs the
 // live binding (STATE.md).
@@ -47,6 +57,10 @@ const _presentTimeout = Duration(seconds: 30);
 /// A component above this counts as non-black (same threshold as
 /// impeller_smoke_test `_probePixels`).
 const _blackThreshold = 8;
+
+/// Minimum share of non-black pixels for a read to count as a rendered frame
+/// (same 0.01 as Phase 12's probes; evidence/backend-runs.txt shows 1.0).
+const _minNonBlackRatio = 0.01;
 
 /// A source colour channel must exceed the other by this factor, and this
 /// absolute floor, to be called red or blue (tolerates colour conversion and
@@ -254,6 +268,7 @@ void main() {
         reason: 'a frame must be presented within $_presentTimeout',
       );
       final first = await _read(probeKey);
+      final textureBeforeResize = controller.textureId;
 
       await _resizeTo(controller, 320, 180);
       final presentedAfter = await _presented(player);
@@ -282,14 +297,44 @@ void main() {
       };
       print('PROBE ${jsonEncode(report)}');
 
-      // 15-05 replaces this report-only stance with hard assertions on
-      // nonBlackRatio and orientation after reading D-PROBE.
       texture.value = null;
       await _nextFrame();
       await controller.dispose();
       await player.dispose();
       await sub.cancel();
       expect(events, isNot(contains(MpvVideoEventKind.deviceLost)));
+      expect(
+        events,
+        isNot(contains(MpvVideoEventKind.renderError)),
+        reason: 'no render error while probing',
+      );
+      expect(
+        controller.textureId,
+        textureBeforeResize,
+        reason: 'a resize must not replace the texture',
+      );
+      for (final read in [first, second]) {
+        expect(
+          read['supported'],
+          isTrue,
+          reason: 'toImage must see the texture: ${read['reason']}',
+        );
+        final ratio = read['nonBlackRatio'];
+        expect(
+          ratio is num && ratio >= _minNonBlackRatio,
+          isTrue,
+          reason: 'the mounted texture must not be black (got $ratio)',
+        );
+        if (report['api'] == 'opengl') {
+          expect(
+            read['orientation'],
+            'upright',
+            reason:
+                'FLIP_Y 0 (spike-gl D-FLIP-MPV, D-FLUTTER-ORIGIN '
+                'top-left) must show red over blue',
+          );
+        }
+      }
     });
   });
 }
