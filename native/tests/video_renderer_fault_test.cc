@@ -72,9 +72,28 @@ constexpr const char* kD3d11RemovedWhy =
 // Fake target sizes; small, the fake never looks at the pixels.
 constexpr int kWidth = 64;
 constexpr int kHeight = 36;
+constexpr int kSmallWidth = 32;
+constexpr int kSmallHeight = 18;
 // Windows-like compositor latency: quarantine 4, so the full ring is
 // 4 + 2 + kReadyDepth (2) = 8 images and the allocation fallback is 5.
 constexpr int kLatency = 4;
+// The engine's failure backoff: 100 ms, doubling per consecutive failure,
+// capped at 5 s (video_renderer.h kMinBackoff / kMaxBackoff).
+constexpr long long kMinBackoffMs = 100;
+constexpr long long kMaxBackoffMs = 5000;
+// Timer granularity: a measured interval may undercut its expectation by
+// this much (the same 5 ms the Phase 12 goldens use).
+constexpr long long kTimerToleranceMs = 5;
+// Consecutive publish-gate timeouts of the storm. Failure n waits
+// min(5000, 100 * 2^(n-1)) ms, so seven failures cover the doubling
+// 100..3200 and the capped 5000 (the uncapped value would be 6400).
+constexpr int kStormTimeouts = 7;
+// The render_error of a failed frame (the fallback ring's reason is the one
+// the engine reports) as it appears in the trace.
+constexpr const char* kRingFiveFailure =
+    "event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)";
+// Waiting out the storm takes 100+200+400+800+1600+3200+5000 = 11.3 s.
+constexpr Ms kStormWait{40000};
 
 // --- Fake GPU backend --------------------------------------------------------
 
@@ -392,6 +411,30 @@ void Sync(Run& run) {
   run.trace.Add(Fake().DrainAsync());
 }
 
+/// Merges the render-thread lines up to and including the first line equal
+/// to [marker]; whatever follows (a backoff retry that ran meanwhile) is
+/// timing and dropped. [marker] must already be queued (WaitNoted).
+void SyncThrough(Run& run, const std::string& marker) {
+  for (const std::string& line : Fake().DrainAsync()) {
+    run.trace.Add(line);
+    if (line == marker) return;
+  }
+}
+
+/// AcquireFront() as the compositor would, recorded. Also keeps the texture
+/// "visible": the renderer idles when no frame was taken for 500 ms.
+void Acquire(Run& run, VideoRenderer& r) {
+  const mpv_kit::Frame f = r.AcquireFront();
+  run.trace.Add("acquire index=" + std::to_string(f.index) + " " +
+                std::to_string(f.width) + "x" + std::to_string(f.height) +
+                " platform=" + (f.platform ? "yes" : "no"));
+}
+
+/// Milliseconds from [from] to [to].
+long long ElapsedMs(Clock::time_point from, Clock::time_point to) {
+  return std::chrono::duration_cast<Ms>(to - from).count();
+}
+
 /// Destroys [r] (joins its thread, frees the render context) and records the
 /// frees.
 void Teardown(Run& run, std::unique_ptr<VideoRenderer>& r) {
@@ -400,7 +443,16 @@ void Teardown(Run& run, std::unique_ptr<VideoRenderer>& r) {
   run.trace.Add("teardown frees=" + std::to_string(Fake().counters().frees));
 }
 
-/// Non-skip render calls in total.
+/// Starts the next renderer of a scenario on the same platform and faults:
+/// resets the fake libmpv (fresh counters, create log and buffer ordinals; the
+/// platform's own device-init and allocation counts carry over) and marks the
+/// trace.
+void Recreate(Run& run) {
+  Fake().Reset();
+  run.trace.Add("recreate");
+}
+
+/// Non-skip render calls since the last Fake().Reset().
 void Draws(Run& run) {
   const golden::Counters c = Fake().counters();
   run.trace.Add("draws " + std::to_string(c.renders - c.skips));
@@ -454,6 +506,210 @@ void CreateEveryGpuCandidateFails(Run& run) {
   Teardown(run, r);
 }
 
+// The d3d11 backend loses its device at the publish gate of its third frame
+// (the first two were drawn and taken by the compositor): exactly one
+// device_lost event, the lost frame's swap is reported, and the two mpv
+// frames after it are skips only, never drawn; the render context is freed
+// once. The renderer is then created again while the device is still gone:
+// d3d11 fails its device, the chain moves on to vulkan/gpu-next and the trail
+// names why. A running controller does not do this by itself (the engine
+// stays on its backend, see the last scenario); a new Start does.
+void RuntimeDeviceLostThenRecreate(Run& run) {
+  Platform p(FullChain());
+  p.apis["d3d11"].lost_from_gate = 3;
+  FaultInterop interop(&p);
+  {
+    auto r = MakeRenderer(interop);
+    if (!Start(run, p, *r)) return;
+    // Frame 1 comes from the initial size; the compositor takes it.
+    r->SetSize(kWidth, kHeight);
+    interop.WaitFrameReady(1);
+    Sync(run);
+    Acquire(run, *r);
+    // Frame 2 comes from an mpv frame; the compositor takes it too (which
+    // also keeps the texture visible, see Acquire).
+    Fake().QueueFrames(1);
+    Fake().Poke();
+    interop.WaitFrameReady(2);
+    Sync(run);
+    Acquire(run, *r);
+    // Frame 3 is drawn, then its publish gate reports the lost device.
+    Fake().QueueFrames(1);
+    Fake().Poke();
+    Fake().WaitNoted("event device_lost device lost");
+    Sync(run);
+    // Two more mpv frames: advanced with SKIP_RENDERING, never drawn, and no
+    // second device_lost.
+    for (int i = 0; i < 2; i++) {
+      Fake().QueueFrames(1);
+      Fake().Poke();
+      Fake().WaitSkips(1 + i);
+      Sync(run);
+    }
+    Draws(run);
+    Teardown(run, r);
+  }
+  // The device is still gone when the controller is created again.
+  p.apis["d3d11"].device_why = kD3d11RemovedWhy;
+  Recreate(run);
+  FaultInterop second(&p);
+  auto r = MakeRenderer(second);
+  if (!Start(run, p, *r)) return;
+  r->SetSize(kWidth, kHeight);
+  second.WaitFrameReady(1);
+  Sync(run);
+  Draws(run);
+  Teardown(run, r);
+}
+
+// Seven consecutive publish-gate timeouts, then the GPU recovers. gpu_timeout
+// is raised on failures 1, 2 and 4 only (the doubling cadence of
+// OnRenderResult), every retry comes no earlier than its backoff (100 ms
+// doubling) and the seventh backoff is the 5 s cap, not 6.4 s; the eighth
+// frame recovers with exactly one `recovered`.
+//
+// Why lower bounds plus an upper bound on the capped step only: a slow host
+// can only make a retry later, and later is not a storm-handling defect; the
+// cap is the one place where "later" would hide a bug, and it has 1.4 s of
+// room between 5 s and 6.4 s, which a 1000 ms sanitizer slack still resolves.
+// No mpv frame or poke may arrive during the storm: one that did would only
+// be skipped, but its skip line would enter the trace.
+void RuntimeTimeoutStorm(Run& run) {
+  Platform p(FullChain());
+  p.apis["d3d11"].timeout_gates = kStormTimeouts;
+  FaultInterop interop(&p);
+  auto r = MakeRenderer(interop);
+  if (!Start(run, p, *r)) return;
+  r->SetSize(kWidth, kHeight);
+  Fake().WaitNoted("event recovered", kStormWait);
+  Sync(run);
+  // Intervals between the eight renders: after failure k the engine waits
+  // min(5 s, 100 ms * 2^(k-1)).
+  const std::vector<Clock::time_point> times = Fake().render_times();
+  if (times.size() != static_cast<size_t>(kStormTimeouts) + 1) {
+    run.Invariant("expected " + std::to_string(kStormTimeouts + 1) +
+                  " renders, saw " + std::to_string(times.size()));
+  } else {
+    std::string wanted, measured;
+    bool met = true;
+    for (int k = 0; k < kStormTimeouts; k++) {
+      const long long want = std::min(kMaxBackoffMs, kMinBackoffMs << k);
+      const long long got = ElapsedMs(times[static_cast<size_t>(k)],
+                                      times[static_cast<size_t>(k) + 1]);
+      wanted += (k ? "," : "") + std::to_string(want);
+      measured += (k ? "," : "") + std::to_string(got);
+      if (got < want - kTimerToleranceMs) met = false;
+      // The capped step: a doubled 6.4 s would be a missing cap.
+      if (want == kMaxBackoffMs && got > kMaxBackoffMs + run.slack_ms)
+        met = false;
+    }
+    run.trace.Add(met ? "backoffs ok " + wanted
+                      : "backoffs measured " + measured);
+  }
+  Draws(run);
+  Teardown(run, r);
+}
+
+// The first two target allocations fail (the full ring, then the fallback
+// ring of the same frame): the frame is skipped (mpv still gets its swap) and
+// ONE render_error carries the backend's reason of the fallback attempt. The
+// engine retries by itself after the 100 ms backoff, the allocation then
+// succeeds at the full ring, the renderer draws and raises `recovered`.
+void RuntimeAllocFailsThenBackoffRecovers(Run& run) {
+  Platform p(FullChain());
+  p.apis["d3d11"].alloc_fail_first = 2;
+  FaultInterop interop(&p);
+  auto r = MakeRenderer(interop);
+  if (!Start(run, p, *r)) return;
+  r->SetSize(kWidth, kHeight);
+  Fake().WaitNoted("event recovered");
+  Sync(run);
+  // The retry (third allocation) waited out the first backoff.
+  const std::vector<AllocRecord> allocs = p.allocs();
+  if (allocs.size() != 3) {
+    run.Invariant("expected 3 allocations, saw " +
+                  std::to_string(allocs.size()));
+  } else {
+    const long long waited = ElapsedMs(allocs[1].at, allocs[2].at);
+    run.trace.Add(waited >= kMinBackoffMs - kTimerToleranceMs &&
+                          waited <= kMinBackoffMs + run.slack_ms
+                      ? "retry-after-backoff ok"
+                      : "retry-after-backoff measured " +
+                            std::to_string(waited));
+  }
+  Draws(run);
+  Teardown(run, r);
+}
+
+// Allocations at 64x36 keep failing: five failed frames (two attempts each)
+// raise render_error on failures 1, 2 and 4 and leave a 1600 ms backoff
+// pending. A resize is the usual cure and is retried at once, not after the
+// 1600 ms: the first allocation at the new size follows the resize within the
+// slack, succeeds, and the renderer recovers. (1600 ms stays distinguishable
+// from the 1000 ms sanitizer slack.)
+void RuntimeAllocFailsResizeRetriesAtOnce(Run& run) {
+  Platform p(FullChain());
+  p.apis["d3d11"].alloc_fail_width = kWidth;
+  FaultInterop interop(&p);
+  auto r = MakeRenderer(interop);
+  if (!Start(run, p, *r)) return;
+  r->SetSize(kWidth, kHeight);
+  p.WaitAllocCalls(10);  // five failed frames, two attempts each
+  const Clock::time_point resized_at = Clock::now();
+  r->SetSize(kSmallWidth, kSmallHeight);
+  Fake().WaitNoted("event recovered");
+  Sync(run);
+  const std::vector<AllocRecord> allocs = p.allocs();
+  const AllocRecord* first_small = nullptr;
+  for (const AllocRecord& a : allocs) {
+    if (a.width == kSmallWidth) {
+      first_small = &a;
+      break;
+    }
+  }
+  if (!first_small) {
+    run.Invariant("no allocation at the new size");
+  } else {
+    const long long after = ElapsedMs(resized_at, first_small->at);
+    run.trace.Add(after <= run.slack_ms
+                      ? "retry-after-resize ok"
+                      : "retry-after-resize measured " + std::to_string(after));
+  }
+  Draws(run);
+  Teardown(run, r);
+}
+
+// Allocations fail for good: the first frame raises render_error. The
+// renderer is destroyed and created again: Start picks the SAME backend
+// again, because allocation is not part of Start and a failed allocation
+// never advances the chain; its first frame fails the same way. This is the
+// boundary of ver01=create-chain: only a creation-time failure moves the auto
+// chain on; allocation failures and timeouts do not, and a running controller
+// never switches backend (switching live is RBE-F1, not implemented).
+// Only the first failure is traced: the backoff retries that happen before
+// the renderer is destroyed are timing.
+void RuntimeAllocFailsPersistRecreateSameBackend(Run& run) {
+  Platform p(FullChain());
+  p.apis["d3d11"].alloc_fail_width = kWidth;
+  FaultInterop interop(&p);
+  {
+    auto r = MakeRenderer(interop);
+    if (!Start(run, p, *r)) return;
+    r->SetSize(kWidth, kHeight);
+    Fake().WaitNoted(kRingFiveFailure);
+    SyncThrough(run, kRingFiveFailure);
+    Teardown(run, r);
+  }
+  Recreate(run);
+  FaultInterop second(&p);
+  auto r = MakeRenderer(second);
+  if (!Start(run, p, *r)) return;
+  r->SetSize(kWidth, kHeight);
+  Fake().WaitNoted(kRingFiveFailure);
+  SyncThrough(run, kRingFiveFailure);
+  Teardown(run, r);
+}
+
 struct ScenarioDef {
   const char* name;
   void (*fn)(Run&);
@@ -462,6 +718,14 @@ struct ScenarioDef {
 const ScenarioDef kScenarios[] = {
     {"create-device-lost-next-api", CreateDeviceLostNextApi},
     {"create-every-gpu-candidate-fails", CreateEveryGpuCandidateFails},
+    {"runtime-device-lost-then-recreate", RuntimeDeviceLostThenRecreate},
+    {"runtime-timeout-storm", RuntimeTimeoutStorm},
+    {"runtime-alloc-fails-then-backoff-recovers",
+     RuntimeAllocFailsThenBackoffRecovers},
+    {"runtime-alloc-fails-resize-retries-at-once",
+     RuntimeAllocFailsResizeRetriesAtOnce},
+    {"runtime-alloc-fails-persist-recreate-same-backend",
+     RuntimeAllocFailsPersistRecreateSameBackend},
 };
 
 }  // namespace

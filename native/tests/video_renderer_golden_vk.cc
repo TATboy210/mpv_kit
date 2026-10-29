@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <deque>
 #include <exception>
 #include <memory>
@@ -79,6 +80,12 @@ struct Run {
 std::mutex g_log_mu;
 std::vector<std::string> g_log;
 
+// Time the renderer raised its gpu_timeout event (render thread), for the
+// vk-gpu-timeout scenario's split timing (17-01): cleared at its start.
+std::mutex g_timeout_mu;
+bool g_timeout_seen = false;
+golden::Clock::time_point g_timeout_at;
+
 /// The renderer and the two fake platform halves it talks to.
 struct Rig {
   explicit Rig(int latency = 2, bool accept_device = true)
@@ -90,6 +97,11 @@ struct Rig {
           g_log.push_back(line);
         },
         [](const char* kind, const std::string& msg) {
+          if (std::strcmp(kind, "gpu_timeout") == 0) {
+            std::lock_guard<std::mutex> lock(g_timeout_mu);
+            g_timeout_seen = true;
+            g_timeout_at = golden::Clock::now();
+          }
           // Render thread: queued with the fake's render lines, in order.
           Fake().Note(msg.empty() ? std::string("event ") + kind
                                   : std::string("event ") + kind + " " + msg);
@@ -357,14 +369,32 @@ void VkRingQ4(Run& run) {
 // retries on its own; the GPU is back by then, the retry succeeds and the
 // renderer reports `recovered`. No mpv frame triggers the retry: one that
 // arrived during the backoff would only be skipped.
+//
+// The render-to-retry interval is judged in two parts (17-01; run
+// 40679129407 measured 1396 ms on a hosted macos-15 against the 1100 ms the
+// golden expects, because one interval mixed two clocks):
+//   * wait = first render -> gpu_timeout event: VulkanContext's device wait,
+//     whose 1 s value is pinned by the Phase 12 constants audit. The driver
+//     or VM decides how much longer than 1 s it takes, so it has a lower bound
+//     (the timeout is honoured: >= 1000 ms) and an upper bound that still
+//     tells 1 s from 2 s and more ([.., 2 * 1000 ms]).
+//   * backoff = gpu_timeout event -> retry render: the engine's first backoff
+//     (golden retry-ms minus the 1 s timeout, 100 ms). It lies in
+//     [expected - 5 ms, expected + slack]: no device noise can hide a longer
+//     backoff behind the wait any more.
+// When both hold the golden's retry-ms line enters the trace (so golden/vk.txt
+// is unchanged); otherwise the measured line does and both parts are printed.
+// Every run prints one `GOLDEN timing-info` line either way, for the
+// distribution the 17-05 summary reports.
 void VkGpuTimeout(Run& run) {
-  // Expected render-to-retry interval from the golden (1 s timeout + the
-  // first backoff); the measured one must lie in [expected - 5 ms,
-  // expected + slack] and is only printed on failure.
   const std::string expected_line =
       golden::ExpectedLine(run.expected, run.name, "retry-ms ");
   const long long expected_ms =
       expected_line.empty() ? -1 : std::atoll(expected_line.c_str() + 9);
+  {
+    std::lock_guard<std::mutex> lock(g_timeout_mu);
+    g_timeout_seen = false;
+  }
   Rig rig(2);
   if (!Start(run, rig, RendererChoice::kGpuNext)) return;
   Fake().SetSignalMode(SignalMode::kNever);
@@ -378,16 +408,32 @@ void VkGpuTimeout(Run& run) {
   rig.interop.WaitFrameReady(1);
   Sync(run);
   const std::vector<golden::Clock::time_point> times = Fake().render_times();
+  golden::Clock::time_point timeout_at;
+  bool timeout_seen;
+  {
+    std::lock_guard<std::mutex> lock(g_timeout_mu);
+    timeout_seen = g_timeout_seen;
+    timeout_at = g_timeout_at;
+  }
+  const bool have_times = times.size() >= 2 && timeout_seen;
   const long long measured =
       times.size() >= 2 ? ElapsedMs(times[0], times[1]) : -1;
-  if (expected_ms > 0 && measured >= expected_ms - 5 &&
-      measured <= expected_ms + run.slack_ms) {
+  const long long wait_ms = have_times ? ElapsedMs(times[0], timeout_at) : -1;
+  const long long backoff_ms = have_times ? ElapsedMs(timeout_at, times[1]) : -1;
+  std::printf("GOLDEN timing-info scenario=%s wait-ms=%lld backoff-ms=%lld "
+              "retry-ms=%lld\n",
+              run.name.c_str(), wait_ms, backoff_ms, measured);
+  const long long expected_backoff_ms = expected_ms - kGpuTimeoutMs;
+  if (expected_ms > 0 && have_times && wait_ms >= kGpuTimeoutMs - 5 &&
+      wait_ms <= 2 * kGpuTimeoutMs - 5 &&
+      backoff_ms >= expected_backoff_ms - 5 &&
+      backoff_ms <= expected_backoff_ms + run.slack_ms) {
     run.trace.Add(expected_line);
   } else {
     std::printf("GOLDEN timing scenario=%s: expected %s (slack %d ms), "
-                "measured retry-ms %lld\n",
+                "measured retry-ms %lld (wait-ms %lld, backoff-ms %lld)\n",
                 run.name.c_str(), expected_line.c_str(), run.slack_ms,
-                measured);
+                measured, wait_ms, backoff_ms);
     run.trace.Add("retry-ms " + std::to_string(measured));
   }
   Acquire(run, rig);

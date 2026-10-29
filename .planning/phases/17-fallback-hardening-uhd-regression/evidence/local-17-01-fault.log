@@ -13,3 +13,18 @@ bind_test rc=0 BIND ok|
 swap_test rc=0 SWAP ok scenarios=10|
 fault_test rc=0 GOLDEN ok scenarios=2|
 ALL rc=0
+# Task 3 (7 scenarios + measure-split) local MSVC 14.44 /W4 /WX run, 2026-10-29T17:21:55Z, tree = HEAD 468f509 + Task 3 changes
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1101|GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+fault_test rc=0 GOLDEN ok scenarios=7|
+ALL rc=0
