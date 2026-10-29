@@ -233,7 +233,7 @@ Plans:
 
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
 **Research**: 需要阶段研究（`/gsd-plan-phase 16 --research-phase`）：混合 GPU 上的 vaapi render node 选择、P010 dma-buf modifier、Vulkan gpu-next 侧 vaapi 所需的 0004 native-resource 补充、`d3d11va-zero-copy` 的取舍（8K 门禁本身仍延后）。
-**Plans:** 4/6 plans executed（4 waves）
+**Plans:** 5/6 plans executed（4 waves）
 
 Plans:
 **Wave 1**
@@ -245,7 +245,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 16-04-PLAN.md — Linux render node 解析（EGL 与 Vulkan DRM 属性）+ DRM_DISPLAY_V2 传参与 fd 生命周期 golden + 未验证清单
-- [ ] 16-05-PLAN.md — HWD-05 口径检查点 + 所有 soak/集成测试的 HWDEC 断言 + hwdec=no 每后端（d3d11/opengl/vulkan/software）腿
+- [x] 16-05-PLAN.md — HWD-05 口径检查点 + 所有 soak/集成测试的 HWDEC 断言 + hwdec=no 每后端（d3d11/opengl/vulkan/software）腿
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 16-06-PLAN.md — HWD-02 口径检查点 + 最终全量门与 release dispatch + RTX 4060 强制 d3d11 的 4K HEVC 10-bit 零拷贝验收（可与 14-09 同一会话）+ 文档与审计
@@ -292,5 +292,5 @@ Plans:
 | 13. macOS Metal Route Decision | v3.0 | 6/6 | Complete    | 2026-10-28 |
 | 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
-| 16. Hardware-Decode Zero-Copy | v3.0 | 4/6 | In Progress | - |
+| 16. Hardware-Decode Zero-Copy | v3.0 | 5/6 | In Progress | - |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
