@@ -1,0 +1,10 @@
+# 14-09 RTX 4060 session ledger. HEADER written at prep time; NO run has been executed yet.
+sha=15f61ffec45b6e459eb381aeab6dc9d341734786
+code_sha=ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72 (15f61ff is docs-only over it; Phase 16 decision=release-basis choice=B)
+release_run=40812562348
+manifest=ok
+bundle=build/phase14/libmpv-rtx (copy of build/phase16/libmpv-rtx, same artifact libmpv-windows-x64 of release run 40812562348, MANIFEST re-checked ok)
+shared_with=16-06 (same release run, same bundle, same session)
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
+flutter=Flutter 3.47.8, framework 737ba8f885, engine dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2, Dart 3.13.7
+df_h_at_prep=D: size=305G used=298G avail=7.1G use=98%
