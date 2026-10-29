@@ -1,0 +1,8 @@
+# vk-gpu-timeout split timing per hosted run (17-01, decision=vk-flake choice=measure-split). Lines are the raw 'GOLDEN timing-info' output of video_renderer_golden_vk; windows jobs skip the Vulkan golden (exit status 77). Later Phase 17 CI gates append their runs.
+# Reference: run 40679129407 measured a mixed retry-ms of 1396 on macos-15 against an expected 1100 (the failure this split addresses).
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1004 backoff-ms=135 retry-ms=1139
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=windows (windows-2025, CLANG64, x64) skipped
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=windows (windows-11-arm, CLANGARM64, arm64) skipped
