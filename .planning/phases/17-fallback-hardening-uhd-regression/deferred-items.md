@@ -20,4 +20,4 @@
    a777f5c (run 40922504734, attempts 1 and 2); green on 468f509 (40918922908) and 6500cfb (40928914091).
    Unrelated to renderer code. Candidate fix: pin or `brew upgrade libplacebo` in the integration job,
    or build the libmpv bundle against the same bottle.
-   Status: resolved by quick 261030-3pc in 6f6631c (fix-forward 127a348 re-signs unverifiable Intel copies): the macOS verify job stages libmpv's Homebrew closure with @loader_path names, the integration job installs no Homebrew formula, and `MACOS-DYLD summary ... homebrew=0` appeared on run 40939860843.
+   Status: resolved by quick 261030-3pc in 6f6631c (fix-forward 127a348 re-signs unverifiable Intel copies): the macOS verify job stages libmpv's Homebrew closure with @loader_path names, the integration job installs no Homebrew formula, and `MACOS-DYLD summary ... homebrew=0` appeared on run 40939860843; second sample run 40943562883 on c00e843.
