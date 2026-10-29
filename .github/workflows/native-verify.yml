@@ -265,9 +265,6 @@ jobs:
             libva-dev
           # Same runtime set as flutter-video-coverage: the verify-tier
           # libmpv.so.2 links the distro FFmpeg/libass/Vulkan/EGL.
-      - name: macOS runtime dependencies
-        if: matrix.target == 'macos'
-        run: brew install ffmpeg libplacebo libass vulkan-loader
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.artifact }}
@@ -302,6 +299,16 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
+      # Proves what the two macOS app runs below would load: the staged libmpv
+      # references only OS libraries and staged files, and in a Dart process
+      # every non-OS image (libplacebo included) comes from stage/, none from
+      # the Homebrew prefix. The job installs no Homebrew formula.
+      - name: Staged libmpv closure (macOS)
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          bash tools/stage_macos_closure.sh --check "stage/${{ matrix.libname }}"
+          dart tools/macos_dyld_images.dart "$PWD/stage/${{ matrix.libname }}" "$(brew --prefix)"
       - name: Real-plugin integration test
         shell: bash
         env:
@@ -321,10 +328,10 @@ jobs:
               ;;
             macos)
               # The sandboxed example app cannot read the staged dylib's
-              # Homebrew dependencies (/opt/homebrew/opt/libass/...: "file
-              # system sandbox blocked open()"), so this run uses the
-              # mpv_kit_libs bundle (Vulkan renderer, pinned v0.1.0-dev.3);
-              # the branch build is exercised by the next step.
+              # dependencies, which sit next to it in stage/ outside the app
+              # container ("file system sandbox blocked open()"), so this run
+              # uses the mpv_kit_libs bundle (Vulkan renderer, pinned
+              # v0.1.0-dev.3); the branch build is exercised by the next step.
               cd example && env -u MPV_KIT_LIBMPV_PATH flutter test integration_test/real_plugin_test.dart -d macos
               # HWD-05/SC4: `hwdec=no` software decode on the Vulkan backend
               # (MoltenVK), with the same bundled libmpv (the pinned v0.1.0-dev.3
@@ -364,11 +371,12 @@ jobs:
         # asserts it by client API (2.6 after patch 0010; the pinned bundle is
         # 2.5). Two limits, both measured (runs 40668191795, 40673113177):
         #  * the example's sandbox (DebugProfile.entitlements) blocks the
-        #    staged dylib's /opt/homebrew dependencies, so it is switched off
-        #    on this runner's checkout only (never committed);
+        #    staged dylib's dependencies (they sit next to it in stage/, outside
+        #    the app container), so it is switched off on this runner's
+        #    checkout only (never committed);
         #  * with the Vulkan renderer the app dies in MpvVideoController.create
-        #    (after the staged libmpv loaded: the Homebrew Vulkan loader the
-        #    artifact links and the bundled MoltenVK the plugin loads are two
+        #    (after the staged libmpv loaded: the staged copy of Homebrew's
+        #    Vulkan loader and the bundled MoltenVK the plugin loads are two
         #    stacks in one process), so the renderer is forced to software.
         #    The branch build's Vulkan path on macOS is covered by the
         #    render_vk smoke test in the macos job, not by this app.
@@ -594,12 +602,16 @@ jobs:
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
       # The integration-test job (below) consumes this instead of rebuilding
-      # libmpv. Runtime deps resolve from /opt/homebrew (same formulae as
-      # the build above).
+      # libmpv. Its own Homebrew could serve a different bottle than the one
+      # libmpv was linked against here (libplacebo 7.360.1 vs 7.387.0, runs
+      # 40917086107 and 40922504734), so libmpv ships with the exact closure
+      # it was built against: every Homebrew dylib it links, transitively,
+      # copied next to it with @loader_path install names. Verify tier only.
       - name: Stage libmpv for the integration test
         run: |
           mkdir -p stage
           cp -r prefix/lib/. stage/
+          bash tools/stage_macos_closure.sh stage/libmpv.2.dylib
       - uses: actions/upload-artifact@v4
         with:
           name: libmpv-verify-macos-${{ matrix.runner }}
