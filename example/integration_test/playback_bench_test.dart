@@ -24,6 +24,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 // Multi-stream lavfi graph: [out0]=video, [out1]=audio (ffmpeg lavfi device
 // labeling). Audio makes avsync/total-avsync-change meaningful; ao=null
 // paces real time.
@@ -108,6 +110,19 @@ void main() {
       final controller = await MpvVideoController.create(player);
       await player.open(_lavfi);
       await Future<void>.delayed(const Duration(seconds: 2)); // settle
+      // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
+      // printed and asserted software outcome (16-05 decision A).
+      final hwdec = await awaitHwdecReport(
+        player.mpv.tryGetProperty,
+        test: 'playback_bench',
+        sample: 'lavfi',
+        at: 'first-frame',
+        reason: controller.reason,
+        requested: 'auto-safe',
+      );
+      print(hwdec.line);
+      expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+      expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
       final r = await _sample(player, duration: const Duration(seconds: 20));
       expect(r['estimatedVfFpsMax'], greaterThan(0));
       print('BENCH playback ${jsonEncode({

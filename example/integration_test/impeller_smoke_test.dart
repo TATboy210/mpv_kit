@@ -38,6 +38,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 part 'impeller_smoke_modes.dart';
 
 /// Matches VideoRenderer::kIdleTimeout (packages/mpv_kit_video/src/
@@ -382,6 +384,19 @@ final class _SmokeHarness {
         'resizeEvents=$_resizeEvents baseline=$resizeBaseline',
       );
     }
+    // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
+    // printed and asserted software outcome (16-05 decision A).
+    final hwdec = await awaitHwdecReport(
+      player.mpv.tryGetProperty,
+      test: 'impeller_smoke',
+      sample: 'lavfi',
+      at: 'first-frame',
+      reason: controller.reason,
+      requested: 'auto-safe',
+    );
+    print(hwdec.line);
+    expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+    expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
     _parts['oneFrame'] = 'ok';
     final part1Ms = part1Watch.elapsedMilliseconds;
 

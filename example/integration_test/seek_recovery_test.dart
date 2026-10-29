@@ -24,6 +24,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
@@ -63,6 +65,31 @@ void main() {
       expect(player.videoParams.value?.width, isNotNull,
           reason: 'playback must start');
       expect(player.mpv.tryGetProperty('estimated-vf-fps'), isNotNull);
+
+      // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
+      // printed and asserted software outcome (16-05 decision A).
+      final hwdec = await awaitHwdecReport(
+        player.mpv.tryGetProperty,
+        test: 'seek_recovery',
+        sample: media == null ? 'lavfi' : 'media',
+        at: 'first-frame',
+        reason: controller.reason,
+        requested: 'auto-safe',
+      );
+      print(hwdec.line);
+      // MPV_KIT_SEEK_MEDIA (manual runs only) swaps the lavfi source for a real
+      // file whose decode may be hardware; the line is still printed and the
+      // outcome must be conclusive, software is asserted for lavfi.
+      if (media == null) {
+        expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+        expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
+      } else {
+        expect(
+          hwdec.outcome,
+          isNot(HwdecOutcome.unexpected),
+          reason: hwdec.line,
+        );
+      }
 
       // lavfi: fixed 60 s; real media: read the reported duration.
       final total = media == null

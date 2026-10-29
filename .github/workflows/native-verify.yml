@@ -326,6 +326,11 @@ jobs:
               # mpv_kit_libs bundle (Vulkan renderer, pinned v0.1.0-dev.3);
               # the branch build is exercised by the next step.
               cd example && env -u MPV_KIT_LIBMPV_PATH flutter test integration_test/real_plugin_test.dart -d macos
+              # HWD-05/SC4: `hwdec=no` software decode on the Vulkan backend
+              # (MoltenVK), with the same bundled libmpv (the pinned v0.1.0-dev.3
+              # release, not the branch build); the default-list result is
+              # recorded only. HWDEC-IDENTITY in the log names the libmpv.
+              env -u MPV_KIT_LIBMPV_PATH MPV_KIT_VIDEO_API=vulkan flutter test integration_test/hwdec_zero_copy_test.dart -d macos
               ;;
             *)
               cd example
@@ -344,6 +349,10 @@ jobs:
               # decoding on WARP without a crash, and records what it chose.
               # A real d3d11va zero-copy run is the RTX 4060 session of 16-06.
               MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/hwdec_zero_copy_test.dart -d windows
+              # HWD-05/SC4: `hwdec=no` software decode on the software backend
+              # (no lavapipe on this runner, so Vulkan is covered by linux and
+              # macOS); the default-list result is recorded only.
+              MPV_KIT_VIDEO_API=software flutter test integration_test/hwdec_zero_copy_test.dart -d windows
               # D3D-07: debug-plugin failure injection (HRESULT layer; no real
               # TDR). MPV_KIT_VIDEO_API stays unset so the auto chain runs.
               MPV_KIT_D3D11_INJECT=device-removed:30 flutter test integration_test/d3d11_device_lost_test.dart -d windows
@@ -373,6 +382,10 @@ jobs:
         run: |
           /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' example/macos/Runner/DebugProfile.entitlements
           cd example && flutter test integration_test/real_plugin_test.dart -d macos
+          # HWD-05/SC4: `hwdec=no` software decode on the software renderer with
+          # the branch libmpv (same env, sandbox off); the default-list result
+          # is recorded only. HWDEC-IDENTITY in the log names the libmpv.
+          flutter test integration_test/hwdec_zero_copy_test.dart -d macos
       # Phase 15 (GLX-03/GLX-04): the whole real-plugin test with the OpenGL
       # backend forced (no fallback), under xvfb on llvmpipe.
       - name: Real-plugin integration test (linux, MPV_KIT_VIDEO_API=opengl)
@@ -396,6 +409,34 @@ jobs:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
           MPV_KIT_REQUIRE_LIBMPV: '1'
           MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
+      # Phase 16 (HWD-05/SC4): `hwdec=no` software decode on the Vulkan (lavapipe)
+      # backend, forced; the default-list result is recorded only.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=vulkan)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: vulkan
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
+      # Phase 16 (HWD-05/SC4): `hwdec=no` software decode on the software
+      # backend, forced; the default-list result is recorded only.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=software)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: software
         run: |
           libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
           export PATH="$libdir:$PATH"
