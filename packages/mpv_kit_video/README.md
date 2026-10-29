@@ -68,6 +68,25 @@ one: `MPV_KIT_VIDEO_API=d3d11` forces it. `auto` currently tries
 software: where Vulkan works nothing changes, and where it does not (no
 driver, older GPUs) D3D11 renders instead of the CPU.
 
+Hybrid-GPU laptops: the plugin always renders on the adapter Flutter's
+compositor uses (shared textures cannot cross adapters), so on a laptop where
+Flutter lands on the integrated GPU, decode and rendering do too. On the 14-10
+test laptop (GeForce GTX 960M + Intel HD 530) that meant d3d11 gpu-next on the
+HD 530 with 477-3310 dropped frames and dec-drop 0. An app opts in from its
+own runner, because the engine picks its adapter before any plugin registers:
+in `windows/runner/main.cpp`, before creating the window (Flutter 3.41 or
+newer, flutter/flutter#177653):
+
+```cpp
+flutter::DartProject project(L"data");
+project.set_gpu_preference(flutter::GpuPreference::HighPerformancePreference);
+```
+
+Without a discrete GPU the engine uses the default adapter. The plugin writes
+one stderr / DebugView line per controller,
+`mpv_kit: compositor adapter "<name>" luid=<hi>:<lo>`, that shows which
+adapter is in use.
+
 On Linux the plugin has an OpenGL backend next to the Vulkan one (mpv's
 `gpu` renderer only): `auto` tries `vulkan/gpu-next`, `opengl/gpu`,
 `vulkan/gpu`, then software, and `MPV_KIT_VIDEO_API=opengl` forces it. It

@@ -19,6 +19,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   flutter::DartProject project(L"data");
 
+  // Hybrid-GPU laptops: ask the engine for the high-performance adapter
+  // (Flutter 3.41+, flutter/flutter#177653); without one it falls back to the
+  // default adapter. mpv_kit_video renders on the adapter Flutter composites
+  // on, so this moves decode, rendering and composition together.
+  project.set_gpu_preference(flutter::GpuPreference::HighPerformancePreference);
+
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 

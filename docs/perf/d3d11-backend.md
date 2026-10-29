@@ -89,6 +89,13 @@ Source: `flutter run` with the 4K60 lavfi source, 150 s timeout (exit 124 expect
 
 The isolation period stays 4 and no parameter was changed. Pickup latency measures how quickly the compositor takes a frame, not when ANGLE finishes reading it (the consumer side has no fence, ADR 0003 Q4); therefore it is not used to re-tune anything, and COMP-03 stays deferred.
 
+## Hybrid-GPU laptops (14-10)
+
+- **Machine:** GeForce GTX 960M + Intel HD 530, demo package 11b728a, user report 2026-10-29.
+- **Observation:** Flutter/ANGLE stayed on the HD 530. The plugin binds to `GetGraphicsAdapter()` by design (shared textures cannot cross adapters), so d3d11va decode and d3d11 gpu-next rendering also ran on the HD 530: dropped 477-3310, dec-drop 0. The per-app "High performance" setting in Windows Settings did not move it; the cause is not established.
+- **Opt-in:** the app picks its adapter before any plugin registers, so the plugin cannot do it. The app runner calls `project.set_gpu_preference(flutter::GpuPreference::HighPerformancePreference)` (Flutter 3.41+, flutter/flutter#177653); the example runner now does. Every `D3D11Interop` creation writes `mpv_kit: compositor adapter "<name>" luid=<hi>:<lo>` to stderr and DebugView, so a redirected log shows the adapter in use.
+- **Status:** the laptop result with the preference comes from package2 (`.planning/phases/14-windows-native-d3d11-backend/evidence/laptop-package.txt`, section `## package2`) and is not recorded here yet.
+
 ## Follow-ups
 
 - **Backend label (for 14-11):** the `D3D11-BACKEND` line (fence and query runs), the startup line and the D-05 harness all print `"backend":"vulkan"` next to the d3d11 reason. It looks like a Dart-side label bug; nothing was changed here.
@@ -97,5 +104,5 @@ The isolation period stays 4 and no parameter was changed. Pickup latency measur
 
 - **Hosted WARP (render path only, `hwdec=no`):** the 14-07/14-08 runs prove the render path, fallback behavior and failure injection; they are not hardware evidence.
 - **RTX 4060 Laptop GPU (this document, real hardware):** functional runs on both sync paths, 4K rendered 600 s, D-05 on/off, pickup and render waits, all with the backend forced to d3d11.
-- **GTX 960 laptop:** see 14-10 (user session); no data here.
+- **GTX 960 laptop:** see "Hybrid-GPU laptops (14-10)" above; the preference result is pending.
 - **Unverified / not applicable:** hardware decode zero-copy beyond what `docs/perf/hwdec-zero-copy.md` records (Phase 16), 8K (UHD-02), other GPU vendors, the auto chain default after 14-11, real-device creation failure falling back to Vulkan, Linux and macOS.

@@ -23,6 +23,31 @@ constexpr DXGI_FORMAT kDxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 // behaves as before and one without it uses D3D11 instead of software. The
 // switch commit (14-11) only reorders this array.
 constexpr const char* kWindowsApiOrder[] = {"vulkan", "d3d11"};
+
+// Writes the adapter Flutter composites on (and therefore the one this plugin
+// binds to) to the plugin's log sinks, DebugView and stderr. On hybrid-GPU
+// machines it lets a user's redirected log show which GPU is really in use.
+void LogCompositorAdapter(const DXGI_ADAPTER_DESC& desc) {
+  // DXGI_ADAPTER_DESC::Description is UTF-16; the log sinks take UTF-8.
+  std::string name;
+  const int n = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr,
+                                    0, nullptr, nullptr);
+  if (n > 1) {
+    name.assign(static_cast<size_t>(n - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name.data(), n,
+                        nullptr, nullptr);
+  }
+  // LUID as <HighPart>:<LowPart>, eight hex digits each; removing the colon
+  // gives the value tools/d3d11_probe prints. Stable within one boot only.
+  char luid[24];
+  snprintf(luid, sizeof(luid), "%08lX:%08lX",
+           static_cast<unsigned long>(desc.AdapterLuid.HighPart),
+           static_cast<unsigned long>(desc.AdapterLuid.LowPart));
+  const std::string line =
+      "mpv_kit: compositor adapter \"" + name + "\" luid=" + luid;
+  OutputDebugStringA((line + "\n").c_str());
+  if (stderr) fprintf(stderr, "%s\n", line.c_str());
+}
 }  // namespace
 
 D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
@@ -38,6 +63,7 @@ D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
     return;
   }
   luid_ = desc.AdapterLuid;
+  LogCompositorAdapter(desc);
   // Our own device on Flutter's adapter, only used to create shareable
   // textures; Flutter opens them on its device via the shared handle.
   const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
