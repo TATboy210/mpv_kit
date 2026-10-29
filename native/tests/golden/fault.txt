@@ -1,0 +1,62 @@
+# Golden traces of the fallback chain and fault events under injected faults
+# (video_renderer_fault_test, Phase 17 VER-01).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from reading video_renderer.cc
+# (Start, NewBackend, UsedLater, RenderOnce, OnRenderResult, RenderLoop); they
+# change only in reviewed commits. The backends are fakes named "d3d11" and
+# "vulkan" with injected faults, so the reasons have the shape of the real
+# ones. Ring sizes follow a compositor latency of 4: 8 images, fallback 5.
+#
+# Line vocabulary:
+#   start ok backend=<wire> reason="<r>"   Start() result, wire_name(), backend_reason()
+#   start=false reason="<r>"               Start() failed; the reason is trails only
+#   create-attempts <api>/<renderer>[,...] render_context_create calls in order
+#                                          (devices that failed to initialise
+#                                          never reach mpv); cumulative until `recreate`
+#   device-inits d3d11=<n> vulkan=<n>      device initialisations per api; cumulative
+#                                          over the whole scenario, `recreate` included
+#   log <line>                             renderer log lines of Start
+#   alloc ring=<n> <W>x<H> ok|fail         AllocTargets call of the fake backend
+#   event <kind> [<msg>]                   EventFn (render thread)
+#   render buf=<b> frame=<n> WxH <fmt>     successful mpv render into a fake target
+#   render skip                            SKIP_RENDERING
+#   acquire index=<i> WxH platform=<yes|no>  AcquireFront()
+#   draws <n>                              non-skip render calls since the last `recreate`
+#   backoffs ok <ms,...>                   measured intervals between renders met
+#                                          the lower bounds (and the cap)
+#   backoffs measured <ms,...>             they did not: the measured intervals
+#   retry-after-backoff ok|measured <ms>   the retry came no earlier than its backoff
+#   retry-after-resize ok|measured <ms>    the retry followed the resize within the slack
+#   recreate                               the renderer was destroyed, the fake libmpv
+#                                          reset, and a new renderer is created on the
+#                                          same platform (faults persist)
+#   teardown frees=<n>                     render_context_free calls after destruction
+
+# The d3d11 device is lost while its backend is created: both d3d11
+# candidates carry the trail, vulkan/gpu-next wins, d3d11 was initialised once
+# (its gpu candidate is not asked again) and nothing raises an event.
+[create-device-lost-next-api]
+start ok backend=vulkan reason="vulkan (gpu-next) on fake-vk; d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected)"
+create-attempts vulkan/gpu-next
+device-inits d3d11=1 vulkan=1
+log none
+teardown frees=1
+
+# d3d11's device is gone and vulkan's mpv creates are rejected on both
+# renderers: software wins and its reason lists the four failed candidates in
+# chain order. Each failed vulkan create is logged (a failed device is not),
+# the Vulkan fall-back notice carries the whole trail, and the software
+# renderer then draws a frame.
+[create-every-gpu-candidate-fails]
+start ok backend=software reason="software (sw) on cpu; d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; d3d11/gpu unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu unavailable: mpv_render_context_create: fake error -18"
+create-attempts vulkan/gpu-next,vulkan/gpu,sw
+device-inits d3d11=1 vulkan=1
+log mpv_kit: gpu-next unavailable: fake error -18
+log mpv_kit: gpu unavailable: fake error -18
+log mpv_kit: Vulkan backend unavailable (d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; d3d11/gpu unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu unavailable: mpv_render_context_create: fake error -18), falling back to software rendering
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+draws 1
+teardown frees=1

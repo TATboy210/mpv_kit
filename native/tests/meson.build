@@ -209,6 +209,24 @@ chain_test = executable('video_renderer_chain_test',
 test('video_renderer_chain_test', chain_test,
      args: [files('golden/chain.txt'), '--slack-ms=' + slack], timeout: 120)
 
+# Fault injection (Phase 17, VER-01): a separate binary because the golden set
+# above is frozen. Fake "d3d11" and "vulkan" backends behind
+# Interop::CreateBackend lose their device while being created or rendering,
+# time out on the publish gate and fail target allocations. It proves the
+# auto chain's trail when creation fails, one device_lost then only skips,
+# the gpu_timeout cadence and capped backoff, and allocation failures with
+# retry; and that none of the runtime faults advances the chain. No Vulkan
+# device or libmpv is needed: it runs on every platform and under the
+# sanitizers. The timeout storm backs off for about 11 s, hence the timeout.
+fault_test = executable('video_renderer_fault_test',
+                        'video_renderer_fault_test.cc',
+                        include_directories: [renderer_inc, vulkan_inc],
+                        cpp_args: renderer_defines,
+                        link_with: renderer,
+                        dependencies: threads)
+test('video_renderer_fault_test', fault_test,
+     args: [files('golden/fault.txt'), '--slack-ms=' + slack], timeout: 180)
+
 # --- D3D11 render API (Windows only) -------------------------------------------
 #
 # Renders a red-over-blue lavfi frame through MPV_RENDER_API_TYPE_D3D11 into a
