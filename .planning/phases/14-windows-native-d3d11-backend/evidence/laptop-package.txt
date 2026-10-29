@@ -272,3 +272,308 @@ sha256 248c86a647edaded3a1a7becc2e5fb11f1a3c273d6ce4a86ddb2b15075b3ebe1 ./run-d3
 sha256 3b1efa2bf548c074f5ec87b898c882be00ed650463978046d0f7fc9a9c6e9111 ./run-probe.bat
 sha256 c437d3a20e9663a4b2f3c5bcaec600ba1dde5305f16719c880dddbba9ee5a222 ./使用说明.txt
 old_package_removed=C:/Users/35490/Desktop/mpv_kit_d3d11_demo_11b728a (after package2 verification; run-probe.bat carried over byte-identical)
+
+## package3
+# quick 261029-nwm: log-only superseded= probe count, power-aware GPU preference (GetSystemPowerStatus), plugin hybrid-GPU hint; swap behaviour unchanged (swap-at-publish failed its A/B gate on the RTX 4060, see ## package3-control); laptop demo package3 for the 14-10 GTX 960M + HD 530 test
+feat_sha=ade3eea21cdcf1ae634f4a6f531b054b48981c46
+instrumentation_sha=6a712eb13402cd33e464b1e8b89d96c5023a6b8e
+swap_fix=none in this package (swap at publish is not committed; see ## package3-control)
+feat_branch=feat/mpv-master-upgrade
+date_utc=2026-10-29T10:53:13Z
+release_run=40812562348
+release_run_note=bundle = artifact libmpv-windows-x64 of release run 40812562348 (built from code_sha ad5c54b); git diff --stat ad5c54b..ade3eea -- native/ .github/ is limited to native/tests (0 files outside native/tests; the bundle inputs native/build native/mpv native/patches .github are unchanged); the plugin DLL and the example exe are local builds; changes under packages/ and example/ since ad5c54b: example/integration_test/hwdec_zero_copy_test.dart example/windows/runner/main.cpp packages/mpv_kit_video/README.md packages/mpv_kit_video/src/video_renderer.cc packages/mpv_kit_video/src/video_renderer.h packages/mpv_kit_video/windows/d3d11_interop.cpp 
+bundle_dir=build/phase14/libmpv-rtx (gitignored) MANIFEST.txt re-checked: sha256sum -c MANIFEST.txt 0 failures
+build=cd example && /d/flutter/bin/flutter build windows --release (build rc=0 seconds=55); temporary root pubspec.yaml hooks user_defines mpv_kit_libs.libmpv_bundle=build/phase14/libmpv-rtx, reverted with git checkout -- pubspec.yaml right after the build (git status --porcelain pubspec.yaml empty: [])
+release_dir=example/build/windows/x64/runner/Release (gitignored)
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+# per-DLL comparison of build/phase14/libmpv-rtx/lib/*.dll against the Release dir and the desktop demo dir
+dll avcodec-62.dll bundle=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a release=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a desktop=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a same
+dll avdevice-62.dll bundle=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db release=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db desktop=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db same
+dll avfilter-11.dll bundle=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b release=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b desktop=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b same
+dll avformat-62.dll bundle=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 release=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 desktop=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 same
+dll avutil-60.dll bundle=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 release=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 desktop=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 same
+dll libass-9.dll bundle=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a release=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a desktop=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a same
+dll libbz2-1.dll bundle=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff release=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff desktop=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff same
+dll libc++.dll bundle=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 release=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 desktop=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 same
+dll libdav1d.dll bundle=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 release=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 desktop=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 same
+dll libfreetype-6.dll bundle=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c release=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c desktop=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c same
+dll libfribidi-0.dll bundle=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 release=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 desktop=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 same
+dll libharfbuzz-0.dll bundle=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b release=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b desktop=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b same
+dll libiconv-2.dll bundle=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 release=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 desktop=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 same
+dll liblcms2-2.dll bundle=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 release=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 desktop=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 same
+dll liblzma-5.dll bundle=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b release=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b desktop=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b same
+dll libmpv-2.dll bundle=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c release=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c desktop=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c same
+dll libplacebo-360.dll bundle=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 release=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 desktop=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 same
+dll libshaderc_shared.dll bundle=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 release=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 desktop=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 same
+dll libspirv-cross-c-shared.dll bundle=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 release=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 desktop=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 same
+dll libuchardet.dll bundle=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 release=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 desktop=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 same
+dll swresample-6.dll bundle=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 release=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 desktop=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 same
+dll swscale-9.dll bundle=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff release=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff desktop=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff same
+dll vulkan-1.dll bundle=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 release=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 desktop=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 same
+dll zlib1.dll bundle=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd release=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd desktop=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd same
+bundle_dll_count=24 same=24 differs=0
+bundle_match=yes
+# angle audit: python -I tools/rea_abi_audit/pe_audit.py <dll> --forbid-angle (flutter_windows.dll not audited: engine ANGLE is outside the mpv_kit chain, ADR 0003)
+angle mpv_kit_video_plugin.dll rc=0 :: RESULT: PASS
+angle avcodec-62.dll rc=0 :: RESULT: PASS
+angle avdevice-62.dll rc=0 :: RESULT: PASS
+angle avfilter-11.dll rc=0 :: RESULT: PASS
+angle avformat-62.dll rc=0 :: RESULT: PASS
+angle avutil-60.dll rc=0 :: RESULT: PASS
+angle libass-9.dll rc=0 :: RESULT: PASS
+angle libbz2-1.dll rc=0 :: RESULT: PASS
+angle libc++.dll rc=0 :: RESULT: PASS
+angle libdav1d.dll rc=0 :: RESULT: PASS
+angle libfreetype-6.dll rc=0 :: RESULT: PASS
+angle libfribidi-0.dll rc=0 :: RESULT: PASS
+angle libharfbuzz-0.dll rc=0 :: RESULT: PASS
+angle libiconv-2.dll rc=0 :: RESULT: PASS
+angle liblcms2-2.dll rc=0 :: RESULT: PASS
+angle liblzma-5.dll rc=0 :: RESULT: PASS
+angle libmpv-2.dll rc=0 :: RESULT: PASS
+angle libplacebo-360.dll rc=0 :: RESULT: PASS
+angle libshaderc_shared.dll rc=0 :: RESULT: PASS
+angle libspirv-cross-c-shared.dll rc=0 :: RESULT: PASS
+angle libuchardet.dll rc=0 :: RESULT: PASS
+angle swresample-6.dll rc=0 :: RESULT: PASS
+angle swscale-9.dll rc=0 :: RESULT: PASS
+angle vulkan-1.dll rc=0 :: RESULT: PASS
+angle zlib1.dll rc=0 :: RESULT: PASS
+angle_audit_files=25 (mpv_kit_video_plugin.dll + 24 bundle DLLs) pass=25
+angle_audit=ok
+# debug switch strings in the plugin DLL (grep -a -c)
+release_plugin MPV_KIT_D3D11_SYNC=0 MPV_KIT_D3D11_INJECT=0
+debug_build_plugin MPV_KIT_D3D11_SYNC=1 MPV_KIT_D3D11_INJECT=1 (example/build/windows/x64/runner/Debug/mpv_kit_video_plugin.dll, a stale earlier Debug build, only a baseline that the grep can see the switches)
+debug_build_has_switches=yes
+debug_switches_absent=yes
+adapter_log_string_in_dll=yes
+hint_string_in_dll=yes
+superseded_string_in_dll=yes
+power_string_in_exe=yes
+# dev host adapters (d3d11_caps_probe.exe --host rtx4060-dev)
+probe_host adapter="Microsoft Basic Render Driver" luid=0000000000012712
+probe_host adapter="NVIDIA GeForce RTX 4060 Laptop GPU" luid=000000000000F70D
+power_host ac=1 saver=0
+local_smoke auto=vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU d3d11=d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11
+local_smoke_note=Release exe from the Release dir, MPV_KIT_LIBMPV_PATH unset, MPV_KIT_EXAMPLE_AO=null, arg av://lavfi:testsrc2=size=3840x2160:rate=60:duration=200[out0];sine=frequency=440:sample_rate=48000:duration=200[out1], about 40 s each (logs build/nwm/pkg3-smoke-auto.log / pkg3-smoke-d3d11.log); full-screen screenshot at 25 s (build/nwm/pkg3-smoke-d3d11.png, pkg3-smoke-auto.png) shows the test picture and the HUD (hwdec=no for the lavfi source, dec-drop=0); HUD RENDER backend label prints vulkan in d3d11 runs (known label bug), the run is identified by the reason prefix
+power_log=mpv_kit_example: GPU preference high-performance (AC power, battery saver off)
+power_log_matches_host=yes
+hint_log=none (single hardware adapter on the dev host; hybrid_hint_lines_in_smoke_logs=0)
+superseded_in_log=yes
+adapter_log=mpv_kit: compositor adapter "NVIDIA GeForce RTX 4060 Laptop GPU" luid=00000000:0000F70D
+adapter_log_runs=auto,d3d11 identical=yes
+adapter_luid_matches_probe=yes
+bat_log_check auto=yes d3d11=yes numbering=yes
+bat_log_check_note=run from the desktop copy via cmd with stdin from NUL, demo/data/flutter_assets/integration_test/route_samples/h264-8bit.mp4 as argument, run-auto-log.bat twice and run-d3d11.bat once, each killed after about 15 s; logs mpv_kit_auto_log_1/_2 and mpv_kit_d3d11_log_1 (none existed before) each contained the GPU preference line, the compositor adapter line and the mpv_kit_video: startup line (d3d11 one with the d3d11 ( reason); the files were deleted afterwards; no bat change needed
+# desktop package
+desktop_path=/c/Users/35490/Desktop/mpv_kit_d3d11_demo_ade3eea
+desktop_layout=demo/ (Release dir + app-local msvcp140.dll vcruntime140.dll vcruntime140_1.dll from VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT, sha256 identical to the package2 lines), d3d11_caps_probe.exe (reused unchanged, sha256 d85cd7f33c80c809228ff7c15387611e5477331459c25ab1e48699b6b2a2a042), run-probe.bat (recreated: the package-1 original was no longer available; new sha256 3923ceefbab9b4eb0e1bb228028ecde5ee5bbed8d0681df5faa0ea056e11918a, host label gtx960-laptop), run-auto-log.bat and run-d3d11.bat (numbered desktop logs), 使用说明.txt
+desktop_check=plugin dll, exe and every other dll in demo/ are byte-identical to the Release dir; bundle DLLs identical to the bundle (bundle_match); the three CRT dlls identical to the VC143 redist; launchers run once from the desktop copy (bat_log_check)
+desktop_size=93M
+# sha256 of every file in the desktop directory
+sha256 d85cd7f33c80c809228ff7c15387611e5477331459c25ab1e48699b6b2a2a042 ./d3d11_caps_probe.exe
+sha256 79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a ./demo/avcodec-62.dll
+sha256 68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db ./demo/avdevice-62.dll
+sha256 88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b ./demo/avfilter-11.dll
+sha256 61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 ./demo/avformat-62.dll
+sha256 2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 ./demo/avutil-60.dll
+sha256 50e702c52cbc75a8a544635d8fada71d3bb95516d6635ccc7660195691574111 ./demo/data/app.so
+sha256 4a96850df6eb7449002468fdefd723c94c3ab4c013dda3db5d30353c944d3046 ./demo/data/flutter_assets/AssetManifest.bin
+sha256 cd7e03645bc44b2dd47b7cb626f51c4ecbf55a197ab77241628b47ac165fbe21 ./demo/data/flutter_assets/FontManifest.json
+sha256 135a318d19e6f823fd9518bfe758fc19906a991dc60b4d461c5f1379d2bdc916 ./demo/data/flutter_assets/NOTICES.Z
+sha256 b8c99a63a8c3d3a10fe091543f789678cc0daeb8c00aa9f13eba54fe4d37e704 ./demo/data/flutter_assets/NativeAssetsManifest.json
+sha256 6efe22ffb16111bbb54ca320255cc1959a288fc5fb09c568945c1cc58e1abc11 ./demo/data/flutter_assets/fonts/MaterialIcons-Regular.otf
+sha256 b8f2e90762194aaab2b2a69336b01fbd0b392d6276ba2fc80933263517eaa361 ./demo/data/flutter_assets/integration_test/route_samples/README.md
+sha256 2f411952cf81ececdcded3c96d4a29b144422ac465ec2e0c7c29a30078fc65d3 ./demo/data/flutter_assets/integration_test/route_samples/h264-8bit.mp4
+sha256 25df40656af2523a6dec88f8e0e81e0e827f4cf9b6ca02fdbff853caaad3a85d ./demo/data/flutter_assets/integration_test/route_samples/hevc-10bit-2160p.mp4
+sha256 7b04a39e3e8113de2adb3763a87ecb3856639eafbebca0c1efd4f833c026ddab ./demo/data/flutter_assets/integration_test/route_samples/hevc-10bit.mp4
+sha256 1986f81f9346df052d0e9fd7e92a4bc3c4581541350d070b511de6a6f218327d ./demo/data/flutter_assets/integration_test/route_samples/hevc-8bit.mp4
+sha256 67c44fe9183b002e79dde7f6977e2988661c9a3e4a3c5fce968787efdbed823c ./demo/data/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf
+sha256 1fe8436a743884cb65078fe8c7b38e18f5365f2a2961270916f426fd13c604af ./demo/data/flutter_assets/shaders/ink_sparkle.frag
+sha256 bc7599dbbbaab310efe41520574138d21fb18a88c8fe4495ed79315309336f6f ./demo/data/flutter_assets/shaders/stretch_effect.frag
+sha256 325a86063d26334c2eabe1743cea073b612540fbf3d8fc2ef0b5708e3763a8c7 ./demo/data/icudtl.dat
+sha256 7d86b79aee23566c9a428ec86e17e22d8e1ba751d26492fe53f75dff80d7f9c4 ./demo/desktop_drop_plugin.dll
+sha256 eca1f8c9b1537bd585bbbcc62362df9ca7e69faa7d4e895688108af63ccea157 ./demo/flutter_windows.dll
+sha256 3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a ./demo/libass-9.dll
+sha256 9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff ./demo/libbz2-1.dll
+sha256 e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 ./demo/libc++.dll
+sha256 8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 ./demo/libdav1d.dll
+sha256 38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c ./demo/libfreetype-6.dll
+sha256 928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 ./demo/libfribidi-0.dll
+sha256 e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b ./demo/libharfbuzz-0.dll
+sha256 c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 ./demo/libiconv-2.dll
+sha256 28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 ./demo/liblcms2-2.dll
+sha256 0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b ./demo/liblzma-5.dll
+sha256 e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c ./demo/libmpv-2.dll
+sha256 4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 ./demo/libplacebo-360.dll
+sha256 9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 ./demo/libshaderc_shared.dll
+sha256 6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 ./demo/libspirv-cross-c-shared.dll
+sha256 26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 ./demo/libuchardet.dll
+sha256 154b0cf21424af719dd974237cb538c170a8325815c4dc1ac6a6c08965baf884 ./demo/mpv_kit_example.exe
+sha256 08e28c12aebd8d4fe482d1de3c3b6e4bef5495ddfb191950496f569fdf8f5174 ./demo/mpv_kit_video_plugin.dll
+sha256 0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9 ./demo/msvcp140.dll
+sha256 b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 ./demo/swresample-6.dll
+sha256 30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff ./demo/swscale-9.dll
+sha256 d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066 ./demo/vcruntime140.dll
+sha256 1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f ./demo/vcruntime140_1.dll
+sha256 fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 ./demo/vulkan-1.dll
+sha256 27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd ./demo/zlib1.dll
+sha256 1c6cae9c5588929ba9a59d7bfab2145aa7c932784dde26689931bb969a63193f ./run-auto-log.bat
+sha256 50dff9712a3cae56894742012167ffa3b7c2f37d9a8ff169bf356f88b5e647c3 ./run-d3d11.bat
+sha256 3923ceefbab9b4eb0e1bb228028ecde5ee5bbed8d0681df5faa0ea056e11918a ./run-probe.bat
+sha256 70223159328bc4d9dfb831e674627cd6c4314d6d7f0d6d9815ed247e52b7415b ./使用说明.txt
+old_package_removed=none (mpv_kit_d3d11_demo_824a69e was not on the desktop when package3 was built; the user had moved it)
+
+## package3-control
+# quick 261029-nwm EXPERIMENTAL CONTROL: the package3 commit plus build/nwm/fix-control.patch (swap reported at publish) applied to the working tree only, never committed; to be compared with ## package3 on the GTX 960M + HD 530 laptop
+feat_sha=ade3eea21cdcf1ae634f4a6f531b054b48981c46
+instrumentation_sha=6a712eb13402cd33e464b1e8b89d96c5023a6b8e
+base_sha=ade3eea21cdcf1ae634f4a6f531b054b48981c46 (HEAD during the build; tracked tree = HEAD + fix-control.patch, nothing else)
+fix_patch=build/nwm/fix-control.patch (gitignored) sha256=c109dfb5ec7eaa09296ec54dab5c0cb9eaab69290e9c4ec05e14d6d2b3b7ea09 lines=169
+fix_patch_files=packages/mpv_kit_video/src/video_renderer.cc packages/mpv_kit_video/src/video_renderer.h 
+fix_native_tests=all 12 renderer tests + video_renderer_swap_test (4 scenarios) green locally with the patch applied (MSVC /W4 /WX, asserts on)
+fix_ab_note=RTX 4060 A/B (261029-nwm-AB.txt): mpv drops 0 vs 0 (auto), 10 vs 0 (d3d11, first 10 s); superseded 123/128 per 150 s (about 1.5% of frames); pickup avg 8.8/7.9 -> 4.6/4.7 ms; gate FAIL by the plan rule
+feat_branch=feat/mpv-master-upgrade
+date_utc=2026-10-29T10:59:28Z
+release_run=40812562348
+release_run_note=bundle = artifact libmpv-windows-x64 of release run 40812562348 (built from code_sha ad5c54b); git diff --stat ad5c54b..ade3eea -- native/ .github/ is limited to native/tests (0 files outside native/tests; the bundle inputs native/build native/mpv native/patches .github are unchanged); the plugin DLL and the example exe are local builds; changes under packages/ and example/ since ad5c54b: example/integration_test/hwdec_zero_copy_test.dart example/windows/runner/main.cpp packages/mpv_kit_video/README.md packages/mpv_kit_video/src/video_renderer.cc packages/mpv_kit_video/src/video_renderer.h packages/mpv_kit_video/windows/d3d11_interop.cpp 
+bundle_dir=build/phase14/libmpv-rtx (gitignored) MANIFEST.txt re-checked: sha256sum -c MANIFEST.txt 0 failures
+build=cd example && /d/flutter/bin/flutter build windows --release (build rc=0 seconds=48); temporary root pubspec.yaml hooks user_defines mpv_kit_libs.libmpv_bundle=build/phase14/libmpv-rtx, reverted with git checkout -- pubspec.yaml right after the build (git status --porcelain pubspec.yaml empty: [])
+release_dir=example/build/windows/x64/runner/Release (gitignored)
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+# per-DLL comparison of build/phase14/libmpv-rtx/lib/*.dll against the Release dir and the desktop demo dir
+dll avcodec-62.dll bundle=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a release=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a desktop=79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a same
+dll avdevice-62.dll bundle=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db release=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db desktop=68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db same
+dll avfilter-11.dll bundle=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b release=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b desktop=88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b same
+dll avformat-62.dll bundle=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 release=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 desktop=61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 same
+dll avutil-60.dll bundle=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 release=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 desktop=2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 same
+dll libass-9.dll bundle=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a release=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a desktop=3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a same
+dll libbz2-1.dll bundle=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff release=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff desktop=9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff same
+dll libc++.dll bundle=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 release=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 desktop=e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 same
+dll libdav1d.dll bundle=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 release=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 desktop=8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 same
+dll libfreetype-6.dll bundle=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c release=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c desktop=38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c same
+dll libfribidi-0.dll bundle=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 release=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 desktop=928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 same
+dll libharfbuzz-0.dll bundle=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b release=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b desktop=e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b same
+dll libiconv-2.dll bundle=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 release=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 desktop=c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 same
+dll liblcms2-2.dll bundle=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 release=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 desktop=28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 same
+dll liblzma-5.dll bundle=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b release=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b desktop=0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b same
+dll libmpv-2.dll bundle=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c release=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c desktop=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c same
+dll libplacebo-360.dll bundle=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 release=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 desktop=4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 same
+dll libshaderc_shared.dll bundle=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 release=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 desktop=9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 same
+dll libspirv-cross-c-shared.dll bundle=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 release=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 desktop=6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 same
+dll libuchardet.dll bundle=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 release=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 desktop=26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 same
+dll swresample-6.dll bundle=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 release=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 desktop=b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 same
+dll swscale-9.dll bundle=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff release=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff desktop=30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff same
+dll vulkan-1.dll bundle=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 release=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 desktop=fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 same
+dll zlib1.dll bundle=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd release=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd desktop=27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd same
+bundle_dll_count=24 same=24 differs=0
+bundle_match=yes
+# angle audit: python -I tools/rea_abi_audit/pe_audit.py <dll> --forbid-angle (flutter_windows.dll not audited: engine ANGLE is outside the mpv_kit chain, ADR 0003)
+angle mpv_kit_video_plugin.dll rc=0 :: RESULT: PASS
+angle avcodec-62.dll rc=0 :: RESULT: PASS
+angle avdevice-62.dll rc=0 :: RESULT: PASS
+angle avfilter-11.dll rc=0 :: RESULT: PASS
+angle avformat-62.dll rc=0 :: RESULT: PASS
+angle avutil-60.dll rc=0 :: RESULT: PASS
+angle libass-9.dll rc=0 :: RESULT: PASS
+angle libbz2-1.dll rc=0 :: RESULT: PASS
+angle libc++.dll rc=0 :: RESULT: PASS
+angle libdav1d.dll rc=0 :: RESULT: PASS
+angle libfreetype-6.dll rc=0 :: RESULT: PASS
+angle libfribidi-0.dll rc=0 :: RESULT: PASS
+angle libharfbuzz-0.dll rc=0 :: RESULT: PASS
+angle libiconv-2.dll rc=0 :: RESULT: PASS
+angle liblcms2-2.dll rc=0 :: RESULT: PASS
+angle liblzma-5.dll rc=0 :: RESULT: PASS
+angle libmpv-2.dll rc=0 :: RESULT: PASS
+angle libplacebo-360.dll rc=0 :: RESULT: PASS
+angle libshaderc_shared.dll rc=0 :: RESULT: PASS
+angle libspirv-cross-c-shared.dll rc=0 :: RESULT: PASS
+angle libuchardet.dll rc=0 :: RESULT: PASS
+angle swresample-6.dll rc=0 :: RESULT: PASS
+angle swscale-9.dll rc=0 :: RESULT: PASS
+angle vulkan-1.dll rc=0 :: RESULT: PASS
+angle zlib1.dll rc=0 :: RESULT: PASS
+angle_audit_files=25 (mpv_kit_video_plugin.dll + 24 bundle DLLs) pass=25
+angle_audit=ok
+# debug switch strings in the plugin DLL (grep -a -c)
+release_plugin MPV_KIT_D3D11_SYNC=0 MPV_KIT_D3D11_INJECT=0
+debug_build_plugin MPV_KIT_D3D11_SYNC=1 MPV_KIT_D3D11_INJECT=1 (example/build/windows/x64/runner/Debug/mpv_kit_video_plugin.dll, a stale earlier Debug build, only a baseline that the grep can see the switches)
+debug_build_has_switches=yes
+debug_switches_absent=yes
+adapter_log_string_in_dll=yes
+hint_string_in_dll=yes
+superseded_string_in_dll=yes
+power_string_in_exe=yes
+# dev host adapters (d3d11_caps_probe.exe --host rtx4060-dev)
+probe_host adapter="Microsoft Basic Render Driver" luid=0000000000012712
+probe_host adapter="NVIDIA GeForce RTX 4060 Laptop GPU" luid=000000000000F70D
+power_host ac=1 saver=0
+local_smoke auto=vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU d3d11=d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11
+local_smoke_note=Release exe from the Release dir, MPV_KIT_LIBMPV_PATH unset, MPV_KIT_EXAMPLE_AO=null, arg av://lavfi:testsrc2=size=3840x2160:rate=60:duration=200[out0];sine=frequency=440:sample_rate=48000:duration=200[out1], about 40 s each (logs build/nwm/pkg3c-smoke-auto.log / pkg3c-smoke-d3d11.log); full-screen screenshot at 25 s (build/nwm/pkg3c-smoke-d3d11.png, pkg3c-smoke-auto.png) shows the test picture and the HUD (hwdec=no for the lavfi source, dec-drop=0); HUD RENDER backend label prints vulkan in d3d11 runs (known label bug), the run is identified by the reason prefix
+power_log=mpv_kit_example: GPU preference high-performance (AC power, battery saver off)
+power_log_matches_host=yes
+hint_log=none (single hardware adapter on the dev host; hybrid_hint_lines_in_smoke_logs=0)
+superseded_in_log=yes
+adapter_log=mpv_kit: compositor adapter "NVIDIA GeForce RTX 4060 Laptop GPU" luid=00000000:0000F70D
+adapter_log_runs=auto,d3d11 identical=yes
+adapter_luid_matches_probe=yes
+bat_log_check auto=yes d3d11=yes numbering=yes
+bat_log_check_note=run from the desktop copy via cmd with stdin from NUL, demo/data/flutter_assets/integration_test/route_samples/h264-8bit.mp4 as argument, run-auto-log.bat twice and run-d3d11.bat once, each killed after about 15 s; logs mpv_kit_swapfix_auto_log_1/_2 and mpv_kit_swapfix_d3d11_log_1 (none existed before) each contained the GPU preference line, the compositor adapter line and the mpv_kit_video: startup line (d3d11 one with the d3d11 ( reason); first line of every control log reads EXPERIMENTAL CONTROL BUILD; the files were deleted afterwards; no bat change needed
+# desktop package
+desktop_path=/c/Users/35490/Desktop/mpv_kit_d3d11_demo_ade3eea_swapfix
+desktop_layout=demo/ (Release dir + app-local msvcp140.dll vcruntime140.dll vcruntime140_1.dll from VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT, sha256 identical to the package2 lines), d3d11_caps_probe.exe (reused unchanged, sha256 d85cd7f33c80c809228ff7c15387611e5477331459c25ab1e48699b6b2a2a042), run-probe.bat (recreated: the package-1 original was no longer available; new sha256 3923ceefbab9b4eb0e1bb228028ecde5ee5bbed8d0681df5faa0ea056e11918a, host label gtx960-laptop), run-auto-log.bat and run-d3d11.bat (numbered desktop logs), 使用说明.txt
+desktop_check=plugin dll, exe and every other dll in demo/ are byte-identical to the Release dir; bundle DLLs identical to the bundle (bundle_match); the three CRT dlls identical to the VC143 redist; launchers run once from the desktop copy (bat_log_check)
+desktop_size=93M
+# sha256 of every file in the desktop directory
+sha256 d85cd7f33c80c809228ff7c15387611e5477331459c25ab1e48699b6b2a2a042 ./d3d11_caps_probe.exe
+sha256 79cb2677bd1b27fb0c782bd460749ec4ee7a39e39dfdb1b3830d731bf453573a ./demo/avcodec-62.dll
+sha256 68ef0264de36f9f3b191b72062b573529f55c7ac70056c3f74a03ccded8c55db ./demo/avdevice-62.dll
+sha256 88cac8fa7f5b4722f284c0772e0a61d4e97c2d168cdfa2939f56aa91e907983b ./demo/avfilter-11.dll
+sha256 61669533c196916c40811f039705cf6ae68833e61687344bb8d7befc8b2a12f0 ./demo/avformat-62.dll
+sha256 2fcf5960b2c293c52722e7346a735a1227ab8081f00591f1c307c0e3c92692d0 ./demo/avutil-60.dll
+sha256 50e702c52cbc75a8a544635d8fada71d3bb95516d6635ccc7660195691574111 ./demo/data/app.so
+sha256 4a96850df6eb7449002468fdefd723c94c3ab4c013dda3db5d30353c944d3046 ./demo/data/flutter_assets/AssetManifest.bin
+sha256 cd7e03645bc44b2dd47b7cb626f51c4ecbf55a197ab77241628b47ac165fbe21 ./demo/data/flutter_assets/FontManifest.json
+sha256 135a318d19e6f823fd9518bfe758fc19906a991dc60b4d461c5f1379d2bdc916 ./demo/data/flutter_assets/NOTICES.Z
+sha256 b8c99a63a8c3d3a10fe091543f789678cc0daeb8c00aa9f13eba54fe4d37e704 ./demo/data/flutter_assets/NativeAssetsManifest.json
+sha256 6efe22ffb16111bbb54ca320255cc1959a288fc5fb09c568945c1cc58e1abc11 ./demo/data/flutter_assets/fonts/MaterialIcons-Regular.otf
+sha256 b8f2e90762194aaab2b2a69336b01fbd0b392d6276ba2fc80933263517eaa361 ./demo/data/flutter_assets/integration_test/route_samples/README.md
+sha256 2f411952cf81ececdcded3c96d4a29b144422ac465ec2e0c7c29a30078fc65d3 ./demo/data/flutter_assets/integration_test/route_samples/h264-8bit.mp4
+sha256 25df40656af2523a6dec88f8e0e81e0e827f4cf9b6ca02fdbff853caaad3a85d ./demo/data/flutter_assets/integration_test/route_samples/hevc-10bit-2160p.mp4
+sha256 7b04a39e3e8113de2adb3763a87ecb3856639eafbebca0c1efd4f833c026ddab ./demo/data/flutter_assets/integration_test/route_samples/hevc-10bit.mp4
+sha256 1986f81f9346df052d0e9fd7e92a4bc3c4581541350d070b511de6a6f218327d ./demo/data/flutter_assets/integration_test/route_samples/hevc-8bit.mp4
+sha256 67c44fe9183b002e79dde7f6977e2988661c9a3e4a3c5fce968787efdbed823c ./demo/data/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf
+sha256 1fe8436a743884cb65078fe8c7b38e18f5365f2a2961270916f426fd13c604af ./demo/data/flutter_assets/shaders/ink_sparkle.frag
+sha256 bc7599dbbbaab310efe41520574138d21fb18a88c8fe4495ed79315309336f6f ./demo/data/flutter_assets/shaders/stretch_effect.frag
+sha256 325a86063d26334c2eabe1743cea073b612540fbf3d8fc2ef0b5708e3763a8c7 ./demo/data/icudtl.dat
+sha256 7d86b79aee23566c9a428ec86e17e22d8e1ba751d26492fe53f75dff80d7f9c4 ./demo/desktop_drop_plugin.dll
+sha256 eca1f8c9b1537bd585bbbcc62362df9ca7e69faa7d4e895688108af63ccea157 ./demo/flutter_windows.dll
+sha256 3089ca97363e884643af5c2760216732713ab6bbbcde48190ba70407646f525a ./demo/libass-9.dll
+sha256 9423d22ac6e6ea4cedec5f63c194fe9809acbb8e56669e48982551313c69e3ff ./demo/libbz2-1.dll
+sha256 e47f7d2644e6fd43078757968c3cc420b3b0987423fd1f311b860954618f98d1 ./demo/libc++.dll
+sha256 8a065922687b65eda6c3bd59d5b81334be8935034d7062fb3f483d1bfaf49e77 ./demo/libdav1d.dll
+sha256 38e063dee95a61de4f7799621c79948d69c29a9c1d806f72a5aab7a0c1ecbd0c ./demo/libfreetype-6.dll
+sha256 928a289d63e4935eb53eda3ab86c93ad733206a10c29a278d6604e791b9d5283 ./demo/libfribidi-0.dll
+sha256 e47f98f23a2dc4e2daa530bd098fd438d6cfca24df9e8a719d0d3e5586279c7b ./demo/libharfbuzz-0.dll
+sha256 c9f9b9addeac620eeccb6a23fc5a423fa1244e18431c00e1219db00d479ea332 ./demo/libiconv-2.dll
+sha256 28d23c868bc7ff3575210e7fa8056132cf59b1bb60995a8dcd0ef697c5b0b513 ./demo/liblcms2-2.dll
+sha256 0f69f59022c350bb1afd15a8ba68aa41aff32db73ba7f6776c1633e6d0b1df4b ./demo/liblzma-5.dll
+sha256 e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c ./demo/libmpv-2.dll
+sha256 4cb728db733d1869ef2d9ad5e306871e29c731232500340a82c1a6ce50c1b038 ./demo/libplacebo-360.dll
+sha256 9ea5cd3551a7250dbf9a9f6dec3590a42d7831f41a39fc1fb81cf1409a03f622 ./demo/libshaderc_shared.dll
+sha256 6bf0b4562641b2d2ae65bfcb0e52649ad419b07ef390a77442c88182dc6b6657 ./demo/libspirv-cross-c-shared.dll
+sha256 26df6db9e086253504ac343fe4ab54eccacb7d1ce151ce0611dbd4b13889cec8 ./demo/libuchardet.dll
+sha256 154b0cf21424af719dd974237cb538c170a8325815c4dc1ac6a6c08965baf884 ./demo/mpv_kit_example.exe
+sha256 4d4f171ace015cf70a6393e4bbb2e124894175989638431e93074dbf9cba9876 ./demo/mpv_kit_video_plugin.dll
+sha256 0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9 ./demo/msvcp140.dll
+sha256 b0ed0450cc4d9b168e2967e67223b873f32440b37df608792e98a12ca64041c9 ./demo/swresample-6.dll
+sha256 30e1aac3bf5f3a9b2f128dfdbfed2550d0cb7adb23ca831b47bb67ba622f2bff ./demo/swscale-9.dll
+sha256 d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066 ./demo/vcruntime140.dll
+sha256 1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f ./demo/vcruntime140_1.dll
+sha256 fa5939ec9e78fe3ff15aababd9462b28d9969ea2809faca35314f9a7e9d8c0e4 ./demo/vulkan-1.dll
+sha256 27bd6bc1da33a1a11ab2c97479c515ffe4a24a1467324a1f4ed307a0cd7560cd ./demo/zlib1.dll
+sha256 788fc85f49f238e26d12542033b2a02d0998f331af11abdb6469e196b7a6b508 ./run-auto-log.bat
+sha256 1c64908cff287e6e8956e0de3c47c76f9c637ea3bbc919b68e3bb2c35eec02d5 ./run-d3d11.bat
+sha256 3923ceefbab9b4eb0e1bb228028ecde5ee5bbed8d0681df5faa0ea056e11918a ./run-probe.bat
+sha256 3949d53a8980d4937963259dfdd72e76faddc840663ac7add70797cf0a098cc5 ./使用说明.txt
