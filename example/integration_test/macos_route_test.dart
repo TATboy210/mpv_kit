@@ -45,6 +45,14 @@
 //     CVPixelBuffer -> MTLTexture -> VkImage -> libplacebo, not Apple's
 //     media engine; real-hardware conclusions stay "not verified")
 //
+// The hwdec section's screenshot counts once a second capture of the same
+// paused frame agrees with it and is not black (routeStableCapture, at most
+// five captures 300 ms apart), because one `screenshot-raw` is not reliable on
+// the hosted macOS GPU. Every discarded capture prints
+//   ROUTE-NOTE screenshot: capture <n>/<max> ... ; taking another
+// Thresholds are unchanged: a truly black or wrong frame is the same on every
+// capture and still fails.
+//
 // Configuration goes through --dart-define only (environment variables do
 // not reliably reach a sandboxed app):
 //   MPV_KIT_ROUTE_TREE      head | pre12 (default head)
@@ -543,6 +551,26 @@ String? _stringProperty(Player player, String name) {
 double? _round4Opt(double? value) =>
     value == null ? null : double.parse(value.toStringAsFixed(4));
 
+/// Takes one `screenshot-raw` and returns it as a bgr0 frame; null when the
+/// screenshot is unavailable (a timeout or an error is data, not a failure).
+Future<RouteBgr0Frame?> _screenshot(Player player) async {
+  try {
+    final shot = await player.screenshot().timeout(_screenshotTimeout);
+    if (shot == null || shot.format != 'bgr0') return null;
+    return RouteBgr0Frame(
+      width: shot.width,
+      height: shot.height,
+      stride: shot.stride,
+      data: shot.data,
+    );
+  } on MpvException catch (error) {
+    print('ROUTE-NOTE screenshot failed: $error');
+  } on TimeoutException {
+    print('ROUTE-NOTE screenshot timed out after $_screenshotTimeout');
+  }
+  return null;
+}
+
 /// Opens [path] with the per-file option `hwdec=[hwdec]`, waits until the
 /// sample is decoded and rendered, and reads the markers and a screenshot.
 /// The per-file option leaves the Player's global hwdec alone, and a new
@@ -597,22 +625,12 @@ Future<_HwdecRun> _runSample(
   final pixelformat = _stringProperty(player, 'video-params/pixelformat');
   final hwPixelformat = _stringProperty(player, 'video-params/hw-pixelformat');
 
-  RouteBgr0Frame? frame;
-  try {
-    final shot = await player.screenshot().timeout(_screenshotTimeout);
-    if (shot != null && shot.format == 'bgr0') {
-      frame = RouteBgr0Frame(
-        width: shot.width,
-        height: shot.height,
-        stride: shot.stride,
-        data: shot.data,
-      );
-    }
-  } on MpvException catch (error) {
-    print('ROUTE-NOTE screenshot failed: $error');
-  } on TimeoutException {
-    print('ROUTE-NOTE screenshot timed out after $_screenshotTimeout');
-  }
+  // One capture is not evidence on the macos-15 paravirtual GPU (see
+  // routeStableCapture): the frame counts once a second capture agrees.
+  final frame = await routeStableCapture(
+    () => _screenshot(player),
+    note: (message) => print('ROUTE-NOTE screenshot: $message'),
+  );
   await Future<void>.delayed(_logSettle);
   // The Flutter texture channel, recorded next to the screenshot. The frame
   // is paused, so the compositor already shows what it will show.
