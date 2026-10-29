@@ -72,20 +72,54 @@ Hybrid-GPU laptops: the plugin always renders on the adapter Flutter's
 compositor uses (shared textures cannot cross adapters), so on a laptop where
 Flutter lands on the integrated GPU, decode and rendering do too. On the 14-10
 test laptop (GeForce GTX 960M + Intel HD 530) that meant d3d11 gpu-next on the
-HD 530 with 477-3310 dropped frames and dec-drop 0. An app opts in from its
-own runner, because the engine picks its adapter before any plugin registers:
-in `windows/runner/main.cpp`, before creating the window (Flutter 3.41 or
-newer, flutter/flutter#177653):
+HD 530 with 477-3310 dropped frames and dec-drop 0. The app chooses its GPU in
+its own runner, because the engine picks its adapter before any plugin
+registers: in `windows/runner/main.cpp`, before creating the window (Flutter
+3.41 or newer, flutter/flutter#177653). A power-aware choice asks for the
+high-performance GPU on AC power with battery saver off and otherwise lets
+Windows' per-app graphics setting decide (`NoPreference`):
 
 ```cpp
+SYSTEM_POWER_STATUS status{};
+const bool ac = ::GetSystemPowerStatus(&status) != 0 &&
+                status.ACLineStatus == 1 &&           // AC online
+                (status.SystemStatusFlag & 1) == 0;   // battery saver off
 flutter::DartProject project(L"data");
-project.set_gpu_preference(flutter::GpuPreference::HighPerformancePreference);
+project.set_gpu_preference(
+    ac ? flutter::GpuPreference::HighPerformancePreference
+       : flutter::GpuPreference::NoPreference);
 ```
 
+The example runner does exactly this once at startup and writes one line,
+`mpv_kit_example: GPU preference high-performance (AC power, battery saver off)`
+or `mpv_kit_example: GPU preference none (<reason>); Windows graphics settings decide`.
 Without a discrete GPU the engine uses the default adapter. The plugin writes
 one stderr / DebugView line per controller,
 `mpv_kit: compositor adapter "<name>" luid=<hi>:<lo>`, that shows which
-adapter is in use.
+adapter is in use. When that adapter looks integrated (under 512 MiB of
+dedicated video memory) and another hardware, non-Microsoft adapter with at
+least 512 MiB exists, it also writes one
+`mpv_kit: hybrid GPU hint: ...` line telling the app author to set the GPU
+preference in the runner. The hint only logs; it changes nothing, and AMD APUs
+with a 512 MiB or larger carve-out are not detected.
+
+Weak or integrated GPUs: nothing below is applied automatically and none of it
+is a default (see
+[ADR 0006](https://github.com/TATboy210/mpv_kit/blob/main/docs/adr/0006-hwdec-defaults.md)).
+An app that wants a cheaper render path can pass these mpv options:
+
+```dart
+final player = Player(options: {
+  'linear-downscaling': 'no',
+  'cscale': 'bilinear',
+  // Only with the D3D11 backend and d3d11va hardware decoding:
+  'd3d11va-zero-copy': 'yes',
+});
+```
+
+`d3d11va-zero-copy=yes` has a caveat from mpv's options.rst: because of
+padding, the bottom and right edges of the picture may be sampled wrongly, and
+driver bugs are possible.
 
 On Linux the plugin has an OpenGL backend next to the Vulkan one (mpv's
 `gpu` renderer only): `auto` tries `vulkan/gpu-next`, `opengl/gpu`,

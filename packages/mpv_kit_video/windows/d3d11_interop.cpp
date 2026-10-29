@@ -24,29 +24,88 @@ constexpr DXGI_FORMAT kDxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 // switch commit (14-11) only reorders this array.
 constexpr const char* kWindowsApiOrder[] = {"vulkan", "d3d11"};
 
+// PCI vendor id of Microsoft: the Basic Render Driver (WARP). It is never
+// counted as integrated or discrete in the hybrid-GPU hint.
+constexpr UINT kMicrosoftVendorId = 0x1414;
+// Hybrid-GPU hint heuristic: "integrated" means under 512 MiB of
+// DedicatedVideoMemory (Intel iGPUs report about 128 MiB); a hardware adapter
+// with 512 MiB or more counts as discrete. AMD APUs with a UMA carve-out of
+// 512 MiB or more are not detected and get no hint, which is harmless.
+constexpr unsigned long long kIntegratedMaxDedicatedMiB = 512;
+constexpr unsigned long long kBytesPerMiB = 1024 * 1024;
+
+// DXGI_ADAPTER_DESC::Description is UTF-16; the log sinks take UTF-8.
+std::string Utf8(const WCHAR* wide) {
+  std::string name;
+  const int n = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0, nullptr,
+                                    nullptr);
+  if (n > 1) {
+    name.assign(static_cast<size_t>(n - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide, -1, name.data(), n, nullptr,
+                        nullptr);
+  }
+  return name;
+}
+
+// One log line to DebugView and stderr.
+void LogLine(const std::string& line) {
+  OutputDebugStringA((line + "\n").c_str());
+  if (stderr) fprintf(stderr, "%s\n", line.c_str());
+}
+
+unsigned long long DedicatedMiB(SIZE_T bytes) {
+  return static_cast<unsigned long long>(bytes / kBytesPerMiB);
+}
+
 // Writes the adapter Flutter composites on (and therefore the one this plugin
 // binds to) to the plugin's log sinks, DebugView and stderr. On hybrid-GPU
 // machines it lets a user's redirected log show which GPU is really in use.
 void LogCompositorAdapter(const DXGI_ADAPTER_DESC& desc) {
-  // DXGI_ADAPTER_DESC::Description is UTF-16; the log sinks take UTF-8.
-  std::string name;
-  const int n = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr,
-                                    0, nullptr, nullptr);
-  if (n > 1) {
-    name.assign(static_cast<size_t>(n - 1), '\0');
-    WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name.data(), n,
-                        nullptr, nullptr);
-  }
+  const std::string name = Utf8(desc.Description);
   // LUID as <HighPart>:<LowPart>, eight hex digits each; removing the colon
   // gives the value tools/d3d11_probe prints. Stable within one boot only.
   char luid[24];
   snprintf(luid, sizeof(luid), "%08lX:%08lX",
            static_cast<unsigned long>(desc.AdapterLuid.HighPart),
            static_cast<unsigned long>(desc.AdapterLuid.LowPart));
-  const std::string line =
-      "mpv_kit: compositor adapter \"" + name + "\" luid=" + luid;
-  OutputDebugStringA((line + "\n").c_str());
-  if (stderr) fprintf(stderr, "%s\n", line.c_str());
+  LogLine("mpv_kit: compositor adapter \"" + name + "\" luid=" + luid);
+}
+
+// Log-only hint for app authors: Flutter composites on an integrated GPU
+// while a discrete hardware GPU exists. The renderer reason is not changed.
+// Best effort: any DXGI failure just means no hint.
+void LogHybridGpuHint(IDXGIAdapter* adapter, const DXGI_ADAPTER_DESC& desc) {
+  if (desc.VendorId == kMicrosoftVendorId ||
+      DedicatedMiB(desc.DedicatedVideoMemory) >= kIntegratedMaxDedicatedMiB)
+    return;
+  ComPtr<IDXGIFactory1> factory;
+  if (FAILED(adapter->GetParent(__uuidof(IDXGIFactory1),
+                                reinterpret_cast<void**>(factory.GetAddressOf()))))
+    return;
+  for (UINT i = 0;; i++) {
+    ComPtr<IDXGIAdapter1> other;
+    if (FAILED(factory->EnumAdapters1(i, &other))) return;
+    DXGI_ADAPTER_DESC1 d{};
+    if (FAILED(other->GetDesc1(&d))) continue;
+    // Software adapters, Microsoft's, the compositor's own and small ones
+    // are not "another GPU worth rendering on".
+    if ((d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 ||
+        d.VendorId == kMicrosoftVendorId ||
+        (d.AdapterLuid.HighPart == desc.AdapterLuid.HighPart &&
+         d.AdapterLuid.LowPart == desc.AdapterLuid.LowPart) ||
+        DedicatedMiB(d.DedicatedVideoMemory) < kIntegratedMaxDedicatedMiB)
+      continue;
+    LogLine("mpv_kit: hybrid GPU hint: Flutter composites on \"" +
+            Utf8(desc.Description) + "\" (" +
+            std::to_string(DedicatedMiB(desc.DedicatedVideoMemory)) +
+            " MiB dedicated, looks integrated) while \"" +
+            Utf8(d.Description) + "\" (" +
+            std::to_string(DedicatedMiB(d.DedicatedVideoMemory)) +
+            " MiB) is present; set the GPU preference in the app's "
+            "windows/runner/main.cpp (flutter::DartProject::set_gpu_preference, "
+            "see the mpv_kit_video README) to render on it");
+    return;
+  }
 }
 }  // namespace
 
@@ -64,6 +123,7 @@ D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
   }
   luid_ = desc.AdapterLuid;
   LogCompositorAdapter(desc);
+  LogHybridGpuHint(adapter, desc);
   // Our own device on Flutter's adapter, only used to create shareable
   // textures; Flutter opens them on its device via the shared handle.
   const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
