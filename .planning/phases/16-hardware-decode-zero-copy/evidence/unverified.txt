@@ -10,3 +10,13 @@
 项目=NVIDIA 专有驱动（EGL render node 扩展、nvidia-vaapi-driver）与未实现的 GL UUID 回退 状态=未验证 原因=研究 3.5 的第二回退（GL 设备 UUID → Vulkan 物理设备 → DRM 属性）没有实现：缺少 EGL_EXT_device_drm_render_node 的驱动上 GL 后端不传 render node，vaapi 被跳过；NVIDIA 的 vaapi 本就依赖第三方 nvidia-vaapi-driver，两者的行为都没有观测 能证明它的环境=带 NVIDIA 显卡、专有驱动与 nvidia-vaapi-driver 的 Linux 桌面
 项目=真实 render node 的 fd 生命周期与 100 轮 create/dispose 的 fd 数 状态=未验证 原因=原生测试只用 /dev/null 的 fd 证明关闭恰好一次且在最后一次 render_context_free 之后；真实 render node 被 libva/驱动在内部 dup 或长期持有的情况、以及长循环下 /proc/self/fd 的计数没有观测 能证明它的环境=带真实 render node 的 Linux 机器上循环创建与销毁控制器 100 次并统计打开的 fd 数
 项目=SC3 的「vaapi interop 加载日志可见」 状态=未验证 原因=hosted 上 vaapi 因没有 VADisplay 而跳过（研究 Pitfall 4），日志里没有 interop 加载行，因此不能作为门禁；16-03 的 vaapi= 值只描述 llvmpipe/lavapipe 与无 /dev/dri 的环境 能证明它的环境=带真实 GPU 的 Linux 桌面，mpv 日志含 vaapi 的 Using hardware decoding 与 dmabuf interop 行
+# --- 16-06 追加（Windows / RTX 相关；RTX 4060 笔记本是本阶段唯一的真实 GPU） ---
+项目=AMD 与 Intel GPU 上的 d3d11va（含 Intel HEVC 驱动黑名单段，mpv video/d3d.c） 状态=未验证 原因=只在 NVIDIA RTX 4060 上运行；其他厂商的 d3d11va 解码器能力、驱动黑名单与 d3d11 共享纹理行为从未被本项目执行 能证明它的环境=带 AMD 或 Intel 显卡的 Windows 机器，强制 MPV_KIT_VIDEO_API=d3d11 运行 hwdec_zero_copy_test
+项目=GTX 960 + 核显笔记本（14-10 的用户会话） 状态=未验证 原因=14-10 尚未执行；Maxwell 世代 NVIDIA 与混合 GPU 笔记本上 d3d11va 的行为没有数据 能证明它的环境=用户的 GTX 960 笔记本（14-10）
+项目=混合 GPU 上 d3d11va-copy 使用默认适配器（研究 Open Question 4） 状态=未验证 原因=RTX 4060 笔记本虽是混合 GPU，但本会话只记录强制 d3d11 与 auto 两条路径，没有为「d3d11va-copy 是否落在非渲染适配器」构造对照 能证明它的环境=核显与独显并存且渲染适配器与默认适配器不同的机器
+项目=Windows arm64 的硬解 状态=未验证 原因=没有 Windows arm64 硬件；发布层只构建了该目标，没有运行任何 hwdec 测试 能证明它的环境=Windows arm64 真机（如 Snapdragon X）
+项目=d3d11va-zero-copy=yes 的长时间运行与边缘 padding 状态=未验证 原因=本阶段只在 640x360 与 4K 样本上各跑一次短播放（样本约 4 s 与约 10 s）作对照数据，没有长时间或边缘宽高非对齐的样本 能证明它的环境=RTX 4060 上 600 s 以上的 4K 与非 16 对齐分辨率样本，MPV_KIT_HWDEC_ZERO_COPY=yes
+项目=auto 链切到 D3D11 之后的默认路径（14-11） 状态=未验证 原因=14-11 未执行：kWindowsApiOrder 仍为 vulkan 优先，auto 在 RTX 4060 上选 Vulkan（Vulkan Video，本会话 rtx-hwdec-auto.log 为信息数据）；用户默认得到的 D3D11 路径尚未被验证 能证明它的环境=14-11 合入后在 RTX 4060 上不设 MPV_KIT_VIDEO_API 重跑 hwdec_zero_copy_test
+项目=8K（UHD-02）上的硬解零拷贝 状态=未验证 原因=本阶段最大分辨率为 3840x2160；8K 的解码器能力、显存与带宽没有数据 能证明它的环境=RTX 4060 或更高规格 GPU 上的 8K HEVC 样本
+项目=Apple 真机（非 VM）上的 VideoToolbox 零拷贝 状态=未验证 原因=沿用 Phase 13 的结论边界：macOS 只在 GitHub 的 Apple Silicon VM 上运行；且 15f61ff 与 f644220 的 native-verify 里 macOS videotoolbox 截图检查不稳定（失败的 seek 点每次不同，已交给 gsd-debug） 能证明它的环境=真实 Mac，Apple GPU 经 MoltenVK
+项目=强制 d3d11 路径之外的 Windows Vulkan 硬解（vulkan hwdec）长时间正确性 状态=未验证 原因=auto 运行（rtx-hwdec-auto.log）显示 Vulkan 后端在 RTX 4060 上以 vulkan hwdec 零拷贝播放 4K，三点截图 match，但只是约 10 s 的信息运行，不是 HWD-02 的验收对象 能证明它的环境=RTX 4060 上 Vulkan 后端的 600 s 以上 hwdec 运行

@@ -17,7 +17,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
 Prebuilt libmpv runs on Windows 10+, macOS 12+ and Linux with glibc 2.35+
-and libEGL.so.1 (libglvnd; x64 and arm64). Coming from media_kit? See
+and libEGL.so.1 (libglvnd; x64 and arm64), plus libva.so.2 and libva-drm.so.2
+(VA-API; the bundle links them as host libraries). Coming from media_kit? See
 [docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
 
 ## Quick start
@@ -218,7 +219,8 @@ a hardware format name such as `videotoolbox` means the frame stays on the GPU,
 a software format such as `nv12` means it was copied back. With mpv's default
 `d3d11va-zero-copy=no`, `hwdec-current=d3d11va` includes one GPU-memory copy
 per frame (no CPU round trip). Windows only benefits on the D3D11 backend; the
-Vulkan backend behaves as before.
+Vulkan backend behaves as before. Verification tiers and measurements are in
+[docs/perf/hwdec-zero-copy.md](docs/perf/hwdec-zero-copy.md).
 
 ## Troubleshooting
 
