@@ -437,6 +437,10 @@ Future<RouteBgr0Frame?> _screenshot(Player player) async {
 /// Player's default list) and returns the milliseconds until the VO reports a
 /// frame rate. Fails when the decoder or the VO is not ready in
 /// [_readyTimeout].
+///
+/// Readiness is any decoded size, not the 640x360 texture size: the 4K
+/// sample (hevc-10bit-2160p) never reports 640x360, and waiting for it made
+/// the first RTX 4060 run fail after 15 s (16-06 run A).
 Future<int> _openAndWaitForFrame(
   Player player,
   String path,
@@ -451,8 +455,8 @@ Future<int> _openAndWaitForFrame(
   while (DateTime.now().isBefore(deadline)) {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     final params = player.videoParams.value;
-    if (params?.width == _width &&
-        params?.height == _height &&
+    if ((params?.width ?? 0) > 0 &&
+        (params?.height ?? 0) > 0 &&
         player.mpv.tryGetProperty('estimated-vf-fps') != null) {
       return watch.elapsedMilliseconds;
     }
