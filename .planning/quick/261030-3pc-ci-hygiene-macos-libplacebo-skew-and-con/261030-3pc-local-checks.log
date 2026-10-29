@@ -17,3 +17,4 @@ probe non-macOS host exit=2
 no CR bytes=ok
 scope diff=ok (nothing under packages/ native/ example/, release.yml, flutter-plugin.yml, macos-route.yml changed since 0e149da)
 review note: macos-route.yml has no build/consume split (pinned hook bundle measured in-app; only Homebrew use is ffmpeg to encode samples in the same job), so no change
+harness S6=ok (fix-forward: re-sign unmodified copies that do not verify; Intel run 40937808629 badsig)

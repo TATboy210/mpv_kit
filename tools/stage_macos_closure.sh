@@ -28,7 +28,9 @@
 #   MACOS-CLOSURE file=<leaf> from=<realpath>    one per copied dylib; the
 #                                                realpath is the Cellar path,
 #                                                i.e. the bottle-version record
-#   MACOS-CLOSURE staged=<n> rewritten=<m> bytes=<b>
+#   MACOS-CLOSURE staged=<n> rewritten=<m> resigned=<r> bytes=<b>
+#                                                resigned: unmodified copies that
+#                                                did not verify (Intel bottles)
 #   MACOS-CLOSURE external <ref> in <file>       check: reference not allowed
 #   MACOS-CLOSURE badsig <file>                  check: codesign --verify failed
 #   MACOS-CLOSURE check entry=<name> files=<n> external=<k>   final check line
@@ -293,5 +295,19 @@ while IFS= read -r mleaf; do
   rewritten=$((rewritten + 1))
 done < "$W/modified.txt"
 
-echo "MACOS-CLOSURE staged=$copies rewritten=$rewritten bytes=$bytes"
+# Copies nobody modified can still fail `codesign --verify`: Homebrew's Intel
+# bottles carry no valid signature (run 40937808629, macos-15-intel). arm64
+# refuses unsigned code and x86_64 tolerates it, so sign every staged copy that
+# does not verify, the same ad hoc way as the rewritten ones.
+resigned=0
+cut -f2 "$W/map.tsv" | sed 1d > "$W/copied.txt"
+while IFS= read -r cleaf; do
+  [ -n "$cleaf" ] || continue
+  if ! codesign --verify "$dir/$cleaf" >/dev/null 2>&1; then
+    codesign --force --sign - "$dir/$cleaf"
+    resigned=$((resigned + 1))
+  fi
+done < "$W/copied.txt"
+
+echo "MACOS-CLOSURE staged=$copies rewritten=$rewritten resigned=$resigned bytes=$bytes"
 do_check
