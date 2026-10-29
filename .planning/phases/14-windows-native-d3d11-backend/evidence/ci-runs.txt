@@ -80,3 +80,6 @@ line plan=14-05 release run 40618740386 pe_audit libmpv-2.dll: windows (windows-
 line plan=14-05 release run 40618740386 pe_audit libmpv-2.dll: windows (windows-2025) exports(mpv_*): 58  imports: 42
 line plan=14-06 release run 40618740386: windows (windows-11-arm) [smoke] device Microsoft Basic Render Driver (hardware bgra+video)
 line plan=14-06 release run 40618740386: windows (windows-2025) [smoke] device Microsoft Basic Render Driver (hardware bgra+video)
+sha= workflow=release.yml run=40907471707 conclusion=success jobs=linux (ubuntu-24.04-arm, linux-arm64):success,linux (ubuntu-24.04, linux-x64):success,macos (macos-15-intel, macos-x64):success,macos (macos-15, macos-arm64):success,windows (windows-2025, CLANG64, windows-x64, nasm:p):success,windows (windows-11-arm, CLANGARM64, windows-arm64):success,publish:skipped
+sha=83107759319182b18c35c3d9dfc4b8d75b73125a workflow=native-verify.yml run=40907376074 conclusion=success
+sha=83107759319182b18c35c3d9dfc4b8d75b73125a workflow=flutter-plugin.yml run=40907376176 conclusion=success

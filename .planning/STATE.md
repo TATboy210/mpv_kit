@@ -5,17 +5,17 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 14
 current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 14-10-PLAN.md (14-11 next)
-last_updated: "2026-10-29T01:31:07.000Z"
+stopped_at: Completed 14-11-PLAN.md (Phase 14 closed; D3D-08 not-switched:keep)
+last_updated: "2026-10-29T17:30:00.000Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 16 execution started
 state_head: ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 47
-  completed_plans: 38
-  percent: 50
+  completed_plans: 39
+  percent: 67
 ---
 
 # Project State
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 14 — Windows Native D3D11 Backend (14-11 auto-chain switch decision next; Phase 16 closed, Phase 17 planned)
+**Current focus:** Phase 14 — Windows Native D3D11 Backend (all 11 plans executed; D3D-08 decided not-switched:keep; Phase 16 closed, Phase 17 planned)
 
 ## Current Position
 
-Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
-Plan: 10 of 11 complete (14-11 next)
-Status: Ready to execute 14-11
-Last activity: 2026-10-29 — 14-10 laptop acceptance recorded (pass-with-drops-accepted), quick 261029-ljp/nwm/rcc closed; CI for the FIFO chain pending
+Phase: 14 (Windows Native D3D11 Backend) — plans complete, awaiting phase verification
+Plan: 11 of 11 complete
+Status: Phase 14 executed; D3D-08 not switched (user kept Vulkan first)
+Last activity: 2026-10-29 — 14-11: Windows auto chain kept (Vulkan first), HUD/startup backend label fix, final audit all ok, ci/14-* scratch branches deleted
 
 Progress: [█████░░░░░] 50%
 
@@ -117,6 +117,7 @@ Progress: [█████░░░░░] 50%
 | Phase 14 P06 | 45min | 3 tasks | 9 files |
 | Phase 14 P07 | 40min | 3 tasks | 14 files |
 | Phase 14 P08 | 60min | 3 tasks | 12 files |
+| Phase 14 P11 | ~1h (CI waits) | 2 tasks (task 2 skipped by decision) | 12 files |
 | Phase 15 P01 | 40min | 3 tasks | 9 files |
 | Phase 15 P02 | 25min | 3 tasks | 5 files |
 | Phase 15 P03 | 20min | 2 tasks | 6 files |
@@ -240,6 +241,8 @@ Recent decisions affecting current work:
 - [Phase 14]: 14-06: gpu-next D3D11 uses the VO's own shader cache (priv->libmpv_vo_cache) and a same-device pl_d3d11 + ra_d3d11 pair; no new render parameter, 0010 ABI untouched
 - [Phase 14]: 14-07: D3D11 backend reports frame_kind kVulkan (shared GPU image class); Windows chain is data (kWindowsApiOrder), 14-11 reorders one array; quarantine stays 4
 - [Phase 14]: 14-08: D3D11 failure injection replaces only the HRESULT source (debug builds only); chain behaviour pinned by a platform-independent golden
+- [Phase 14]: 14-11: D3D-08 decision=keep (user, 2026-10-29): Windows auto stays vulkan/gpu-next, d3d11/gpu-next, vulkan/gpu, d3d11/gpu, software; GTX 960M about 0.5 percent effective drops on Vulkan vs about 3.5 percent on D3D11, power state a second factor; no switch commit
+- [Phase 14]: 14-11: HUD backend field and startup log print the first token of controller.reason (real API); MpvVideoBackend enum unchanged
 - [Phase 15]: [15-01] bundle-egl=adopt: libmpv.so.2 depends on host libEGL.so.1 (-Dgl -Degl -Dplain-gl, egl-drm off)
 - [Phase 15]: [15-01] Push authorization push-green-only+dispatch is effective only at the milestone-end CI pass; Phase 14 14-09..14-11 and 13-06 deferred until after that CI pass
 - [Phase 15]: [15-04] Linux chain decision A (auto vulkan/gpu-next, opengl/gpu, vulkan/gpu, software; gpu opengl first); SC3 interpreted as runbound (create-time calls in RenderBackend::RunBound)
@@ -319,7 +322,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-29
-Stopped at: Completed 14-10-PLAN.md (14-11 next)
+Stopped at: Completed 14-11-PLAN.md (Phase 14 closed; D3D-08 not-switched:keep)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

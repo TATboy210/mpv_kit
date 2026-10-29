@@ -28,9 +28,9 @@
 - [x] **D3D-03**: 上游 D3D11 render API（PR #17764 的 4 个提交）以 `0010-upstream-d3d11-render-api.patch` 引入，ABI 与上游逐字节一致（params 21/22、client API 2.6），与 0001/0004 的 `done_frame` bool 签名兼容，PATCH-DRIFT 门禁绿
 - [x] **D3D-04**: patch 0004 增加 gpu-next D3D11 分支（`ra_d3d11` + `pl_d3d11` 同一设备、`pl_d3d11_wrap` 宿主纹理），0003 持久化 shader cache 覆盖 DXBC
 - [x] **D3D-05**: 新的 `render_d3d11_smoke` 原生测试在 windows runner（WARP）上渲染出非黑像素，gpu 与 gpu-next 两种变体
-- [ ] **D3D-06**: `D3D11Backend`：每控制器独立 `ID3D11Device`（Flutter 适配器 LUID、`BGRA_SUPPORT|VIDEO_SUPPORT`、多线程保护、非 SINGLETHREADED），KMT `MISC_SHARED` 共享纹理环交给 `GpuSurfaceTexture`，渲染后 `ID3D11Fence`（回落 `D3D11_QUERY_EVENT`）完成后才发布，隔离期保持 4
+- [x] **D3D-06**: `D3D11Backend`：每控制器独立 `ID3D11Device`（Flutter 适配器 LUID、`BGRA_SUPPORT|VIDEO_SUPPORT`、多线程保护、非 SINGLETHREADED），KMT `MISC_SHARED` 共享纹理环交给 `GpuSurfaceTexture`，渲染后 `ID3D11Fence`（回落 `D3D11_QUERY_EVENT`）完成后才发布，隔离期保持 4
 - [x] **D3D-07**: D3D11 设备移除映射为 `device_lost` 事件；创建失败按 auto 链回退到 Vulkan 并在 `reason` 中说明
-- [ ] **D3D-08**: Windows auto 链改为 d3d11/gpu-next → vulkan/gpu-next → d3d11/gpu → vulkan/gpu → software，作为独立提交，在 CI 与 RTX 4060 验证通过后落地
+- [ ] **D3D-08**: Windows auto 链改为 d3d11/gpu-next → vulkan/gpu-next → d3d11/gpu → vulkan/gpu → software，作为独立提交，在 CI 与 RTX 4060 验证通过后落地 —— **未切换（用户 2026-10-29 选 keep：保持 Vulkan 优先，GTX 960M 上 Vulkan 有效丢帧约 0.5%、d3d11 约 3.5%，且省电状态是另一因素）**；d3d11 作为第二选择与强制项保留
 
 ### Linux OpenGL（GLX）
 
@@ -98,9 +98,9 @@
 | D3D-03 | Phase 14 | Complete |
 | D3D-04 | Phase 14 | Complete |
 | D3D-05 | Phase 14 | Complete |
-| D3D-06 | Phase 14 | Pending |
+| D3D-06 | Phase 14 | Complete |
 | D3D-07 | Phase 14 | Complete |
-| D3D-08 | Phase 14 | Pending |
+| D3D-08 | Phase 14 | Not switched (user decision: keep) |
 | GLX-01 | Phase 15 | Complete |
 | GLX-02 | Phase 15 | Complete |
 | GLX-03 | Phase 15 | Complete |

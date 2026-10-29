@@ -53,7 +53,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 
 - [x] **Phase 12: RenderBackend Seam** - 基线先行的纯重构：Vulkan/软件后端迁到统一生命周期接口，行为逐项不变 (completed 2026-10-27)
 - [x] **Phase 13: macOS Metal Route Decision** - ADR 定案 MoltenVK→IOSurface 路线，如实上报 Metal 承载，验证 VideoToolbox 零拷贝 (completed 2026-10-28)
-- [ ] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
+- [x] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
 - [x] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位 (completed 2026-10-28)
 - [x] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝 (completed 2026-10-29)
 - [ ] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak
@@ -153,7 +153,7 @@ Plans:
 **阶段内顺序**: 构建与 ANGLE 禁令门禁（D3D-01/02）→ 0010 backport + 0004 gpu-next D3D11 分支 + smoke（D3D-03/04/05）→ `D3D11Backend` 与设备丢失/回退（D3D-06/07）→ auto 链切换提交（D3D-08）。构建计划必须先于渲染计划。
 **验证分层**: hosted windows runner（无 GPU，Flutter 适配器为 WARP）证明构建、PE 审计、PATCH-DRIFT、两种 smoke 变体与强制 d3d11 的真实插件测试；RTX 4060 证明真实适配器上的渲染与性能，并作为 auto 链切换的前提。
 **Research**: 需要阶段研究（`/gsd-plan-phase 14 --research-phase`）：shaderc 能否基于固定的 glslang 16.6.0 构建、MSYS2 CLANGARM64 上的 shaderc/SPIRV-Cross、WARP 上的 `ID3D11Device5` fence 与 `VIDEO_SUPPORT`、BGRA8 typed UAV、0004 与 0010 的 hunk 冲突、D3D11 最大 2D 纹理尺寸（查微软资源限制，不凭记忆）。（用户选择跳过阶段研究直接规划：这些未知项已写成 14-01 / 14-04 / 14-05 的实测 spike 任务，结论门控后续任务。）
-**Plans:** 8/11 plans executed（10 waves）
+**Plans:** 11/11 plans executed（10 waves；D3D-08 经用户裁决为 not-switched:keep，成功标准 5 未落地）
 
 Plans:
 **Wave 1**
@@ -179,13 +179,13 @@ Plans:
 - [x] 14-08-PLAN.md — 设备移除 → `device_lost`、创建失败 → 带原因回退：调试注入 + 真实插件测试 + chain golden（D3D-07）
 
 **Wave 8** *(blocked on Wave 7 completion)*
-- [ ] 14-09-PLAN.md — RTX 4060：强制 d3d11 功能、4K 600 s 对照 Phase 12、Impeller 开/关 D-05 与取帧延迟 + `docs/perf/d3d11-backend.md`
+- [x] 14-09-PLAN.md — RTX 4060：强制 d3d11 功能、4K 600 s 对照 Phase 12、Impeller 开/关 D-05 与取帧延迟 + `docs/perf/d3d11-backend.md`
 
 **Wave 9** *(blocked on Wave 8 completion)*
-- [ ] 14-10-PLAN.md — GTX 960 + 核显笔记本验收：桌面 Release 演示包 + 用户人工验证（4K60 经 d3d11，绝不 software）
+- [x] 14-10-PLAN.md — GTX 960 + 核显笔记本验收：桌面 Release 演示包 + 用户人工验证（4K60 经 d3d11，绝不 software）
 
 **Wave 10** *(blocked on Wave 9 completion)*
-- [ ] 14-11-PLAN.md — auto 链切换决策检查点 + 独立切换提交（scratch CI 与 RTX 4060 先绿）+ 收口审计 + scratch 清理（D3D-08）
+- [x] 14-11-PLAN.md — auto 链切换决策检查点 + 独立切换提交（scratch CI 与 RTX 4060 先绿）+ 收口审计 + scratch 清理（D3D-08）；用户选 keep，未切换，仅修 HUD/启动日志后端标签并收口
 
 ### Phase 15: Linux OpenGL Backend
 
@@ -290,7 +290,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 12. RenderBackend Seam | v3.0 | 12/12 | Complete    | 2026-10-27 |
 | 13. macOS Metal Route Decision | v3.0 | 6/6 | Complete    | 2026-10-28 |
-| 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
+| 14. Windows Native D3D11 Backend | v3.0 | 11/11 | Complete (D3D-08 not switched) | 2026-10-29 |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
