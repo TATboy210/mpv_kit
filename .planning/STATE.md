@@ -5,17 +5,17 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Phase 14 verified (passed, SC5 user override); Phase 17 17-01 checkpoint answered
-last_updated: "2026-10-30T00:00:00.000Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-10-29T18:37:48.137Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 14 verified; Phase 17 started
-state_head: ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72
+state_head: 1cc71f3e64eb31d43415cceeb447db0f71d59fad
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 47
-  completed_plans: 42
-  percent: 89
+  completed_plans: 43
+  percent: 91
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 17 (Fallback Hardening & UHD Regression) — executing
-Plan: 1 of 5 (17-01 checkpoint answered: push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11)
-Status: Ready to execute 17-01
-Last activity: 2026-10-30 — Phase 14 verification passed (5/5, SC5 override); Phase 17 started
+Plan: 2 of 5 (17-01 complete: fault-injection golden, 7 scenarios green on 6 CI jobs; golden_vk re-frozen as golden-freeze-17.sha256)
+Status: Ready to execute 17-02
+Last activity: 2026-10-30 — 17-01 complete (VER-01 partial: SC1 wording pending user approval in 17-05)
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -130,6 +130,7 @@ Progress: [█████████░] 89%
 | Phase 16 P03 | ~2h (CI waits) | 2 tasks | 9 files |
 | Phase 16 P04 | n/a | 2 tasks | 10 files |
 | Phase 16 P05 | ~100min | 3 tasks | 11 files |
+| Phase 17 P01 | ~1h10m | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -254,6 +255,8 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-02: per-platform default hwdec lists adopted (windows vulkan,d3d11va,d3d11va-copy,auto-safe; linux vulkan,vaapi,auto-safe; macos videotoolbox,auto-safe); d3d11va-zero-copy stays mpv default (ADR 0006)
 - [Phase 16]: 16-04: render node resolver reasons are not logged; GL/Vulkan cross-check and GL UUID fallback not implemented (unverified.txt)
 - [Phase 16]: [16-05] HWD-05 scope on lavfi soak tests: option A (print and assert software; hardware proven by hwdec_zero_copy_test; long hwdec soak goes to Phase 17)
+- [Phase 17]: 17-01: ver01=create-chain; auto chain advances only on creation failure, runtime faults give determinate events, running controllers never switch backend (RBE-F1)
+- [Phase 17]: 17-01: vk-gpu-timeout judged as 1 s device wait + 100 ms backoff; golden_vk.cc re-frozen (golden-freeze-17.sha256) with user consent
 
 ### CI Deferral
 
@@ -321,8 +324,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29
-Stopped at: Completed 14-11-PLAN.md (Phase 14 closed; D3D-08 not-switched:keep)
+Last session: 2026-10-29T18:37:46.719Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

@@ -263,11 +263,11 @@ Plans:
 
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。
-**Plans:** 5 plans（5 waves）
+**Plans:** 1/5 plans executed（5 waves）
 
 Plans:
 **Wave 1**
-- [ ] 17-01-PLAN.md — 推送授权与三项口径检查点（ver01 / vk-flake / uhd-source）+ fake 后端故障注入 golden（7 个场景：创建期走链、完整回退链、device lost 与重建走链、超时风暴、分配失败三种）+ vk-gpu-timeout flake 处理
+- [x] 17-01-PLAN.md — 推送授权与三项口径检查点（ver01 / vk-flake / uhd-source）+ fake 后端故障注入 golden（7 个场景：创建期走链、完整回退链、device lost 与重建走链、超时风暴、分配失败三种）+ vk-gpu-timeout flake 处理
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 17-02-PLAN.md — 三平台强制后端矩阵（texture_probe_test + tools/backend_matrix.sh，hosted windows 的 vulkan 断言为不可用）+ softwareFallback 送达修复 + MPV_KIT_REQUIRE_HWDEC 守卫与 hosted 负向腿
@@ -293,4 +293,4 @@ Plans:
 | 14. Windows Native D3D11 Backend | v3.0 | 11/11 | Complete (D3D-08 not switched) | 2026-10-29 |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
-| 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |
+| 17. Fallback Hardening & UHD Regression | v3.0 | 1/5 | In Progress | - |
