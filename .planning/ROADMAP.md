@@ -55,7 +55,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 - [x] **Phase 13: macOS Metal Route Decision** - ADR 定案 MoltenVK→IOSurface 路线，如实上报 Metal 承载，验证 VideoToolbox 零拷贝 (completed 2026-10-28)
 - [ ] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
 - [x] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位 (completed 2026-10-28)
-- [ ] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝
+- [x] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝 (completed 2026-10-29)
 - [ ] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak
 
 **执行顺序：** 12 → {13, 14, 15} → 16 → 17。13 体量小，可以先做；14 与 15 没有文件重叠，可以并行（串行时 14 在前：未知最多，也是唯一有真机验证的平台）；16 需要 13/14/15 的后端就绪；17 收口。
@@ -228,7 +228,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `Player` 默认 hwdec 改为按平台扩展的跨后端有序列表，零拷贝候选在前（如 `vulkan,d3d11va,d3d11va-copy,auto-safe`），作为行为变更写入文档；测试证明用户显式设置的 `hwdec` 选项仍然优先。
   2. RTX 4060 + D3D11 后端：`hwdec-current=d3d11va`（不是 `d3d11va-copy`），4K HEVC 10-bit 样本播放画面正确，没有绿帧或黑帧。
-  3. Linux 宿主向 mpv 传入 `MPV_RENDER_PARAM_DRM_DISPLAY_V2`（render node 与 EGL 设备匹配），GL 与 Vulkan gpu-next 后端都能加载 vaapi interop（日志可见）；没有 `/dev/dri` 的 runner 上安全回落到软件解码且不崩溃；真实 vaapi 零拷贝因无硬件标为未验证。
+  3. Linux 宿主向 mpv 传入 `MPV_RENDER_PARAM_DRM_DISPLAY_V2`（render node 由 EGL 设备或所选 Vulkan 物理设备反查）；GL（vo_gpu）与 Vulkan gpu-next 都把它注册为 native resource（hosted 以 fake libmpv 测试与 drm 冒烟证明）；没有 `/dev/dri` 的 runner 上安全回落到软件解码且不崩溃；vaapi interop 的实际加载与零拷贝因无硬件标为未验证。（措辞经用户 2026-10-29 批准更新）
   4. 每个 soak/集成测试都输出并断言 `hwdec-current` 与零拷贝是/否；`hwdec=no` 的软件解码路径在 d3d11、opengl、vulkan、software 每个后端上都通过。
 
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
@@ -248,7 +248,7 @@ Plans:
 - [x] 16-05-PLAN.md — HWD-05 口径检查点 + 所有 soak/集成测试的 HWDEC 断言 + hwdec=no 每后端（d3d11/opengl/vulkan/software）腿
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 16-06-PLAN.md — HWD-02 口径检查点 + 最终全量门与 release dispatch + RTX 4060 强制 d3d11 的 4K HEVC 10-bit 零拷贝验收（可与 14-09 同一会话）+ 文档与审计
+- [x] 16-06-PLAN.md — HWD-02 口径检查点 + 最终全量门与 release dispatch + RTX 4060 强制 d3d11 的 4K HEVC 10-bit 零拷贝验收（可与 14-09 同一会话）+ 文档与审计
 
 ### Phase 17: Fallback Hardening & UHD Regression
 
@@ -292,5 +292,5 @@ Plans:
 | 13. macOS Metal Route Decision | v3.0 | 6/6 | Complete    | 2026-10-28 |
 | 14. Windows Native D3D11 Backend | v3.0 | 8/11 | In Progress | - |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
-| 16. Hardware-Decode Zero-Copy | v3.0 | 5/6 | In Progress | - |
+| 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 0/TBD | Not started | - |

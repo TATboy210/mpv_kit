@@ -46,11 +46,11 @@
 
 ### 硬件解码零拷贝（HWD）
 
-- [ ] **HWD-01**: `Player` 默认 hwdec 改为跨后端有序列表（零拷贝候选在前，如 `vulkan,d3d11va,d3d11va-copy,auto-safe` 按平台扩展），记为行为变更并文档化，用户 `hwdec` 选项仍优先
-- [ ] **HWD-02**: Windows D3D11 后端下 d3d11va 真零拷贝：RTX 4060 上 `hwdec-current=d3d11va`（非 `-copy`），4K HEVC 10-bit 播放正确
+- [x] **HWD-01**: `Player` 默认 hwdec 改为跨后端有序列表（零拷贝候选在前，如 `vulkan,d3d11va,d3d11va-copy,auto-safe` 按平台扩展），记为行为变更并文档化，用户 `hwdec` 选项仍优先
+- [x] **HWD-02**: Windows D3D11 后端下 d3d11va 真零拷贝：RTX 4060 上 `hwdec-current=d3d11va`（非 `-copy`），4K HEVC 10-bit 播放正确
 - [ ] **HWD-03**: Linux 宿主向 mpv 传 `MPV_RENDER_PARAM_DRM_DISPLAY_V2`（与 EGL 设备匹配的 render node），GL 与 Vulkan gpu-next 后端均可加载 vaapi interop；无硬件处如实标为未验证
 - [x] **HWD-04**: macOS VideoToolbox 在 MoltenVK 路径上零拷贝（含 P010/10-bit），或给出不可达的证据
-- [ ] **HWD-05**: 每个 soak/集成测试记录并断言 `hwdec-current` 与零拷贝是/否，软件解码路径在每个后端上同样通过
+- [x] **HWD-05**: 每个 soak/集成测试记录并断言 `hwdec-current` 与零拷贝是/否，软件解码路径在每个后端上同样通过
 
 ### 回退与验证（VER）
 
@@ -107,11 +107,11 @@
 | GLX-04 | Phase 15 | Complete |
 | MAC-01 | Phase 13 | Complete |
 | MAC-02 | Phase 13 | Complete |
-| HWD-01 | Phase 16 | Pending |
-| HWD-02 | Phase 16 | Pending |
+| HWD-01 | Phase 16 | Complete |
+| HWD-02 | Phase 16 | Complete |
 | HWD-03 | Phase 16 | Pending |
 | HWD-04 | Phase 13 | Complete |
-| HWD-05 | Phase 16 | Pending |
+| HWD-05 | Phase 16 | Complete |
 | VER-01 | Phase 17 | Pending |
 | VER-02 | Phase 17 | Pending |
 | VER-03 | Phase 17 | Pending |
