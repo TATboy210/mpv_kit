@@ -41,6 +41,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 /// Upper bound for the injected device removal to reach Dart.
 const _lostTimeout = Duration(seconds: 20);
 
@@ -155,6 +157,27 @@ void main() {
   });
 }
 
+/// Prints and asserts the software decode of the lavfi source (HWD-05).
+///
+/// lavfi is raw video and never reaches a decoder, so the asserted outcome is
+/// software (16-05 decision A). Called at the first frame of each mode.
+Future<void> _expectSoftwareDecode(
+  Player player,
+  MpvVideoController controller,
+) async {
+  final hwdec = await awaitHwdecReport(
+    player.mpv.tryGetProperty,
+    test: 'd3d11_device_lost',
+    sample: 'lavfi',
+    at: 'first-frame',
+    reason: controller.reason,
+    requested: 'no',
+  );
+  print(hwdec.line);
+  expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+  expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
+}
+
 /// create-fail: the reason carries the injected trail of both d3d11
 /// candidates; the winner is software (no Vulkan on the runner) or Vulkan.
 Future<void> _createFail(
@@ -186,6 +209,7 @@ Future<void> _createFail(
   await controller.setSize(320, 180);
   await player.open(_source);
   await _waitForFrames(player, 'after the d3d11 create failure ($reason)');
+  await _expectSoftwareDecode(player, controller);
   texture.value = null;
   await _disposeAndWait(controller);
 }
@@ -210,6 +234,9 @@ Future<void> _deviceRemoved(
   texture.value = controller.textureId;
   await controller.setSize(320, 180);
   await player.open(_source);
+  // Decoder state does not depend on the renderer, so this is the first-frame
+  // point before the injected device loss is awaited.
+  await _expectSoftwareDecode(player, controller);
   await lost;
   expect(controller.isBroken, isTrue, reason: 'device_lost breaks it');
   // Rendering stopped for good: no render_error follows.

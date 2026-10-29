@@ -34,6 +34,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 /// Resize rounds of the first controller, and create/dispose cycles after it.
 const _soakRounds = 10;
 const _soakCycles = 10;
@@ -144,6 +146,20 @@ void main() {
           reason: 'the VO must produce frames (estimated-vf-fps stays null '
               'until the render loop presents)');
       expect(fps, isA<num>());
+
+      // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
+      // printed and asserted software outcome (16-05 decision A).
+      final hwdec = await awaitHwdecReport(
+        player.mpv.tryGetProperty,
+        test: 'real_plugin',
+        sample: 'lavfi',
+        at: 'first-frame',
+        reason: controller.reason,
+        requested: 'auto-safe',
+      );
+      print(hwdec.line);
+      expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+      expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
 
       // Which libmpv is this? The branch build reports client API 2.6 (patch
       // 0010); the pinned release bundle reports 2.5. CI sets

@@ -52,6 +52,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+import 'hwdec_probe.dart';
+
 /// Upper bound for the renderer to report a requested size.
 const _resizeTimeout = Duration(seconds: 5);
 
@@ -271,6 +273,19 @@ void main() {
         isTrue,
         reason: 'a frame must be presented within $_presentTimeout',
       );
+      // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
+      // printed and asserted software outcome (16-05 decision A).
+      final hwdec = await awaitHwdecReport(
+        player.mpv.tryGetProperty,
+        test: 'texture_probe',
+        sample: 'lavfi',
+        at: 'first-frame',
+        reason: controller.reason,
+        requested: 'no',
+      );
+      print(hwdec.line);
+      expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+      expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
       final first = await _read(probeKey);
       final textureBeforeResize = controller.textureId;
 
