@@ -1,0 +1,6 @@
+sha=9f2b78f9829c269630b715aba55b50cb2e10b966 workflow=native-verify.yml run=40884999133 conclusion=failure
+sha=9f2b78f9829c269630b715aba55b50cb2e10b966 workflow=flutter-plugin.yml run=40884999334 conclusion=success
+failure sha=9f2b78f9829c269630b715aba55b50cb2e10b966 workflow=native-verify.yml run=40884999133 job="integration-test (macos-15, macos, libmpv-verify-macos-macos-15, libmpv.2.dylib)" step="Real-plugin integration test" test="hwdec zero-copy probe on real samples" assertion="black reference screenshot: Expected: a value greater than or equal to <0.01> Actual: <0.006961805555555555>" site=example/integration_test/hwdec_zero_copy_test.dart:633 sample=h264-8bit api=vulkan requested=no reason="vulkan (gpu-next) on Apple Paravirtual device via MoltenVK" renderErrors=0 deviceLost=0 frameDrops=32
+classification=real test failure (not infrastructure, not the registered GOLDEN mismatch scenario=vk-gpu-timeout flake); NOT rerun (CI_GATE_RERUN_INFRA unset); log=/tmp/gsd-bak/ci/native-verify-40884999133-failed.log
+other_jobs=all 12 other native-verify jobs success (incl. windows x64/arm64, linux x2, macos-15-intel, macos-15 build, sanitizers, integration windows/linux); flutter-plugin run 40884999334 all 3 jobs success; macos-route run 40884999232 success (not gated)
+baseline=previous push 11b728a: native-verify 40828897026 success
