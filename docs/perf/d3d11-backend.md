@@ -96,15 +96,26 @@ The isolation period stays 4 and no parameter was changed. Pickup latency measur
 - **Opt-in:** the app picks its adapter before any plugin registers, so the plugin cannot do it. The app runner calls `project.set_gpu_preference(...)` (Flutter 3.41+, flutter/flutter#177653). The example runner is power-aware (D-04): `GetSystemPowerStatus` with AC online and battery saver off gives `HighPerformancePreference`, anything else (battery, saver, unknown, call failed) gives `NoPreference`, so Windows' per-app graphics setting decides. It decides once at startup and writes `mpv_kit_example: GPU preference high-performance (AC power, battery saver off)` or `mpv_kit_example: GPU preference none (<reason>); Windows graphics settings decide`. The snippet is in the mpv_kit_video README. Every `D3D11Interop` creation writes `mpv_kit: compositor adapter "<name>" luid=<hi>:<lo>` to stderr and DebugView, so a redirected log shows the adapter in use.
 - **Hint (D-03, log-only):** when Flutter's adapter looks integrated (non-Microsoft, under 512 MiB of dedicated video memory; Intel iGPUs report about 128 MiB) while another hardware, non-Microsoft adapter with at least 512 MiB exists (DXGI enumeration, software adapters excluded), the plugin writes one `mpv_kit: hybrid GPU hint: ...` line. It changes no renderer reason; AMD APUs with a 512 MiB or larger carve-out are not detected.
 - **Optional low-cost config (D-02):** for weak or integrated GPUs an app can set `linear-downscaling=no`, `cscale=bilinear` and, with the D3D11 backend and d3d11va decoding, `d3d11va-zero-copy=yes` (caveat: the bottom and right picture edges may be sampled wrongly because of padding; driver bugs are possible). Nothing is applied by default; see the "Weak or integrated GPUs" paragraph of the mpv_kit_video README.
-- **Status:** package2 (824a69e) moved Flutter to the GTX 960M, but drops remained (auto vulkan gpu-next 2.5-6%, forced d3d11 25-34%). The power-aware choice, the hint and the `superseded=` count ship in package3; the laptop result is pending (`.planning/phases/14-windows-native-d3d11-backend/evidence/laptop-package.txt`, sections `## package2` and `## package3`).
+- **Status:** package2 (824a69e) moved Flutter to the GTX 960M, but drops remained (auto vulkan gpu-next 2.5-6%, forced d3d11 25-34%). The power-aware choice, the hint and the `superseded=` count ship in package3; package4 (0e792c8, FIFO ready queue) ended at about 0.5 percent effective drops on auto/Vulkan and about 3.5 percent on forced D3D11 (see "Windows auto chain decision"); the battery-power run was not done (`.planning/phases/14-windows-native-d3d11-backend/evidence/laptop-package.txt`, sections `## package2` and `## package3`).
+
+## Windows auto chain decision (14-11, D3D-08)
+
+**Decision: keep.** Windows `auto` stays `vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, `software/sw`; `kWindowsApiOrder` is unchanged and no switch commit was made. D3D11 remains the fallback when Vulkan is rejected and is forced with `MPV_KIT_VIDEO_API=d3d11`. D3D-08 is recorded as not-switched:keep.
+
+- **Basis, GTX 960M (package4 0e792c8, FIFO ready queue, AC power):** auto (Vulkan) about 0.5 percent effective drops (about 0.25 percent without one 140 ms stall), pickup avg 2.5-14 ms; forced D3D11 about 3.5 percent effective drops, done 3-13 ms (max about 30 ms). Before the FIFO the gap was wider (Vulkan 2.7-6 percent, D3D11 25-34 percent). Numbers are orchestrator-computed estimates from pasted logs (`evidence/gtx960-laptop.txt`).
+- **RTX 4060 Laptop GPU:** both backends are good (4K 600 s, D-05 and pickup tables above), so the machine class that would gain from D3D11-first loses nothing by keeping Vulkan first.
+- **Power state:** the power-aware GPU preference (ade3eea) moves Flutter, and with it the plugin, to the discrete GPU only on AC power with battery saver off. The battery branch of the laptop was never run, so the chain is not retuned for it.
+- **User reply (2026-10-29):** the user also named power-saving state as a factor and chose to keep Vulkan first (verbatim in `evidence/switch.txt`).
+
+Taking D3D11-first later stays a one-line reorder of `kWindowsApiOrder` plus the documentation paragraphs.
 
 ## Follow-ups
 
-- **Backend label (for 14-11):** the `D3D11-BACKEND` line (fence and query runs), the startup line and the D-05 harness all print `"backend":"vulkan"` next to the d3d11 reason. It looks like a Dart-side label bug; nothing was changed here.
+- **Backend label (fixed in 14-11):** the `D3D11-BACKEND` line, the startup line and the D-05 harness printed `"backend":"vulkan"` next to a d3d11 reason because `MpvVideoBackend` is frozen at `{vulkan, software}`. The example HUD and the controller's startup log line now print the first token of `reason`; the enum, the `backend.name` fields in integration-test JSON and the older evidence above are unchanged.
 
 ## Verification tiers
 
 - **Hosted WARP (render path only, `hwdec=no`):** the 14-07/14-08 runs prove the render path, fallback behavior and failure injection; they are not hardware evidence.
 - **RTX 4060 Laptop GPU (this document, real hardware):** functional runs on both sync paths, 4K rendered 600 s, D-05 on/off, pickup and render waits, all with the backend forced to d3d11.
-- **GTX 960 laptop:** see "Hybrid-GPU laptops (14-10)" above; the preference result is pending.
-- **Unverified / not applicable:** hardware decode zero-copy beyond what `docs/perf/hwdec-zero-copy.md` records (Phase 16), 8K (UHD-02), other GPU vendors, the auto chain default after 14-11, real-device creation failure falling back to Vulkan, Linux and macOS.
+- **GTX 960 laptop:** see "Hybrid-GPU laptops (14-10)" and "Windows auto chain decision (14-11)" above; the battery-power run is pending.
+- **Unverified / not applicable:** hardware decode zero-copy beyond what `docs/perf/hwdec-zero-copy.md` records (Phase 16), 8K (UHD-02), other GPU vendors, the battery-power laptop run, real-device creation failure falling back to Vulkan, Linux and macOS.

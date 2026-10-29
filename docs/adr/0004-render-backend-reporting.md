@@ -164,12 +164,14 @@ offers the better renderer. For example, Windows prefers D3D11 over Vulkan
 only once gpu-next runs on D3D11. Until then D3D11 is only a `gpu`-tier
 candidate.
 
-Current Windows chain (an intermediate order, Phase 14): within a tier the
-API preference is unchanged, Vulkan first, so `auto` is `vulkan/gpu-next`,
-`d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, `software/sw`. A machine with a
-usable Vulkan behaves as before; one without it renders on D3D11 instead of
-software. The planned switch to D3D11 first is a separate change that only
-reorders the API list of the Windows interop.
+Current Windows chain (Phase 14): within a tier the API preference is
+unchanged, Vulkan first, so `auto` is `vulkan/gpu-next`, `d3d11/gpu-next`,
+`vulkan/gpu`, `d3d11/gpu`, `software/sw`. A machine with a usable Vulkan
+behaves as before; one without it renders on D3D11 instead of software.
+D3D11 first (D3D-08) was evaluated at the end of Phase 14 and not taken:
+on a GeForce GTX 960M, Vulkan lost about 0.5 percent of frames and D3D11
+about 3.5 percent, and the user chose to keep Vulkan first. Taking it later
+is still a change that only reorders the API list of the Windows interop.
 
 ## Consequences
 

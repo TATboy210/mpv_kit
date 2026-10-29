@@ -169,12 +169,13 @@ problems in a shipped app can be diagnosed without code changes.
 
 On Windows, mpv can also render through its own Direct3D 11 API (native
 `d3d11` backend, own `ID3D11Device` on Flutter's adapter, no Vulkan): set
-`MPV_KIT_VIDEO_API=d3d11` to force it. For now `auto` tries, in order,
+`MPV_KIT_VIDEO_API=d3d11` to force it. `auto` tries, in order,
 `vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, then
 software. A machine with a usable Vulkan 1.3 device behaves as before; a
 machine without one (no driver, an old GPU) renders on `d3d11` instead of
-falling back to software. Making D3D11 the first choice on Windows is a
-separate, later change.
+falling back to software. Phase 14 evaluated making D3D11 the first choice
+(D3D-08) and kept Vulkan first: on a GeForce GTX 960M, Vulkan dropped far
+fewer frames than D3D11 (see `docs/perf/d3d11-backend.md`).
 
 On Linux, mpv can also render through its upstream OpenGL render API (native
 `opengl` backend: a context of its own on Flutter's `EGLDisplay`, frames

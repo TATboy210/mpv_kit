@@ -63,10 +63,11 @@ environment variable `MPV_KIT_VIDEO_RENDERER` (`auto`, `gpu-next`, `gpu`,
 `software`) to override the renderer without code changes.
 
 On Windows the plugin has a native Direct3D 11 backend next to the Vulkan
-one: `MPV_KIT_VIDEO_API=d3d11` forces it. `auto` currently tries
+one: `MPV_KIT_VIDEO_API=d3d11` forces it. `auto` tries
 `vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, then
 software: where Vulkan works nothing changes, and where it does not (no
-driver, older GPUs) D3D11 renders instead of the CPU.
+driver, older GPUs) D3D11 renders instead of the CPU. D3D11-first was
+evaluated in Phase 14 (D3D-08) and not adopted; Vulkan stays first.
 
 Hybrid-GPU laptops: the plugin always renders on the adapter Flutter's
 compositor uses (shared textures cannot cross adapters), so on a laptop where
