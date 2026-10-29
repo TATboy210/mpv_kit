@@ -1,0 +1,12 @@
+2026-10-29T04:43:46.790Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:48.853Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:50.879Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:52.926Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:54.940Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:56.961Z fg=WindowsTerminal example=absent
+2026-10-29T04:43:58.988Z fg=WindowsTerminal example=absent
+2026-10-29T04:44:01.003Z fg=WindowsTerminal example=absent
+2026-10-29T04:44:03.031Z fg=WindowsTerminal example=absent
+2026-10-29T04:44:05.050Z fg=WindowsTerminal example=absent
+2026-10-29T04:44:07.077Z fg=WindowsTerminal example=absent
+2026-10-29T04:44:09.119Z fg=WindowsTerminal example=running nowindow
