@@ -1,0 +1,4 @@
+push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none release_dispatch=yes ci_mode=live granted_at=2026-10-29T17:02:02Z head_at_grant=5c22a6d015d15b83f8a8dee7292803303b9e6a20
+user_reply=push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11
+red_evidence=local-only (deliberately red commits are never pushed)
+note=gates run during execution; answered via AskUserQuestion by the orchestrator on behalf of the user (checkpoint Task 1 of 17-01), precondition checked first

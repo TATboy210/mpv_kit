@@ -1,0 +1,4 @@
+decision=ver01 choice=create-chain at=2026-10-29T17:02:02Z reply=push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11
+decision=vk-flake choice=measure-split at=2026-10-29T17:02:02Z reply=push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11 (includes the user's explicit consent to re-freeze golden_vk.cc, manifest golden-freeze-17.sha256)
+decision=uhd-source choice=lavfi+hevc-d3d11 at=2026-10-29T17:02:02Z reply=push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11
+chain_precondition kWindowsApiOrder=vulkan,d3d11 switch_decision=keep
