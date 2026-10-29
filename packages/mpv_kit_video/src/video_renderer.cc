@@ -492,6 +492,7 @@ Frame VideoRenderer::AcquireFront() {
   }
   if (in_use_ != front_ && retired_countdown_ > 0) retired_countdown_--;
   in_use_ = front_;
+  if (front_ >= 0) front_acquired_ = true;
   Frame f;
   f.index = front_;
   f.width = ring_w_;
@@ -836,11 +837,13 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
            " frames: prev=" +
            std::to_string(probe_wait_prev_ms_ / probe_frames_) + "ms done=" +
            std::to_string(probe_wait_done_ms_ / probe_frames_) + "ms max_done=" +
-           std::to_string(probe_wait_done_max_ms_) + "ms");
+           std::to_string(probe_wait_done_max_ms_) + "ms superseded=" +
+           std::to_string(probe_superseded_));
       probe_frames_ = 0;
       probe_wait_prev_ms_ = 0;
       probe_wait_done_ms_ = 0;
       probe_wait_done_max_ms_ = 0;
+      probe_superseded_ = 0;
     }
     if (done != WaitResult::kOk) {
       // The frame is consumed either way: keep vo_libmpv's counts moving.
@@ -853,7 +856,11 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   int swaps = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
+    // The frame being replaced was never taken by the compositor: it was
+    // rendered for nothing (log-only, see probe_superseded_).
+    if (front_ >= 0 && !front_acquired_) probe_superseded_++;
     front_ = back;
+    front_acquired_ = false;
     // First frame of a new generation: the retired one may go once the
     // compositor has moved past it (same rule as the quarantine).
     if (retired_countdown_ < 0 && (retired_front_.platform || retired_front_.pixels))

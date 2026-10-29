@@ -212,6 +212,10 @@ class VideoRenderer {
   double probe_wait_prev_ms_ = 0;  // wait before writing the ring image
   double probe_wait_done_ms_ = 0;  // wait after mpv finished rendering
   double probe_wait_done_max_ms_ = 0;
+  // Published frames replaced before the compositor took them: rendered but
+  // never shown, and mpv does not count them as drops. Written at publish
+  // under mutex_, read and reset by the render thread only.
+  int probe_superseded_ = 0;
   std::chrono::steady_clock::time_point retry_at_{};
   bool device_lost_ = false;
 
@@ -237,6 +241,7 @@ class VideoRenderer {
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
+  bool front_acquired_ = false;         // the compositor took front_
   int in_use_ = -1;                     // frame the compositor holds
   int quarantine_[kMaxQuarantine] = {-1, -1, -1, -1};  // newest first
   // After a reallocation the previous generation's last frame stays on

@@ -96,6 +96,14 @@ Each `MpvVideoController` owns one native `VideoRenderer`
   the 200 ms that vo_libmpv's `flip_page` waits for a swap. The display
   refresh rate is passed via `display-fps-override`, since the render API
   has no vsync source.
+* **Superseded frames.** The 120-frame probe line
+  (`mpv_kit: render waits avg/over 120 frames: ...`) ends with
+  `superseded=<n>`: published frames that were replaced by a newer one
+  before the compositor took them. They were rendered but never shown, and
+  mpv does not count them as drops, so effective drops are mpv's
+  `frame-drop-count` plus this number. The counter is log-only
+  (`front_acquired_`, set by `AcquireFront()` under the renderer lock and
+  checked at the next publish) and changes no behaviour.
 * **Render context release.** When the renderer is destroyed, the
   platform thread only sets `quit` and joins. The render thread, still
   bound to its backend (`RenderBackend::BindThread`), removes mpv's update
