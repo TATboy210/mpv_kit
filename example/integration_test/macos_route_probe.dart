@@ -265,6 +265,70 @@ double? routeBgr0MeanAbsDiff(RouteBgr0Frame a, RouteBgr0Frame b) {
   return sum / (a.width * a.height * 3);
 }
 
+/// Two captures of the same paused frame agree when their mean absolute
+/// B/G/R difference is at most this. A healthy renderer gives 0.0 (the same
+/// frame through the same pipeline, observed as `screenshotDiff 0.0`
+/// between two software runs); the margin only covers dithering.
+const double routeCaptureMaxMeanAbsDiff = 1.0;
+
+/// Takes a screenshot that can be used as evidence of the picture.
+///
+/// Why a single capture is not evidence: on the hosted macos-15 runners
+/// (Apple Paravirtual device behind MoltenVK) mpv's `screenshot-raw` of a
+/// paused frame intermittently comes back black or only partly drawn
+/// (non-black share 0.0, 0.00003, 0.007; mean difference to the reference
+/// 10, 54, 129) while the Flutter texture still matches the reference. It
+/// hit the software `hwdec=no` reference as well as the videotoolbox run,
+/// with and without the FIFO ready queue (runs 40827789016 on c1cf4a1 and
+/// 40884999133 on 9f2b78f fail identically; f644220 and 11b728a have the
+/// same sources and differ in outcome).
+///
+/// A capture is therefore accepted only when the next capture of the same
+/// frame agrees with it ([routeCaptureMaxMeanAbsDiff]) and is not black.
+/// A truly black or wrong picture is the same on every capture and still
+/// fails the caller's assertions; only a capture that differs from its
+/// successor is discarded. At most [maxCaptures] are taken, [gap] apart;
+/// when none agree the last one is returned so the assertions judge it.
+/// Every discarded capture is reported through [note].
+///
+/// Returns null when the first capture is unavailable (null is data, as in
+/// the caller), and the last usable capture when a later one is unavailable.
+Future<RouteBgr0Frame?> routeStableCapture(
+  Future<RouteBgr0Frame?> Function() capture, {
+  int maxCaptures = 5,
+  Duration gap = const Duration(milliseconds: 300),
+  void Function(String message)? note,
+}) async {
+  assert(maxCaptures >= 1, 'at least one capture');
+  final first = await capture();
+  if (first == null) return null;
+  // Declared non-null: a promoted `var` loses its promotion in the loop.
+  RouteBgr0Frame previous = first;
+  for (var taken = 1; taken < maxCaptures; taken++) {
+    await Future<void>.delayed(gap);
+    final next = await capture();
+    if (next == null) return previous;
+    final diff = routeBgr0MeanAbsDiff(previous, next);
+    final stats = routeBgr0Stats(
+      next.width,
+      next.height,
+      next.stride,
+      next.data,
+    );
+    final black = stats != null && stats.nonBlackRatio < routeMinNonBlackRatio;
+    if (diff != null && diff <= routeCaptureMaxMeanAbsDiff && !black) {
+      return next;
+    }
+    note?.call(
+      'capture ${taken + 1}/$maxCaptures '
+      '${black ? 'is black' : 'differs from the previous capture'} '
+      '(mean abs diff ${diff?.toStringAsFixed(4)}); taking another',
+    );
+    previous = next;
+  }
+  return previous;
+}
+
 /// What the screenshot comparison says about the frame under test.
 enum RouteFrameCheck {
   /// Not black and within [routeFrameMaxMeanAbsDiff] of the reference.

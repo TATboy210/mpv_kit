@@ -25,7 +25,10 @@
 //     screenshot at each (`frameChecks`; the screenshot goes through the
 //     renderer and the hwdec mapping, so it is the main "the picture is
 //     right" channel; a software screenshot fallback is reported as
-//     `software-fallback`, never as proof),
+//     `software-fallback`, never as proof). A screenshot counts once the
+//     next capture of the same paused frame agrees with it and is not
+//     black (routeStableCapture; discarded captures print `HWDEC-NOTE`),
+//     because one capture is not reliable on the hosted macOS GPU,
 //  4. plays to the end, sampling `hwdec-current` once a second.
 //
 // Assertions: `hwdec=no` classifies as software (first frame and end), plays
@@ -541,7 +544,12 @@ Future<_RunResult> _runOne({
     final at = seconds * _seekFractions[i];
     if (i > 0) await _seekExact(player, at);
     watch.seen = false;
-    final frame = await _screenshot(player);
+    // One capture is not evidence on the macos-15 paravirtual GPU (see
+    // routeStableCapture): the frame counts once a second capture agrees.
+    final frame = await routeStableCapture(
+      () => _screenshot(player),
+      note: (message) => print('HWDEC-NOTE screenshot at ${at}s: $message'),
+    );
     await Future<void>.delayed(_logSettle);
     frames.add(frame);
     final refFrame = reference?.frames[i];

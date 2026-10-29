@@ -79,6 +79,21 @@ RouteBgr0Frame _bgr0({
   );
 }
 
+/// [frame] with only its first [drawnRows] rows kept, the rest black: a
+/// readback that returned before the GPU finished drawing.
+RouteBgr0Frame _partial(RouteBgr0Frame frame, {required int drawnRows}) {
+  final data = List<int>.of(frame.data);
+  for (var i = drawnRows * frame.stride; i < data.length; i++) {
+    data[i] = 0;
+  }
+  return RouteBgr0Frame(
+    width: frame.width,
+    height: frame.height,
+    stride: frame.stride,
+    data: data,
+  );
+}
+
 void main() {
   group('route probe visibility', () {
     test('black texture region with visible control is composited-black', () {
@@ -228,6 +243,118 @@ void main() {
 
     test('truncated data has no statistics, it is not a black frame', () {
       expect(routeBgr0Stats(4, 4, 16, List<int>.filled(10, 0)), isNull);
+    });
+  });
+
+  group('route stable capture', () {
+    final good = _bgr0();
+    final black = _bgr0(color: (0, 0, 0));
+    // A half-drawn readback: the first rows carry the picture, the rest is
+    // still black (the 10 / 54 / 129 mean differences seen on macos-15).
+    final partial = _partial(good, drawnRows: 2);
+
+    /// Runs [routeStableCapture] over a scripted list of captures and
+    /// returns (frame, number of captures taken, discard notes).
+    Future<(RouteBgr0Frame?, int, List<String>)> run(
+      List<RouteBgr0Frame?> script, {
+      int maxCaptures = 5,
+    }) async {
+      var taken = 0;
+      final notes = <String>[];
+      final frame = await routeStableCapture(
+        () async => script[taken++],
+        maxCaptures: maxCaptures,
+        gap: Duration.zero,
+        note: notes.add,
+      );
+      return (frame, taken, notes);
+    }
+
+    test('two agreeing captures are accepted without a note', () async {
+      final (frame, taken, notes) = await run([good, good]);
+      expect(frame, same(good));
+      expect(taken, 2);
+      expect(notes, isEmpty);
+    });
+
+    test('an unavailable first capture stays unavailable', () async {
+      final (frame, taken, _) = await run([null]);
+      expect(frame, isNull);
+      expect(taken, 1);
+    });
+
+    test('an unavailable second capture keeps the first', () async {
+      final (frame, taken, notes) = await run([good, null]);
+      expect(frame, same(good));
+      expect(taken, 2);
+      expect(notes, isEmpty);
+    });
+
+    test('a black first capture is discarded for the agreeing pair', () async {
+      final (frame, taken, notes) = await run([black, good, good]);
+      expect(frame, same(good));
+      expect(taken, 3);
+      expect(notes, hasLength(1));
+    });
+
+    test('a partly drawn capture is discarded for the agreeing pair', () async {
+      final (frame, taken, notes) = await run([partial, good, good]);
+      expect(frame, same(good));
+      expect(taken, 3);
+      expect(notes, hasLength(1));
+    });
+
+    test('a partly drawn second capture does not confirm the first', () async {
+      final (frame, taken, _) = await run([good, partial, good, good]);
+      expect(frame, same(good));
+      expect(taken, 4);
+    });
+
+    test(
+      'an agreeing black pair is not accepted while captures remain',
+      () async {
+        final (frame, taken, notes) = await run([black, black, good, good]);
+        expect(frame, same(good));
+        expect(taken, 4);
+        expect(notes, hasLength(2));
+      },
+    );
+
+    test('a picture that is black on every capture is still black', () async {
+      // The assertions of the caller must still see a persistent failure.
+      final (frame, taken, notes) = await run(List.filled(5, black));
+      expect(frame, same(black));
+      expect(taken, 5, reason: 'bounded by maxCaptures');
+      expect(notes, hasLength(4));
+    });
+
+    test('captures that never agree return the last one', () async {
+      final (frame, taken, notes) = await run([
+        good,
+        partial,
+        black,
+        partial,
+        good,
+      ]);
+      expect(frame, same(good));
+      expect(taken, 5);
+      expect(notes, hasLength(4));
+    });
+
+    test('a persistently wrong but stable picture is returned as is', () async {
+      // Green against a coloured reference is the zero-copy defect the
+      // screenshot check exists for: every capture agrees, none is dropped.
+      final green = _bgr0(color: (0, 135, 0));
+      final (frame, taken, notes) = await run([green, green]);
+      expect(frame, same(green));
+      expect(taken, 2);
+      expect(notes, isEmpty);
+    });
+
+    test('a single capture is taken as is when maxCaptures is 1', () async {
+      final (frame, taken, _) = await run([black], maxCaptures: 1);
+      expect(frame, same(black));
+      expect(taken, 1);
     });
   });
 
