@@ -321,6 +321,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 | 261029-ljp | example runner prefers the high-performance GPU (HighPerformancePreference); plugin logs the compositor adapter; laptop package2 | 2026-10-29 | 824a69e | [261029-ljp-hybrid-gpu-high-performance-adapter-for-](./quick/261029-ljp-hybrid-gpu-high-performance-adapter-for-/) |
 | 261029-nwm | log-only `superseded=` probe count, power-aware GPU preference, hybrid-GPU hint; swap-at-publish A/B FAILED on the RTX 4060 and was not shipped (control package only) | 2026-10-29 | ade3eea | [261029-nwm-report-swap-at-publish-power-aware-gpu-p](./quick/261029-nwm-report-swap-at-publish-power-aware-gpu-p/) |
 | 261029-rcc | FIFO ready queue of two frames, mpv swap reported at publish; RTX 4060 A/B PASS; laptop auto vulkan about 0.5 percent effective drops (estimate); CI pending | 2026-10-29 | 0e792c8 | [261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu](./quick/261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu/) |
+| 261030-3pc | macOS verify stages libmpv's Homebrew closure (@loader_path, ad hoc re-sign; integration job installs no formula, MACOS-DYLD homebrew=0 on runs 40939860843, 40943562883); Phase 12 constants audit re-pinned to CONSTANTS ok; CI green on 127a348 + c00e843 | 2026-10-30 | 6f6631c, 127a348 | [261030-3pc-ci-hygiene-macos-libplacebo-skew-and-con](./quick/261030-3pc-ci-hygiene-macos-libplacebo-skew-and-con/) |
 
 ## Session Continuity
 
