@@ -8,3 +8,6 @@ shared_with=16-06 (same release run, same bundle, same session)
 gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
 flutter=Flutter 3.47.8, framework 737ba8f885, engine dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2, Dart 3.13.7
 df_h_at_prep=D: size=305G used=298G avail=7.1G use=98%
+user_go=start at_reply=2026-10-29 session_start_utc=2026-10-29T04:09:12Z (shared session with 16-06; same user reply `start` after the run list and session conditions)
+note=hooks user_defines used (shared session): the temporary root pubspec.yaml hooks user_defines (mpv_kit_libs.libmpv_bundle -> build/phase16/libmpv-rtx) was applied for 14-09 too; deviation from 14-09's PATH-only text (same bundle bytes as build/phase14/libmpv-rtx); reverted with git checkout -- pubspec.yaml at the end
+halt=2026-10-29T04:13:44Z NO 14-09 run executed (D d3d11-fence, E d3d11-query, F..J not started): the shared session stopped after 16-06 run A (d3d11) failed on the 4K sample's hwdec=no reference leg (details in 16 ledger evidence/rtx4060-hwdec-runs.txt, log rtx-hwdec-d3d11.log); serial order puts 16-06 A-C first and the rule is to stop and hand a failed run to the user; no gate line recorded here (no 14-09 run was attempted); awaiting user
