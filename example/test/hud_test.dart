@@ -78,6 +78,23 @@ void main() {
     });
   });
 
+  group('hudBackendLabel', () {
+    test('uses the first token of the reason as the real API', () {
+      const gtx = 'd3d11 (gpu-next) on NVIDIA GeForce GTX 960M';
+      expect(hudBackendLabel(gtx, 'vulkan'), 'd3d11');
+      expect(hudBackendLabel('vulkan (gpu-next) on gpu', 'vulkan'), 'vulkan');
+      expect(hudBackendLabel('opengl (gpu) on gpu', 'vulkan'), 'opengl');
+      const sw = 'software (sw) on cpu; vulkan/gpu-next unavailable: x';
+      expect(hudBackendLabel(sw, 'software'), 'software');
+    });
+
+    test('falls back to the enum name for empty or unparsable reasons', () {
+      expect(hudBackendLabel('', 'vulkan'), 'vulkan');
+      expect(hudBackendLabel('metal (gpu) on gpu', 'vulkan'), 'vulkan');
+      expect(hudBackendLabel('D3D11 (gpu-next)', 'vulkan'), 'vulkan');
+    });
+  });
+
   group('isVideoPlayable', () {
     test('accepts video extensions case-insensitively', () {
       expect(isVideoPlayable('movie.mp4'), isTrue);

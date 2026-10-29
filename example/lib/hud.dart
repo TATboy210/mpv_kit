@@ -13,6 +13,20 @@ library;
 import 'package:flutter/material.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
+/// Graphics APIs ADR 0004 allows at the start of a controller reason.
+const _hudKnownApis = {'d3d11', 'opengl', 'vulkan', 'software'};
+
+/// Real graphics API for the HUD `backend` field.
+///
+/// `MpvVideoBackend` is frozen at `{vulkan, software}`, so D3D11 and OpenGL
+/// both report `vulkan` there; the real API is the first token of the reason
+/// (`d3d11 (gpu-next) on <device>`). An empty or unrecognised reason falls
+/// back to [fallback], the enum name.
+String hudBackendLabel(String reason, String fallback) {
+  final api = reason.split(' ').first;
+  return _hudKnownApis.contains(api) ? api : fallback;
+}
+
 /// One polling snapshot of the debug property set.
 @immutable
 final class HudSnapshot {
@@ -93,7 +107,9 @@ final class HudSnapshot {
         'container-fps': p('container-fps'),
       },
       render: {
-        'backend': controller?.backend.name,
+        'backend': controller == null
+            ? null
+            : hudBackendLabel(controller.reason, controller.backend.name),
         'reason': controller?.reason,
         // Phase 11 replaces this with the live composition path.
         'compositor': 'ANGLE (DxgiSharedHandle)',

@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_kit/mpv_kit.dart';
 
+import 'backend_api.dart';
+
 /// 实际生效的渲染后端。
 ///
 /// [vulkan] 表示 GPU 零拷贝后端：Vulkan，或平台原生图形 API（如 D3D11、
@@ -218,10 +220,9 @@ final class MpvVideoController {
       _live[textureId] = controller;
       player.addDisposeHook(controller.dispose);
       await controller._syncInitialRefreshRate();
-      debugPrint(
-        'mpv_kit_video: ${controller.backend.name} '
-        '(${controller.reason})',
-      );
+      // The enum reports d3d11/opengl as `vulkan`; print the real API.
+      final api = backendApiName(controller.reason, controller.backend.name);
+      debugPrint('mpv_kit_video: $api (${controller.reason})');
       // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
       // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
       // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
