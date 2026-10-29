@@ -5,3 +5,5 @@ sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec workflow=flutter-plugin.yml run=409
 rerun sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec workflow=native-verify.yml run=40922504734 attempt=2 reason=infra (macos-15 integration-test: libmpv.2.dylib built against Homebrew libplacebo 7.387.0 in the build job, the integration job's brew saw 7.360.1; no code path touched, same code passed in 40918922908)
 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec workflow=native-verify.yml run=40922504734 conclusion=failure
 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec workflow=flutter-plugin.yml run=40922505150 conclusion=success
+sha=6500cfbc3a212b4a222da5352e4f4c834a95170f workflow=native-verify.yml run=40928914091 conclusion=success
+sha=6500cfbc3a212b4a222da5352e4f4c834a95170f workflow=flutter-plugin.yml run=40928914235 conclusion=success
