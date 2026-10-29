@@ -1,54 +1,51 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-27T13:00:52Z",
-  "phase": "13+14",
-  "phase_name": "macOS Metal Route Decision + Windows Native D3D11 Backend (interleaved)",
+  "timestamp": "2026-10-29T07:30:00Z",
+  "phase": "14+17",
+  "phase_name": "Windows Native D3D11 Backend (14-10/14-11) then Fallback Hardening & UHD Regression (17)",
   "phase_dir": ".planning/phases/14-windows-native-d3d11-backend",
-  "plan": "13-04 / 14-05",
+  "plan": "14-10",
   "task": 1,
-  "total_tasks": 17,
+  "total_tasks": 8,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "Phase 12 complete (UAT 3/3, verification passed)", "status": "done", "commit": "a8a4ff9"},
-    {"id": 2, "name": "Plans for 13 (6), 14 (11), 15 (7) created, checker passed", "status": "done", "commit": "182a097"},
-    {"id": 3, "name": "14-01 push auth + ci_gate + D3D11 caps probe", "status": "done", "commit": "46aa24d"},
-    {"id": 4, "name": "13-01 via MoltenVK reason (CI green)", "status": "done", "commit": "fc6dec0"},
-    {"id": 5, "name": "13-02 ADR 0005 proposed", "status": "done", "commit": "d8dd0c0"},
-    {"id": 6, "name": "14-02 PickDevice reason split (option A) + golden-freeze-14", "status": "done", "commit": "fe71846"},
-    {"id": 7, "name": "quick 261027-or3 Linux release vs libdrm 2.4.113 (patch 0012)", "status": "done", "commit": "e8050dd"},
-    {"id": 8, "name": "14-03 ANGLE ban gate (feat release run 40498982368 success)", "status": "done", "commit": "8f891c8"},
-    {"id": 9, "name": "13-03 macOS route probe workflow + IOSurface frame probe (CI deferred)", "status": "done", "commit": "4934371"},
-    {"id": 10, "name": "14-04 SPIRV-Cross/shaderc_shared + libplacebo 0015/0016 (CI deferred)", "status": "done", "commit": "39bd127"}
+    {"id": 1, "name": "Phases 12, 13, 15, 16 complete and verified (13/15/16 VERIFICATION passed)", "status": "done", "commit": "c1cf4a1"},
+    {"id": 2, "name": "Phase 14: 14-01..14-09 done (14-09 RTX 4060 session: F attempt 2 0 drops, D-05/pickup on/off)", "status": "done", "commit": "87edbaf"},
+    {"id": 3, "name": "Phase 16: 6/6 (forced-d3d11 4K HEVC Main10 d3d11va zero-copy proven on RTX 4060; HWD-03 partial, no Linux GPU)", "status": "done", "commit": "94ed533"},
+    {"id": 4, "name": "Phase 17 planned (5 plans, checker passed)", "status": "done", "commit": "42996d3"},
+    {"id": 5, "name": "Quick 261028-moj strict MpvLibrary.open; 261028-otr macOS leg loads branch libmpv (software renderer only)", "status": "done", "commit": "890fe74"}
   ],
   "remaining_tasks": [
-    {"id": 11, "name": "13-04 VideoToolbox zero-copy probe", "status": "not_started"},
-    {"id": 12, "name": "14-05 patch 0010 upstream D3D11 render API (patches=10)", "status": "not_started"},
-    {"id": 13, "name": "13-05 verification record + final audit; 13-06 user decision checkpoint (route/HWD-04/SC2)", "status": "not_started"},
-    {"id": 14, "name": "14-06..14-11 (smoke, D3D11Backend, device-lost, RTX 4060 perf, GTX 960 laptop demo, auto-chain switch)", "status": "not_started"},
-    {"id": 15, "name": "Phase 15 (7 plans; 15-01 after 14's build.sh hunks)", "status": "not_started"},
-    {"id": 16, "name": "Plan + execute Phases 16, 17 (lean: no research, 1 checker round)", "status": "not_started"},
-    {"id": 17, "name": "Single milestone-end CI pass for all deferred_ci_gates, then per-phase verification", "status": "not_started"}
+    {"id": 6, "name": "14-10 GTX 960 laptop demo: build demo, copy to Desktop, user tests (checkpoint:human-verify)", "status": "not_started"},
+    {"id": 7, "name": "14-11 auto-chain switch decision (checkpoint:decision) + fix D3D11 backend label printing \"backend\":\"vulkan\" + delete origin/ci/14-* scratch branches", "status": "not_started"},
+    {"id": 8, "name": "gsd-debug: macOS videotoolbox screenshot check in hwdec_zero_copy_test intermittently red (runs 40800969371, 40816828616)", "status": "not_started"},
+    {"id": 9, "name": "Phase 14 verifier + close", "status": "not_started"},
+    {"id": 10, "name": "Phase 17: 17-01 (4-answer checkpoint: push/ver01/vkflake/uhd) .. 17-05; 17-04 is a ~1.5 h RTX session", "status": "not_started"},
+    {"id": 11, "name": "Milestone v3.0 audit/complete", "status": "not_started"}
   ],
   "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    "Future checkpoints: 15-01 push auth + bundle composition, 15-04 chain order + SC3 interpretation, 13-06 route/SC2 decision, 14-10 GTX 960 laptop demo test, 14-11 auto-chain switch"
+    "14-10: user runs demo on GTX 960 laptop and reports",
+    "14-11: user decides whether Windows auto chain switches to d3d11-first (data: RTX 4060 d3d11 4K rendered 600 s 0 drops; 4K HEVC 10-bit d3d11va zero-copy; community mpv#17894/#14934 Vulkan hwdec driver issues)",
+    "17-01: push auth + ver01 (create-chain rec.) + vkflake (measure-split rec.) + uhd (lavfi+hevc-d3d11 rec.)",
+    "17-04: RTX 4060 session ~1.5 h (AC power, sleep/screen-off never, Steam closed, hands off, >=6.5 GB on D:)"
   ],
   "decisions": [
-    {"decision": "Push auth: Phase 14 green-plus-scratch, Phase 13 push-green-only", "rationale": "User 2026-10-27", "phase": "13/14"},
-    {"decision": "14-02 option A (device names in reason), golden-freeze-14.sha256 now the active freeze manifest", "rationale": "User 2026-10-27", "phase": "14"},
-    {"decision": "Fix Linux release build first (patch 0012, libdrm floor 2.4.113)", "rationale": "User 2026-10-27", "phase": "quick"},
-    {"decision": "DEFER ALL hosted CI gating until every phase is done; executors record deferred_ci_gates in SUMMARY frontmatter and use requirements-partial", "rationale": "User 2026-10-27: token budget", "phase": "13-17"},
-    {"decision": "14-04 shaderc packaging = shared (fallback own-glslang if CI shows it cannot build on glslang 16.6.0)", "rationale": "User 2026-10-27", "phase": "14"},
-    {"decision": "Budget: finish 13-17 within ~500 CNY; lean mode (skip optional code/UI/Nyquist reviews, 16/17 without research, 1 checker round, executors stay sonnet)", "rationale": "User 2026-10-27", "phase": "13-17"}
+    {"decision": "CI deferral ended; per-phase push auth push-green-only+dispatch, ci_mode=live", "rationale": "User 2026-10-28", "phase": "15-16"},
+    {"decision": "MpvLibrary.open strict for explicit path/MPV_KIT_LIBMPV_PATH (option C)", "rationale": "User 2026-10-28", "phase": "quick"},
+    {"decision": "hwdec defaults adopt: win vulkan,d3d11va,d3d11va-copy,auto-safe; linux vulkan,vaapi,auto-safe; macos videotoolbox,auto-safe; d3d11va-zero-copy stays no", "rationale": "User 2026-10-28/29 after community review (media-kit#1278/#296)", "phase": "16"},
+    {"decision": "HWD-05 scope A; HWD-02 forced-d3d11 with-14-09; release basis B (ad5c54b); Phase 16 closed with approved SC3 wording", "rationale": "User 2026-10-29", "phase": "16"},
+    {"decision": "Linux chain A, SC3 runbound + reworded SC3 approved; ADR 0005 accepted", "rationale": "User 2026-10-28", "phase": "13/15"}
   ],
   "uncommitted_files": [
     " M .planning/config.json",
     " M .planning/state.json",
+    "?? .planning/debug/",
     "?? .planning/tmp/",
     "?? .planning/ui-reviews/",
     "?? engine_repo_embedder.cc"
   ],
-  "next_action": "Resume interleaved sequential execution: dispatch gsd-executor for 13-04, then 14-05, 13-05, 13-06 (user checkpoint), 14-06.. ; use the dispatch template in .planning/.continue-here.md (CI deferral block, root pin, protected files). Do not run gsd-tools state.begin-phase/advance-plan without restoring state.json.",
-  "context_notes": "All uncommitted_files are pre-existing user changes: never stage/modify. Host is Windows MINGW64 (cwd shown as D:/mpv_kit), RTX 4060, Flutter 3.47.8 at /d/flutter. workflow.use_worktrees=false so executors run one at a time on the main tree. Local feat is 14 commits ahead of origin (unpushed; that is fine under CI deferral). Scratch branches origin/ci/14-{probe,angle,libdrm} to be deleted in 14-11."
+  "next_action": "Start 14-10: read .planning/phases/14-windows-native-d3d11-backend/14-10-PLAN.md and dispatch a gsd-executor (sonnet) for its Task 1 (build demo with the release 40812562348 bundle, copy to Desktop), stopping at the Task 2 human-verify checkpoint.",
+  "context_notes": "Host Windows MINGW64 (cwd shows D:/mpv_kit), RTX 4060, Flutter 3.47.8 /d/flutter, MSVC, gh authed; no meson/ffmpeg. D: has ~7 GB free. Protected user files never staged; back up/restore .planning/state.json with cmp around gsd-tools; root pin /tmp/gsd-bak/root_pin.sh. Origin feat == local c1cf4a1. Release bundle in gitignored build/phase16/libmpv-rtx and build/phase14/libmpv-rtx (run 40812562348)."
 }
