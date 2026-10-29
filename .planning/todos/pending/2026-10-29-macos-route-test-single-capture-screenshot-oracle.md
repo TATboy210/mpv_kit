@@ -71,4 +71,4 @@ tools/check_route_probe.py, the pinned bundle) have an empty `git diff
 
 Evidence: macos-route 40947581802 on 4285f2b is green (all four HWDEC legs
 `zero-copy`). It printed no `ROUTE-NOTE` line, so this sample does not itself
-show an absorbed flake; see the quick SUMMARY for the second sample.
+show an absorbed flake. Second sample 40949963643 on 8f06b0b: green, also no `ROUTE-NOTE`.
