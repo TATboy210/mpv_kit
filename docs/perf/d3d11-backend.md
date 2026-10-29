@@ -43,7 +43,7 @@ Run conditions: unlocked desktop, window visible and untouched, no other GPU loa
 | fence (default) | pass | `d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU` | red top 1.0, blue bottom 1.0, non-black 1.0; resize 640x360 and 320x180 all 1.0 | active, idle, resize |
 | query (`MPV_KIT_D3D11_SYNC=query`) | pass | same; `"syncEnv":"query"` | same | same |
 
-No `device_lost`, `render_error` or `gpu_timeout` events. Device-removal and creation-failure injection stay with hosted CI (14-08); the real-device "creation failure to Vulkan" path is verified after 14-11.
+No `device_lost`, `render_error` or `gpu_timeout` events. Device-removal and creation-failure injection stay with hosted CI (14-08); the real-device "creation failure to Vulkan" path was not run on hardware (14-11 kept Vulkan first, so its post-switch checks were skipped; see the verification tiers below).
 
 ## Rendered 4K, 600 s, compared with Phase 12 Vulkan
 

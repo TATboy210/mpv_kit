@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 14
-current_phase_name: Windows Native D3D11 Backend
+current_phase: 17
+current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Completed 14-11-PLAN.md (Phase 14 closed; D3D-08 not-switched:keep)
-last_updated: "2026-10-29T17:30:00.000Z"
-last_activity: 2026-10-28
-last_activity_desc: Phase 16 execution started
+stopped_at: Phase 14 verified (passed, SC5 user override); Phase 17 17-01 checkpoint answered
+last_updated: "2026-10-30T00:00:00.000Z"
+last_activity: 2026-10-30
+last_activity_desc: Phase 14 verified; Phase 17 started
 state_head: ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 47
-  completed_plans: 39
-  percent: 67
+  completed_plans: 42
+  percent: 89
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 14 — Windows Native D3D11 Backend (all 11 plans executed; D3D-08 decided not-switched:keep; Phase 16 closed, Phase 17 planned)
+**Current focus:** Phase 17 — Fallback Hardening & UHD Regression (Phases 12–16 complete and verified; Phase 14 SC5 not switched by user decision)
 
 ## Current Position
 
-Phase: 14 (Windows Native D3D11 Backend) — plans complete, awaiting phase verification
-Plan: 11 of 11 complete
-Status: Phase 14 executed; D3D-08 not switched (user kept Vulkan first)
-Last activity: 2026-10-29 — 14-11: Windows auto chain kept (Vulkan first), HUD/startup backend label fix, final audit all ok, ci/14-* scratch branches deleted
+Phase: 17 (Fallback Hardening & UHD Regression) — executing
+Plan: 1 of 5 (17-01 checkpoint answered: push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11)
+Status: Ready to execute 17-01
+Last activity: 2026-10-30 — Phase 14 verification passed (5/5, SC5 override); Phase 17 started
 
-Progress: [█████░░░░░] 50%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
