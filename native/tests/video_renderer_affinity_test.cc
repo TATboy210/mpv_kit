@@ -60,9 +60,9 @@ using mpv_kit::VideoRenderer;
 
 // Frames mpv announces per scenario, and the resize after the first half.
 constexpr int kFrames = 12;
-// How often the raster thread takes a frame: well inside kPresentTimeout
-// (50 ms), so the renderer treats it as an active consumer and leaves each
-// frame's swap to the compositor's acquisition.
+// How often the raster thread takes a frame: well inside the renderer's idle
+// timeout (500 ms), so the compositor counts as active and the renderer
+// keeps drawing instead of skipping frames.
 constexpr golden::Ms kRasterPeriod{2};
 
 /// State of one running scenario: its name and its violations, each

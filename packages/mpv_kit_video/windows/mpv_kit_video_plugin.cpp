@@ -303,11 +303,11 @@ class MpvKitVideoPlugin : public flutter::Plugin {
   }
 
   /// Raster thread, [inst]->mutex held: accounts FrameReady -> Describe for
-  /// a frame not yet counted and logs one line per kPickupWindow frames
+  /// a frame not yet counted ([ready] is the FrameReady stamp read before
+  /// AcquireFront) and logs one line per kPickupWindow frames
   /// (count, sum and maximum reset after each line). Measurement only: no
   /// publish, quarantine or delivery decision reads these numbers.
-  static void RecordPickup(Instance* inst) {
-    const int64_t ready = inst->frame_ready_ns.load();
+  static void RecordPickup(Instance* inst, int64_t ready) {
     if (ready == 0 || ready == inst->picked_ready_ns) return;
     inst->picked_ready_ns = ready;
     const double ms = static_cast<double>(SteadyNowNs() - ready) / 1e6;
@@ -330,9 +330,12 @@ class MpvKitVideoPlugin : public flutter::Plugin {
   static const FlutterDesktopGpuSurfaceDescriptor* Describe(Instance* inst) {
     std::lock_guard<std::mutex> lock(inst->mutex);
     if (inst->dead) return nullptr;
+    // Read before AcquireFront: it may mark the texture again (and so
+    // restamp) for a frame that still waits, which must not hide this pickup.
+    const int64_t ready = inst->frame_ready_ns.load();
     const Frame f = inst->renderer->AcquireFront();
     if (!f.platform) return nullptr;
-    RecordPickup(inst);
+    RecordPickup(inst, ready);
     auto* tex = static_cast<D3D11Interop::Texture*>(f.platform);
     auto& d = inst->descriptor;
     d.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);

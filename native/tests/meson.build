@@ -152,17 +152,18 @@ sw_hold_front_test = executable('video_renderer_sw_hold_front_test',
 test('video_renderer_sw_hold_front_test', sw_hold_front_test,
      args: ['--slack-ms=' + slack], timeout: 120)
 
-# The probe line's `superseded=<n>` (frames published and replaced before the
-# compositor took them; quick 261029-nwm): a separate binary because the
-# golden set above is frozen. A fake pipelined backend with the fake libmpv,
+# When the swap is reported and how finished frames reach the compositor
+# (quick 261029-rcc): swap at publish, the FIFO of two with its re-notify,
+# the probe line's superseded=/repeated=/queued= counts. A separate binary
+# because the golden set above is frozen; fake backends with the fake libmpv,
 # so it runs everywhere, sanitizer builds included.
-superseded_test = executable('video_renderer_superseded_test',
-                             'video_renderer_superseded_test.cc',
-                             include_directories: [renderer_inc, vulkan_inc],
-                             cpp_args: renderer_defines,
-                             link_with: renderer,
-                             dependencies: threads)
-test('video_renderer_superseded_test', superseded_test, timeout: 120)
+swap_test = executable('video_renderer_swap_test',
+                       'video_renderer_swap_test.cc',
+                       include_directories: [renderer_inc, vulkan_inc],
+                       cpp_args: renderer_defines,
+                       link_with: renderer,
+                       dependencies: threads)
+test('video_renderer_swap_test', swap_test, timeout: 120)
 
 # MPV_KIT_VIDEO_API (ADR 0004 Decision 4): a separate binary because the
 # golden set above is frozen. Its scenarios run everywhere except

@@ -42,8 +42,8 @@ using golden::SignalMode;
 using mpv_kit::RendererChoice;
 using mpv_kit::VideoRenderer;
 
-// Waits beyond kPresentTimeout (50 ms) so an unpresented frame's swap has
-// been reported by the render thread's own timeout.
+// Settle margin before the quiesce counts: long enough for the render thread
+// to have answered every outstanding render call.
 constexpr golden::Ms kPastPresentTimeout{60};
 // Any mpv error code: the fake returns it from the first new-size render.
 constexpr int kRenderError = MPV_ERROR_GENERIC;
@@ -182,7 +182,7 @@ void Teardown(Run& run, Rig& rig) {
 
 // --- Scenario ----------------------------------------------------------------
 
-// A resize while the previous resize has no frame yet (latency 2, ring 5).
+// A resize while the previous resize has no frame yet (latency 2, ring 6).
 //
 // One 64x36 frame (serial 1) is on screen. The resize to 32x18 retires
 // serial 1, and the first 32x18 render fails, so the 32x18 generation

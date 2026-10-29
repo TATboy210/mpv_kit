@@ -305,7 +305,9 @@ VideoRenderer::~VideoRenderer() {
 bool VideoRenderer::Start(RendererChoice choice) {
   quarantine_count_ =
       std::clamp(interop_->CompositorLatency(), 1, kMaxQuarantine);
-  ring_size_ = quarantine_count_ + 3;
+  // front + waiting frame + in use + quarantine + one free image.
+  ring_size_ = quarantine_count_ + 2 + kReadyDepth;
+  ready_depth_ = kReadyDepth;
   const std::vector<BackendCandidate> candidates =
       interop_->BackendCandidates(choice);
   // Read once per Start: a later change affects only later renderers.
@@ -468,36 +470,49 @@ void VideoRenderer::ApplyIccProfile() {
 
 Frame VideoRenderer::AcquireFront() {
   std::unique_lock<std::mutex> lock(mutex_);
-  // The compositor takes the newest frame for display: that is when mpv's
-  // frame counts as presented (vsync timing / display-resample). The swap
-  // is reported by the render thread (RenderLoop), the only thread that
-  // calls into the render context.
-  const bool presented = swap_pending_ && front_ >= 0;
-  if (presented) {
-    swap_pending_ = false;
-    swaps_to_report_++;
-  }
+  // The compositor takes the oldest finished frame it has not shown yet. No
+  // libmpv call here: the render context is only used on the render thread.
   last_acquire_ = std::chrono::steady_clock::now();
-  // Visible again after skipped frames: the front image is stale.
+  // Visible again after skipped frames: the waiting frames are stale and the
+  // newest picture is shown first.
   const bool resumed = idle_;
   if (resumed) {
     idle_ = false;
     redraw_pending_ = true;
+    if (queued_ >= 0) {
+      probe_superseded_++;
+      queued_ = -1;
+    }
   }
-  if (in_use_ != front_ && in_use_ >= 0) {
+  int next = -1;
+  bool renotify = false;
+  if (queued_ >= 0) {
+    // The older of two waiting frames; front_ still waits for the next call.
+    next = queued_;
+    queued_ = -1;
+    probe_queued_++;
+    renotify = true;
+  } else if (front_ >= 0) {
+    next = front_;
+    if (front_acquired_) {
+      probe_repeated_++;  // nothing new since the last call
+    } else {
+      front_acquired_ = true;
+    }
+  }
+  if (in_use_ != next && in_use_ >= 0) {
     // The compositor moves on from in_use_: quarantine it (see header).
     for (int i = quarantine_count_ - 1; i > 0; i--)
       quarantine_[i] = quarantine_[i - 1];
     quarantine_[0] = in_use_;
   }
-  if (in_use_ != front_ && retired_countdown_ > 0) retired_countdown_--;
-  in_use_ = front_;
-  if (front_ >= 0) front_acquired_ = true;
+  if (in_use_ != next && retired_countdown_ > 0) retired_countdown_--;
+  in_use_ = next;
   Frame f;
-  f.index = front_;
+  f.index = next;
   f.width = ring_w_;
   f.height = ring_h_;
-  if (front_ < 0) {
+  if (next < 0) {
     // Reallocated, nothing rendered at the new size yet: keep showing the
     // previous generation's last frame.
     if (retired_front_.platform) {
@@ -510,24 +525,30 @@ Frame VideoRenderer::AcquireFront() {
     if (resumed) cv_.notify_one();
     return f;
   }
-  const TargetView view = render_backend_->FrameFor(front_);
+  const TargetView view = render_backend_->FrameFor(next);
   f.pixels = view.pixels;
   f.platform = view.platform;
   if (f.platform) interop_->RetainFrame(f.platform);
   lock.unlock();
-  if (presented || resumed) cv_.notify_one();
+  // Flutter calls the texture callback only after the texture was marked
+  // available, once per mark: without this mark the newer waiting frame
+  // would sit until the next publish. The render thread cannot do it, it is
+  // blocked inside mpv's render call until the next frame's target time.
+  if (renotify) interop_->FrameReady();
+  if (resumed) cv_.notify_one();
   return f;
 }
 
 int VideoRenderer::PickBackBuffer() {
-  // Never the frame being displayed, the one the compositor holds, or one
-  // it may still be sampling (quarantined).
+  // Never the frame being displayed, a frame waiting to be taken, the one
+  // the compositor holds, or one it may still be sampling (quarantined).
   for (int i = 0; i < ring_size_; i++) {
-    bool busy = i == front_ || i == in_use_;
+    bool busy = i == front_ || i == queued_ || i == in_use_;
     for (int q = 0; q < quarantine_count_; q++) busy = busy || i == quarantine_[q];
     if (!busy) return i;
   }
-  return 0;  // unreachable: ring_size_ leaves one image free
+  assert(false && "ring_size_ leaves one image free");
+  return 0;
 }
 
 void VideoRenderer::FreeRetiredIfDone() {
@@ -562,55 +583,28 @@ void VideoRenderer::RenderLoop() {
     bool resized = false;
     bool redraw = false;
     bool retry = false;
-    int swaps = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       auto ready = [&] {
-        return quit_ || update_pending_ || resize_pending_ ||
-               redraw_pending_ || swaps_to_report_ > 0;
+        return quit_ || update_pending_ || resize_pending_ || redraw_pending_;
       };
-      // Wake for whichever comes first: a pending swap that nobody
-      // displayed, or the end of a failure backoff.
-      clock::time_point deadline = clock::time_point::max();
-      if (swap_pending_) deadline = clock::now() + kPresentTimeout;
-      if (failures_ > 0 && !device_lost_)
-        deadline = std::min(deadline, retry_at_);
-      if (deadline == clock::time_point::max()) {
-        cv_.wait(lock, ready);
-      } else if (!cv_.wait_until(lock, deadline, ready)) {
-        if (swap_pending_ && clock::now() >= deadline) {
-          // Nobody displayed the last frame in time (hidden window, paused
-          // raster): report it anyway so mpv's flip_page never stalls.
-          swap_pending_ = false;
-          lock.unlock();
-          ReportSwaps(1);
-          continue;
+      // Wake for the end of a failure backoff too.
+      if (failures_ > 0 && !device_lost_) {
+        if (!cv_.wait_until(lock, retry_at_, ready)) {
+          // Backoff over: try again even if mpv has no new frame (paused).
+          retry = clock::now() >= retry_at_;
+          if (!retry) continue;
         }
-        // Backoff over: try again even if mpv has no new frame (paused).
-        retry = failures_ > 0 && clock::now() >= retry_at_;
-        if (!retry) continue;
+      } else {
+        cv_.wait(lock, ready);
       }
       if (quit_) break;
-      // Swaps the compositor made due (AcquireFront) go first: mpv's
-      // flip_page waits for them.
-      swaps = swaps_to_report_;
-      swaps_to_report_ = 0;
-      const bool work =
-          update_pending_ || resize_pending_ || redraw_pending_ || retry;
-      if (!work) {
-        // Woken only to report swaps: no update call, so mpv sees the same
-        // update pattern as when the compositor reported them itself.
-        lock.unlock();
-        ReportSwaps(swaps);
-        continue;
-      }
       update_pending_ = false;
       resized = resize_pending_.exchange(false);
       redraw = redraw_pending_ || retry;
       redraw_pending_ = false;
     }
     // Outside the lock: mpv takes its own lock and may call OnMpvUpdate.
-    ReportSwaps(swaps);
     ApplyIccProfile();
     FreeRetiredIfDone();
     // A new size is the usual cure for allocation failures: retry now.
@@ -659,7 +653,6 @@ void VideoRenderer::RenderLoop() {
   }
   // Still on the render thread, with the backend bound: the render context
   // is freed here, never on the platform thread that destroys the renderer.
-  // Swaps not yet reported are dropped with it.
   AssertRenderThread();
   api_.render_context_set_update_callback(render_ctx_, nullptr, nullptr);
   // Must precede device destruction: mpv owns objects on our VkDevice.
@@ -742,7 +735,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         retired_front_.platform = view.platform;
       }
       retired_countdown_ = -1;
-      front_ = in_use_ = -1;
+      // A waiting frame is older than the retired front and is dropped.
+      if (queued_ >= 0) probe_superseded_++;
+      front_ = in_use_ = queued_ = -1;
       for (int& q : quarantine_) q = -1;
     }
     back = PickBackBuffer();
@@ -759,7 +754,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
                                          error)) {
         // 8K on a small GPU: the full ring may not fit. One retry with
         // the smallest ring whose quarantine (2) still respects the
-        // documented tearing constraint beats dropping to software.
+        // documented tearing constraint beats dropping to software. It keeps
+        // the footprint the ring had before the waiting frame existed, so
+        // on this path a newer frame replaces an untaken one.
         const int fallback_quarantine = 2;
         const int fallback_ring = fallback_quarantine + 3;
         // The failed attempt freed everything, the image it had just
@@ -774,6 +771,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
                std::to_string(fallback_ring));
           ring_size_ = fallback_ring;
           quarantine_count_ = fallback_quarantine;
+          ready_depth_ = 1;
         } else {
           ring_w_ = ring_h_ = 0;
           retired_front_ = Frame{};  // AllocTargets freed everything
@@ -833,17 +831,25 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     // One aggregated line per probe window: avg waits per frame plus the
     // worst single post-render wait, to size the serialisation tax.
     if (++probe_frames_ >= kProbeWindow) {
+      int superseded, repeated, queued;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        superseded = probe_superseded_;
+        repeated = probe_repeated_;
+        queued = probe_queued_;
+        probe_superseded_ = probe_repeated_ = probe_queued_ = 0;
+      }
       log_("mpv_kit: render waits avg/over " + std::to_string(probe_frames_) +
            " frames: prev=" +
            std::to_string(probe_wait_prev_ms_ / probe_frames_) + "ms done=" +
            std::to_string(probe_wait_done_ms_ / probe_frames_) + "ms max_done=" +
            std::to_string(probe_wait_done_max_ms_) + "ms superseded=" +
-           std::to_string(probe_superseded_));
+           std::to_string(superseded) + " repeated=" +
+           std::to_string(repeated) + " queued=" + std::to_string(queued));
       probe_frames_ = 0;
       probe_wait_prev_ms_ = 0;
       probe_wait_done_ms_ = 0;
       probe_wait_done_max_ms_ = 0;
-      probe_superseded_ = 0;
     }
     if (done != WaitResult::kOk) {
       // The frame is consumed either way: keep vo_libmpv's counts moving.
@@ -853,27 +859,34 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
                                              : RenderResult::kFailed;
     }
   }
-  int swaps = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    // The frame being replaced was never taken by the compositor: it was
+    // The previous front was not taken by the compositor yet. It waits in
+    // the queue; when the queue is full (or on the fallback ring, which has
+    // no room for a waiting frame) the oldest frame is dropped: it was
     // rendered for nothing (log-only, see probe_superseded_).
-    if (front_ >= 0 && !front_acquired_) probe_superseded_++;
+    if (front_ >= 0 && !front_acquired_) {
+      if (ready_depth_ > 1) {
+        if (queued_ >= 0) probe_superseded_++;
+        queued_ = front_;
+      } else {
+        probe_superseded_++;
+      }
+    }
     front_ = back;
     front_acquired_ = false;
     // First frame of a new generation: the retired one may go once the
     // compositor has moved past it (same rule as the quarantine).
     if (retired_countdown_ < 0 && (retired_front_.platform || retired_front_.pixels))
       retired_countdown_ = quarantine_count_ + 1;
-    // The previous frame was never displayed: it still counts as swapped.
-    if (swap_pending_) swaps++;
-    const bool consuming = std::chrono::steady_clock::now() - last_acquire_ <
-                           kPresentTimeout;
-    // Without an active consumer, report this frame right away.
-    swap_pending_ = consuming;
-    if (!consuming) swaps++;
   }
-  ReportSwaps(swaps);
+  // The swap is reported when the frame is published, on this thread:
+  // vo_libmpv's flip_page waits for it before mpv queues the next frame, and
+  // the render API gives mpv no presentation timing. Waiting for the
+  // compositor to pick the frame up only shortened mpv's frame budget by the
+  // pickup latency. A frame replaced before it is taken is counted by the
+  // superseded probe instead.
+  ReportSwaps(1);
   interop_->FrameReady();
   return RenderResult::kOk;
 }

@@ -65,7 +65,10 @@ class Interop {
   /// Software backend pixel order: true = BGRA, false = RGBA.
   virtual bool SoftwareIsBgra() const = 0;
   /// A completed frame is ready; the platform marks its texture dirty.
-  /// Called from the render thread.
+  /// Called from the render thread, and from AcquireFront's caller (the
+  /// compositor thread, without the renderer lock) when a further finished
+  /// frame still waits. Implementations only mark the texture and must
+  /// accept either thread.
   virtual void FrameReady() = 0;
   /// Takes a reference on a shared image for the compositor. Called with the
   /// renderer lock held, so the image cannot be freed concurrently.
@@ -116,11 +119,14 @@ class VideoRenderer {
   /// Target output size in pixels; images are reallocated lazily.
   void SetSize(int width, int height);
 
-  /// Most recent completed frame (index into the ring). Thread-safe; the
-  /// returned index stays valid until the next AcquireFront() call, so the
-  /// renderer never writes into the image the compositor is reading.
-  /// Makes no libmpv call: a frame it presents only counts a swap for the
-  /// render thread to report.
+  /// The oldest finished frame the compositor has not taken yet (at most two
+  /// wait), or the frame it took last when nothing new was published (index
+  /// into the ring). Thread-safe; the returned index stays valid until the
+  /// next AcquireFront() call, so the renderer never writes into the image
+  /// the compositor is reading. Makes no libmpv call. When it takes the
+  /// older of two waiting frames it calls Interop::FrameReady() once, after
+  /// releasing its lock, so that the compositor takes the next waiting frame
+  /// at its next frame.
   Frame AcquireFront();
 
   /// What the frames carry; kSoftware when no backend was created.
@@ -172,17 +178,7 @@ class VideoRenderer {
   std::mutex mutex_;
   std::condition_variable cv_;
   bool update_pending_ = false;
-  // A rendered frame awaits mpv_render_context_report_swap(): due when the
-  // compositor first takes it, or after kPresentTimeout without one.
-  bool swap_pending_ = false;
-  // Swaps AcquireFront (raster thread) found due; the render thread reports
-  // them before its next mpv_render_context_update. Dropped at exit, when
-  // the render context is freed anyway.
-  int swaps_to_report_ = 0;
-  static constexpr std::chrono::milliseconds kPresentTimeout{50};
-  // Last time the compositor took a frame. Swaps are only deferred to the
-  // compositor while it is actively consuming (not before the texture is
-  // first shown, not while the window is hidden).
+  // Last time the compositor took a frame (idle detection).
   std::chrono::steady_clock::time_point last_acquire_{};
   // No frame taken for kIdleTimeout (window hidden/minimised, texture off
   // screen): frames are advanced with SKIP_RENDERING instead of drawn.
@@ -212,10 +208,16 @@ class VideoRenderer {
   double probe_wait_prev_ms_ = 0;  // wait before writing the ring image
   double probe_wait_done_ms_ = 0;  // wait after mpv finished rendering
   double probe_wait_done_max_ms_ = 0;
-  // Published frames replaced before the compositor took them: rendered but
-  // never shown, and mpv does not count them as drops. Written at publish
-  // under mutex_, read and reset by the render thread only.
+  // Frames rendered and dropped before the compositor took them (mpv does
+  // not count them as drops): from a full queue, the older waiting frame at
+  // a resize or a return from idle, or a replaced frame on the fallback
+  // ring. probe_repeated_ counts acquisitions that found nothing new,
+  // probe_queued_ those that took the older of two waiting frames (shown one
+  // compositor frame later than a newest-wins queue would have). All three
+  // are written under mutex_, read and reset under it by the render thread.
   int probe_superseded_ = 0;
+  int probe_repeated_ = 0;
+  int probe_queued_ = 0;
   std::chrono::steady_clock::time_point retry_at_{};
   bool device_lost_ = false;
 
@@ -231,17 +233,21 @@ class VideoRenderer {
   // image it gave back is therefore quarantined for quarantine_ further
   // acquisitions (frames) before it is rendered into again — bounded by the
   // compositor's frame latency (Interop::CompositorLatency()).
-  // Ring = front + in use + quarantine + one free image.
+  // Ring = front + one waiting frame + in use + quarantine + one free image.
  public:
   static constexpr int kMaxQuarantine = 4;
 
  private:
+  // Finished frames that may wait for the compositor (front_ and queued_).
+  static constexpr int kReadyDepth = 2;
   int quarantine_count_ = 2;
-  int ring_size_ = 5;
+  int ring_size_ = 6;
+  int ready_depth_ = kReadyDepth;       // 1 after the allocation fallback
   int width_ = 0, height_ = 0;          // requested
   int ring_w_ = 0, ring_h_ = 0;         // allocated
   int front_ = -1;                      // last completed frame
-  bool front_acquired_ = false;         // the compositor took front_
+  int queued_ = -1;                     // older waiting frame, -1 if none
+  bool front_acquired_ = false;         // the compositor took front_ (in_use_)
   int in_use_ = -1;                     // frame the compositor holds
   int quarantine_[kMaxQuarantine] = {-1, -1, -1, -1};  // newest first
   // After a reallocation the previous generation's last frame stays on

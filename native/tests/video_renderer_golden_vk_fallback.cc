@@ -40,14 +40,14 @@ using golden::Images;
 using mpv_kit::RendererChoice;
 using mpv_kit::VideoRenderer;
 
-// Waits beyond kPresentTimeout (50 ms) so an unpresented frame's swap has
-// been reported by the render thread's own timeout.
+// Settle margin before the quiesce counts: long enough for the render thread
+// to have answered every outstanding render call.
 constexpr golden::Ms kPastPresentTimeout{60};
-// Windows' compositor latency: quarantine 4, ring 7 (Interop::
+// Windows' compositor latency: quarantine 4, ring 8 (Interop::
 // CompositorLatency()); the only platform whose ring can fall back to 5.
 constexpr int kWindowsLatency = 4;
 // The full ring at that latency and the fallback ring (quarantine 2).
-constexpr int kFullRing = kWindowsLatency + 3;
+constexpr int kFullRing = kWindowsLatency + 4;
 constexpr int kFallbackRing = 2 + 3;
 // The renderer's log line for a successful fallback names the ring that
 // failed first, then the one that was allocated instead.
@@ -191,7 +191,7 @@ void Teardown(Run& run, Rig& rig) {
 // --- Scenario ----------------------------------------------------------------
 
 // 8K on a small GPU after a resize (Windows, latency 4): four frames at
-// 64x36 on a full ring of 7, then a resize whose full ring does not fit
+// 64x36 on a full ring of 8, then a resize whose full ring does not fit
 // (the 6th CreateImage fails) and whose fallback ring of 5 does.
 //
 // The failed attempt frees everything it holds, including the old

@@ -38,8 +38,8 @@ using golden::FakeInterop;
 using mpv_kit::RendererChoice;
 using mpv_kit::VideoRenderer;
 
-// Waits beyond kPresentTimeout (50 ms) so an unpresented frame's swap has
-// been reported by the render thread's own timeout.
+// Settle margin before the quiesce counts: long enough for the render thread
+// to have answered every outstanding render call.
 constexpr golden::Ms kPastPresentTimeout{60};
 // Failed 32x18 renders before the second resize: the resize itself, then
 // retries after 100 + 200 + 400 + 800 ms. The renderer then backs off
@@ -165,7 +165,7 @@ void Teardown(Run& run, std::unique_ptr<VideoRenderer>& r) {
 
 // --- Scenario ----------------------------------------------------------------
 
-// A resize while the previous resize has no frame yet (latency 2, ring 5).
+// A resize while the previous resize has no frame yet (latency 2, ring 6).
 //
 // One 64x36 frame is on screen. The resize to 32x18 moves the 64x36
 // buffers into retirement and every 32x18 render fails, so the 32x18

@@ -13,7 +13,7 @@
 # A frame becomes the front only once its timeline value was signalled:
 # while frame 1's GPU work is outstanding AcquireFront has nothing to show,
 # after the signal it returns frame 1. Then three frames that complete at
-# once rotate through the ring (latency 2, ring 5), and every image is
+# once rotate through the ring (latency 2, ring 6), and every image is
 # destroyed exactly once at teardown.
 [vk-publish-gate]
 start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
@@ -23,6 +23,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=-1 64x36 serial=none
@@ -39,6 +40,7 @@ destroy serial=2
 destroy serial=3
 destroy serial=4
 destroy serial=5
+destroy serial=6
 teardown frees=1 live-images=0
 
 # ADR 0004 reasons on the Vulkan path: one trail per candidate ranked
@@ -66,7 +68,7 @@ start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavaila
 create-attempts vulkan/gpu-next,sw
 teardown frees=1 live-images=0
 
-# Latency 2 -> ring 5: never render into the front / in-use image or the
+# Latency 2 -> ring 6: never render into the front / in-use image or the
 # two quarantined ones; the lowest free slot wins, so four slots rotate.
 [vk-ring-q2]
 start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
@@ -76,6 +78,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=0 64x36 serial=1
@@ -107,9 +110,10 @@ destroy serial=2
 destroy serial=3
 destroy serial=4
 destroy serial=5
+destroy serial=6
 teardown frees=1 live-images=0
 
-# Latency 4 -> ring 7 (Windows): four quarantined images, six slots rotate.
+# Latency 4 -> ring 8 (Windows): four quarantined images, six slots rotate.
 [vk-ring-q4]
 start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
 create-attempts vulkan/gpu-next
@@ -120,6 +124,7 @@ create serial=4 64x36
 create serial=5 64x36
 create serial=6 64x36
 create serial=7 64x36
+create serial=8 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=0 64x36 serial=1
@@ -153,6 +158,7 @@ destroy serial=4
 destroy serial=5
 destroy serial=6
 destroy serial=7
+destroy serial=8
 teardown frees=1 live-images=0
 
 # The GPU never finishes frame 1: after the 1 s timeout gpu_timeout (frame
@@ -166,6 +172,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 event gpu_timeout gpu timeout
@@ -179,9 +186,10 @@ destroy serial=2
 destroy serial=3
 destroy serial=4
 destroy serial=5
+destroy serial=6
 teardown frees=1 live-images=0
 
-# Ring 7 does not fit (6th image fails): the five created are destroyed,
+# Ring 8 does not fit (6th image fails): the five created are destroyed,
 # ring 5 is allocated instead and rotates under quarantine 2.
 [vk-ring-fallback]
 start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
@@ -247,6 +255,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=0 64x36 serial=1
@@ -260,28 +269,31 @@ destroy serial=1
 destroy serial=2
 destroy serial=3
 destroy serial=5
-create serial=6 32x18
+destroy serial=6
 create serial=7 32x18
 create serial=8 32x18
 create serial=9 32x18
 create serial=10 32x18
+create serial=11 32x18
+create serial=12 32x18
 event resize 32x18
-render serial=6 32x18
-acquire index=-2 64x36 serial=4
-acquire index=0 32x18 serial=6
 render serial=7 32x18
-acquire index=1 32x18 serial=7
+acquire index=-2 64x36 serial=4
+acquire index=0 32x18 serial=7
 render serial=8 32x18
-acquire index=2 32x18 serial=8
-destroy serial=4
+acquire index=1 32x18 serial=8
 render serial=9 32x18
-acquire index=3 32x18 serial=9
+acquire index=2 32x18 serial=9
+destroy serial=4
+render serial=10 32x18
+acquire index=3 32x18 serial=10
 quiesce renders=8 skips=0 swaps=8
-destroy serial=6
 destroy serial=7
 destroy serial=8
 destroy serial=9
 destroy serial=10
+destroy serial=11
+destroy serial=12
 teardown frees=1 live-images=0
 
 # Teardown with a retired generation: the new ring, then the retired old
@@ -294,6 +306,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=0 64x36 serial=1
@@ -307,18 +320,21 @@ destroy serial=1
 destroy serial=2
 destroy serial=3
 destroy serial=5
-create serial=6 32x18
+destroy serial=6
 create serial=7 32x18
 create serial=8 32x18
 create serial=9 32x18
 create serial=10 32x18
+create serial=11 32x18
+create serial=12 32x18
 event resize 32x18
-render serial=6 32x18
+render serial=7 32x18
 quiesce renders=5 skips=0 swaps=5
-destroy serial=6
 destroy serial=7
 destroy serial=8
 destroy serial=9
 destroy serial=10
+destroy serial=11
+destroy serial=12
 destroy serial=4
 teardown frees=1 live-images=0

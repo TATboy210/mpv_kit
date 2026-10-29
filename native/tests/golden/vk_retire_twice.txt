@@ -8,7 +8,7 @@
 # `acquire index=-1 ... serial=none` is an AcquireFront with no front frame;
 # index -2 is the previous generation's retired front.
 
-# Latency 2 (ring 5): one 64x36 frame (serial 1) is taken by the
+# Latency 2 (ring 6): one 64x36 frame (serial 1) is taken by the
 # compositor. The resize to 32x18 retires serial 1 and frees the rest of
 # the old ring; the first 32x18 render fails (held in the fake meanwhile),
 # so serial 1 is still what AcquireFront shows. The second resize, to
@@ -25,6 +25,7 @@ create serial=2 64x36
 create serial=3 64x36
 create serial=4 64x36
 create serial=5 64x36
+create serial=6 64x36
 event resize 64x36
 render serial=1 64x36
 acquire index=0 64x36 serial=1
@@ -32,39 +33,44 @@ destroy serial=2
 destroy serial=3
 destroy serial=4
 destroy serial=5
-create serial=6 32x18
+destroy serial=6
 create serial=7 32x18
 create serial=8 32x18
 create serial=9 32x18
 create serial=10 32x18
+create serial=11 32x18
+create serial=12 32x18
 event resize 32x18
-render serial=6 32x18 err=-20
+render serial=7 32x18 err=-20
 acquire index=-2 64x36 serial=1
 event render_error render: fake error -20
 destroy serial=1
-destroy serial=6
 destroy serial=7
 destroy serial=8
 destroy serial=9
 destroy serial=10
-create serial=11 48x27
-create serial=12 48x27
+destroy serial=11
+destroy serial=12
 create serial=13 48x27
 create serial=14 48x27
 create serial=15 48x27
+create serial=16 48x27
+create serial=17 48x27
+create serial=18 48x27
 event resize 48x27
-render serial=11 48x27
+render serial=13 48x27
 acquire index=-1 48x27 serial=none
 event recovered
-acquire index=0 48x27 serial=11
-render serial=12 48x27
-acquire index=1 48x27 serial=12
-render serial=13 48x27
-acquire index=2 48x27 serial=13
+acquire index=0 48x27 serial=13
+render serial=14 48x27
+acquire index=1 48x27 serial=14
+render serial=15 48x27
+acquire index=2 48x27 serial=15
 quiesce renders=5 skips=0 swaps=5
-destroy serial=11
-destroy serial=12
 destroy serial=13
 destroy serial=14
 destroy serial=15
+destroy serial=16
+destroy serial=17
+destroy serial=18
 teardown frees=1 live-images=0

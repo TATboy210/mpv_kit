@@ -72,8 +72,9 @@ using mpv_kit::VideoRenderer;
 
 // Frames mpv announces, and the resize after the first half.
 constexpr int kFrames = 8;
-// How often the raster thread takes a frame: well inside kPresentTimeout
-// (50 ms), so the renderer treats it as an active consumer.
+// How often the raster thread takes a frame: well inside the renderer's idle
+// timeout (500 ms), so the compositor counts as active and the renderer
+// keeps drawing instead of skipping frames.
 constexpr golden::Ms kRasterPeriod{2};
 
 // --- Thread binding model -----------------------------------------------------

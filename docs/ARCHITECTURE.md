@@ -84,32 +84,47 @@ Each `MpvVideoController` owns one native `VideoRenderer`
   instead of drawn, and one redraw happens on the next acquisition. A
   failed frame is retried with exponential backoff (100 ms → 5 s); device
   loss stops rendering for good.
-* **Swap reporting.** A frame's swap is due when the compositor first
-  takes it (or after 50 ms without one), so mpv's timing follows actual
-  presentation. `AcquireFront()` runs on the raster thread and makes no
-  libmpv call: it only counts the due swap (`swaps_to_report_`, under the
-  renderer lock) and wakes the render thread. The render thread reports
-  every counted swap with `mpv_render_context_report_swap` before its next
-  `mpv_render_context_update`, outside the lock. When it woke only for
-  swaps it does not call update, so mpv sees the same update pattern as
-  before. The extra latency is one condition-variable wake-up, far below
-  the 200 ms that vo_libmpv's `flip_page` waits for a swap. The display
-  refresh rate is passed via `display-fps-override`, since the render API
-  has no vsync source.
-* **Superseded frames.** The 120-frame probe line
+* **Swap reporting.** A frame's swap is reported when it is published: the
+  render thread calls `mpv_render_context_report_swap` right after the
+  publish, before `FrameReady`. Skipped, failed and timed-out frames report
+  theirs on the same thread, so every render call is answered by exactly
+  one swap. vo_libmpv's `flip_page` waits for that swap (up to 200 ms)
+  before mpv queues the next frame, and the render API gives mpv no
+  presentation feedback. Reporting at pickup instead added the compositor's
+  pickup latency to every frame and made mpv's `frame-drop-count` climb on
+  slow GPUs (quick 261029-nwm, GTX 960M laptop). `AcquireFront()` runs on
+  the raster thread and makes no libmpv call. The display refresh rate is
+  passed via `display-fps-override`, since the render API has no vsync
+  source.
+* **Frame queue.** Published frames wait for the compositor in a FIFO of at
+  most two. `AcquireFront()` takes the oldest; when nothing new was
+  published it hands out the frame it took last again (counted as
+  `repeated=`). A publish into a full queue drops its oldest frame (counted
+  as `superseded=`), as do a resize (the older waiting frame; the newest old
+  frame stays on screen as the retired front) and a return from idle (the
+  newest picture is shown first). Flutter's embedder resolves an external
+  texture only after `MarkNewFrameAvailable`, once per mark, so taking the
+  older of two waiting frames must mark the texture again or the newer
+  frame would wait for the next publish. `AcquireFront()` does that itself
+  by calling `Interop::FrameReady()` after it released the renderer lock:
+  the render thread cannot, because it sits inside mpv's render call until
+  the next frame's target time. Each such acquisition is counted as
+  `queued=`. A frame that jitters by up to about one frame period between
+  publish and pickup therefore costs no frame; a longer compositor stall
+  drops the oldest. The 120-frame probe line
   (`mpv_kit: render waits avg/over 120 frames: ...`) ends with
-  `superseded=<n>`: published frames that were replaced by a newer one
-  before the compositor took them. They were rendered but never shown, and
-  mpv does not count them as drops, so effective drops are mpv's
-  `frame-drop-count` plus this number. The counter is log-only
-  (`front_acquired_`, set by `AcquireFront()` under the renderer lock and
-  checked at the next publish) and changes no behaviour.
+  `superseded=<n> repeated=<n> queued=<n>`, all log-only. Effective drops
+  are mpv's `frame-drop-count` plus `superseded=`. On Flutter's mark-driven
+  texture path a compositor frame without a new mark reuses its cached
+  image without calling `AcquireFront()`, so `repeated=` stays near zero
+  (the 59.94 vs 60 Hz display repeat is invisible to the renderer);
+  `queued=` counts frames shown one compositor frame later than a
+  newest-wins queue would have shown them.
 * **Render context release.** When the renderer is destroyed, the
   platform thread only sets `quit` and joins. The render thread, still
   bound to its backend (`RenderBackend::BindThread`), removes mpv's update
   callback, frees the render context through `RenderBackend::Release`,
   unbinds and exits. Only then is the backend destroyed (device last).
-  Swaps not yet reported are dropped with the context.
 
 ## Dispose ordering
 
@@ -133,9 +148,9 @@ unregisters its hook (`Player.removeDisposeHook`).
 
 `VideoRenderer` (`src/video_renderer.cc`) is the engine that is the same for
 every graphics API. It owns the render thread, the ring bookkeeping (front,
-in use, quarantine, retired front), the publish gate, failure backoff, swap
-reporting, idle/active, ICC forwarding and events. Everything that depends
-on the API sits behind `RenderBackend` (`src/render_backend.h`):
+waiting frame, in use, quarantine, retired front), the publish gate,
+failure backoff, swap reporting, idle/active, ICC forwarding and events.
+Everything that depends on the API sits behind `RenderBackend` (`src/render_backend.h`):
 
 | Method | Job | Thread |
 |---|---|---|
@@ -202,17 +217,21 @@ allocation per ring slot, reallocated lazily when `setSize` changes the
 target size). The compositor samples an image on the GPU some time after
 taking it, and no platform reports when it is done. So:
 
-* `front` is the last completed frame, `in_use` the frame the compositor
+* `front` is the last completed frame, `queued` the older frame still
+  waiting for the compositor (if any), `in_use` the frame the compositor
   currently holds;
 * an image the compositor gives back is **quarantined** for
   `Interop::CompositorLatency()` further acquisitions before it may be
   rendered into again — a bound on the compositor's frame latency. Windows
-  uses 4 (ring of 7): decompiling `flutter_windows.dll` showed that
+  uses 4 (ring of 8): decompiling `flutter_windows.dll` showed that
   `ExternalTextureD3d` binds the shared texture through ANGLE and calls the
   release callback immediately, without a fence or keyed mutex, so only the
   DXGI frame queue (3) plus the frame being composed bound ANGLE's reads.
-  Other platforms use 2 (ring of 5);
-* ring size = front + in use + quarantine + one free image;
+  Other platforms use 2 (ring of 6);
+* ring size = front + one waiting frame + in use + quarantine + one free
+  image. If the ring does not fit in memory (8K on a small GPU),
+  allocation is retried once with quarantine 2 and a ring of 5 without a
+  waiting frame, so a newer frame replaces an untaken one on that path;
 * on reallocation (resize) the previous ring is retired, not freed: its last
   frame stays on screen until the first frame at the new size exists, then
   it is released once it has left the quarantine window. Without this the
@@ -371,8 +390,7 @@ loaded lazily.
   GPU.
 * **Release.** Freed slots queue their import in the texture's graveyard,
   drained by the next populate (images of disposed players become orphans
-  any populate frees), as for Vulkan. The ring (5) and the quarantine (2)
-  are unchanged.
+  any populate frees), as for Vulkan. The ring (6) and the quarantine (2).
 Renderer by backend:
 
 | Backend | `gpu-next` | `gpu` | `sw` |
