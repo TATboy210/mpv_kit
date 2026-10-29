@@ -13,7 +13,7 @@ provides:
   - "docs/perf/hwdec-zero-copy.md, README libva requirement, 18-item unverified list, final-audit.txt"
 affects: [14-11, 17]
 
-status: awaiting-human-check
+status: complete
 actuals:
   tokens: 45000
   tasks: 2

@@ -233,7 +233,7 @@ Plans:
 
 **验证分层**: hosted runner 没有硬件解码器（ubuntu 无 `/dev/dri`，WARP 无视频解码），只能证明回退、软件解码与断言接线；RTX 4060 证明 d3d11va 零拷贝；vaapi 无硬件，如实标为未验证；nvdec 明确延后（HWD-F1）。
 **Research**: 需要阶段研究（`/gsd-plan-phase 16 --research-phase`）：混合 GPU 上的 vaapi render node 选择、P010 dma-buf modifier、Vulkan gpu-next 侧 vaapi 所需的 0004 native-resource 补充、`d3d11va-zero-copy` 的取舍（8K 门禁本身仍延后）。
-**Plans:** 5/6 plans executed（4 waves）
+**Plans:** 6/6 plans executed（4 waves）
 
 Plans:
 **Wave 1**
