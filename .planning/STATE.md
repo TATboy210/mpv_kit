@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 16
-current_phase_name: Hardware Decode Zero Copy
+current_phase: 14
+current_phase_name: Windows Native D3D11 Backend
 status: executing
-stopped_at: Completed 16-05-PLAN.md
+stopped_at: Completed 14-10-PLAN.md (14-11 next)
 last_updated: "2026-10-29T01:31:07.000Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 16 execution started
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 16 — Hardware Decode Zero Copy
+**Current focus:** Phase 14 — Windows Native D3D11 Backend (14-11 auto-chain switch decision next; Phase 16 closed, Phase 17 planned)
 
 ## Current Position
 
-Phase: 16 (Hardware Decode Zero Copy) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-10-28 — Phase 16 execution started
+Phase: 14 (Windows Native D3D11 Backend) — EXECUTING
+Plan: 10 of 11 complete (14-11 next)
+Status: Ready to execute 14-11
+Last activity: 2026-10-29 — 14-10 laptop acceptance recorded (pass-with-drops-accepted), quick 261029-ljp/nwm/rcc closed; CI for the FIFO chain pending
 
 Progress: [█████░░░░░] 50%
 
@@ -312,11 +312,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 | 261027-or3 | Linux release build against libdrm 2.4.113 (patch 0012) + LIBDRM-FLOOR guard; unblocks 14-03 | 2026-10-27 | 2b9f6e2 | [261027-or3-fix-linux-release-build-libdrm-2-4-114](./quick/261027-or3-fix-linux-release-build-libdrm-2-4-114/) |
 | 261028-moj | strict MpvLibrary.open: explicit path / MPV_KIT_LIBMPV_PATH never fall back; libmpv_guard removed; macOS CI step fixed | 2026-10-28 | dd75d28 | [261028-moj-strict-mpvlibrary-open-for-explicit-path](./quick/261028-moj-strict-mpvlibrary-open-for-explicit-path/) |
 | 261028-otr | macOS integration leg loads the branch libmpv (staged dylib, sandbox off on runner, software renderer, client API 2.6 asserted); pinned-bundle Vulkan run kept; branch+Vulkan app unverified | 2026-10-28 | 5522944 | [261028-otr-macos-integration-test-loads-the-verify-](./quick/261028-otr-macos-integration-test-loads-the-verify-/) |
+| 261029-ljp | example runner prefers the high-performance GPU (HighPerformancePreference); plugin logs the compositor adapter; laptop package2 | 2026-10-29 | 824a69e | [261029-ljp-hybrid-gpu-high-performance-adapter-for-](./quick/261029-ljp-hybrid-gpu-high-performance-adapter-for-/) |
+| 261029-nwm | log-only `superseded=` probe count, power-aware GPU preference, hybrid-GPU hint; swap-at-publish A/B FAILED on the RTX 4060 and was not shipped (control package only) | 2026-10-29 | ade3eea | [261029-nwm-report-swap-at-publish-power-aware-gpu-p](./quick/261029-nwm-report-swap-at-publish-power-aware-gpu-p/) |
+| 261029-rcc | FIFO ready queue of two frames, mpv swap reported at publish; RTX 4060 A/B PASS; laptop auto vulkan about 0.5 percent effective drops (estimate); CI pending | 2026-10-29 | 0e792c8 | [261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu](./quick/261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu/) |
 
 ## Session Continuity
 
-Last session: 2026-10-29T01:31:05.825Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-10-29
+Stopped at: Completed 14-10-PLAN.md (14-11 next)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
