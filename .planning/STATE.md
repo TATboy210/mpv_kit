@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-10-30T10:36:19.465Z"
+stopped_at: Completed 17-05-PLAN.md
+last_updated: "2026-10-30T13:02:56.913Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 14 verified; Phase 17 started
-state_head: 5bee42b23263dea0283fd4c431d2bada816f9b86
+state_head: 1084a7b88669eebfe8dd6fb3fafb80c7d44eef9e
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 47
-  completed_plans: 46
+  completed_plans: 47
   percent: 83
 ---
 
@@ -134,6 +134,7 @@ Progress: [████████░░] 83%
 | Phase 17 P02 | 75 min | 3 tasks | 11 files |
 | Phase 17 P03 | 55min | 3 tasks | 12 files |
 | Phase 17 P04 | 3h | 3 tasks | 30 files |
+| Phase 17 P05 | 3h | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -264,6 +265,7 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-03: soak memory rule pre-registered (11 checkpoints, late=c10-c6, growth if >32 MiB or steady tail and >8 MiB, insufficient never flat); rule and tests committed before any measured run
 - [Phase 17]: 17-03: Phase 16 release bundle reused for the RTX session (no release.yml dispatch; build-relevant paths unchanged since 15f61ff)
 - [Phase 17]: 17-04: d3d11 4K 1800 s lavfi had 3 and 5 VO drops (2 attempts); recorded as a finding for 17-05, VER-04 partial. process_dedicated_mib unusable on frame-presenting runs (use LocalUsage).
+- [Phase 17]: 17-05: SC1/VER-01/VER-04/SC4 wording approved by the user and applied; ubuntu opengl soak keeps MALLOC_ARENA_MAX=1 as a documented measurement-environment choice; vk-gpu-timeout todo closed
 
 ### CI Deferral
 
@@ -333,8 +335,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T10:36:18.317Z
-Stopped at: Completed 17-04-PLAN.md
+Last session: 2026-10-30T13:02:55.700Z
+Stopped at: Completed 17-05-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
