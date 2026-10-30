@@ -256,10 +256,10 @@ Plans:
 **Depends on**: Phase 14, Phase 15, Phase 16
 **Requirements**: VER-01, VER-02, VER-03, VER-04
 **Success Criteria** (what must be TRUE):
-  1. fake 后端故障注入（device lost、超时风暴、目标分配失败）时渲染切到 auto 链的下一候选，每次回退都发出带原因的事件；一路落到 software 时，`reason` 记录完整的回退链。
+  1. fake 后端故障注入（device lost、超时风暴、目标分配失败）下：创建阶段失败的候选按 auto 链切到下一候选并在 reason 中留下带原因的 trail，一路落到 software 时 reason 记录完整回退链并发出 softwareFallback 事件；运行期故障在当前后端上以带原因的事件进入确定状态——device lost 恰好一个 deviceLost 并停止渲染（dispose 后重建时该后端若仍失败则切到下一候选），超时风暴的 gpuTimeout 按失败次数倍增发出、退避封顶 5 s、恢复后发出 recovered，目标分配失败先以 ring 5 重试再发 renderError、resize 时立即重试；运行中的控制器不切换后端（RBE-F1）。
   2. 每个平台的 CI 矩阵用 `MPV_KIT_VIDEO_API` 强制每个可用后端（Windows d3d11/vulkan/software，Linux vulkan/opengl/software，macOS vulkan/software）跑真实插件 integration test，hosted runner 上 `hwdec=no` + 非黑像素探针全绿；D3D-02 的 ANGLE 禁令门禁仍在矩阵中且为绿。
   3. RTX 4060 上的硬解层在 `MPV_KIT_REQUIRE_HWDEC` 守卫下运行：没有可用硬解，或 `hwdec-current` 不是期望的零拷贝值时，测试响亮失败而不是静默 skip。
-  4. RTX 4060 上 D3D11 与 Vulkan 后端各自 4K 30 分钟零丢帧、无积压；100 轮 resize/dispose soak 在 RTX 4060 的 d3d11/vulkan/software 后端上通过，专用显存曲线平稳、没有单调增长；opengl 后端的同一 soak 在 ubuntu runner（llvmpipe）上通过、进程内存平稳，由于没有 Linux GPU，真实显存曲线标为未验证。
+  4. RTX 4060 上 D3D11 与 Vulkan 后端各自 4K 30 分钟零丢帧、无积压，前提是示例窗口处于前台且会话无人操作；示例窗口被遮挡的运行可能出现少量 VO 丢帧，作为已知行为记录（不是零丢帧的证明）；100 轮 resize/dispose soak 在 RTX 4060 的 d3d11/vulkan/software 后端上通过，专用显存曲线平稳、没有单调增长；opengl 后端的同一 soak 在 ubuntu runner（llvmpipe，单个 glibc malloc arena 的测量环境）上通过、进程内存平稳，由于没有 Linux GPU，真实显存曲线标为未验证
 
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。

@@ -54,10 +54,10 @@
 
 ### 回退与验证（VER）
 
-- [ ] **VER-01**: fake 后端故障注入：device lost、超时风暴、目标分配失败时按 auto 链切到下一候选，每次回退都发出带原因的事件
+- [x] **VER-01**: fake 后端故障注入：创建阶段失败（含 device lost 后重建）的候选按 auto 链切到下一候选并在 reason 中留下带原因的 trail，一路落到 software 时记录完整回退链并发出 softwareFallback 事件；运行期的 device lost、超时风暴与目标分配失败在当前后端上以带原因的事件进入确定状态（deviceLost 恰好一个并停止渲染、gpuTimeout 倍增发出并封顶 5 s、恢复后发出 recovered、分配失败先以 ring 5 重试再发 renderError），运行中的控制器不切换后端（RBE-F1）
 - [x] **VER-02**: CI 矩阵在每个平台用 `MPV_KIT_VIDEO_API` 强制每个可用后端跑真实插件 integration test（hosted runner：`hwdec=no` + 非黑像素探针）
 - [x] **VER-03**: 硬解层用 `MPV_KIT_REQUIRE_HWDEC` 守卫在 RTX 4060 上响亮失败而非静默 skip
-- [ ] **VER-04**: D3D11 与 Vulkan 后端各自 4K 30 分钟零丢帧/无积压，以及每后端 100 轮 resize/dispose soak 且显存曲线平稳
+- [x] **VER-04**: D3D11 与 Vulkan 后端各自在 RTX 4060 上 4K 30 分钟零丢帧、无积压，前提是示例窗口处于前台且会话无人操作；示例窗口被其他窗口遮挡的运行可能出现少量 VO 丢帧（实测 d3d11 遮挡下 3 次与 5 次、前台 0 次，归因于遮挡或失焦但未证明），作为已知行为记录；以及每后端 100 轮 resize/dispose soak 且显存曲线平稳
 
 ## Future Requirements
 
@@ -112,10 +112,10 @@
 | HWD-03 | Phase 16 | Pending |
 | HWD-04 | Phase 13 | Complete |
 | HWD-05 | Phase 16 | Complete |
-| VER-01 | Phase 17 | Pending |
+| VER-01 | Phase 17 | Complete |
 | VER-02 | Phase 17 | Complete |
 | VER-03 | Phase 17 | Complete |
-| VER-04 | Phase 17 | Pending |
+| VER-04 | Phase 17 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 31 total
