@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 status: completed
 stopped_at: Phase 17 complete — all phases complete
-last_updated: "2026-10-30T13:41:02.407Z"
+last_updated: "2026-10-30T14:30:48.653Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 17 complete
-state_head: 0255e49ca9bb73a59111a328d560735a4dbbccf7
+state_head: a2c05d71a6bf7772b071e182e004ac5f7f384848
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
   total_plans: 47
   completed_plans: 47
-  percent: 100
+  percent: 86
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 
 ## Current Position
 
-Phase: 17
+Phase: 17.1 (INSERTED after the v3.0 audit)
 Plan: Not started
-Status: All phases complete
+Status: Ready to plan Phase 17.1 (/gsd-plan-phase 17.1)
 Last activity: 2026-10-30 — Phase 17 complete
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -297,6 +297,10 @@ Recent decisions affecting current work:
 - 12-12 unexplained (recorded, no action): two Modern Standby intervals during the RTX 4060 4K 30-min run (2026-10-27 00:35:45Z-00:36:43Z, 00:40:14Z-00:40:33Z; user chose not to repeat); temp filesystem free space fell 6523 -> 4141 MiB during the runs (not gated)
 - 12-09 plan text is stale: it references pending_front_ and a deferred publish gate that 12-07 f77378f removed (publish gate is now a synchronous wait after render, depth 1); 12-09 must move the current gate as-is
 - （已解决）12-10 hosted CI gates eec251c and 598d287, and 12-11 gates c4019dc and c3edb9e: all CI-GATE-ok, run in 12-12 Task 1; RBE-01..08 marked complete at the 12-12 close
+
+### Roadmap Evolution
+
+- Phase 17.1 inserted after Phase 17: Close gap INT-1/INT-2: release and pin a libmpv bundle with the D3D11 and OpenGL backends (milestone audit v3.0 INT-1/INT-2) (URGENT)
 
 ## Deferred Items
 
