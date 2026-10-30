@@ -5,7 +5,7 @@
 #     -Out <csv> [-ProcessName mpv_kit_example] [-IntervalMs 1000]
 #
 # Writes one row per sample until the file "<csv>.stop" appears:
-#   utc,pid,process_dedicated_mib,adapter_dedicated_mib,foreground
+#   utc,pid,process_dedicated_mib,adapter_dedicated_mib,foreground,process_local_mib,process_committed_mib
 #   utc                     UTC ISO-8601 with milliseconds (the join key to the
 #                           SOAK-CHECKPOINT lines of backend_soak_test.dart)
 #   pid                     the example process at that moment, empty when it
@@ -17,6 +17,15 @@
 #                           instances (all adapters of the machine)
 #   foreground              process name owning the foreground window, "none"
 #                           when there is none (locked desktop, no window)
+#   process_local_mib       sum of LocalUsage over the same GPUProcessMemory instances
+#                           (device-local segment = VRAM on a discrete GPU), empty
+#                           without a pid. Added in 17-04 after attempt 1: with
+#                           presented 4K frames DedicatedUsage grows by about one
+#                           4K frame per presented frame (1.9 GB/s at 30 fps, to 3.4 TB
+#                           in 30 min) while LocalUsage stays flat and plausible, so
+#                           process_dedicated_mib is NOT usable for runs that present
+#                           frames; use process_local_mib there.
+#   process_committed_mib   sum of TotalCommitted over the same instances
 # Values are in MiB with one decimal.
 #
 # Why CIM classes and not Get-Counter: this machine runs a localized Windows,
@@ -54,7 +63,7 @@ function Get-ForegroundName {
 }
 
 # Header once; the caller refuses to reuse an existing CSV, so no overwrite.
-'utc,pid,process_dedicated_mib,adapter_dedicated_mib,foreground' |
+'utc,pid,process_dedicated_mib,adapter_dedicated_mib,foreground,process_local_mib,process_committed_mib' |
   Out-File -FilePath $Out -Encoding ascii
 
 while (-not (Test-Path -LiteralPath $stopFile)) {
@@ -66,6 +75,8 @@ while (-not (Test-Path -LiteralPath $stopFile)) {
 
   $procId = ''
   $procMib = ''
+  $localMib = ''
+  $commitMib = ''
   $proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue |
     Select-Object -First 1
   if ($null -ne $proc) {
@@ -75,9 +86,15 @@ while (-not (Test-Path -LiteralPath $stopFile)) {
     $memSum = ($mem | Measure-Object -Property DedicatedUsage -Sum).Sum
     if ($null -eq $memSum) { $memSum = 0 }
     $procMib = ([math]::Round($memSum / $mib, 1)).ToString([Globalization.CultureInfo]::InvariantCulture)
+    $localSum = ($mem | Measure-Object -Property LocalUsage -Sum).Sum
+    if ($null -eq $localSum) { $localSum = 0 }
+    $localMib = ([math]::Round($localSum / $mib, 1)).ToString([Globalization.CultureInfo]::InvariantCulture)
+    $commitSum = ($mem | Measure-Object -Property TotalCommitted -Sum).Sum
+    if ($null -eq $commitSum) { $commitSum = 0 }
+    $commitMib = ([math]::Round($commitSum / $mib, 1)).ToString([Globalization.CultureInfo]::InvariantCulture)
   }
   $adapterMib = ([math]::Round($adapterSum / $mib, 1)).ToString([Globalization.CultureInfo]::InvariantCulture)
-  $row = "$utc,$procId,$procMib,$adapterMib,$(Get-ForegroundName)"
+  $row = "$utc,$procId,$procMib,$adapterMib,$(Get-ForegroundName),$localMib,$commitMib"
   Add-Content -LiteralPath $Out -Value $row -Encoding ascii
 
   # Keep the cadence at IntervalMs regardless of how long the queries took.

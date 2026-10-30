@@ -176,11 +176,16 @@ forensics() {
     printf '$end = [DateTime]::Parse("%s").ToUniversalTime()\n' "$end"
     cat <<'PS'
 $fmt = "HH:mm:ss'Z'"
-$standby = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 506, 507; StartTime = $start; EndTime = $end } -ErrorAction SilentlyContinue |
+# Get-WinEvent -FilterHashtable reads StartTime/EndTime as local wall-clock time
+# and ignores DateTime.Kind: a UTC-kind value shifted the window by the UTC
+# offset (8 h early on a UTC+8 host, 17-04 attempt 1). Pass local-kind values.
+$startL = $start.ToLocalTime()
+$endL = $end.ToLocalTime()
+$standby = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 506, 507; StartTime = $startL; EndTime = $endL } -ErrorAction SilentlyContinue |
   Sort-Object TimeCreated | ForEach-Object { '{0}@{1}' -f $_.Id, $_.TimeCreated.ToUniversalTime().ToString($fmt) })
 "standby=$(if ($standby.Count -eq 0) { 'none' } else { $standby -join ',' })"
 $found = @()
-Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Id = 1000, 1001; StartTime = $start; EndTime = $end } -ErrorAction SilentlyContinue |
+Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Id = 1000, 1001; StartTime = $startL; EndTime = $endL } -ErrorAction SilentlyContinue |
   Where-Object { $_.Message -match 'mpv_kit_example\.exe|flutter_windows\.dll' } |
   ForEach-Object { $found += ('app{0}@{1}' -f $_.Id, $_.TimeCreated.ToUniversalTime().ToString($fmt)) }
 $dumps = Join-Path $env:LOCALAPPDATA 'CrashDumps'
