@@ -50,3 +50,6 @@ ver04-soak run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 line=SOA
 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 workflow=native-verify.yml run=40991964430 conclusion=success
 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 workflow=flutter-plugin.yml run=40991964230 conclusion=success
 ver04-soak run=40991964430 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 line=SOAK {"schema":"soak-1","api":"opengl","reason":"opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl","rounds":100,"seconds":32.5,"renderErrors":0,"deviceLost":0,"idleSoak":0,"apiMismatches":0,"rssMiB":[657.3,944.4,1161.5,1229.1,1235.3,1235.6,1234.7,1240.3,1243.2,1242.3,1242.6],"rssVerdict":"flat","rssLateMiB":8.0,"lastControllerFrame":"not-presented"}
+sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=native-verify.yml run=41042057042 conclusion=success
+sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=flutter-plugin.yml run=41042057124 conclusion=success
+sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=macos-route.yml run=41042057035 conclusion=success (17-04 push, docs/evidence/tools only)
