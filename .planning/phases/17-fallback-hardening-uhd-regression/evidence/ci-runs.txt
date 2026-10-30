@@ -68,3 +68,7 @@ sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 workflow=flutter-plugin.yml run=410
 sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 workflow=macos-route.yml run=41056455344 conclusion=success
 ver04-soak run=41056455257 sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 line=SOAK {"api":"opengl","rounds":100,"rssMiB":[660.9,747.5,837.2,846.5,852.6,850.4,849.9,853.7,851.3,850.3,854.3],"rssVerdict":"flat","rssLateMiB":4.4,"lastControllerFrame":"not-presented"} (MALLOC_ARENA_MAX=1, 17-05 final gate)
 final-gate run=41056455257 sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 patch-drift=PATCH-DRIFT OK base=b2c255c13e8e37952dbac6c34da56a690560378b patches=10; BACKEND-MATRIX-SUMMARY linux 3/3, windows 3/3, macos 2/2; REQUIRE-HWDEC-NEGATIVE ok required=d3d11va api=d3d11 exit=1; video_renderer_fault_test passed on linux x64, linux arm64, macos, windows x64, windows arm64 and sanitizers
+sha=bf153c211154ad5bce05933cbcfb988d2c1c8a15 workflow=native-verify.yml run=41060074045 conclusion=success
+sha=bf153c211154ad5bce05933cbcfb988d2c1c8a15 workflow=flutter-plugin.yml run=41060074053 conclusion=success
+sha=bf153c211154ad5bce05933cbcfb988d2c1c8a15 workflow=macos-route.yml run=41060073995 conclusion=success
+sha=b426246 (full sha in git) workflows native-verify 41059413678, flutter-plugin 41059413725, macos-route 41059413653 conclusion=success (17-05 evidence push, checked after the fact)
