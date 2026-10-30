@@ -5,17 +5,17 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-10-29T18:37:48.137Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-10-30T01:29:42.306Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 14 verified; Phase 17 started
-state_head: 1cc71f3e64eb31d43415cceeb447db0f71d59fad
+state_head: c7e395a52c4084cb416c2b6d8779adc94df1c28f
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 47
-  completed_plans: 43
-  percent: 91
+  completed_plans: 44
+  percent: 94
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 17 (Fallback Hardening & UHD Regression) — executing
-Plan: 2 of 5 (17-01 complete: fault-injection golden, 7 scenarios green on 6 CI jobs; golden_vk re-frozen as golden-freeze-17.sha256)
-Status: Ready to execute 17-02
-Last activity: 2026-10-30 — 17-01 complete (VER-01 partial: SC1 wording pending user approval in 17-05)
+Plan: 3 of 5 (17-02 complete: 8-cell forced backend matrix green on linux/windows/macOS, softwareFallback reaches the first events listener, MPV_KIT_REQUIRE_HWDEC guard + hosted negative leg; CI green on 50be7f0)
+Status: Ready to execute 17-03
+Last activity: 2026-10-30 — 17-02 complete (VER-01/02/03 partial: RTX 4060 cells in 17-04, SC1 wording in 17-05)
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -131,6 +131,7 @@ Progress: [█████████░] 91%
 | Phase 16 P04 | n/a | 2 tasks | 10 files |
 | Phase 16 P05 | ~100min | 3 tasks | 11 files |
 | Phase 17 P01 | ~1h10m | 3 tasks | 12 files |
+| Phase 17 P02 | 75 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -257,6 +258,7 @@ Recent decisions affecting current work:
 - [Phase 16]: [16-05] HWD-05 scope on lavfi soak tests: option A (print and assert software; hardware proven by hwdec_zero_copy_test; long hwdec soak goes to Phase 17)
 - [Phase 17]: 17-01: ver01=create-chain; auto chain advances only on creation failure, runtime faults give determinate events, running controllers never switch backend (RBE-F1)
 - [Phase 17]: 17-01: vk-gpu-timeout judged as 1 s device wait + 100 ms backoff; golden_vk.cc re-frozen (golden-freeze-17.sha256) with user consent
+- [Phase 17]: 17-02: Windows vulkan matrix cell is asserted unavailable on hosted runners (real GPU cell in 17-04); softwareFallback delivered to the first events listener via private onListen state; MPV_KIT_REQUIRE_HWDEC accepts only zero-copy methods
 
 ### CI Deferral
 
@@ -326,8 +328,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T18:37:46.719Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-10-30T01:29:40.920Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
