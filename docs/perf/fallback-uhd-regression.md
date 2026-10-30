@@ -19,7 +19,7 @@ Answered once by the user at the start of the phase (`decisions.txt`):
 
 | Decision | Choice | Consequence |
 |---|---|---|
-| `ver01` | `create-chain` | The auto chain advances only when *creation* fails. Runtime faults give event-driven determinate states. A running controller never switches backend (RBE-F1). SC1 and VER-01 need new wording, proposed in `final-audit.txt`, pending user approval. |
+| `ver01` | `create-chain` | The auto chain advances only when *creation* fails. Runtime faults give event-driven determinate states. A running controller never switches backend (RBE-F1). SC1 and VER-01 were reworded to this scope; the user approved the texts in `final-audit.txt` on 2026-10-30 (commit 1084a7b). |
 | `vk-flake` | `measure-split` | The macOS `vk-gpu-timeout` golden judges the 1 s device wait and the 100 ms engine backoff separately. `golden_vk.cc` was re-frozen with the user's explicit consent (`golden-freeze-17.sha256`). |
 | `uhd-source` | `lavfi+hevc-d3d11` | Besides the 3840x2160 lavfi 1800 s runs, one 4K HEVC Main10 1800 s run on forced d3d11 under `MPV_KIT_REQUIRE_HWDEC=d3d11va`. |
 
@@ -96,7 +96,7 @@ A mutation check (local, not committed) replacing the 5 s backoff cap with 10000
 
 **softwareFallback delivery defect, found and fixed in 17-02 (`5b52ee8`):** the event was added to an asynchronous broadcast stream inside `create`, before any listener could exist, so it was always lost. It is now held and handed to the first `events` listener. RED evidence (`red-local-17-02-fallback-event.log`) was taken before the fix. The public API is unchanged (`api_freeze` audit, `enum MpvVideoBackend { vulkan, software }` still present exactly once).
 
-**Boundary of this result (`ver01=create-chain`):** the chain advances only during creation. A running controller does not switch backend when its device is lost or its allocations fail; it reaches a determinate state through events. ROADMAP SC1 as written ("渲染切到 auto 链的下一候选") therefore does not literally hold for runtime faults. The replacement wording is a proposal in `final-audit.txt` and is not applied.
+**Boundary of this result (`ver01=create-chain`):** the chain advances only during creation. A running controller does not switch backend when its device is lost or its allocations fail; it reaches a determinate state through events. ROADMAP SC1 as written ("渲染切到 auto 链的下一候选") therefore does not literally hold for runtime faults. The replacement wording in `final-audit.txt` was approved by the user and applied on 2026-10-30 (commit 1084a7b).
 
 ## VER-02: platform x backend matrix
 
@@ -143,7 +143,7 @@ The Windows vulkan cell on hosted runners is an *asserted absence*, not a pass o
 
 - Attempts 1 and 2 are recorded failures of the zero-drop gate and are not relabeled. Neither had a decoder drop, a delayed frame, a render error, a device loss, a standby event or a crash.
 - Attempt 3 repeated the same test, product sha and environment with the example window in front and the user hands-off, and read 0 drops. Together this is one pass with the window in front for 99.9 percent of the run against two fails with the window covered for most of the run. That points to window occlusion or focus changes, and it is **evidence, not proof**: occlusion was not toggled within a single run, the three runs are not blind, and the sample is one pass against two fails. The cause of the attempt 1 and 2 drops is attributed, not established.
-- The stricter reading of the VER-04 clause "D3D11 and Vulkan 4K 30 minutes zero drops" is therefore *met under the condition that the example window is in front and the session is hands-off*, and *not met when the window is covered*. A wording proposal that says exactly this is in `final-audit.txt` and is not applied.
+- The stricter reading of the VER-04 clause "D3D11 and Vulkan 4K 30 minutes zero drops" is therefore *met under the condition that the example window is in front and the session is hands-off*, and *not met when the window is covered*. VER-04 and SC4 were reworded to say exactly this; the user approved the texts in `final-audit.txt` and they were applied on 2026-10-30 (commit 1084a7b).
 - Reference: Phase 12 `run=uhd4k-rendered` ran 600 s (Vulkan, before the FIFO ready queue of `0e792c8`, example in front in 268 of 270 samples), `run=uhd4k` 1800 s without rendering. The comparison below is not like-for-like (duration, FIFO and occlusion differ). `avsyncPeakAbs` has no threshold; as in Phase 12 any increase counts as worse, and the increases are microsecond scale (one frame is 33.3 ms).
 
 Compare lines (`rtx-verdicts.txt`, Phase 12 `rendered600` / `1800` reference, now, verdict by the Phase 12 method):

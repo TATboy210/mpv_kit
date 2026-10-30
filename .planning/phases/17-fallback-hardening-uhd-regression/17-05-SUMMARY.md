@@ -8,7 +8,7 @@ requires:
   - phase: 17-fallback-hardening-uhd-regression
     provides: 17-01 fault golden, 17-02 matrix and guard, 17-03 soak rule, 17-04 RTX 4060 evidence
 provides:
-  - "docs/perf/fallback-uhd-regression.md: VER-01..04 by tier, reproduce commands, all four d3d11 4K attempts shown, malloc-arena choice with evidence"
+  - "docs/perf/fallback-uhd-regression.md: VER-01..04 by tier, reproduce commands, all three d3d11 lavfi 4K attempts and the d3d11 HEVC run shown, malloc-arena choice with evidence"
   - "evidence/unverified.txt (17 unverified, 2 deferred) and evidence/final-audit.txt (9 audit keys ok, VER-01..04 and SC1..SC4 mapped to run ids)"
   - "Full CI gate on c4a7158: native-verify 41056455257, flutter-plugin 41056455255, macos-route 41056455344, all success, 17-01..17-03 key lines reproduced"
   - "User-approved SC1, VER-01, VER-04 and SC4 wording applied; VER-01 and VER-04 ticked; vk-gpu-timeout todo closed"

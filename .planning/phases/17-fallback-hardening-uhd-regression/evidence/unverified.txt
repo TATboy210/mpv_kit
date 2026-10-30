@@ -19,3 +19,4 @@
 项目=真实 GPU 上 software 后端的 4K 1800 s 状态=未验证 原因=VER-04 只要求 d3d11 与 vulkan 的 4K 1800 s；software 后端只有 100 轮 soak，没有 4K 长跑 能证明它的环境=RTX 4060 上强制 software 的 4K 1800 s（预期 CPU 限制）
 项目=UHD-02（8K 30 分钟） 状态=延后 原因=ROADMAP 明确延后，不在 Phase 17 验收范围 能证明它的环境=RTX 4060 或更高规格 GPU 上的 8K 样本，用 uhd_endurance_test.dart 的同一命令
 项目=COMP-03（合成延迟预算参数化） 状态=延后 原因=ROADMAP 明确延后，不在 Phase 17 验收范围 能证明它的环境=后续阶段的合成延迟参数化与对应真机会话
+项目=RTX 4060 soak 中重建的控制器是否真的分配了渲染目标环 状态=未验证 原因=三个 RTX soak 在第 100 轮都只有 resizeEvents=1（101 个控制器中），ubuntu 最终门禁为 48；resize 事件在 dispose 已把 texture id 置为 -1 时会被丢弃，所以它只说明事件是否送达，不能证明是否分配；显存平稳的判定因此可能只覆盖了 create/dispose 而没有覆盖出帧（17-VERIFICATION.md 的 coincidental_reliance_items） 能证明它的环境=RTX 4060 上给 backend_soak_test 加上每个控制器的 target ring 分配计数（或 FrameReady 计数）再跑一次
