@@ -13,3 +13,4 @@ disk_free_repo_mib=10794
 push_basis=push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none release_dispatch=yes ci_mode=live granted_at=2026-10-29T17:02:02Z head_at_grant=5c22a6d015d15b83f8a8dee7292803303b9e6a20
 tags_before_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
 tags_after_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
+candidate2 sha=47cbbf21f603cffb0d0d472796f42f72ad768099 pushed_at=2026-10-30 remote_tags_before=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 remote_tags_after=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 bundle_inputs_diff_vs_8310775=empty (native/build native/patches native/mpv .github/workflows/release.yml) push_command=git push --no-follow-tags origin HEAD:refs/heads/feat/mpv-master-upgrade

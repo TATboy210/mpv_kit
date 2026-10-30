@@ -19,3 +19,8 @@ sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=flutter-plugin.yml run=410
 sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=macos-route.yml run=41095386614 conclusion=success
 prep-gate sha=b524b3a76fd6a79e40b30024ffae5988b131b04c result=ok
 note=prep-gate ok after (1) one native-verify rerun --failed (attempt 1 red: ubuntu opengl soak rssLateMiB 39.9 and macos texture_probe black first frame; attempt 2 green), (2) gh 502 retry shim on PATH (read-only), (3) PR_BASE regex fix: tests passed, N failed absent-check now ignores the quoted D-05 comment echoed in the log
+sha=47cbbf21f603cffb0d0d472796f42f72ad768099 workflow=native-verify.yml run=41116884131 conclusion=success
+sha=47cbbf21f603cffb0d0d472796f42f72ad768099 workflow=flutter-plugin.yml run=41116884254 conclusion=success
+sha=47cbbf21f603cffb0d0d472796f42f72ad768099 workflow=macos-route.yml run=41116883932 conclusion=success
+prep-gate sha=47cbbf21f603cffb0d0d472796f42f72ad768099 result=ok
+note=prep-gate ok on first attempt, no rerun (native-verify 41116884131, flutter-plugin 41116884254, macos-route 41116883932, all attempt 1): c07f5ba first CI exposure of video_renderer_swap_test: OK on linux x64/arm64 (22/22 Ok, 0 Fail, 0 Skip), sanitizers ASan+UBSan (22 Ok, 0 Fail, 0 Skip, 0 Timeout, no sanitizer report), macos-15 MoltenVK (18 Ok, 0 Fail), windows x64/arm64 lavapipe (swap_test OK; x64 14 Ok/0 Fail/7 Skip, same counts as run 41095386579); PINS OK tag=v0.1.0-dev.3 targets=6; bundle inputs (native/build native/patches native/mpv release.yml) diff vs 8310775 empty; remote tags before and after push: v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
