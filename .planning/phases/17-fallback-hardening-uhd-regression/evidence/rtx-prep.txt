@@ -1,0 +1,21 @@
+sha=9ae347fd48aec7e6601b0448c8e2b04205291cef
+release_run=40812562348
+reused_from=phase16
+manifest=ok
+bundle_dir=build/phase17/libmpv-rtx
+libmpv=build/phase17/libmpv-rtx/lib/libmpv-2.dll
+samples_run=40989693698
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+df_repo=6536MiB free on D: at 2026-10-30 (5518MiB earlier the same day; the RTX gate needs >= 5632MiB at run time)
+chain_order=vulkan,d3d11
+switch_decision=keep
+device_name=NVIDIA GeForce RTX 4060 Laptop GPU
+expect_reason_vulkan=vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU
+expect_reason_d3d11=d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11
+expect_reason_software=software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; d3d11/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software; d3d11/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software
+release_sha=15f61ffec45b6e459eb381aeab6dc9d341734786 (Phase 16 release.yml run 40812562348, code_sha ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72, artifact libmpv-windows-x64)
+reuse_check=git diff --name-only 15f61ffec45b6e459eb381aeab6dc9d341734786 HEAD -- native/mpv native/patches native/build .github/workflows/release.yml is empty at 9ae347f; no release dispatch needed
+libmpv_sha256=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c (same as build/phase16/libmpv-rtx; sha256sum -c MANIFEST.txt on build/phase17/libmpv-rtx: 0 failures)
+samples=example/integration_test/route_samples/{h264-8bit,hevc-8bit,hevc-10bit,hevc-10bit-2160p}.mp4 sha256 identical to the hwdec-samples and hwdec-samples-uhd artifacts of native-verify run 40989693698 (h264-8bit 2f411952cf81, hevc-8bit 1986f81f9346, hevc-10bit 7b04a39e3e81, hevc-10bit-2160p 25df40656af2)
+chain_note=expect_reason_* follow the engine candidate order vulkan/gpu-next, d3d11/gpu-next, vulkan/gpu, d3d11/gpu; a forced api keeps an excluded trail only for the candidates ahead of its own gpu-next entry; device_name is the string printed by the Phase 14 d3d11 runs (evidence/rtx4060-runs.txt) and by the local Vulkan soak self-check
