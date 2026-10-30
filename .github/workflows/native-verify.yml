@@ -554,6 +554,15 @@ jobs:
           MPV_KIT_REQUIRE_LIBMPV: '1'
           MPV_KIT_VIDEO_API: opengl
           MPV_KIT_SOAK_MEMORY: rss
+          # One glibc malloc arena. The 4-vCPU runner allows 32 arenas and
+          # each controller's short-lived render threads leave ~29 MiB of freed
+          # llvmpipe memory in whichever arena they landed in, so with the
+          # default the RSS late value tracks arena placement (37.5 % red over
+          # 16 soaks, glibc in-use flat). With one arena 32/32 soaks were flat
+          # and a deliberate 0.9 MiB/round leak still read as growth. See
+          # .planning/phases/17-fallback-hardening-uhd-regression/debug/
+          # ubuntu-soak-late-rss-growth.md.
+          MALLOC_ARENA_MAX: '1'
         run: |
           libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
           export PATH="$libdir:$PATH"
