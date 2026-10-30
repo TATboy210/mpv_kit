@@ -10,3 +10,13 @@ label=rehearsal run=41119702833 event=workflow_dispatch ref=feat/mpv-master-upgr
 rehearsal-artifacts run=41119702833 list=libmpv-linux-x64:15327302,libmpv-windows-arm64:19833239,libmpv-macos-x64:16479077,libmpv-windows-x64:21576583,libmpv-macos-arm64:14985950,libmpv-linux-arm64:14715078
 rehearsal sha=47cbbf21f603cffb0d0d472796f42f72ad768099 run=41119702833 result=ok duration_s=1556
 note=rehearsal run=41119702833: run_gate.sh exit=0 on the aggregate log for all six jobs (no linux-arm64/windows-arm64 log truncation this time, so no supplementary per-job check was needed); attempt=1, no rerun; bundle inputs diff vs 8310775 empty
+label=tag-run run=41123644028 event=push ref=v0.1.0-dev.4 sha=47cbbf21f603cffb0d0d472796f42f72ad768099 conclusion=success jobs=linux (ubuntu-24.04-arm, linux-arm64):success,linux (ubuntu-24.04, linux-x64):success,macos (macos-15, macos-arm64):success,windows (windows-2025, CLANG64, windows-x64, nasm:p):success,macos (macos-15-intel, macos-x64):success,windows (windows-11-arm, CLANGARM64, windows-arm64):success,publish:success
+tag-run-gate run=41123644028 sha=47cbbf21f603cffb0d0d472796f42f72ad768099 result=ok
+
+# SHA256SUMS of v0.1.0-dev.4 (Plan 05 pins from this)
+cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1  libmpv-linux-arm64.tar.gz
+2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29  libmpv-linux-x64.tar.gz
+38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a  libmpv-macos-arm64.tar.gz
+c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190  libmpv-macos-x64.tar.gz
+af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1  libmpv-windows-arm64.tar.gz
+6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254  libmpv-windows-x64.tar.gz
