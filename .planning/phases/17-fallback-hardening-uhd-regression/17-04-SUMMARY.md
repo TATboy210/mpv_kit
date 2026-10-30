@@ -91,6 +91,15 @@ Forced d3d11, 3840x2160 lavfi, 1800 s: attempt 1 had 3 VO drops (between t=191 a
 
 Context, not an established cause: in both attempts the example window was covered by WindowsTerminal or msedge for much of the run (attempt 2: example foreground in about 472 of 1775 samples), while the Vulkan lavfi run and the d3d11 HEVC run ran with the example in front (1773 and 1774 of 1775 samples) and had 0 drops. The Phase 12 rendered 4K reference (`run=uhd4k-rendered`) ran only 600 s at sha 7007447, before the FIFO change 0e792c8, with the example foreground in 268 of 270 samples, so the comparison is not like-for-like (duration, FIFO, occlusion differ). Worse items for the human check: frameDropCountFinal d3d11 (3 and 5), and avsyncPeakAbs d3d11 attempt 2 and vulkan (1.96e-05 and 1.98e-05 s against 1.62e-05 s; microsecond-scale, any increase is worse by the Phase 12 method).
 
+## Supplementary measurement (after plan completion)
+
+User-approved re-measurement of `uhd4k-1800-d3d11` (lavfi, forced d3d11, 1800 s) as `--attempt 3` with the example window kept in front and the user hands-off. Same product sha (`native_equal=yes`), same env and test as attempts 1 and 2, with `--vram`, never shortened, run once.
+
+- **Result:** pass, exit 0. frameDropCountFinal 0, decoderFrameDropCountFinal 0, voDelayedFrameCountMax 0, renderErrors 0, deviceLost false, all 30 per-minute drop samples 0, no standby or crash. Example foreground in 1777 of 1779 samples (99.9%); the only transition was WindowsTerminal to the example at 11:30:43Z, before playback began. Process local VRAM 7.8 to 464.5 MiB (last 419.8), adapter 1502 to 1902.8 MiB.
+- **Interpretation:** 0 drops with the example in front for at least 95% of samples, against 3 and 5 drops when the example was covered for most of attempts 1 and 2, points to occlusion or focus changes rather than a product cause. This is one passing run per condition and occlusion was not toggled within a single run, so it is evidence, not proof.
+- **Requirements:** VER-04 stays unticked (partial); attempts 1 and 2 remain recorded failures, unchanged. 17-05 decides.
+- Evidence: `evidence/rtx-uhd4k-1800-d3d11-a3.log`, `rtx-uhd4k-1800-d3d11-a3.vram.csv`, `rtx-runs.txt`, and the `supplementary` lines in `rtx-verdicts.txt`.
+
 ## Task Commits
 
 1. **Task 1: start confirmation** - `d8e76a6` (docs)

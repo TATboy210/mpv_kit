@@ -12,3 +12,4 @@ run=diag-vram-4k60-b attempt=1 start=2026-10-30T08:51:39.214Z end=2026-10-30T08:
 run=uhd4k-1800-d3d11 attempt=2 start=2026-10-30T08:54:25.068Z end=2026-10-30T09:24:56.135Z exit=1 log=rtx-uhd4k-1800-d3d11-a2.log vram=rtx-uhd4k-1800-d3d11-a2.vram.csv standby_during=none forensics=none
 run=uhd4k-1800-vulkan attempt=1 start=2026-10-30T09:30:06.278Z end=2026-10-30T10:00:38.222Z exit=0 log=rtx-uhd4k-1800-vulkan.log vram=rtx-uhd4k-1800-vulkan.vram.csv standby_during=none forensics=none
 run=uhd4k-hevc-1800-d3d11 attempt=1 start=2026-10-30T10:01:59.156Z end=2026-10-30T10:32:29.668Z exit=0 log=rtx-uhd4k-hevc-1800-d3d11.log vram=rtx-uhd4k-hevc-1800-d3d11.vram.csv standby_during=none forensics=none
+run=uhd4k-1800-d3d11 attempt=3 start=2026-10-30T11:30:14.647Z end=2026-10-30T12:00:45.196Z exit=0 log=rtx-uhd4k-1800-d3d11-a3.log vram=rtx-uhd4k-1800-d3d11-a3.vram.csv standby_during=none forensics=none
