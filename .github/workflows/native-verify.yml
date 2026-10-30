@@ -500,6 +500,40 @@ jobs:
           export PATH="$libdir:$PATH"
           export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 17 (VER-02): every backend of each platform forced in turn
+      # (MPV_KIT_VIDEO_API, no fallback) against the same real-plugin texture
+      # probe. Cells live in tools/backend_matrix.sh: linux opengl/vulkan/
+      # software, windows d3d11/software plus vulkan asserted unavailable (the
+      # hosted runner has WARP only; the RTX 4060 cell is hand-run in 17-04),
+      # macOS vulkan/software. The macOS cells use the pinned bundle libmpv
+      # with this branch's plugin (the sandbox is already off on this checkout
+      # from the step above and does not matter for the bundle); the branch
+      # libmpv's Vulkan path on macOS is not part of this matrix. Every cell
+      # runs even after a failure and any failed cell fails the step; no
+      # continue-on-error.
+      - name: Backend matrix (MPV_KIT_VIDEO_API forced per backend, VER-02)
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$STAGED_LIBMPV")" && pwd)"
+          export PATH="$libdir:$PATH"
+          case "${{ matrix.target }}" in
+            linux)
+              export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              bash tools/backend_matrix.sh linux
+              ;;
+            macos)
+              # Same reason as the bundle run above: the sandboxed app cannot
+              # read the staged dylib's dependencies.
+              env -u MPV_KIT_LIBMPV_PATH bash tools/backend_matrix.sh macos
+              ;;
+            *)
+              bash tools/backend_matrix.sh windows
+              ;;
+          esac
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so

@@ -38,15 +38,33 @@
 // Phase 15. Everything here ran on Mesa llvmpipe only; other drivers are
 // unverified.
 //
+// Forced backend matrix (VER-02, Phase 17): tools/backend_matrix.sh runs this
+// file once per cell on every platform, with two optional variables:
+//   MPV_KIT_VIDEO_API=<api>            forces one backend (no fallback). In
+//       the default `render` mode the winner's reason must start with that
+//       api, on top of every assertion above.
+//   MPV_KIT_EXPECT_BACKEND=render|unavailable   (default render)
+//       `unavailable` is for a cell whose backend does not exist on the
+//       runner (hosted Windows has only WARP, no Vulkan device the
+//       compositor can share). It requires MPV_KIT_VIDEO_API and asserts that
+//       create throws `render_init` with a real reason: the forced api's own
+//       trail names why it failed (never `excluded`), and every other
+//       candidate is only `excluded by MPV_KIT_VIDEO_API=<api>`. It prints
+//       `PROBE-UNAVAILABLE {"api","reason"}` and never counts as a rendered
+//       frame. A create that succeeds there fails the test: the runner
+//       changed, and the cell table is the user's to update.
+//
 // Only one testWidgets per file: a second one in the same file hangs the
 // live binding (STATE.md).
 // ignore_for_file: avoid_print
 library;
 
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -215,6 +233,10 @@ void main() {
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
   testWidgets('texture probe: mounted pixels and orientation', (tester) async {
+    // VER-02 cell selection; see the file header.
+    final forcedApi = Platform.environment['MPV_KIT_VIDEO_API'] ?? '';
+    final expectMode = Platform.environment['MPV_KIT_EXPECT_BACKEND'] ?? '';
+    final expectUnavailable = _expectsUnavailable(expectMode, forcedApi);
     final texture = ValueNotifier<int?>(null);
     final probeKey = GlobalKey();
     // Pumped before runAsync: a tree pumped inside it is not reliably
@@ -249,6 +271,13 @@ void main() {
           'ao': 'null',
         },
       );
+      if (expectUnavailable) {
+        // The forced backend does not exist on this runner: assert why and
+        // stop. No pixel section, so this can never count as a rendered cell.
+        await _expectUnavailable(player, forcedApi);
+        await player.dispose();
+        return;
+      }
       final controller = await MpvVideoController.create(player);
       final sub = controller.events.listen(
         (e) => events.add(e.kind),
@@ -341,6 +370,17 @@ void main() {
             'the second controller must report the backend of the first: '
             'first "$reason", second "$secondReason"',
       );
+      if (forcedApi.isNotEmpty) {
+        // VER-02: a forced run must be won by exactly that backend (the
+        // first token of the reason is the real graphics API).
+        expect(
+          report['api'],
+          forcedApi,
+          reason:
+              'MPV_KIT_VIDEO_API=$forcedApi must win; the controller '
+              'reported "$reason"',
+        );
+      }
       expect(events, isNot(contains(MpvVideoEventKind.deviceLost)));
       expect(
         events,
@@ -376,6 +416,80 @@ void main() {
       }
     });
   });
+}
+
+/// Parses MPV_KIT_EXPECT_BACKEND: true for `unavailable`, false for `render`
+/// (also the default when unset). Anything else, or `unavailable` without a
+/// forced api, is a usage error and fails at once.
+bool _expectsUnavailable(String mode, String forcedApi) {
+  if (mode.isEmpty || mode == 'render') return false;
+  if (mode != 'unavailable') {
+    fail(
+      'MPV_KIT_EXPECT_BACKEND must be "render" or "unavailable", got "$mode"',
+    );
+  }
+  if (forcedApi.isEmpty) {
+    fail('MPV_KIT_EXPECT_BACKEND=unavailable needs MPV_KIT_VIDEO_API=<api>');
+  }
+  return true;
+}
+
+/// One trail of the reason grammar starts a new item at `; ` followed by
+/// `<api>/<renderer> unavailable: `; a why that itself contains `; ` is not
+/// split.
+final _trailBoundary = RegExp(r'; (?=[a-z0-9-]+/[a-z-]+ unavailable: )');
+
+/// The unavailable cell (VER-02): creating a controller with [api] forced
+/// must fail with `render_init` and a reason that explains the forced api's
+/// failure. Every candidate of another api is only
+/// `excluded by MPV_KIT_VIDEO_API=<api>` (a forced run never falls back), so
+/// a reason without a real failure of [api] itself would be a vacuous pass.
+/// Prints `PROBE-UNAVAILABLE {"api","reason"}`.
+Future<void> _expectUnavailable(Player player, String api) async {
+  MpvVideoController controller;
+  try {
+    controller = await MpvVideoController.create(player);
+  } on PlatformException catch (e) {
+    expect(e.code, 'render_init', reason: 'create failed with ${e.code}');
+    final details = e.details;
+    expect(details, isA<String>(), reason: 'details: $details');
+    final reason = details! as String;
+    print('PROBE-UNAVAILABLE ${jsonEncode({'api': api, 'reason': reason})}');
+    // No head: a winner would read `<api> (<renderer>) on <device>`.
+    expect(
+      RegExp(r'^[a-z0-9-]+ \(').hasMatch(reason),
+      isFalse,
+      reason: 'a forced-unavailable reason has no head: $reason',
+    );
+    final own = '$api/gpu-next unavailable: ';
+    final at = reason.indexOf(own);
+    expect(
+      at,
+      greaterThanOrEqualTo(0),
+      reason: 'the forced api must report its own failure: $reason',
+    );
+    expect(
+      reason.substring(at + own.length),
+      isNot(startsWith('excluded')),
+      reason: 'the forced api itself must not be excluded: $reason',
+    );
+    for (final trail in reason.split(_trailBoundary)) {
+      if (trail.startsWith('$api/')) continue;
+      expect(
+        trail.endsWith('unavailable: excluded by MPV_KIT_VIDEO_API=$api'),
+        isTrue,
+        reason: 'every other candidate is only excluded: "$trail" in $reason',
+      );
+    }
+    return;
+  }
+  final reason = controller.reason;
+  await controller.dispose();
+  fail(
+    'MPV_KIT_VIDEO_API=$api was expected to be unavailable on this runner but '
+    'created a controller ("$reason"); update the matrix cell table in '
+    'tools/backend_matrix.sh',
+  );
 }
 
 /// Waits (bounded) until the decoder reports [width]x[height].
