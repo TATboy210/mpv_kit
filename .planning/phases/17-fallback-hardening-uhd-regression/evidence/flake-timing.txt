@@ -18,3 +18,9 @@ run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=linux (ubuntu-2
 run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
 run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=windows (windows-2025, CLANG64, x64) skipped
 run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=windows (windows-11-arm, CLANGARM64, arm64) skipped
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=169 retry-ms=1170
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=windows (windows-2025, CLANG64, x64) skipped
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=windows (windows-11-arm, CLANGARM64, arm64) skipped
