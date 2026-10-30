@@ -56,7 +56,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 - [x] **Phase 14: Windows Native D3D11 Backend** - 上游 D3D11 render API + gpu-next D3D11 分支，链路无 ANGLE/EGL 并由 CI 门禁固化
 - [x] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位 (completed 2026-10-28)
 - [x] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝 (completed 2026-10-29)
-- [ ] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak
+- [x] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak (completed 2026-10-30)
 
 **执行顺序：** 12 → {13, 14, 15} → 16 → 17。13 体量小，可以先做；14 与 15 没有文件重叠，可以并行（串行时 14 在前：未知最多，也是唯一有真机验证的平台）；16 需要 13/14/15 的后端就绪；17 收口。
 
@@ -263,7 +263,7 @@ Plans:
 
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。
-**Plans:** 5/5 plans executed（5 waves）
+**Plans:** 5/5 plans complete（5 waves）
 
 Plans:
 **Wave 1**
@@ -293,4 +293,4 @@ Plans:
 | 14. Windows Native D3D11 Backend | v3.0 | 11/11 | Complete (D3D-08 not switched) | 2026-10-29 |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
-| 17. Fallback Hardening & UHD Regression | v3.0 | 5/5 | In Progress | - |
+| 17. Fallback Hardening & UHD Regression | v3.0 | 5/5 | Complete    | 2026-10-30 |
