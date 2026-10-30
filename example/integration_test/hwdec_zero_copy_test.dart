@@ -47,6 +47,18 @@
 // line records the value). Both are read from --dart-define or the
 // environment.
 //
+// MPV_KIT_REQUIRE_HWDEC=<method> (Phase 17, VER-03) turns the default-list
+// runs into a hard requirement: the first-frame and the end report of every
+// default run must be outcome=zero-copy with hwdec-current equal to <method>
+// (a zero-copy method of hwdec_probe.dart; `-copy`, `no`, `auto*` and typos
+// fail at once and never count as "no requirement"). Each of those reports
+// prints one `HWDEC-REQUIRE {json}` line (`ok` or `fail`) BEFORE the run's
+// other assertions, every sample still runs, and the test then fails with all
+// failure messages. Never a skip or a warning: hosted runners without a
+// hardware decoder prove the guard by failing (tools/require_hwdec_negative.sh);
+// the RTX 4060 session proves the positive case. The `hwdec=no` reference runs
+// are not subject to the guard. Read from --dart-define or the environment.
+//
 // ONE controller per process (todo 2026-10-27-diagnose-second-controller-
 // first-frame-stall-in-resize-front), and one testWidgets per file (a second
 // one hangs, Phase 4).
@@ -75,6 +87,9 @@ const _samplesDefine = String.fromEnvironment('MPV_KIT_HWDEC_SAMPLES');
 
 /// `yes` sets `d3d11va-zero-copy=yes` on the Player, from --dart-define.
 const _zeroCopyDefine = String.fromEnvironment('MPV_KIT_HWDEC_ZERO_COPY');
+
+/// Required zero-copy hwdec method, from --dart-define (VER-03).
+const _requireDefine = String.fromEnvironment(requireHwdecVariable);
 
 /// Samples of a default run (all three 640x360 files of the hwdec-samples
 /// artifact).
@@ -148,6 +163,27 @@ bool _zeroCopyRequested() =>
         ? _zeroCopyDefine
         : Platform.environment['MPV_KIT_HWDEC_ZERO_COPY']) ==
     'yes';
+
+/// The required zero-copy method of this run (empty or null: none).
+String? _requiredHwdec() => _requireDefine.isNotEmpty
+    ? _requireDefine
+    : Platform.environment[requireHwdecVariable];
+
+/// Judges both reports of a default [run] against [required] (VER-03): prints
+/// one `HWDEC-REQUIRE` line per report, before any other assertion of the
+/// run, and collects the failure messages into [failures].
+void _judgeRequirement(
+  String? required,
+  _RunResult run,
+  List<String> failures,
+) {
+  if (required == null || required.isEmpty) return;
+  for (final report in [run.firstReport, run.endReport]) {
+    final failure = checkHwdecRequirement(required, report);
+    print(hwdecRequireLine(required, report, failure));
+    if (failure != null) failures.add(failure);
+  }
+}
 
 /// Rounds an optional double to 4 decimals for the report.
 double? _round4(double? value) =>
@@ -671,6 +707,11 @@ void main() {
 
   testWidgets('hwdec zero-copy probe on real samples', (tester) async {
     final names = _sampleNames();
+    // VER-03: an unusable value fails before any playback.
+    final required = _requiredHwdec();
+    final invalid = hwdecRequirementError(required);
+    if (invalid != null) fail(invalid);
+    final requirementFailures = <String>[];
     // The texture the compositor samples; pumped before runAsync (a tree
     // pumped inside it is not reliably composed).
     final texture = ValueNotifier<int?>(null);
@@ -732,7 +773,18 @@ void main() {
           // Reference first (software), then the default list.
           final reference = await run('no', null);
           _expectReference(reference);
-          _expectDefault(await run(defaultHwdec, reference));
+          final defaultRun = await run(defaultHwdec, reference);
+          // The guard prints its lines first so a failing run still leaves
+          // them, then the run's own assertions.
+          _judgeRequirement(required, defaultRun, requirementFailures);
+          _expectDefault(defaultRun);
+        }
+        if (requirementFailures.isNotEmpty) {
+          fail(
+            '$requireHwdecVariable=$required not satisfied '
+            '(${requirementFailures.length}): '
+            '${requirementFailures.join(' | ')}',
+          );
         }
         expect(events, isNot(contains(MpvVideoEventKind.deviceLost)));
       } finally {

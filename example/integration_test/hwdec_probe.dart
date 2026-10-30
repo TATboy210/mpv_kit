@@ -4,7 +4,7 @@
 /// the renderer without a CPU round trip (`zero-copy`), downloaded them
 /// (`copy-back`) or decoded in software (`software`), and prints the
 /// `HWDEC {json}` line the CI gates match. The file depends only on
-/// `dart:convert`, never on the plugin, so a unit test and
+/// `dart:` libraries, never on the plugin, so a unit test and
 /// any integration test can share it.
 ///
 /// A run is never called zero-copy from `hwdec-current` alone: the method name
@@ -12,6 +12,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 
 /// How one run decoded.
 enum HwdecOutcome {
@@ -234,3 +235,66 @@ Future<HwdecReport> awaitHwdecReport(
     requested: requested,
   );
 }
+
+// --- MPV_KIT_REQUIRE_HWDEC (Phase 17, VER-03) -------------------------------
+
+/// Environment variable that turns the default-list runs of
+/// `hwdec_zero_copy_test.dart` into a hard requirement.
+const String requireHwdecVariable = 'MPV_KIT_REQUIRE_HWDEC';
+
+/// Longest accepted value of [requireHwdecVariable].
+const int _maxRequiredLength = 24;
+
+/// Accepted spelling of a required method: lower-case letters, digits, `-`.
+final RegExp _requiredPattern = RegExp(r'^[a-z0-9-]{1,24}$');
+
+/// Why [required] is not a usable value of [requireHwdecVariable], or null
+/// when it is usable or unset.
+///
+/// Only a zero-copy method of [hwdecZeroCopyFormats] is accepted. `-copy`
+/// methods are refused on purpose: a copy-back decode is exactly what the
+/// guard exists to reject, so asking for one would let the guard pass on the
+/// failure it must catch. `no` and `auto*` are refused for the same reason
+/// (they name no method). A bad value is an error, never "no requirement":
+/// a typo must not turn the guard off silently.
+String? hwdecRequirementError(String? required) {
+  if (required == null || required.isEmpty) return null;
+  final methods = hwdecZeroCopyFormats.keys.join(', ');
+  if (required.length > _maxRequiredLength ||
+      !_requiredPattern.hasMatch(required) ||
+      !hwdecZeroCopyFormats.containsKey(required)) {
+    // The value is echoed only after cutting and masking, like the native
+    // MPV_KIT_VIDEO_API echo, so a hostile value cannot flood the log.
+    final shown = required
+        .substring(0, math.min(required.length, _maxRequiredLength))
+        .replaceAll(RegExp(r'[^a-z0-9-]'), '?');
+    return '$requireHwdecVariable=$shown is not a zero-copy hwdec method '
+        '(one of $methods)';
+  }
+  return null;
+}
+
+/// The failure of [report] against the requirement [required], or null when
+/// the report satisfies it (or nothing is required).
+///
+/// VER-03: with hardware decode missing, or not the required zero-copy
+/// method, this is a failure, never a skip or a warning.
+String? checkHwdecRequirement(String? required, HwdecReport report) {
+  if (required == null || required.isEmpty) return null;
+  final invalid = hwdecRequirementError(required);
+  if (invalid != null) return invalid;
+  if (report.outcome == HwdecOutcome.zeroCopy &&
+      report.hwdecCurrent == required) {
+    return null;
+  }
+  return '$requireHwdecVariable=$required not met in ${report.test}/'
+      '${report.sample}/${report.at}: hwdec-current=${report.hwdecCurrent}, '
+      'outcome=${report.outcome.wire}, pixelformat=${report.pixelformat}, '
+      'hw-pixelformat=${report.hwPixelformat}';
+}
+
+/// The `HWDEC-REQUIRE {json}` line for one judged report; the key order is
+/// part of the contract (CI gates and 17-04 match it as text). [failure] is
+/// the message of [checkHwdecRequirement], null when the report passed.
+String hwdecRequireLine(String required, HwdecReport report, String? failure) =>
+    'HWDEC-REQUIRE ${jsonEncode(<String, Object?>{'schema': 'hwdec-require-1', 'required': required, 'test': report.test, 'sample': report.sample, 'at': report.at, 'api': report.api, 'hwdecCurrent': report.hwdecCurrent, 'outcome': report.outcome.wire, 'result': failure == null ? 'ok' : 'fail', 'why': failure})}';

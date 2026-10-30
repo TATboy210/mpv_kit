@@ -190,4 +190,149 @@ void main() {
       expect(report.outcome, HwdecOutcome.unexpected);
     });
   });
+
+  group('MPV_KIT_REQUIRE_HWDEC (VER-03)', () {
+    HwdecReport report(
+      String? current, {
+      String? pixelformat,
+      String? hwPixelformat,
+    }) => _report({
+      'hwdec-current': current,
+      'video-params/pixelformat': pixelformat,
+      'video-params/hw-pixelformat': hwPixelformat,
+    }, reason: 'd3d11 (gpu-next) on RTX');
+
+    test('unset or empty means no requirement', () {
+      final r = report('no');
+      expect(hwdecRequirementError(null), isNull);
+      expect(hwdecRequirementError(''), isNull);
+      expect(checkHwdecRequirement(null, r), isNull);
+      expect(checkHwdecRequirement('', r), isNull);
+    });
+
+    // required, report, expected failure (true) or pass (false)
+    final cases = <(String, HwdecReport, bool)>[
+      (
+        'd3d11va',
+        report('d3d11va', pixelformat: 'd3d11', hwPixelformat: 'p010'),
+        false,
+      ),
+      ('d3d11va', report('d3d11va-copy', pixelformat: 'nv12'), true),
+      ('d3d11va', report('no', pixelformat: 'yuv420p'), true),
+      ('d3d11va', report('d3d11va', pixelformat: 'd3d11'), true),
+      ('d3d11va', report(null), true),
+      (
+        'd3d11va',
+        report('vulkan', pixelformat: 'vulkan', hwPixelformat: 'nv12'),
+        true,
+      ),
+      (
+        'vulkan',
+        report('vulkan', pixelformat: 'vulkan', hwPixelformat: 'nv12'),
+        false,
+      ),
+      (
+        'vaapi',
+        report('vaapi', pixelformat: 'vaapi', hwPixelformat: 'nv12'),
+        false,
+      ),
+      (
+        'videotoolbox',
+        report(
+          'videotoolbox',
+          pixelformat: 'videotoolbox',
+          hwPixelformat: 'p010',
+        ),
+        false,
+      ),
+      (
+        'drm',
+        report('drm', pixelformat: 'drm_prime', hwPixelformat: 'nv12'),
+        false,
+      ),
+    ];
+    for (final (required, r, fails) in cases) {
+      test('$required vs ${r.hwdecCurrent}/${r.outcome.wire} '
+          '${fails ? 'fails' : 'passes'}', () {
+        final failure = checkHwdecRequirement(required, r);
+        if (fails) {
+          expect(failure, isNotNull);
+          expect(failure, contains('MPV_KIT_REQUIRE_HWDEC=$required not met'));
+        } else {
+          expect(failure, isNull);
+        }
+      });
+    }
+
+    test('an invalid value is an error, never "no requirement"', () {
+      final bad = [
+        'd3d11va-copy',
+        'no',
+        'auto-safe',
+        'auto',
+        'nvdec',
+        'D3D11VA',
+        'd3d11va ',
+        'x' * 25,
+        'd3d11va;rm',
+      ];
+      for (final value in bad) {
+        expect(hwdecRequirementError(value), isNotNull, reason: value);
+        expect(
+          checkHwdecRequirement(
+            value,
+            report('d3d11va', pixelformat: 'd3d11', hwPixelformat: 'p010'),
+          ),
+          isNotNull,
+          reason: '$value must fail even for a zero-copy report',
+        );
+      }
+    });
+
+    test('the error names the valid methods and masks the echo', () {
+      final message = hwdecRequirementError('D3D11VA;x')!;
+      expect(message, contains('d3d11va'));
+      expect(message, contains('REQUIRE_HWDEC=?3?11???x is not'));
+      expect(message, isNot(contains(';')));
+    });
+
+    test('the HWDEC-REQUIRE line keeps its schema and key order', () {
+      const keys = [
+        'schema',
+        'required',
+        'test',
+        'sample',
+        'at',
+        'api',
+        'hwdecCurrent',
+        'outcome',
+        'result',
+        'why',
+      ];
+      final ok = report('d3d11va', pixelformat: 'd3d11', hwPixelformat: 'p010');
+      final okLine = hwdecRequireLine('d3d11va', ok, null);
+      expect(
+        okLine,
+        startsWith('HWDEC-REQUIRE {"schema":"hwdec-require-1","required":'),
+      );
+      final okJson =
+          jsonDecode(okLine.substring('HWDEC-REQUIRE '.length))
+              as Map<String, Object?>;
+      expect(okJson.keys.toList(), keys);
+      expect(okJson['result'], 'ok');
+      expect(okJson['why'], isNull);
+
+      final bad = report('no', pixelformat: 'yuv420p');
+      final failure = checkHwdecRequirement('d3d11va', bad);
+      final badLine = hwdecRequireLine('d3d11va', bad, failure);
+      final badJson =
+          jsonDecode(badLine.substring('HWDEC-REQUIRE '.length))
+              as Map<String, Object?>;
+      expect(badJson.keys.toList(), keys);
+      expect(badJson['result'], 'fail');
+      expect(badJson['why'], failure);
+      expect(badJson['api'], 'd3d11');
+      expect(badJson['outcome'], 'software');
+    });
+  });
 }

@@ -364,6 +364,12 @@ jobs:
               # TDR). MPV_KIT_VIDEO_API stays unset so the auto chain runs.
               MPV_KIT_D3D11_INJECT=device-removed:30 flutter test integration_test/d3d11_device_lost_test.dart -d windows
               MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
+              # Phase 17 (VER-03): MPV_KIT_REQUIRE_HWDEC guard, negative leg.
+              # WARP has no video decoder, so requiring zero-copy d3d11va must
+              # make hwdec_zero_copy_test fail; the script inverts that failure
+              # into this step's success and checks the HWDEC-REQUIRE fail line
+              # (the positive case is the RTX 4060 session of 17-04).
+              bash ../tools/require_hwdec_negative.sh windows d3d11 d3d11va
               ;;
           esac
       - name: Real-plugin integration test (macOS, branch libmpv, software renderer)
