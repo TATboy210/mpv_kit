@@ -263,7 +263,7 @@ Plans:
 
 **验证分层**: hosted CI 证明故障注入与强制后端矩阵；RTX 4060 证明硬解层与 UHD 长时门禁。8K 30 分钟（UHD-02）与合成延迟预算参数化（COMP-03）仍延后，不在本阶段验收。
 **Research**: 标准模式，无需阶段研究。
-**Plans:** 2/5 plans executed（5 waves）
+**Plans:** 3/5 plans executed（5 waves）
 
 Plans:
 **Wave 1**
@@ -273,7 +273,7 @@ Plans:
 - [x] 17-02-PLAN.md — 三平台强制后端矩阵（texture_probe_test + tools/backend_matrix.sh，hosted windows 的 vulkan 断言为不可用）+ softwareFallback 送达修复 + MPV_KIT_REQUIRE_HWDEC 守卫与 hosted 负向腿
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 17-03-PLAN.md — 预先登记的内存平稳规则 + 平台无关 100 轮 soak（ubuntu 强制 opengl，RSS 平稳）+ RTX 会话工具与干跑 + 会话输入溯源
+- [x] 17-03-PLAN.md — 预先登记的内存平稳规则 + 平台无关 100 轮 soak（ubuntu 强制 opengl，RSS 平稳）+ RTX 会话工具与干跑 + 会话输入溯源
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 17-04-PLAN.md — RTX 4060 用户会话：真机矩阵格子、守卫正负向、三后端 soak 显存曲线、D3D11 与 Vulkan 各 4K 1800 s（可选 HEVC 硬解长跑）
@@ -293,4 +293,4 @@ Plans:
 | 14. Windows Native D3D11 Backend | v3.0 | 11/11 | Complete (D3D-08 not switched) | 2026-10-29 |
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
-| 17. Fallback Hardening & UHD Regression | v3.0 | 2/5 | In Progress | - |
+| 17. Fallback Hardening & UHD Regression | v3.0 | 3/5 | In Progress | - |

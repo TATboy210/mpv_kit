@@ -5,17 +5,17 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-10-30T01:29:42.306Z"
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-10-30T02:49:03.072Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 14 verified; Phase 17 started
-state_head: c7e395a52c4084cb416c2b6d8779adc94df1c28f
+state_head: cbdab03f254b1c0a702c70cb200b5ac9ba9f5262
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 47
-  completed_plans: 44
-  percent: 94
+  completed_plans: 45
+  percent: 96
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 17 (Fallback Hardening & UHD Regression) — executing
-Plan: 3 of 5 (17-02 complete: 8-cell forced backend matrix green on linux/windows/macOS, softwareFallback reaches the first events listener, MPV_KIT_REQUIRE_HWDEC guard + hosted negative leg; CI green on 50be7f0)
-Status: Ready to execute 17-03
-Last activity: 2026-10-30 — 17-02 complete (VER-01/02/03 partial: RTX 4060 cells in 17-04, SC1 wording in 17-05)
+Plan: 4 of 5 (17-03 complete: pre-registered soak memory rule, platform-independent 100-round soak green flat on hosted ubuntu opengl, RTX session tools + dry run, session inputs traced; CI green on cbdab03)
+Status: Ready to execute 17-04 (needs the user at the RTX 4060: close GPU-using apps, keep >= 5.5 GB free on D:)
+Last activity: 2026-10-30 — 17-03 complete (VER-04 partial: RTX 4060 soak VRAM curve and 4K runs in 17-04)
 
-Progress: [█████████░] 94%
+Progress: [█████████░] 96%
 
 ## Performance Metrics
 
@@ -132,6 +132,7 @@ Progress: [█████████░] 94%
 | Phase 16 P05 | ~100min | 3 tasks | 11 files |
 | Phase 17 P01 | ~1h10m | 3 tasks | 12 files |
 | Phase 17 P02 | 75 min | 3 tasks | 11 files |
+| Phase 17 P03 | 55min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,8 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-01: ver01=create-chain; auto chain advances only on creation failure, runtime faults give determinate events, running controllers never switch backend (RBE-F1)
 - [Phase 17]: 17-01: vk-gpu-timeout judged as 1 s device wait + 100 ms backoff; golden_vk.cc re-frozen (golden-freeze-17.sha256) with user consent
 - [Phase 17]: 17-02: Windows vulkan matrix cell is asserted unavailable on hosted runners (real GPU cell in 17-04); softwareFallback delivered to the first events listener via private onListen state; MPV_KIT_REQUIRE_HWDEC accepts only zero-copy methods
+- [Phase 17]: 17-03: soak memory rule pre-registered (11 checkpoints, late=c10-c6, growth if >32 MiB or steady tail and >8 MiB, insufficient never flat); rule and tests committed before any measured run
+- [Phase 17]: 17-03: Phase 16 release bundle reused for the RTX session (no release.yml dispatch; build-relevant paths unchanged since 15f61ff)
 
 ### CI Deferral
 
@@ -328,8 +331,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T01:29:40.920Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-10-30T02:49:01.657Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
