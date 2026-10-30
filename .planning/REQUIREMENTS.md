@@ -55,8 +55,8 @@
 ### 回退与验证（VER）
 
 - [ ] **VER-01**: fake 后端故障注入：device lost、超时风暴、目标分配失败时按 auto 链切到下一候选，每次回退都发出带原因的事件
-- [ ] **VER-02**: CI 矩阵在每个平台用 `MPV_KIT_VIDEO_API` 强制每个可用后端跑真实插件 integration test（hosted runner：`hwdec=no` + 非黑像素探针）
-- [ ] **VER-03**: 硬解层用 `MPV_KIT_REQUIRE_HWDEC` 守卫在 RTX 4060 上响亮失败而非静默 skip
+- [x] **VER-02**: CI 矩阵在每个平台用 `MPV_KIT_VIDEO_API` 强制每个可用后端跑真实插件 integration test（hosted runner：`hwdec=no` + 非黑像素探针）
+- [x] **VER-03**: 硬解层用 `MPV_KIT_REQUIRE_HWDEC` 守卫在 RTX 4060 上响亮失败而非静默 skip
 - [ ] **VER-04**: D3D11 与 Vulkan 后端各自 4K 30 分钟零丢帧/无积压，以及每后端 100 轮 resize/dispose soak 且显存曲线平稳
 
 ## Future Requirements
@@ -113,8 +113,8 @@
 | HWD-04 | Phase 13 | Complete |
 | HWD-05 | Phase 16 | Complete |
 | VER-01 | Phase 17 | Pending |
-| VER-02 | Phase 17 | Pending |
-| VER-03 | Phase 17 | Pending |
+| VER-02 | Phase 17 | Complete |
+| VER-03 | Phase 17 | Complete |
 | VER-04 | Phase 17 | Pending |
 
 **Coverage:**

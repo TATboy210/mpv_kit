@@ -5,17 +5,17 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: Fallback Hardening & UHD Regression
 status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-10-30T02:49:03.072Z"
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-10-30T10:36:19.465Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 14 verified; Phase 17 started
-state_head: cbdab03f254b1c0a702c70cb200b5ac9ba9f5262
+state_head: 5bee42b23263dea0283fd4c431d2bada816f9b86
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 47
-  completed_plans: 45
-  percent: 96
+  completed_plans: 46
+  percent: 83
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 17 (Fallback Hardening & UHD Regression) — executing
-Plan: 4 of 5 (17-03 complete: pre-registered soak memory rule, platform-independent 100-round soak green flat on hosted ubuntu opengl, RTX session tools + dry run, session inputs traced; CI green on cbdab03)
+Plan: 5 of 5 (17-03 complete: pre-registered soak memory rule, platform-independent 100-round soak green flat on hosted ubuntu opengl, RTX session tools + dry run, session inputs traced; CI green on cbdab03)
 Status: Ready to execute 17-04 (needs the user at the RTX 4060: close GPU-using apps, keep >= 5.5 GB free on D:)
 Last activity: 2026-10-30 — 17-03 complete (VER-04 partial: RTX 4060 soak VRAM curve and 4K runs in 17-04)
 
-Progress: [█████████░] 96%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -133,6 +133,7 @@ Progress: [█████████░] 96%
 | Phase 17 P01 | ~1h10m | 3 tasks | 12 files |
 | Phase 17 P02 | 75 min | 3 tasks | 11 files |
 | Phase 17 P03 | 55min | 3 tasks | 12 files |
+| Phase 17 P04 | 3h | 3 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -262,6 +263,7 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-02: Windows vulkan matrix cell is asserted unavailable on hosted runners (real GPU cell in 17-04); softwareFallback delivered to the first events listener via private onListen state; MPV_KIT_REQUIRE_HWDEC accepts only zero-copy methods
 - [Phase 17]: 17-03: soak memory rule pre-registered (11 checkpoints, late=c10-c6, growth if >32 MiB or steady tail and >8 MiB, insufficient never flat); rule and tests committed before any measured run
 - [Phase 17]: 17-03: Phase 16 release bundle reused for the RTX session (no release.yml dispatch; build-relevant paths unchanged since 15f61ff)
+- [Phase 17]: 17-04: d3d11 4K 1800 s lavfi had 3 and 5 VO drops (2 attempts); recorded as a finding for 17-05, VER-04 partial. process_dedicated_mib unusable on frame-presenting runs (use LocalUsage).
 
 ### CI Deferral
 
@@ -331,8 +333,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T02:49:01.657Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-10-30T10:36:18.317Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
