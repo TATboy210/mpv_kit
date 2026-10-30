@@ -1,2 +1,21 @@
 sha=6407ea07447c8b2608de3afc0d4cf7eee4f73654 workflow=flutter-plugin.yml run=41065294826 conclusion=success
 baseline-d05 sha=6407ea07447c8b2608de3afc0d4cf7eee4f73654 gate_exit=3 result=unmet
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=failure
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=flutter-plugin.yml run=41095386348 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=macos-route.yml run=41095386614 conclusion=success
+note=prep-gate attempt1 native-verify run=41095386579 red only in integration-test (ubuntu soak rssLateMiB 39.9 > 32 with MALLOC_ARENA_MAX=1 already set, glibc retention flake per 17 debug ubuntu-soak-late-rss-growth.md; macos texture_probe nonBlackRatio 0.0 on Apple Paravirtual, 'Failed to foreground app' env flake family); product code byte-identical to green 6407ea0 (git diff 6407ea0 b524b3a -- native example packages/mpv_kit packages/mpv_kit_video/src lib = none); one infra/flake rerun used via CI_GATE_RERUN_INFRA=1
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=failure
+rerun sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 attempt=2 reason=infra
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=flutter-plugin.yml run=41095386348 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=macos-route.yml run=41095386614 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=native-verify.yml run=41095386579 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=flutter-plugin.yml run=41095386348 conclusion=success
+sha=b524b3a76fd6a79e40b30024ffae5988b131b04c workflow=macos-route.yml run=41095386614 conclusion=success
+prep-gate sha=b524b3a76fd6a79e40b30024ffae5988b131b04c result=ok
+note=prep-gate ok after (1) one native-verify rerun --failed (attempt 1 red: ubuntu opengl soak rssLateMiB 39.9 and macos texture_probe black first frame; attempt 2 green), (2) gh 502 retry shim on PATH (read-only), (3) PR_BASE regex fix: tests passed, N failed absent-check now ignores the quoted D-05 comment echoed in the log

@@ -72,7 +72,9 @@ PR_BASE=(
   --log '^route-probe' 'ROUTE-PARITY ok '
   --log '^build \(windows' 'tests passed\.'
   --log-absent '^build \(' 'could not be loaded'
-  --log-absent '^build \(' 'tests passed, [0-9]+ failed'
+  # The count must not follow a quote: flutter-plugin.yml's D-05 step comment
+  # quotes "7 tests passed, 1 failed." and the step command is echoed in the log.
+  --log-absent '^build \(' '(^|[^"0-9])[0-9]+ tests passed, [0-9]+ failed'
   --log '^linux \(ubuntu-24\.04\)' 'resolvePinnedBundle reinstalls when the extracted directory is gone'
 )
 

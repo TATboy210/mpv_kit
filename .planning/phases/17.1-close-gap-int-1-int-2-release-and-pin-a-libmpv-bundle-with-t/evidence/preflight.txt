@@ -1,0 +1,15 @@
+head=ca674efd4902390d5438f8b7313d1591353aa1fb
+origin_head=6407ea07447c8b2608de3afc0d4cf7eee4f73654
+unpushed=11
+bundle_inputs_diff_vs_8310775=empty
+release_test_inputs_changed=native/tests/golden/fault.txt native/tests/meson.build native/tests/video_renderer_fault_test.cc native/tests/video_renderer_golden_vk.cc
+remote_tags=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
+local_tags=pre-261029-rcc v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 v2.0
+push_follow_tags=unset
+pubdev_latest=mpv_kit=0.1.0-dev.3 mpv_kit_libs=0.1.0-dev.3 mpv_kit_video=0.1.0-dev.3
+release_dev3=isDraft=false isPrerelease=false assets=7
+pr1=state=OPEN head=feat/mpv-master-upgrade@6407ea07447c8b2608de3afc0d4cf7eee4f73654 base=main
+disk_free_repo_mib=10794
+push_basis=push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none release_dispatch=yes ci_mode=live granted_at=2026-10-29T17:02:02Z head_at_grant=5c22a6d015d15b83f8a8dee7292803303b9e6a20
+tags_before_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
+tags_after_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
