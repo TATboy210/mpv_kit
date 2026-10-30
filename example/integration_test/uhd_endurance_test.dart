@@ -7,6 +7,22 @@
 //   MPV_KIT_BENCH_LABEL   run name for the BENCH line (default uhd)
 //   MPV_KIT_BENCH_RENDER  1 = mount a Texture and setSize(<source size>),
 //                         timing starts after that size's resize event
+//   MPV_KIT_BENCH_SOURCE  absolute path of a media file (VER-04, Phase 17).
+//                         Plays that file with `loop-file=inf` instead of the
+//                         lavfi source, WITHOUT overriding hwdec (the Player's
+//                         default list applies), so a hardware-decoded UHD run
+//                         is possible. MPV_KIT_BENCH_SIZE must equal the
+//                         sample's size. HWDEC lines are printed at the first
+//                         frame and at the end and must not be `unexpected`;
+//                         MPV_KIT_REQUIRE_HWDEC=<method> (hwdec_probe.dart)
+//                         turns a missing zero-copy decode into a failure at
+//                         the first frame already. Each per-minute sample gains
+//                         `hwdecCurrent` and the BENCH line ends with
+//                         `source`, `loopsSeen` (time-pos wrap-arounds) and
+//                         `hwdecCurrentFinal`. The loop seam may count towards
+//                         drops; that is recorded as data, not filtered.
+//                         Unset, everything below is unchanged (lavfi source,
+//                         `hwdec: auto-safe`, the 16-05 software assertion).
 //
 // Unset (the Phase 4 gate command) the test never mounts a Texture and never
 // calls setSize, so VideoRenderer::RenderLoop sees `sized == false` and only
@@ -34,6 +50,7 @@ library;
 // Printing is the report channel:
 // ignore_for_file: avoid_print
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -54,6 +71,9 @@ void main() {
       int.parse(Platform.environment['MPV_KIT_BENCH_SECONDS'] ?? '1800');
   final label = Platform.environment['MPV_KIT_BENCH_LABEL'] ?? 'uhd';
   final render = Platform.environment['MPV_KIT_BENCH_RENDER'] == '1';
+  // File-source mode (see the header); empty keeps the lavfi source.
+  final source = Platform.environment['MPV_KIT_BENCH_SOURCE'] ?? '';
+  final requireHwdec = Platform.environment[requireHwdecVariable];
 
   testWidgets('UHD endurance $size x ${seconds}s', (tester) async {
     // Rendered variant only: the minimal texture tree of
@@ -78,9 +98,10 @@ void main() {
     }
     await tester.runAsync(() async {
       final player = Player(
-        options: const {
+        options: {
           'vo': 'libmpv',
-          'hwdec': 'auto-safe',
+          // File-source mode leaves hwdec to the Player's default list.
+          if (source.isEmpty) 'hwdec': 'auto-safe',
           'keep-open': 'yes',
           'idle': 'yes',
           'terminal': 'no',
@@ -112,9 +133,19 @@ void main() {
       // (12-02 self-check: 8 drops at EOF in a rendered 20 s 1080p run, 0
       // when the source outlasted the run). Unset, the source is unchanged.
       final sourceSeconds = render ? seconds + 30 : seconds;
+      if (source.isNotEmpty) {
+        expect(
+          File(source).existsSync(),
+          isTrue,
+          reason: 'MPV_KIT_BENCH_SOURCE must name an existing file: $source',
+        );
+      }
       await player.open(
-        'av://lavfi:testsrc2=size=$size:rate=30:duration=$sourceSeconds[out0];'
-        'sine=frequency=440:sample_rate=48000:duration=$sourceSeconds[out1]',
+        source.isNotEmpty
+            ? source
+            : 'av://lavfi:testsrc2=size=$size:rate=30:duration=$sourceSeconds[out0];'
+                  'sine=frequency=440:sample_rate=48000:duration=$sourceSeconds[out1]',
+        options: source.isNotEmpty ? const {'loop-file': 'inf'} : null,
       );
 
       // Wait until the requested resolution is actually being decoded.
@@ -125,22 +156,35 @@ void main() {
         if (vp?.width == w && vp?.height == h) break;
       }
       expect(player.videoParams.value?.width, w,
-          reason: 'the source must reach the requested resolution');
+          reason: 'the source must reach the requested resolution'
+              '${source.isEmpty ? '' : ' (MPV_KIT_BENCH_SIZE must equal the sample size)'}');
       expect(player.videoParams.value?.height, h);
 
       // lavfi is raw video and never reaches a decoder, so HWD-05 asks for a
       // printed and asserted software outcome (16-05 decision A).
+      final sampleName = source.isEmpty ? 'lavfi' : _sampleName(source);
+      final hwdecRequested = source.isEmpty
+          ? 'auto-safe'
+          : hwdecOptionText(player.mpv.tryGetProperty('hwdec'));
       final hwdec = await awaitHwdecReport(
         player.mpv.tryGetProperty,
         test: 'uhd_endurance',
-        sample: 'lavfi',
+        sample: sampleName,
         at: 'first-frame',
         reason: controller.reason,
-        requested: 'auto-safe',
+        requested: hwdecRequested,
       );
       print(hwdec.line);
-      expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
-      expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
+      if (source.isEmpty) {
+        expect(hwdec.outcome, HwdecOutcome.software, reason: hwdec.line);
+        expect(hwdec.zeroCopy, isFalse, reason: hwdec.line);
+      } else {
+        // File-source mode: any real outcome is data, `unexpected` is not;
+        // a requested zero-copy method fails here, before the long run.
+        expect(hwdec.outcome, isNot(HwdecOutcome.unexpected),
+            reason: hwdec.line);
+        _judgeRequirement(requireHwdec, hwdec);
+      }
 
       // Rendered variant: size the renderer to the source and start timing
       // only once the ring exists at that size (resize is emitted after a
@@ -165,6 +209,19 @@ void main() {
         'vo-delayed-frame-count',
         'display-sync-active',
       ];
+      // File-source mode: count time-pos wrap-arounds (loops) at 250 ms, finer
+      // than the 10 s sampling so short clips are not undercounted.
+      var loopsSeen = 0;
+      num? lastPos;
+      final loopWatch = source.isEmpty
+          ? null
+          : Timer.periodic(const Duration(milliseconds: 250), (_) {
+              final pos = player.mpv.tryGetProperty('time-pos');
+              if (pos is! num) return;
+              final last = lastPos;
+              if (last != null && pos < last - 0.5) loopsSeen++;
+              lastPos = pos;
+            });
       final samples = <Map<String, Object?>>[];
       var delayedSum = 0;
       var delayedCount = 0;
@@ -180,6 +237,9 @@ void main() {
         };
         for (final n in names) {
           s[n] = player.mpv.tryGetProperty(n);
+        }
+        if (source.isNotEmpty) {
+          s['hwdecCurrent'] = player.mpv.tryGetProperty('hwdec-current');
         }
         final delayed = s['vo-delayed-frame-count'];
         if (delayed is num) {
@@ -199,9 +259,22 @@ void main() {
         sampleIndex++;
       }
 
+      loopWatch?.cancel();
       final finals = <String, Object?>{
         for (final n in names) n: player.mpv.tryGetProperty(n),
       };
+      // File-source mode: the end report, judged after the BENCH line.
+      final endHwdec = source.isEmpty
+          ? null
+          : await awaitHwdecReport(
+              player.mpv.tryGetProperty,
+              test: 'uhd_endurance',
+              sample: sampleName,
+              at: 'end',
+              reason: controller.reason,
+              requested: hwdecRequested,
+            );
+      if (endHwdec != null) print(endHwdec.line);
       final totalAvsync = finals['total-avsync-change'];
       final frameDrops = finals['frame-drop-count'];
       final decoderDrops = finals['decoder-frame-drop-count'];
@@ -224,6 +297,11 @@ void main() {
         'estimatedVfFpsFinal': finals['estimated-vf-fps'],
         'rssBytes': ProcessInfo.currentRss,
         'samplesPerMinute': samples,
+        if (endHwdec != null) ...{
+          'source': _fileName(source),
+          'loopsSeen': loopsSeen,
+          'hwdecCurrentFinal': endHwdec.hwdecCurrent,
+        },
       };
       print('BENCH uhd ${jsonEncode(result)}');
 
@@ -236,6 +314,11 @@ void main() {
       await controller.dispose();
 
       // --- fixed gates ---
+      if (endHwdec != null) {
+        expect(endHwdec.outcome, isNot(HwdecOutcome.unexpected),
+            reason: endHwdec.line);
+        _judgeRequirement(requireHwdec, endHwdec);
+      }
       expect(deviceLost, isFalse, reason: 'the Vulkan device must survive');
       expect(renderErrors, lessThan(10),
           reason: 'a renderError storm means the render path is unhealthy');
@@ -254,4 +337,20 @@ void main() {
       );
     });
   });
+}
+
+/// File name of [path] (either separator).
+String _fileName(String path) => path.split(RegExp(r'[\\/]')).last;
+
+/// Sample label of a file-source run: the file name without `.mp4`.
+String _sampleName(String path) =>
+    _fileName(path).replaceAll(RegExp(r'\.mp4$'), '');
+
+/// Prints the `HWDEC-REQUIRE` line for [report] and fails the test when the
+/// requirement [required] (MPV_KIT_REQUIRE_HWDEC) is set and not met.
+void _judgeRequirement(String? required, HwdecReport report) {
+  if (required == null || required.isEmpty) return;
+  final failure = checkHwdecRequirement(required, report);
+  print(hwdecRequireLine(required, report, failure));
+  if (failure != null) fail(failure);
 }
