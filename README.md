@@ -136,8 +136,10 @@ in order (`libmpv-2.dll`; `@rpath/mpv.2.framework/mpv.2`, `libmpv.2.dylib`;
 bundle can be supplied with the `libmpv_bundle` hook user define (see
 [mpv_kit_libs](packages/mpv_kit_libs/README.md)).
 
-> Until a `v*` release is pinned in
-> `packages/mpv_kit_libs/lib/src/bundles.dart`, the hook emits no assets;
+> The pinned release is `bundleTag` in
+> `packages/mpv_kit_libs/lib/src/bundles.dart`, and
+> `tools/pin_bundles.dart` rewrites it and the per-target sha256 from a
+> release's `SHA256SUMS`. For a libmpv that no published release contains yet,
 > use `libmpv_bundle` or `MPV_KIT_LIBMPV_PATH` with a bundle produced by the
 > `release` workflow.
 

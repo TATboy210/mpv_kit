@@ -9,6 +9,18 @@
 - Fixed: `MpvVideoEventKind.softwareFallback` was emitted before any listener
   could subscribe and so was always lost; it is now delivered to the first
   listener of `MpvVideoController.events`.
+- Windows: new native Direct3D 11 backend (mpv's D3D11 render API on
+  Flutter's adapter). `auto` tries `vulkan/gpu-next`, `d3d11/gpu-next`,
+  `vulkan/gpu`, `d3d11/gpu`, then software, and `MPV_KIT_VIDEO_API=d3d11`
+  forces it. It needs a libmpv built with the D3D11 render API (mpv_kit
+  patch 0010).
+- Linux: new native OpenGL backend (mpv's OpenGL render API on Flutter's
+  `EGLDisplay`) that serves mpv's `gpu` renderer. `auto` tries
+  `vulkan/gpu-next`, `opengl/gpu`, `vulkan/gpu`, then software, and
+  `MPV_KIT_VIDEO_API=opengl` forces it. It needs a libmpv built with GL/EGL.
+- `MpvVideoController.reason` names the API that won and lists one
+  `unavailable` entry per candidate tried before it; `backend` still reports
+  only `vulkan` or `software` (ADR 0004). No public API changed.
 
 ## 0.1.0-dev.3
 

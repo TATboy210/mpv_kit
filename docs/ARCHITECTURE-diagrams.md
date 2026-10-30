@@ -52,7 +52,7 @@ D:\mpv_kit\
                                    │ import
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  mpv_kit_video  (0.1.0-dev.3)  Flutter 插件层                        │
+│  mpv_kit_video  (0.1.0-dev.4)  Flutter 插件层                        │
 │  ┌──────────────────────────┐  ┌────────────────────────────────┐  │
 │  │ lib/src/                 │  │ 平台原生(C++/ObjC++)            │  │
 │  │  mpv_video.dart  (118)   │  │  windows/: d3d11_interop.cpp(155)│  │
@@ -66,7 +66,7 @@ D:\mpv_kit\
               │ 依赖                              │ FFI 调用           │
               ▼                                  │ (54 符号)          │
 ┌─────────────────────────────────┐              │                    │
-│  mpv_kit  (0.1.0-dev.3)         │              │                    │
+│  mpv_kit  (0.1.0-dev.4)         │              │                    │
 │  纯 Dart,无 Flutter 依赖        │              │                    │
 │  lib/src/                       │              │                    │
 │   ffi/bindings.dart   (858)─────┼──────────────┘                    │
@@ -84,7 +84,7 @@ D:\mpv_kit\
               │ 构建期依赖(native-assets hook)                        │
               ▼                                                       │
 ┌─────────────────────────────────┐                                   │
-│  mpv_kit_libs  (0.1.0-dev.3)    │                                   │
+│  mpv_kit_libs  (0.1.0-dev.4)    │                                   │
 │  hook/build.dart (85)           │   build 钩子:按目标下载 bundle     │
 │  lib/src/bundles.dart (26)──────┼──→ pin GitHub Release (sha256×6)  │
 │  lib/src/bundle.dart (173)      │   解包+校验                       │
