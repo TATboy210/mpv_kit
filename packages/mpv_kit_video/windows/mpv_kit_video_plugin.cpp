@@ -69,6 +69,21 @@ int64_t SteadyNowNs() {
       .count();
 }
 
+// Hand-over between Describe and the engine's release callback, both on the
+// raster thread (measurement only). The callback's only context is the
+// texture, and Flutter 3.47.8 calls it synchronously right after its
+// per-handle EGL surface update (external_texture_d3d.cc:84-115), so the
+// time since Describe returned brackets that update. The owners are
+// compared, never dereferenced: a callback on another thread, or another
+// instance's Describe in between, drops the sample (binds= counts the
+// matched ones only).
+/// Instance of the last descriptor this thread handed out, and when.
+thread_local const void* t_descriptor_owner = nullptr;
+thread_local int64_t t_descriptor_ns = 0;
+/// Instance and duration (ms) of the last bracketed engine update.
+thread_local const void* t_bound_owner = nullptr;
+thread_local double t_bound_ms = 0;
+
 /// Everything belonging to one MpvVideoController.
 struct Instance {
   // Guards dead/renderer against the raster thread's texture callbacks.
@@ -83,6 +98,19 @@ struct Instance {
   int pickup_count = 0;
   double pickup_total_ms = 0;
   double pickup_max_ms = 0;
+  // Describe probe (measurement only; raster thread under [mutex]; reset with
+  // the pickup line, except [last_handle], which spans windows): Describe
+  // calls and their duration from entry through AcquireFront, how many
+  // handed Flutter a different shared handle than the call before, and the
+  // time from Describe's return to the engine's release callback.
+  int describe_count = 0;
+  double describe_total_ms = 0;
+  double describe_max_ms = 0;
+  int handle_changes = 0;
+  HANDLE last_handle = nullptr;
+  int bind_count = 0;
+  double bind_total_ms = 0;
+  double bind_max_ms = 0;
   std::unique_ptr<D3D11Interop> interop;
   std::unique_ptr<VideoRenderer> renderer;
   std::unique_ptr<flutter::TextureVariant> texture;
@@ -305,8 +333,10 @@ class MpvKitVideoPlugin : public flutter::Plugin {
   /// Raster thread, [inst]->mutex held: accounts FrameReady -> Describe for
   /// a frame not yet counted ([ready] is the FrameReady stamp read before
   /// AcquireFront) and logs one line per kPickupWindow frames
-  /// (count, sum and maximum reset after each line). Measurement only: no
-  /// publish, quarantine or delivery decision reads these numbers.
+  /// (count, sum and maximum reset after each line), followed by the
+  /// Describe probe fields of [inst] (describe call time, shared-handle
+  /// changes, release-callback bracket). Measurement only: no publish,
+  /// quarantine or delivery decision reads these numbers.
   static void RecordPickup(Instance* inst, int64_t ready) {
     if (ready == 0 || ready == inst->picked_ready_ns) return;
     inst->picked_ready_ns = ready;
@@ -314,20 +344,39 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     inst->pickup_total_ms += ms;
     inst->pickup_max_ms = std::max(inst->pickup_max_ms, ms);
     if (++inst->pickup_count < kPickupWindow) return;
-    char line[160];
+    char line[320];
     snprintf(line, sizeof(line),
              "mpv_kit: compositor pickup avg/over %d frames: %.2fms "
-             "max=%.2fms backend=%s",
+             "max=%.2fms backend=%s describes=%d describe=%.3fms "
+             "max_describe=%.3fms handle_changes=%d binds=%d bind=%.3fms "
+             "max_bind=%.3fms",
              inst->pickup_count, inst->pickup_total_ms / inst->pickup_count,
-             inst->pickup_max_ms, inst->renderer->wire_name());
+             inst->pickup_max_ms, inst->renderer->wire_name(),
+             inst->describe_count,
+             inst->describe_count > 0
+                 ? inst->describe_total_ms / inst->describe_count
+                 : 0.0,
+             inst->describe_max_ms, inst->handle_changes, inst->bind_count,
+             inst->bind_count > 0 ? inst->bind_total_ms / inst->bind_count
+                                  : 0.0,
+             inst->bind_max_ms);
     LogLine(line);
     inst->pickup_count = 0;
     inst->pickup_total_ms = 0;
     inst->pickup_max_ms = 0;
+    inst->describe_count = 0;
+    inst->describe_total_ms = 0;
+    inst->describe_max_ms = 0;
+    inst->handle_changes = 0;
+    inst->bind_count = 0;
+    inst->bind_total_ms = 0;
+    inst->bind_max_ms = 0;
   }
 
   /// Raster thread: hand Flutter the latest completed shared texture.
   static const FlutterDesktopGpuSurfaceDescriptor* Describe(Instance* inst) {
+    // Entry stamp of the Describe probe (measurement only), before the lock.
+    const int64_t entry_ns = SteadyNowNs();
     std::lock_guard<std::mutex> lock(inst->mutex);
     if (inst->dead) return nullptr;
     // Read before AcquireFront: it may mark the texture again (and so
@@ -335,8 +384,27 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     const int64_t ready = inst->frame_ready_ns.load();
     const Frame f = inst->renderer->AcquireFront();
     if (!f.platform) return nullptr;
-    RecordPickup(inst, ready);
     auto* tex = static_cast<D3D11Interop::Texture*>(f.platform);
+    // Engine update of the previous descriptor this thread handed out for
+    // this instance, bracketed by the release callback below.
+    if (t_bound_owner == inst) {
+      inst->bind_count++;
+      inst->bind_total_ms += t_bound_ms;
+      inst->bind_max_ms = std::max(inst->bind_max_ms, t_bound_ms);
+      t_bound_owner = nullptr;
+    }
+    // Flutter's ExternalTextureD3d recreates its EGL surface whenever the
+    // handle differs from the one it last saw: count those changes.
+    if (tex->shared_handle != inst->last_handle) inst->handle_changes++;
+    inst->last_handle = tex->shared_handle;
+    // Duration of this call from entry through AcquireFront and the handle
+    // compare. It leaves out the descriptor stores and the window's log write.
+    const double describe_ms =
+        static_cast<double>(SteadyNowNs() - entry_ns) / 1e6;
+    inst->describe_count++;
+    inst->describe_total_ms += describe_ms;
+    inst->describe_max_ms = std::max(inst->describe_max_ms, describe_ms);
+    RecordPickup(inst, ready);
     auto& d = inst->descriptor;
     d.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
     d.handle = tex->shared_handle;
@@ -346,8 +414,20 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     // Balances the AddRef taken in RetainFrame once Flutter opened it.
     d.release_context = tex->texture.Get();
     d.release_callback = [](void* ctx) {
+      // Measurement only: the end of the engine's GL bind and, on a handle
+      // change, EGL surface recreate (external_texture_d3d.cc:71-115), which
+      // Flutter 3.47.8 runs just before this callback. Only thread-locals are
+      // touched; the texture and its single Release below are unchanged.
+      if (t_descriptor_ns != 0) {
+        t_bound_ms = static_cast<double>(SteadyNowNs() - t_descriptor_ns) / 1e6;
+        t_bound_owner = t_descriptor_owner;
+        t_descriptor_ns = 0;
+      }
       static_cast<ID3D11Texture2D*>(ctx)->Release();
     };
+    // Start of the bracket: this instance, handed out on this thread now.
+    t_descriptor_owner = inst;
+    t_descriptor_ns = SteadyNowNs();
     return &d;
   }
 

@@ -112,11 +112,20 @@ Each `MpvVideoController` owns one native `VideoRenderer`
   `queued=`. A frame that jitters by up to about one frame period between
   publish and pickup therefore costs no frame; a longer compositor stall
   drops the oldest. The 120-frame probe line
-  (`mpv_kit: render waits avg/over 120 frames: ...`) ends with
-  `superseded=<n> repeated=<n> queued=<n>`, all log-only. Effective drops
-  are mpv's `frame-drop-count` plus `superseded=`. On Flutter's mark-driven
-  texture path a compositor frame without a new mark reuses its cached
-  image without calling `AcquireFront()`, so `repeated=` stays near zero
+  (`mpv_kit: render waits avg/over 120 frames: ...`) carries
+  `superseded=<n> repeated=<n> queued=<n>` and ends with
+  `render=<avg>ms max_render=<max>ms`, all log-only. `render=` is the time
+  the render thread spends in `RenderBackend::Render` per published frame
+  (`mpv_render_context_render` plus the backend's completion signal). Both
+  backends leave `MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME` at mpv's default 1,
+  so mpv also waits inside the call for the frame's target time
+  (`vo_libmpv.c:425-431`): `render=` is an upper bound on the render work,
+  close to the frame period when the work finishes early, and a
+  `max_render=` far above one period marks a stall inside the call.
+  Effective drops are mpv's `frame-drop-count` plus `superseded=`. On
+  Flutter's mark-driven texture path a compositor frame without a new mark
+  reuses its cached image without calling `AcquireFront()`, so `repeated=`
+  stays near zero
   (the 59.94 vs 60 Hz display repeat is invisible to the renderer);
   `queued=` counts frames shown one compositor frame later than a
   newest-wins queue would have shown them.
@@ -343,8 +352,20 @@ Dart sees `MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy).
   Putting D3D11 first is a separate change that only reorders that array.
 * **Pickup latency.** The plugin logs
   `mpv_kit: compositor pickup avg/over 120 frames: <avg>ms max=<max>ms
-  backend=<wire name>` every 120 frames: the time from the renderer's
-  `FrameReady` to the compositor asking for the frame. Measurement only.
+  backend=<wire name> describes=<n> describe=<avg>ms max_describe=<max>ms
+  handle_changes=<n> binds=<n> bind=<avg>ms max_bind=<max>ms` every 120
+  frames. The first two numbers are the time from the renderer's
+  `FrameReady` to the compositor asking for the frame. `describes=` counts the
+  plugin's `Describe` calls in the window and `describe=` their duration from
+  entry through `AcquireFront`. `handle_changes=` counts the calls that
+  handed Flutter a different shared handle than the call before: Flutter's
+  `ExternalTextureD3d` keeps one cached handle and recreates its EGL pbuffer
+  surface on every change (`external_texture_d3d.cc` in Flutter 3.47.8), and
+  with the ring nearly every new frame is a change. `binds=` and `bind=` are
+  the matched samples of the time from `Describe`'s return to the engine's
+  release callback, which the engine calls synchronously after that update, so
+  it brackets the per-frame surface update but not the later draw or ANGLE's
+  internal synchronization. Measurement only.
 
 ## Linux OpenGL backend (Phase 15)
 

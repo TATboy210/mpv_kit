@@ -202,12 +202,19 @@ class VideoRenderer {
   // Sync-wait probe: rolling stats of the two per-frame CPU waits on the
   // GPU timeline (RenderOnce). Aggregated over kProbeWindow frames and
   // emitted via log_ — the numbers decide whether the second (post-render)
-  // wait is worth replacing with a keyed-mutex handoff.
+  // wait is worth replacing with a keyed-mutex handoff. The line also ends
+  // with the average and worst time of the backend's Render call per frame
+  // (log only, see probe_render_ms_).
   static constexpr int kProbeWindow = 120;
   int probe_frames_ = 0;
   double probe_wait_prev_ms_ = 0;  // wait before writing the ring image
   double probe_wait_done_ms_ = 0;  // wait after mpv finished rendering
   double probe_wait_done_max_ms_ = 0;
+  // Time in RenderBackend::Render per probed frame (log only, render thread
+  // only like the wait sums): mpv's render call, which also waits for the
+  // frame's target time, plus the backend's completion signal.
+  double probe_render_ms_ = 0;
+  double probe_render_max_ms_ = 0;
   // Frames rendered and dropped before the compositor took them (mpv does
   // not count them as drops): from a full queue, the older waiting frame at
   // a resize or a return from idle, or a replaced frame on the fallback

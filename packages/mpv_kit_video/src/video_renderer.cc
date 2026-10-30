@@ -805,7 +805,17 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     }
   }
   AssertRenderThread();
+  // Log-only timing of the render call (probe line, render=/max_render=). It
+  // covers mpv_render_context_render and the backend's completion signal.
+  // MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME is left at mpv's default 1, so
+  // mpv also waits inside the call until the frame's target time
+  // (vo_libmpv.c:425-431): the figure is an upper bound on the render work,
+  // close to the frame period whenever the work finishes early.
+  const auto render_begin = std::chrono::steady_clock::now();
   const int err = render_backend_->Render(api_, render_ctx_, back, w, h);
+  const double render_ms = std::chrono::duration<double, std::milli>(
+                               std::chrono::steady_clock::now() - render_begin)
+                               .count();
   if (err < 0) {
     *error = std::string("render: ") + api_.error_string(err);
     // The frame was consumed (unless the target was rejected up front,
@@ -828,6 +838,8 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
                                     .count();
     probe_wait_done_ms_ += wait_done_ms;
     probe_wait_done_max_ms_ = std::max(probe_wait_done_max_ms_, wait_done_ms);
+    probe_render_ms_ += render_ms;
+    probe_render_max_ms_ = std::max(probe_render_max_ms_, render_ms);
     // One aggregated line per probe window: avg waits per frame plus the
     // worst single post-render wait, to size the serialisation tax.
     if (++probe_frames_ >= kProbeWindow) {
@@ -845,11 +857,15 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
            std::to_string(probe_wait_done_ms_ / probe_frames_) + "ms max_done=" +
            std::to_string(probe_wait_done_max_ms_) + "ms superseded=" +
            std::to_string(superseded) + " repeated=" +
-           std::to_string(repeated) + " queued=" + std::to_string(queued));
+           std::to_string(repeated) + " queued=" + std::to_string(queued) +
+           " render=" + std::to_string(probe_render_ms_ / probe_frames_) +
+           "ms max_render=" + std::to_string(probe_render_max_ms_) + "ms");
       probe_frames_ = 0;
       probe_wait_prev_ms_ = 0;
       probe_wait_done_ms_ = 0;
       probe_wait_done_max_ms_ = 0;
+      probe_render_ms_ = 0;
+      probe_render_max_ms_ = 0;
     }
     if (done != WaitResult::kOk) {
       // The frame is consumed either way: keep vo_libmpv's counts moving.

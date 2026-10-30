@@ -7,7 +7,9 @@
 // one when nothing is new, re-notifies the platform while a further frame
 // waits, and a full queue drops its oldest, counted as superseded). The
 // probe line's `superseded=`, `repeated=` and `queued=` counts are checked
-// against exact numbers.
+// against exact numbers. The line also ends with the render call time
+// (`render=<ms>ms max_render=<ms>ms`, quick 261030-umq), checked for
+// presence and order only: the fake backends have no meaningful timing.
 //
 // Runs the real packages/mpv_kit_video/src/video_renderer.cc against the fake
 // libmpv of renderer_harness.h, on two backends: the software backend and a
@@ -26,6 +28,7 @@
 // Exit codes: 0 pass, 1 failure.
 
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -74,6 +77,11 @@ constexpr const char* kProbePrefix = "mpv_kit: render waits avg/over ";
 constexpr const char* kSupersededKey = " superseded=";
 constexpr const char* kRepeatedKey = " repeated=";
 constexpr const char* kQueuedKey = " queued=";
+// Tail of the probe line: average and worst time in the backend's Render call
+// per probed frame (log only). The leading space keeps ` render=` apart from
+// ` max_render=`.
+constexpr const char* kRenderKey = " render=";
+constexpr const char* kMaxRenderKey = " max_render=";
 // The log line of the allocation fallback, and the prefix any allocation
 // failure line starts with.
 constexpr const char* kAllocFailedPrefix =
@@ -427,8 +435,39 @@ bool ReadKey(const std::string& line, const char* key, int* out) {
   return true;
 }
 
+/// Reads the decimal after [key] at or beyond [from] in [line] into [out]:
+/// finite, non-negative and immediately followed by `ms`. [end] gets the
+/// offset just past that `ms`; false when any of this does not hold.
+bool ReadMs(const std::string& line, const char* key, std::size_t from,
+            double* out, std::size_t* end) {
+  const std::size_t at = line.find(key, from);
+  if (at == std::string::npos) return false;
+  const char* begin = line.c_str() + at + std::string(key).size();
+  char* stop = nullptr;
+  const double value = std::strtod(begin, &stop);
+  if (stop == begin || !std::isfinite(value) || value < 0) return false;
+  const std::size_t unit = static_cast<std::size_t>(stop - line.c_str());
+  if (line.compare(unit, 2, "ms") != 0) return false;
+  *out = value;
+  *end = unit + 2;
+  return true;
+}
+
+/// True when [line] ends with ` render=<avg>ms max_render=<max>ms` after its
+/// ` queued=` value, with max >= avg (the tail of the probe line).
+bool HasRenderTail(const std::string& line) {
+  const std::size_t queued_at = line.find(kQueuedKey);
+  if (queued_at == std::string::npos) return false;
+  double avg = 0, max = 0;
+  std::size_t avg_end = 0, max_end = 0;
+  if (!ReadMs(line, kRenderKey, queued_at, &avg, &avg_end)) return false;
+  if (!ReadMs(line, kMaxRenderKey, avg_end, &max, &max_end)) return false;
+  return max >= avg && max_end == line.size();
+}
+
 /// The probe line's three counts; an invariant when the line is missing,
-/// duplicated or lacks a key. [ok] is false then.
+/// duplicated, lacks a key or does not end with the render time. [ok] is
+/// false then.
 Probe ReadProbe(Run& run, bool* ok) {
   Probe p;
   int lines = 0;
@@ -442,6 +481,12 @@ Probe ReadProbe(Run& run, bool* ok) {
         !ReadKey(line, kQueuedKey, &p.queued)) {
       run.Invariant("probe line without superseded=, repeated= and queued=: " +
                     line);
+      return p;
+    }
+    if (!HasRenderTail(line)) {
+      run.Invariant(
+          "probe line does not end with render=<ms>ms max_render=<ms>ms: " +
+          line);
       return p;
     }
   }
