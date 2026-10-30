@@ -8,6 +8,12 @@
   external-image hand-off, pl_queue lifetime, memory safety).
 - The bundle is still the 0.1.0-dev.3 release until a new release is built
   and pinned (`bundleTag`).
+- The build hook reuses a cached bundle only when its extracted `lib/`
+  directory still holds shared libraries, so a stale `{target}.ok` stamp left
+  by a cleaned cache now leads to a reinstall from the verified archive (or a
+  fresh download) instead of silently bundling no libmpv; a pinned bundle that
+  yields no shared libraries now fails the build with
+  `BundleIntegrityException`.
 
 ## 0.1.0-dev.3
 

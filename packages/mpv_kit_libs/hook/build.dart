@@ -69,17 +69,12 @@ Future<List<File>> _resolve(
 
   final pinned = bundleSha256[target];
   if (bundleTag.isEmpty || pinned == null) return const [];
-  final cache = input.outputDirectoryShared.resolve('$bundleTag/');
-  final archive = File.fromUri(cache.resolve('libmpv-$target.tar.gz'));
-  final extracted = Directory.fromUri(cache.resolve('$target/'));
-  final stamp = File.fromUri(cache.resolve('$target.ok'));
-  if (stamp.existsSync() && stamp.readAsStringSync() == pinned) {
-    return sharedLibrariesIn(extracted);
-  }
-  if (!archive.existsSync() || sha256Hex(archive.readAsBytesSync()) != pinned) {
-    await download(bundleUrl(target), archive);
-  }
-  final libs = installBundle(archive, pinned, extracted);
-  stamp.writeAsStringSync(pinned);
-  return libs;
+  return resolvePinnedBundle(
+    cache: Directory.fromUri(
+      input.outputDirectoryShared.resolve('$bundleTag/'),
+    ),
+    target: target,
+    pinnedSha256: pinned,
+    fetch: (archive) => download(bundleUrl(target), archive),
+  );
 }

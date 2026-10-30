@@ -240,6 +240,121 @@ void main() {
     );
   });
 
+  group('resolvePinnedBundle', () {
+    const target = 'linux-x64';
+    const files = {'lib/libmpv.so.2': 'MPV', 'LICENSE.LGPL': 'L'};
+
+    Uint8List validTar() => tar([
+      for (final MapEntry(:key, :value) in files.entries)
+        ('./$key', '0', value),
+      ('./MANIFEST.txt', '0', manifestFor(files)),
+    ]);
+
+    late Directory cache;
+    late Uint8List archiveBytes;
+    late String pin;
+    var fetches = 0;
+
+    setUp(() {
+      cache = Directory('${tmp.path}/cache');
+      archiveBytes = Uint8List.fromList(gzip.encode(validTar()));
+      pin = sha256Hex(archiveBytes);
+      fetches = 0;
+    });
+
+    // Fake release download: writes the valid archive and counts calls.
+    Future<void> fetch(File archive) async {
+      fetches++;
+      archive.parent.createSync(recursive: true);
+      archive.writeAsBytesSync(archiveBytes);
+    }
+
+    // A fetch that must never run (the cache already holds a good archive).
+    Future<void> noFetch(File archive) async =>
+        throw StateError('fetch must not run');
+
+    File archiveFile() => File('${cache.path}/libmpv-$target.tar.gz');
+    File stampFile() => File('${cache.path}/$target.ok');
+
+    Future<List<File>> resolve(Future<void> Function(File) fetcher) =>
+        resolvePinnedBundle(
+          cache: cache,
+          target: target,
+          pinnedSha256: pin,
+          fetch: fetcher,
+        );
+
+    test('reuses a matching stamp with libraries', () async {
+      File('${cache.path}/$target/lib/libmpv.so.2')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('MPV');
+      stampFile().writeAsStringSync(pin);
+      final libs = await resolve(noFetch);
+      expect(libs.map((f) => f.uri.pathSegments.last), ['libmpv.so.2']);
+    });
+
+    test('reinstalls when the extracted directory is gone', () async {
+      // A cleaned cache: archive and stamp survive, the extraction does not.
+      cache.createSync(recursive: true);
+      archiveFile().writeAsBytesSync(archiveBytes);
+      stampFile().writeAsStringSync(pin);
+      final libs = await resolve(noFetch);
+      expect(libs, isNotEmpty);
+      expect(
+        File('${cache.path}/$target/lib/libmpv.so.2').existsSync(),
+        isTrue,
+      );
+    });
+
+    test('reinstalls when lib/ is empty', () async {
+      cache.createSync(recursive: true);
+      Directory('${cache.path}/$target/lib').createSync(recursive: true);
+      archiveFile().writeAsBytesSync(archiveBytes);
+      stampFile().writeAsStringSync(pin);
+      final libs = await resolve(noFetch);
+      expect(libs, isNotEmpty);
+    });
+
+    test('downloads when the cached archive does not match the pin', () async {
+      cache.createSync(recursive: true);
+      archiveFile().writeAsBytesSync(utf8.encode('not the pinned archive'));
+      final libs = await resolve(fetch);
+      expect(fetches, 1);
+      expect(libs, isNotEmpty);
+      expect(stampFile().readAsStringSync(), pin);
+    });
+
+    test('fails loudly when the bundle has no shared libraries', () async {
+      // MANIFEST-consistent but without any lib/ entry.
+      const bare = {'LICENSE.LGPL': 'L'};
+      final bareBytes = Uint8List.fromList(
+        gzip.encode(
+          tar([
+            ('./LICENSE.LGPL', '0', 'L'),
+            ('./MANIFEST.txt', '0', manifestFor(bare)),
+          ]),
+        ),
+      );
+      pin = sha256Hex(bareBytes);
+      Future<void> fetchBare(File archive) async {
+        archive.parent.createSync(recursive: true);
+        archive.writeAsBytesSync(bareBytes);
+      }
+
+      await expectLater(
+        resolve(fetchBare),
+        throwsA(
+          isA<BundleIntegrityException>().having(
+            (e) => e.message,
+            'message',
+            contains('no shared libraries'),
+          ),
+        ),
+      );
+      expect(stampFile().existsSync(), isFalse);
+    });
+  });
+
   test('bundleTarget covers the six release targets only', () {
     expect(bundleTarget('windows', 'arm64'), 'windows-arm64');
     expect(bundleTarget('macos', 'x64'), 'macos-x64');

@@ -142,6 +142,46 @@ List<File> installBundle(File archive, String expectedSha256, Directory dir) {
   return sharedLibrariesIn(dir);
 }
 
+/// Resolves the pinned release bundle for [target] from the build-hook
+/// [cache] directory and returns its shared libraries.
+///
+/// Cache layout (names shared with the hook): archive
+/// `libmpv-<target>.tar.gz`, extracted directory `<target>/` and the stamp
+/// `<target>.ok` holding the pinned sha256. [fetch] writes the release
+/// archive to the file it is given (the hook passes a download).
+Future<List<File>> resolvePinnedBundle({
+  required Directory cache,
+  required String target,
+  required String pinnedSha256,
+  required Future<void> Function(File archive) fetch,
+}) async {
+  final archive = File('${cache.path}/libmpv-$target.tar.gz');
+  final extracted = Directory('${cache.path}/$target');
+  final stamp = File('${cache.path}/$target.ok');
+  if (stamp.existsSync() && stamp.readAsStringSync() == pinnedSha256) {
+    // A cleaned cache can leave a valid stamp over a missing or empty
+    // extraction. Trust the stamp only while libraries are really there;
+    // otherwise fall through and reinstall (the archive is re-hashed against
+    // the pin before it is reused).
+    final cached = sharedLibrariesIn(extracted);
+    if (cached.isNotEmpty) return cached;
+  }
+  if (!archive.existsSync() ||
+      sha256Hex(archive.readAsBytesSync()) != pinnedSha256) {
+    await fetch(archive);
+  }
+  final libs = installBundle(archive, pinnedSha256, extracted);
+  if (libs.isEmpty) {
+    // No stamp is written, so the next build retries instead of trusting a
+    // bundle that would silently emit no libmpv.
+    throw BundleIntegrityException(
+      '${archive.path}: no shared libraries under lib/ after installation',
+    );
+  }
+  stamp.writeAsStringSync(pinnedSha256);
+  return libs;
+}
+
 /// Downloads [url] to [target] (honours HTTPS_PROXY/HTTP_PROXY/NO_PROXY).
 ///
 /// Writes to a uniquely named temporary file that is renamed into place.
