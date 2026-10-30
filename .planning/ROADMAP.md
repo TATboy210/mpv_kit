@@ -292,10 +292,10 @@ Plans:
   2. `tools/pin_bundles.dart` updates `bundleTag` and every sha256 in `bundles.dart`; the build hook verifies them.
   3. With only the pinned bundle (no branch-built libmpv), forced `d3d11` renders on the Windows runner and on the RTX 4060, and forced `opengl` renders on the ubuntu runner; ANGLE-FREE and the LGPL audits stay green.
   4. The todo `2026-10-27-pin-a-bundle-with-the-d3d11-backend` is closed and covers Linux too.
-**Plans:** 7 plans
+**Plans:** 1/7 plans executed
 
 Plans:
-- [ ] 17.1-01-PLAN.md — W1: hook stale-stamp fix, test first (D-07)
+- [x] 17.1-01-PLAN.md — W1: hook stale-stamp fix, test first (D-07)
 - [ ] 17.1-02-PLAN.md — W1: flutter-plugin Windows leg loads libmpv and fails on test failure, red then green (D-05)
 - [ ] 17.1-03-PLAN.md — W2: gate tools, preflight, CHANGELOG/README, push and PR gate
 - [ ] 17.1-04-PLAN.md — W3: release rehearsal dispatch, go/no-go checkpoint, push tag v0.1.0-dev.4, verify the release
@@ -316,4 +316,4 @@ Plans:
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 5/5 | Complete    | 2026-10-30 |
-| 17.1. Release and pin bundle (INSERTED) | v3.0 | 0/7 | Planned | - |
+| 17.1. Release and pin bundle (INSERTED) | v3.0 | 1/7 | In Progress | - |

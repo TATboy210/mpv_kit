@@ -3,17 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
+current_phase_name: INSERTED after the v3.0 audit
 status: completed
-stopped_at: Phase 17 complete — all phases complete
-last_updated: "2026-10-30T14:30:48.653Z"
+stopped_at: Completed 17.1-01-PLAN.md
+last_updated: "2026-10-30T16:28:18.391Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 17 complete
-state_head: a2c05d71a6bf7772b071e182e004ac5f7f384848
+state_head: 022f663dea4b9339d6562df0e507c1974a4df51d
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 47
-  completed_plans: 47
+  total_plans: 54
+  completed_plans: 48
   percent: 86
 ---
 
@@ -135,6 +136,7 @@ Progress: [█████████░] 86%
 | Phase 17 P03 | 55min | 3 tasks | 12 files |
 | Phase 17 P04 | 3h | 3 tasks | 30 files |
 | Phase 17 P05 | 3h | 2 tasks | 11 files |
+| Phase 17.1 P01 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -266,6 +268,7 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-03: Phase 16 release bundle reused for the RTX session (no release.yml dispatch; build-relevant paths unchanged since 15f61ff)
 - [Phase 17]: 17-04: d3d11 4K 1800 s lavfi had 3 and 5 VO drops (2 attempts); recorded as a finding for 17-05, VER-04 partial. process_dedicated_mib unusable on frame-presenting runs (use LocalUsage).
 - [Phase 17]: 17-05: SC1/VER-01/VER-04/SC4 wording approved by the user and applied; ubuntu opengl soak keeps MALLOC_ARENA_MAX=1 as a documented measurement-environment choice; vk-gpu-timeout todo closed
+- [Phase 17.1]: 17.1-01: pinned-cache stamp honoured only over a non-empty lib/; empty pinned bundle fails with BundleIntegrityException (D-07); libmpv_bundle user-define branch unchanged
 
 ### CI Deferral
 
@@ -339,8 +342,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T13:02:55.700Z
-Stopped at: Phase 17 complete — all phases complete
+Last session: 2026-10-30T16:28:16.409Z
+Stopped at: Completed 17.1-01-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
