@@ -540,6 +540,25 @@ jobs:
               bash tools/backend_matrix.sh windows
               ;;
           esac
+      # Phase 17 (VER-04, success criterion 4, opengl part): the platform-
+      # independent 100-round resize/dispose soak with the OpenGL backend
+      # forced. llvmpipe keeps its GL textures in process memory, so the RSS
+      # curve is the memory record here and its plateau (pre-registered rule in
+      # example/integration_test/soak_memory.dart) is a hard assertion. Real
+      # Linux GPU memory is not verified by this step. No continue-on-error.
+      - name: Backend soak (linux, MPV_KIT_VIDEO_API=opengl, VER-04)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+          MPV_KIT_SOAK_MEMORY: rss
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/backend_soak_test.dart -d linux
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
