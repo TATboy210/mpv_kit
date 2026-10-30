@@ -53,3 +53,6 @@ ver04-soak run=40991964430 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 line=SOA
 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=native-verify.yml run=41042057042 conclusion=success
 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=flutter-plugin.yml run=41042057124 conclusion=success
 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=macos-route.yml run=41042057035 conclusion=success (17-04 push, docs/evidence/tools only)
+sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=native-verify.yml run=41052501831 conclusion=success
+sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=flutter-plugin.yml run=41052501341 conclusion=success
+sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=macos-route.yml run=41052501728 conclusion=success (17-04 supplementary attempt 3 push, evidence only)
