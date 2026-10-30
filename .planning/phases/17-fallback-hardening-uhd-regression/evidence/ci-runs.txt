@@ -56,3 +56,10 @@ sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 workflow=macos-route.yml run=410420
 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=native-verify.yml run=41052501831 conclusion=success
 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=flutter-plugin.yml run=41052501341 conclusion=success
 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 workflow=macos-route.yml run=41052501728 conclusion=success (17-04 supplementary attempt 3 push, evidence only)
+# 17-05 backfill (records of runs gated in earlier plans or read afterwards; every line comes from the run's own log via gh run view --log)
+ver04-soak-red run=40993938470 attempt=1 sha=aac870d1ff7c7bb0fced63a5901daf0c8e573fb5 conclusion=failure job=integration-test (ubuntu-24.04) line=SOAK rssMiB=[661.1,946.8,1158.5,1230.5,1297.1,1309.0,1347.5,1385.4,1429.9,1526.1,1567.3] rssLateMiB=219.8 rssVerdict=growth (default glibc allocator; docs-only commit, product code identical to the green runs; attempt 2 of the same run read flat with late +28.1, see debug/ubuntu-soak-late-rss-growth.md)
+sha=b34a402fcb1e9d1a973ba8ceb413556ee4399997 workflow=native-verify.yml run=41019644525 conclusion=success (b34a402 adds MALLOC_ARENA_MAX=1 to the ubuntu opengl soak step)
+sha=b34a402fcb1e9d1a973ba8ceb413556ee4399997 workflow=flutter-plugin.yml run=41019644492 conclusion=success
+sha=b34a402fcb1e9d1a973ba8ceb413556ee4399997 workflow=macos-route.yml run=41019644500 conclusion=success
+ver04-soak run=41042057042 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 line=SOAK {"api":"opengl","rounds":100,"renderErrors":0,"deviceLost":0,"idleSoak":0,"apiMismatches":0,"rssMiB":[654.4,756.5,862.8,895.7,897.2,864.7,865.5,868.0,865.0,867.3,867.8],"rssVerdict":"flat","rssLateMiB":2.3,"lastControllerFrame":"not-presented"} (MALLOC_ARENA_MAX=1)
+ver04-soak run=41052501831 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 line=SOAK {"api":"opengl","rounds":100,"renderErrors":0,"deviceLost":0,"idleSoak":0,"apiMismatches":0,"rssMiB":[664.9,732.4,791.5,800.9,825.3,823.1,820.4,819.7,823.8,826.5,823.8],"rssVerdict":"flat","rssLateMiB":3.4,"lastControllerFrame":"not-presented"} (MALLOC_ARENA_MAX=1)

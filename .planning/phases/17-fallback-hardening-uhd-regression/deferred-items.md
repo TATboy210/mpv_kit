@@ -21,3 +21,13 @@
    Unrelated to renderer code. Candidate fix: pin or `brew upgrade libplacebo` in the integration job,
    or build the libmpv bundle against the same bottle.
    Status: resolved by quick 261030-3pc in 6f6631c (fix-forward 127a348 re-signs unverifiable Intel copies): the macOS verify job stages libmpv's Homebrew closure with @loader_path names, the integration job installs no Homebrew formula, and `MACOS-DYLD summary ... homebrew=0` appeared on run 40939860843; second sample run 40943562883 on c00e843.
+
+## From 17-05
+
+3. **`mpv_kit_libs` build hook honours a stale `$target.ok` stamp (open finding, not fixed).**
+   `packages/mpv_kit_libs/hook/build.dart:76` returns `sharedLibrariesIn(extracted)` when the stamp equals the pin,
+   without checking that `extracted` still exists. If the extracted directory was cleaned and the stamp survived,
+   the hook silently returns no libraries (the local `v0.1.0-dev.3` lib directory was empty for this reason during
+   Phase 17). Out of scope for Phase 17 (no product code changed); candidate fix is to require the directory (or a
+   non-empty `sharedLibrariesIn`) before returning on the stamp path, with a test on a cleaned cache. Also listed in
+   `evidence/unverified.txt`.

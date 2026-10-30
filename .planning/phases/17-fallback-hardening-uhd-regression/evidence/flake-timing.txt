@@ -28,3 +28,8 @@ run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=sanitizers line
 run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1113 backoff-ms=164 retry-ms=1278
 run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
 run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+# 17-05 backfill: timing-info of runs gated earlier but not appended then (gh run view --log). Linux and sanitizer jobs print wait-ms=1000 backoff-ms=100 retry-ms=1100 in all of them; only the macos (macos-15) line is listed.
+run=40937808629 sha=6f6631c6884e22da12be2061f136afb3381a993d job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1016 backoff-ms=128 retry-ms=1144
+run=40991964430 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1007 backoff-ms=167 retry-ms=1175
+run=41042057042 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1001 backoff-ms=117 retry-ms=1118
+run=41052501831 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1067 backoff-ms=135 retry-ms=1203

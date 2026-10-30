@@ -99,6 +99,12 @@ The tests need a real libmpv unless they are pure-Dart. Two supported ways:
    entries must use the POSIX form (`/d/mpv_kit/...`); a `D:/...` entry is
    not converted and dependency resolution fails.
 
+Test-only environment variables (read by the integration tests, never by the library):
+
+- `MPV_KIT_REQUIRE_HWDEC=<method>` — the hardware-decode tests must reach that zero-copy `hwdec-current` (for example `d3d11va`) or they fail loudly instead of skipping.
+- `MPV_KIT_EXPECT_BACKEND=render|unavailable` — `texture_probe_test` asserts that the forced `MPV_KIT_VIDEO_API` backend either renders or is cleanly unavailable.
+- `MPV_KIT_SOAK_MEMORY=rss` — `backend_soak_test` asserts a flat RSS curve over 100 rounds.
+
 The old `bt/` directory of prebuilt DLLs was retired and removed from the
 repository (stale pre-rebase binaries without the working Vulkan render
 path, ~44 MB); use the hook bundle instead.
@@ -313,3 +319,5 @@ unchanged.
 | `native-verify` | Builds the patched libmpv on all six targets, runs the Vulkan render smoke test, the ABI audit and the Dart tests (artifacts are not distributed) |
 | `flutter-plugin` | Compiles `mpv_kit_video` through the example app on Windows, Linux and macOS |
 | `release` | LGPL release bundles (FFmpeg from source, license-gated, packaged with a sha256 manifest); `v*` tags publish them with `SHA256SUMS` |
+
+`native-verify` also runs the fault-injection golden (`video_renderer_fault_test`) in its native test jobs. Its `integration-test` job forces every backend of its platform in turn (`tools/backend_matrix.sh`), runs on Windows a negative leg that proves `MPV_KIT_REQUIRE_HWDEC` fails loudly on a host without zero-copy decode, and runs a 100-round opengl soak on the Linux runner (software llvmpipe, RSS only, one glibc malloc arena). Method, results and what stays unverified are in [docs/perf/fallback-uhd-regression.md](docs/perf/fallback-uhd-regression.md).
