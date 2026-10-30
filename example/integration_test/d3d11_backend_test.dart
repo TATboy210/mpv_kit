@@ -8,7 +8,9 @@
 // strict about that path: if it cannot be loaded (e.g. a dependency DLL next
 // to the executable shadows the artifact's), creating the Player throws
 // MpvLibraryNotFound with the loader's reason instead of falling back to the
-// bundled libmpv, which has no D3D11 render API. A debug plugin
+// bundled libmpv. native-verify runs this test on the staged branch libmpv
+// through MPV_KIT_LIBMPV_PATH (strict, never falls back), and flutter-plugin
+// runs it on the pinned bundle alone (Phase 17.1). A debug plugin
 // build also honours MPV_KIT_D3D11_SYNC=query, which forces the
 // D3D11_QUERY_EVENT completion path instead of the ID3D11Fence path; the
 // value is echoed in the report line.

@@ -37,10 +37,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
-            libpulse0 libasound2t64 libva2 libva-drm2 libvulkan1
+            libpulse0 libasound2t64 libva2 libva-drm2 libvulkan1             xvfb libegl-dev libgl-dev libegl-mesa0 libgl1-mesa-dri
           # The second line is the hook bundle's host-provided runtime set
           # (package.sh system allowlist: audio, VA-API, Vulkan loader); a
           # minimal runner lacks libpulse.so.0, so libmpv.so.2 fails to load.
+          # The third line is the runtime of the pinned-only opengl probe
+          # (xvfb display, libglvnd EGL/GL, Mesa EGL and DRI drivers named
+          # explicitly because --no-install-recommends skips them).
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -105,3 +108,35 @@ jobs:
           flutter test
           cd ../../example
           flutter analyze --fatal-infos
+
+      # v3.0 audit INT-1/INT-2: this workflow builds no libmpv, so the two
+      # steps below prove that the pinned bundle alone carries the Windows
+      # D3D11 and Linux OpenGL backends. A libmpv without patch 0010 fails the
+      # d3d11 step (run 40617697855: "d3d11/gpu-next unavailable:
+      # mpv_render_context_create: operation not implemented"), so they ran
+      # first with the pin commit and are never pushed without it. Each ends
+      # with tools/pinned_bundle_identity.sh, which proves the run used the
+      # pinned bundle's files.
+      - name: Pinned bundle only, forced d3d11 (INT-1)
+        if: matrix.target == 'windows'
+        shell: bash
+        working-directory: example
+        env:
+          MPV_KIT_VIDEO_API: d3d11
+        run: |
+          # The consumer path: libmpv-2.dll is found by default name in the
+          # executable directory, where the hook put the pinned bundle.
+          unset MPV_KIT_LIBMPV_PATH
+          flutter test integration_test/d3d11_backend_test.dart -d windows
+          bash ../tools/pinned_bundle_identity.sh windows-x64 build/windows/x64/runner/Debug
+      - name: Pinned bundle only, forced opengl (INT-2)
+        if: matrix.target == 'linux'
+        shell: bash
+        working-directory: example
+        env:
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          # MPV_KIT_LIBMPV_PATH comes from the Locate step and names the hook
+          # cache copy; the identity tool asserts that.
+          xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+          bash ../tools/pinned_bundle_identity.sh linux-x64

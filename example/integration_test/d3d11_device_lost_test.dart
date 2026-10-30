@@ -9,7 +9,9 @@
 // (patch 0010) and the gpu-next D3D11 branch (patch 0004). MpvLibrary.open is
 // strict about that path: a libmpv that fails to load throws
 // MpvLibraryNotFound with the loader's reason instead of falling back to the
-// bundled copy, which has no D3D11 render API.
+// bundled copy. native-verify runs this test on the staged branch libmpv
+// through MPV_KIT_LIBMPV_PATH (strict, never falls back); flutter-plugin runs
+// d3d11_backend_test on the pinned bundle alone (Phase 17.1).
 //
 // The injection replaces only the HRESULT source of the plugin's device
 // removal check (and the device creation result); the mapping to device_lost

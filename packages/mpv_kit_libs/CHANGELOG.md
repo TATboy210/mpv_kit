@@ -6,8 +6,16 @@
   crashes fixed (0007); four upstream mpv fixes backported (0009).
 - libplacebo 7.360.1 with 14 upstream fixes (Vulkan command races,
   external-image hand-off, pl_queue lifetime, memory safety).
-- The bundle is still the 0.1.0-dev.3 release until a new release is built
-  and pinned (`bundleTag`).
+- The bundles are the v0.1.0-dev.4 release (`bundleTag`). Patch changes since
+  v0.1.0-dev.3: 0010 adds the Direct3D 11 render API, 0012 builds the Linux
+  libmpv against libdrm 2.4.113, 0008 (vendor integration fixes) and 0009
+  (upstream backports) are new, 0004 is now
+  `libmpv-gpu-next-render-backend-and-renderer-report` and absorbs 0005.
+  Windows libmpv gains the Direct3D 11 render API; the Windows bundle adds
+  `libshaderc_shared.dll` and `libspirv-cross-c-shared.dll` (with their
+  `licenses/shaderc` and `licenses/spirv-cross` entries). Linux libmpv is
+  built with OpenGL/EGL and needs the host `libEGL.so.1` (libglvnd), so a
+  host without libEGL cannot load it. macOS has no backend change.
 - The build hook reuses a cached bundle only when its extracted `lib/`
   directory still holds shared libraries, so a stale `{target}.ok` stamp left
   by a cleaned cache now leads to a reinstall from the verified archive (or a

@@ -276,9 +276,10 @@ jobs:
         # the artifact's msys2 closure, so MPV_KIT_LIBMPV_PATH fails to load
         # ("The specified procedure could not be found"). MpvLibrary is
         # strict about MPV_KIT_LIBMPV_PATH and throws MpvLibraryNotFound; it
-        # used to fall through to the pinned bundle's libmpv, which has no
-        # D3D11 render API (run 40617697855: "mpv_render_context_create:
-        # operation not implemented"). Pointing the hook at the artifact makes
+        # used to fall through to the libmpv of the bundle pinned at that
+        # time (the release before patch 0010), which had no D3D11 render API
+        # (run 40617697855: "mpv_render_context_create: operation not
+        # implemented"). Pointing the hook at the artifact makes
         # the executable directory carry the one consistent closure.
         if: matrix.target == 'windows'
         shell: bash
@@ -330,12 +331,13 @@ jobs:
               # The sandboxed example app cannot read the staged dylib's
               # dependencies, which sit next to it in stage/ outside the app
               # container ("file system sandbox blocked open()"), so this run
-              # uses the mpv_kit_libs bundle (Vulkan renderer, pinned
-              # v0.1.0-dev.3); the branch build is exercised by the next step.
+              # uses the mpv_kit_libs bundle (Vulkan renderer, the release
+              # pinned in bundles.dart); the branch build is exercised by the
+              # next step.
               cd example && env -u MPV_KIT_LIBMPV_PATH flutter test integration_test/real_plugin_test.dart -d macos
               # HWD-05/SC4: `hwdec=no` software decode on the Vulkan backend
-              # (MoltenVK), with the same bundled libmpv (the pinned v0.1.0-dev.3
-              # release, not the branch build); the default-list result is
+              # (MoltenVK), with the same bundled libmpv (the release pinned in
+              # bundles.dart, not the branch build); the default-list result is
               # recorded only. HWDEC-IDENTITY in the log names the libmpv.
               env -u MPV_KIT_LIBMPV_PATH MPV_KIT_VIDEO_API=vulkan flutter test integration_test/hwdec_zero_copy_test.dart -d macos
               ;;
@@ -374,8 +376,13 @@ jobs:
           esac
       - name: Real-plugin integration test (macOS, branch libmpv, software renderer)
         # Loads THIS branch's libmpv (the staged artifact) in the real app and
-        # asserts it by client API (2.6 after patch 0010; the pinned bundle is
-        # 2.5). Two limits, both measured (runs 40668191795, 40673113177):
+        # asserts it by client API (2.6 after patch 0010). Since v0.1.0-dev.4
+        # the pinned bundle reports client API 2.6 as well
+        # (native/mpv/include/mpv/client.h: MPV_MAKE_VERSION(2, 6)), so the API
+        # check no longer separates the two builds; MpvLibrary's strict
+        # MPV_KIT_LIBMPV_PATH handling (it never falls back) is what keeps this
+        # step on the staged build. Two limits, both measured (runs
+        # 40668191795, 40673113177):
         #  * the example's sandbox (DebugProfile.entitlements) blocks the
         #    staged dylib's dependencies (they sit next to it in stage/, outside
         #    the app container), so it is switched off on this runner's
