@@ -439,6 +439,55 @@ void main() {
     }
   }, skip: skip);
 
+  group('softwareFallback delivery (VER-01)', () {
+    const reason = 'software (sw) on cpu; vulkan/gpu-next unavailable: test';
+
+    setUp(() {
+      if (skip != null) return;
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method == 'create') {
+          return {'textureId': 7, 'backend': 'software', 'reason': reason};
+        }
+        return null;
+      });
+    });
+
+    test(
+      'goes to the first listener, which subscribes after create, once',
+      () async {
+        // create returns before any listener can exist, so the event used to be
+        // added to an async broadcast stream with no subscriber and lost.
+        final c = await MpvVideoController.create(player);
+        final first = <MpvVideoEvent>[];
+        final second = <MpvVideoEvent>[];
+        final sub1 = c.events.listen(first.add);
+        await pumpEventQueue();
+        final sub2 = c.events.listen(second.add);
+        await nativeEvent('resize', '1x1');
+        await pumpEventQueue();
+        final fallbacks = first
+            .where((e) => e.kind == MpvVideoEventKind.softwareFallback)
+            .map((e) => e.message)
+            .toList();
+        expect(fallbacks, ['rendering in software: $reason']);
+        // Only the first listener gets it; later ones see only new events.
+        expect(second.map((e) => e.kind), [MpvVideoEventKind.resize]);
+        await sub1.cancel();
+        await sub2.cancel();
+        await c.dispose();
+      },
+      skip: skip,
+    );
+
+    test('is dropped with the stream when no one ever listened', () async {
+      final c = await MpvVideoController.create(player);
+      await c.dispose();
+      final got = await c.events.toList().timeout(const Duration(seconds: 5));
+      expect(got, isEmpty);
+    }, skip: skip);
+  });
+
   test('unknown backend wire names still throw render_init and release the '
       'texture', () async {
     // Exact match only: case variants, empty, unknown APIs and garbage are

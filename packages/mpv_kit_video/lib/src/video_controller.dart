@@ -80,8 +80,11 @@ enum MpvVideoEventKind {
 
   /// Dart-side warning: rendering fell back to software ([reason] says
   /// why). Every frame is a full CPU render plus buffer copies — 4K+ is
-  /// not viable on this path. Not produced by the native plugin; emitted
-  /// once at create time when the backend resolved to software.
+  /// not viable on this path. Not produced by the native plugin; produced
+  /// once while creating the controller, when the backend resolved to
+  /// software, and delivered to the first listener of
+  /// [MpvVideoController.events] (the one that subscribes after create
+  /// returned; later listeners do not get it).
   softwareFallback,
 
   /// A kind this version does not know (newer plugin).
@@ -227,13 +230,13 @@ final class MpvVideoController {
       // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
       // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
       if (controller.backend == MpvVideoBackend.software) {
-        controller._onEvent(
-          MpvVideoEvent(
-            MpvVideoEventKind.softwareFallback,
-            controller.reason.isEmpty
-                ? 'rendering in software'
-                : 'rendering in software: ${controller.reason}',
-          ),
+        // Held for the first `events` listener: no listener can exist before
+        // create returns (see [_events]).
+        controller._pendingFallback = MpvVideoEvent(
+          MpvVideoEventKind.softwareFallback,
+          controller.reason.isEmpty
+              ? 'rendering in software'
+              : 'rendering in software: ${controller.reason}',
         );
       }
       return controller;
@@ -369,7 +372,26 @@ final class MpvVideoController {
   /// `software (sw) on cpu; vulkan/gpu-next unavailable: <why>`.
   final String reason;
 
-  final _events = StreamController<MpvVideoEvent>.broadcast();
+  // A broadcast stream drops events added while it has no listener, and
+  // create cannot return a controller that already has one, so the create-time
+  // softwareFallback event used to be lost every time. It is kept in
+  // [_pendingFallback] and handed to the first listener from onListen (this
+  // library has no internal listener, so that is the application's). `late`
+  // because onListen refers to this instance.
+  late final _events = StreamController<MpvVideoEvent>.broadcast(
+    onListen: _deliverPending,
+  );
+
+  /// The create-time [MpvVideoEventKind.softwareFallback] event until the
+  /// first listener of [events] takes it; null otherwise.
+  MpvVideoEvent? _pendingFallback;
+
+  void _deliverPending() {
+    final pending = _pendingFallback;
+    if (pending == null) return;
+    _pendingFallback = null;
+    if (!_events.isClosed) _events.add(pending);
+  }
 
   /// `display-fps-override` value this controller set, null if none.
   double? _autoDisplayFps;
@@ -461,6 +483,8 @@ final class MpvVideoController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    // A never-delivered fallback event is dropped with the stream.
+    _pendingFallback = null;
     _live.remove(textureId);
     player.removeDisposeHook(dispose);
     try {

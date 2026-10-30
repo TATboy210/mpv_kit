@@ -56,6 +56,11 @@ const _flowTimeout = Duration(seconds: 30);
 /// Upper bound for the event stream to end after dispose.
 const _disposeTimeout = Duration(seconds: 5);
 
+/// Upper bound for the create-time softwareFallback event to reach the first
+/// listener (it is handed over when that listener subscribes, so this only
+/// covers the microtask hop).
+const _fallbackTimeout = Duration(seconds: 2);
+
 /// Why every d3d11 candidate fails under `create-fail`
 /// (DXGI_ERROR_UNSUPPORTED, marked as injected).
 const _injectedWhy = 'd3d11 device creation failed: 0x887A0004 (injected)';
@@ -135,10 +140,16 @@ void main() {
       );
       final controller = await MpvVideoController.create(player);
       final events = <MpvVideoEventKind>[];
-      controller.events.listen(
-        (e) => events.add(e.kind),
-        onError: (Object _) {},
-      );
+      // The first listener, attached right after create, is the one that gets
+      // the create-time softwareFallback event (VER-01).
+      final fallback = Completer<String>();
+      controller.events.listen((e) {
+        events.add(e.kind);
+        if (e.kind == MpvVideoEventKind.softwareFallback &&
+            !fallback.isCompleted) {
+          fallback.complete(e.message);
+        }
+      }, onError: (Object _) {});
       final report = <String, Object?>{
         'mode': mode,
         'reason': controller.reason,
@@ -146,7 +157,7 @@ void main() {
       };
 
       if (mode == 'create-fail') {
-        await _createFail(player, controller, texture, report);
+        await _createFail(player, controller, texture, fallback, report);
       } else {
         await _deviceRemoved(player, controller, texture, events, report);
       }
@@ -184,6 +195,7 @@ Future<void> _createFail(
   Player player,
   MpvVideoController controller,
   ValueNotifier<int?> texture,
+  Completer<String> fallback,
   Map<String, Object?> report,
 ) async {
   final reason = controller.reason;
@@ -196,7 +208,20 @@ Future<void> _createFail(
   // With Vulkan present the pre-switch chain tries it before d3d11, so no
   // d3d11 trail exists; the RTX 4060 case is covered by 14-11.
   report['trailsChecked'] = softwareWon;
+  // VER-01: landing on software must emit softwareFallback with the whole
+  // fallback chain as its reason (null in the report when Vulkan won).
+  report['softwareFallback'] = null;
   if (softwareWon) {
+    final message = await fallback.future.timeout(
+      _fallbackTimeout,
+      onTimeout: () => '<no softwareFallback event within $_fallbackTimeout>',
+    );
+    expect(
+      message,
+      'rendering in software: $reason',
+      reason: 'the softwareFallback event carries the full reason',
+    );
+    report['softwareFallback'] = message;
     for (final renderer in const ['gpu-next', 'gpu']) {
       expect(
         reason,

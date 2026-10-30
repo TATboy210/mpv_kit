@@ -6,6 +6,9 @@
   pairing every Vulkan ownership transfer.
 - Fixed: a host ICC profile set on the controller survives option changes
   with the gpu-next renderer.
+- Fixed: `MpvVideoEventKind.softwareFallback` was emitted before any listener
+  could subscribe and so was always lost; it is now delivered to the first
+  listener of `MpvVideoController.events`.
 
 ## 0.1.0-dev.3
 
