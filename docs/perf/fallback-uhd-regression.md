@@ -209,7 +209,7 @@ The old golden asserted one combined retry window of 1100 ms plus slack; run `40
 Observed on hosted runners (the macos-15 job; Windows jobs skip the Vulkan golden, exit status 77 because there is no Vulkan device):
 
 - linux x64, linux arm64 and the sanitizer job: `wait-ms=1000 backoff-ms=100 retry-ms=1100` in every recorded run.
-- macos-15, 9 recorded runs up to run `41052501831` (a later gate run is appended in `flake-timing.txt` and summarised in `final-audit.txt`): wait 1000 to 1113 ms, backoff 103 to 169 ms, none outside the split bounds, 0 golden mismatches among the gated runs.
+- macos-15, 10 recorded runs up to the final gate `41056455257`: wait 1000 to 1113 ms, backoff 103 to 169 ms, none outside the split bounds, 0 `vk-gpu-timeout` golden mismatches in any gated run (summary line in `final-audit.txt`).
 - Local RTX 4060 (MSVC): wait 999 to 1000 ms, backoff 100 ms.
 
 Runs without a mismatch do not prove the flake is gone. Run `40679129407` measured a mixed `retry-ms` of 1396, outside the old combined window; the split removes the coupling between a slow device wait and the backoff bound that made it fail, and observation continues.
