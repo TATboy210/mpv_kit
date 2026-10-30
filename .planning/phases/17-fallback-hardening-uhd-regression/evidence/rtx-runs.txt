@@ -1,0 +1,8 @@
+run=matrix-rtx-d3d11 attempt=1 start=2026-10-30T07:58:13.525Z end=2026-10-30T07:58:55.223Z exit=0 log=rtx-matrix-rtx-d3d11.log vram=none standby_during=none forensics=none
+run=matrix-rtx-vulkan attempt=1 start=2026-10-30T07:59:57.431Z end=2026-10-30T08:00:27.292Z exit=0 log=rtx-matrix-rtx-vulkan.log vram=none standby_during=none forensics=none
+run=matrix-rtx-software attempt=1 start=2026-10-30T08:00:33.235Z end=2026-10-30T08:01:02.638Z exit=0 log=rtx-matrix-rtx-software.log vram=none standby_during=none forensics=none
+run=hwdec-require-d3d11va attempt=1 start=2026-10-30T08:01:58.209Z end=2026-10-30T08:03:38.186Z exit=0 log=rtx-hwdec-require-d3d11va.log vram=none standby_during=none forensics=none
+run=hwdec-require-negative-software attempt=1 start=2026-10-30T08:04:23.085Z end=2026-10-30T08:05:07.188Z exit=0 log=rtx-hwdec-require-negative-software.log vram=none standby_during=none forensics=none
+run=soak-d3d11 attempt=1 start=2026-10-30T08:05:45.980Z end=2026-10-30T08:07:25.387Z exit=0 log=rtx-soak-d3d11.log vram=rtx-soak-d3d11.vram.csv standby_during=none forensics=none
+run=soak-vulkan attempt=1 start=2026-10-30T08:08:46.394Z end=2026-10-30T08:10:25.542Z exit=0 log=rtx-soak-vulkan.log vram=rtx-soak-vulkan.vram.csv standby_during=none forensics=none
+run=soak-software attempt=1 start=2026-10-30T08:10:32.601Z end=2026-10-30T08:12:03.823Z exit=0 log=rtx-soak-software.log vram=rtx-soak-software.vram.csv standby_during=none forensics=none

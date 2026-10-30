@@ -1,0 +1,12 @@
+probe run=matrix-rtx-d3d11 api=d3d11 reason="d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11" expect_match=yes nonBlack=1.0/1.0 exit=0
+probe run=matrix-rtx-vulkan api=vulkan reason="vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU" expect_match=yes nonBlack=1.0/1.0 exit=0
+probe run=matrix-rtx-software api=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; d3d11/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software; d3d11/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software" expect_match=yes nonBlack=1.0/1.0 exit=0
+require run=hwdec-require-d3d11va ok_lines=8 fail_lines=0 exit=0
+hwd02-consistency pixelformat=d3d11 hwPixelformat=p010 phase16=same
+require run=hwdec-require-negative-software result=loud-fail script_exit=0 line="REQUIRE-HWDEC-NEGATIVE ok required=d3d11va api=software exit=1"
+soak run=soak-d3d11 rounds=100 seconds=39.2 renderErrors=0 deviceLost=0 idleSoak=0 apiMismatches=0 rss_verdict=flat rss_late_mib=12.6 lastControllerFrame=not-presented exit=0
+vram run=soak-d3d11 checkpoints=182.3,135.6,135.9,134.5,135.9,135.9,126.8,135.9,134.6,135.9,126.8 late_mib=0.0 tail_increasing=no verdict=flat adapter_first_mib=1592.9 adapter_last_mib=1717.2
+soak run=soak-vulkan rounds=100 seconds=38.4 renderErrors=0 deviceLost=0 idleSoak=0 apiMismatches=0 rss_verdict=flat rss_late_mib=13.4 lastControllerFrame=not-presented exit=0
+vram run=soak-vulkan checkpoints=288.2,174.0,174.0,174.0,174.0,174.0,174.0,174.0,174.0,148.8,174.0 late_mib=0.0 tail_increasing=no verdict=flat adapter_first_mib=1592.9 adapter_last_mib=1695.8
+soak run=soak-software rounds=100 seconds=30.9 renderErrors=0 deviceLost=0 idleSoak=0 apiMismatches=0 rss_verdict=flat rss_late_mib=7.9 lastControllerFrame=not-presented exit=0
+vram run=soak-software checkpoints=111.3,51.7,51.7,51.7,51.7,51.7,51.7,51.7,51.7,51.7,51.7 late_mib=0.0 tail_increasing=no verdict=flat adapter_first_mib=1580.7 adapter_last_mib=1697.1
