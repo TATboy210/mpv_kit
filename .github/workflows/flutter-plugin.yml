@@ -75,14 +75,33 @@ jobs:
           lib=$(find .dart_tool/hooks_runner/shared/mpv_kit_libs/build             \( -name 'libmpv-2.dll' -o -name 'libmpv.so.2' -o -name 'libmpv.2.dylib' \)             | head -1)
           if [ -z "$lib" ]; then echo "no hook bundle found"; exit 1; fi
           dir=$(cd "$(dirname "$lib")" && pwd)
-          # Forward slashes load fine on every OS; the dir also goes on PATH
-          # so Windows resolves the dependency DLLs (README: local libmpv).
-          echo "MPV_KIT_LIBMPV_PATH=$dir/$(basename "$lib")" >> "$GITHUB_ENV"
-          echo "$dir" >> "$GITHUB_PATH"
+          # Git Bash prints POSIX paths (/d/a/...) that Windows Dart and the
+          # loader cannot use; that is why runs 40949963646, 40984192897 and
+          # 41065294826 reported "7 tests passed, 1 failed." on a green
+          # Windows job. cygpath exists only on Windows runners, so there the
+          # libmpv file and the PATH entry are written as native paths. The
+          # dir goes on PATH so Windows resolves the dependency DLLs
+          # (README: local libmpv).
+          if command -v cygpath >/dev/null 2>&1; then
+            echo "MPV_KIT_LIBMPV_PATH=$(cygpath -w "$dir/$(basename "$lib")")" >> "$GITHUB_ENV"
+            cygpath -w "$dir" >> "$GITHUB_PATH"
+          else
+            echo "MPV_KIT_LIBMPV_PATH=$dir/$(basename "$lib")" >> "$GITHUB_ENV"
+            echo "$dir" >> "$GITHUB_PATH"
+          fi
           echo "MPV_KIT_REQUIRE_LIBMPV=1" >> "$GITHUB_ENV"
       - name: Analyze plugin and example
         # PATH already carries the hook-bundle dir (previous step); with
         # MPV_KIT_REQUIRE_LIBMPV=1 the channel tests run for real.
+        # On Windows this step used to run under pwsh, where only the last
+        # command's exit code counted. GitHub runs bash as
+        # `bash --noprofile --norc -eo pipefail`, so every failing line fails
+        # the step; `&&` chains are avoided because `bash -e` ignores the
+        # failure of a non-final `&&` element.
+        shell: bash
         run: |
-          cd packages/mpv_kit_video && flutter analyze --fatal-infos && flutter test
-          cd ../../example && flutter analyze --fatal-infos
+          cd packages/mpv_kit_video
+          flutter analyze --fatal-infos
+          flutter test
+          cd ../../example
+          flutter analyze --fatal-infos
