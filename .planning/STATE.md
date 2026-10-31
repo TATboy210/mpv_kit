@@ -5,16 +5,16 @@ milestone_name: 统一渲染生命周期与平台原生图形后端
 current_phase: 17
 current_phase_name: INSERTED after the v3.0 audit
 status: completed
-stopped_at: Completed 17.1-06-PLAN.md
-last_updated: "2026-10-31T03:22:32.346Z"
+stopped_at: Completed 17.1-07-PLAN.md
+last_updated: "2026-10-31T03:56:32.479Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 17 complete
-state_head: c20828a0ba98939a4f1b589f4784205cae150b92
+state_head: 0c951125893485f29b2eae4874a7b7cf90a6057e
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 54
-  completed_plans: 53
+  completed_plans: 54
   percent: 86
 ---
 
@@ -142,6 +142,7 @@ Progress: [█████████░] 86%
 | Phase 17.1 P04 | multi-session | 3 tasks | 3 files |
 | Phase 17.1 P05 | 1 session | 3 tasks | 9 files |
 | Phase 17.1 P06 | 2min hw | 3 tasks | 10 files |
+| Phase 17.1 P07 | 35min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,7 @@ Recent decisions affecting current work:
 - [Phase 17.1]: 17.1-03: tag candidate is b524b3a (pushed, green on native-verify/flutter-plugin/macos-route); evidence commit stays local
 - [Phase 17.1]: 17.1-04: v0.1.0-dev.4 published from 47cbbf2 (tag run 41123644028, 6 bundles + SHA256SUMS, digests match); Plan 05 pins from evidence/release-runs.txt SHA256SUMS
 - [Phase 17.1]: 17.1-05: bundles pinned to v0.1.0-dev.4 (pin commit 10f5bd1, gated sha 95c2b6d); D-06 macos-route parity ok, no stop
+- [Phase 17.1]: 17.1-07: INT-1/INT-2 closed for git/path, hosted CI and RTX 4060 only; pub.dev publication of 0.1.0-dev.4 is decided (user pubdev_decision) and pending, superseding D-04
 
 ### CI Deferral
 
@@ -351,8 +353,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-31T03:22:31.219Z
-Stopped at: Completed 17.1-06-PLAN.md
+Last session: 2026-10-31T03:56:31.323Z
+Stopped at: Completed 17.1-07-PLAN.md
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

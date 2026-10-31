@@ -292,7 +292,7 @@ Plans:
   2. `tools/pin_bundles.dart` updates `bundleTag` and every sha256 in `bundles.dart`; the build hook verifies them.
   3. With only the pinned bundle (no branch-built libmpv), forced `d3d11` renders on the Windows runner and on the RTX 4060, and forced `opengl` renders on the ubuntu runner; ANGLE-FREE and the LGPL audits stay green.
   4. The todo `2026-10-27-pin-a-bundle-with-the-d3d11-backend` is closed and covers Linux too.
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans executed
 
 Plans:
 - [x] 17.1-01-PLAN.md — W1: hook stale-stamp fix, test first (D-07)
@@ -301,7 +301,7 @@ Plans:
 - [x] 17.1-04-PLAN.md — W3: release rehearsal dispatch, go/no-go checkpoint, push tag v0.1.0-dev.4, verify the release
 - [x] 17.1-05-PLAN.md — W4: pin dev.4 from SHA256SUMS, pinned-only CI cells (d3d11, opengl), disk floor, PR gate (D-06 stop)
 - [x] 17.1-06-PLAN.md — W5: RTX 4060 pinned-only check (start checkpoint, identity before/after)
-- [ ] 17.1-07-PLAN.md — W6: close the todo (Windows + Linux), audit update with D-04, final push
+- [x] 17.1-07-PLAN.md — W6: close the todo (Windows + Linux), audit update with D-04, final push
 
 ## Progress
 
@@ -316,4 +316,4 @@ Plans:
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 5/5 | Complete    | 2026-10-30 |
-| 17.1. Release and pin bundle (INSERTED) | v3.0 | 6/7 | In Progress | - |
+| 17.1. Release and pin bundle (INSERTED) | v3.0 | 7/7 | In Progress | - |
