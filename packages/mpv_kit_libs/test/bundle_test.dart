@@ -242,7 +242,12 @@ void main() {
 
   group('resolvePinnedBundle', () {
     const target = 'linux-x64';
-    const files = {'lib/libmpv.so.2': 'MPV', 'LICENSE.LGPL': 'L'};
+    // libmpv plus one dependency: the WR-01 cases delete only one of them.
+    const files = {
+      'lib/libmpv.so.2': 'MPV',
+      'lib/libdep.so.1': 'DEP',
+      'LICENSE.LGPL': 'L',
+    };
 
     Uint8List validTar() => tar([
       for (final MapEntry(:key, :value) in files.entries)
@@ -284,13 +289,63 @@ void main() {
           fetch: fetcher,
         );
 
-    test('reuses a matching stamp with libraries', () async {
-      File('${cache.path}/$target/lib/libmpv.so.2')
-        ..createSync(recursive: true)
-        ..writeAsStringSync('MPV');
+    // Lays out a complete extraction (MANIFEST.txt plus every file) by hand.
+    void writeExtraction() {
+      for (final MapEntry(:key, :value) in files.entries) {
+        File('${cache.path}/$target/$key')
+          ..createSync(recursive: true)
+          ..writeAsStringSync(value);
+      }
+      File('${cache.path}/$target/MANIFEST.txt')
+          .writeAsStringSync(manifestFor(files));
+    }
+
+    test('reuses a matching stamp with every manifest library', () async {
+      writeExtraction();
       stampFile().writeAsStringSync(pin);
       final libs = await resolve(noFetch);
-      expect(libs.map((f) => f.uri.pathSegments.last), ['libmpv.so.2']);
+      expect(libs.map((f) => f.uri.pathSegments.last), [
+        'libdep.so.1',
+        'libmpv.so.2',
+      ]);
+    });
+
+    test('reinstalls when libmpv is gone but a dependency remains', () async {
+      // WR-01: a cache that lost libmpv yet kept another shared library.
+      writeExtraction();
+      File('${cache.path}/$target/lib/libmpv.so.2').deleteSync();
+      archiveFile().writeAsBytesSync(archiveBytes);
+      stampFile().writeAsStringSync(pin);
+      final libs = await resolve(noFetch);
+      expect(libs.map((f) => f.uri.pathSegments.last), contains('libmpv.so.2'));
+      expect(
+        File('${cache.path}/$target/lib/libmpv.so.2').existsSync(),
+        isTrue,
+      );
+    });
+
+    test('reinstalls when the extraction has no MANIFEST.txt', () async {
+      writeExtraction();
+      File('${cache.path}/$target/MANIFEST.txt').deleteSync();
+      archiveFile().writeAsBytesSync(archiveBytes);
+      stampFile().writeAsStringSync(pin);
+      final libs = await resolve(noFetch);
+      expect(libs, hasLength(2));
+      expect(File('${cache.path}/$target/MANIFEST.txt').existsSync(), isTrue);
+    });
+
+    test('rejects a downloaded archive that does not match the pin', () async {
+      // IN-07: the fetch yields the wrong bytes; nothing is stamped.
+      Future<void> fetchWrong(File archive) async {
+        archive.parent.createSync(recursive: true);
+        archive.writeAsBytesSync(utf8.encode('tampered download'));
+      }
+
+      await expectLater(
+        resolve(fetchWrong),
+        throwsA(isA<BundleIntegrityException>()),
+      );
+      expect(stampFile().existsSync(), isFalse);
     });
 
     test('reinstalls when the extracted directory is gone', () async {

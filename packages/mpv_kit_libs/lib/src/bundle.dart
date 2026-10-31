@@ -142,6 +142,25 @@ List<File> installBundle(File archive, String expectedSha256, Directory dir) {
   return sharedLibrariesIn(dir);
 }
 
+/// Whether [dir] has a MANIFEST.txt and every shared library it lists
+/// directly under `lib/` exists (at least one must be listed).
+///
+/// Nested paths (`lib/x/y.so`) and non-library files are ignored, matching
+/// what [sharedLibrariesIn] reports.
+bool _hasAllManifestLibraries(Directory dir) {
+  final manifestFile = File('${dir.path}/MANIFEST.txt');
+  if (!manifestFile.existsSync()) return false;
+  final expected = [
+    for (final path in parseManifest(manifestFile.readAsStringSync()).keys)
+      if (path.startsWith('lib/') &&
+          !path.substring(4).contains('/') &&
+          isSharedLibrary(path.substring(4)))
+        path,
+  ];
+  return expected.isNotEmpty &&
+      expected.every((path) => File('${dir.path}/$path').existsSync());
+}
+
 /// Resolves the pinned release bundle for [target] from the build-hook
 /// [cache] directory and returns its shared libraries.
 ///
@@ -159,12 +178,15 @@ Future<List<File>> resolvePinnedBundle({
   final extracted = Directory('${cache.path}/$target');
   final stamp = File('${cache.path}/$target.ok');
   if (stamp.existsSync() && stamp.readAsStringSync() == pinnedSha256) {
-    // A cleaned cache can leave a valid stamp over a missing or empty
-    // extraction. Trust the stamp only while libraries are really there;
-    // otherwise fall through and reinstall (the archive is re-hashed against
-    // the pin before it is reused).
-    final cached = sharedLibrariesIn(extracted);
-    if (cached.isNotEmpty) return cached;
+    // A cleaned cache can leave a valid stamp over a missing, empty or
+    // partial extraction (e.g. libmpv gone while one dependency remains).
+    // Trust the stamp only while every shared library the MANIFEST lists
+    // under lib/ is really there; otherwise fall through and reinstall (the
+    // archive is re-hashed against the pin before it is reused). Existence
+    // only: the files were verified when they were extracted.
+    if (_hasAllManifestLibraries(extracted)) {
+      return sharedLibrariesIn(extracted);
+    }
   }
   if (!archive.existsSync() ||
       sha256Hex(archive.readAsBytesSync()) != pinnedSha256) {

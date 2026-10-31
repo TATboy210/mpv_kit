@@ -17,9 +17,11 @@
   built with OpenGL/EGL and needs the host `libEGL.so.1` (libglvnd), so a
   host without libEGL cannot load it. macOS has no backend change.
 - The build hook reuses a cached bundle only when its extracted `lib/`
-  directory still holds shared libraries, so a stale `{target}.ok` stamp left
-  by a cleaned cache now leads to a reinstall from the verified archive (or a
-  fresh download) instead of silently bundling no libmpv; a pinned bundle that
+  directory still holds every shared library that `MANIFEST.txt` lists (and the
+  manifest itself is present), so a stale `{target}.ok` stamp left by a cleaned
+  or partly cleaned cache (an empty `lib/`, or libmpv gone while a dependency
+  remains) now leads to a reinstall from the verified archive (or a fresh
+  download) instead of silently bundling no libmpv; a pinned bundle that
   yields no shared libraries now fails the build with
   `BundleIntegrityException`.
 
