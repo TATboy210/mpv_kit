@@ -32,3 +32,10 @@ sha=95c2b6d10f33d2e9036508dc844cd3cbfe2df051 workflow=macos-route.yml run=411292
 pin-gate sha=95c2b6d10f33d2e9036508dc844cd3cbfe2df051 result=ok
 d06 parity=ok run=41129271190
 note=pin-gate ok on first attempt, no rerun (native-verify 41129271542, flutter-plugin 41129271358, macos-route 41129271190, all attempt 1); pin commit 10f5bd1; windows PINNED-IDENTITY libs=24 app_copy=same libmpv_env=unset libmpv_sha256=1d66e561292f13df25bac2ed0c23bc92ff4679c8c8e5ff1761d0fa8ef90cba3e; linux PINNED-IDENTITY libs=17 app_copy=skipped libmpv_env=hook-cache libmpv_sha256=5d1ee6220b9bb08f3c418d4c7617c408ecfb80e8287fe8f5811cb4913255bf80; D3D11-BACKEND reason d3d11 (gpu-next) on Microsoft Basic Render Driver, probe redTop/blueBottom/nonBlack 1.0; PROBE opengl on llvmpipe nonBlackRatio 1.0 renderErrors 0; ROUTE-PARITY ok head=texture-visible pre12=texture-visible dNonBlack=0.0000 dMeanMax=0.0000 (HEAD leg dev.4, pre12 leg dev.3); ANGLE-FREE plugin audits green
+tags_before_close_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 v0.1.0-dev.4
+tags_after_close_push=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 v0.1.0-dev.4
+sha=7b9871caa20012887cad9d139a67d69c77d200da workflow=native-verify.yml run=41164373583 conclusion=success
+sha=7b9871caa20012887cad9d139a67d69c77d200da workflow=flutter-plugin.yml run=41164373579 conclusion=success
+sha=7b9871caa20012887cad9d139a67d69c77d200da workflow=macos-route.yml run=41164373581 conclusion=success
+close-gate sha=7b9871caa20012887cad9d139a67d69c77d200da result=ok
+note=close-gate ok on first attempt, no rerun (native-verify 41164373583, flutter-plugin 41164373579, macos-route 41164373581); close-out commit 7b9871c is the pushed head
