@@ -1,1 +1,2 @@
 identity phase=pre pubspec_hooks=none libmpv_env=unset path_bundle_dirs=none line=PINNED-IDENTITY tag=v0.1.0-dev.4 target=windows-x64 stamp=match archive=match manifest=ok libs=24 app_copy=same libmpv_env=unset libmpv_sha256=1d66e561292f13df25bac2ed0c23bc92ff4679c8c8e5ff1761d0fa8ef90cba3e
+identity phase=post pubspec_hooks=none libmpv_env=unset path_bundle_dirs=none line=PINNED-IDENTITY tag=v0.1.0-dev.4 target=windows-x64 stamp=match archive=match manifest=ok libs=24 app_copy=same libmpv_env=unset libmpv_sha256=1d66e561292f13df25bac2ed0c23bc92ff4679c8c8e5ff1761d0fa8ef90cba3e

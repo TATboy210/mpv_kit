@@ -1,0 +1,4 @@
+session_gate=gate run=session-start result=FAIL desktop=locked ac=yes disk_free_repo_mib=10087 stray_example=0 heavy_gpu=none native_equal=yes at=2026-10-30T21:36:21.799Z
+disk_free_repo_mib=10087
+user_reply=start
+confirmed_at=2026-10-31T03:19:20.370Z
