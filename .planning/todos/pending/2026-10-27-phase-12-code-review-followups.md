@@ -15,6 +15,9 @@ files:
   - native/tests/meson.build
   - native/tests/video_renderer_api_test.cc
   - example/integration_test/impeller_smoke_test.dart
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

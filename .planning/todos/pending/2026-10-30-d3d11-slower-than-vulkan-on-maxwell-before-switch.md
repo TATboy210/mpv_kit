@@ -7,6 +7,9 @@ files:
   - packages/mpv_kit_video/windows/d3d11_interop.cpp
   - packages/mpv_kit_video/windows/d3d11_backend.cpp
   - packages/mpv_kit/lib/src/player/hwdec_defaults.dart
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

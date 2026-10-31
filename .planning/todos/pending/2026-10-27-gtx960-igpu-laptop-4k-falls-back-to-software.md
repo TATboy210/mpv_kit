@@ -9,6 +9,9 @@ resolved_by: 14-10 (+ quick 261029-ljp, 261029-nwm, 261029-rcc)
 files:
   - packages/mpv_kit_video/src/vulkan_backend.cc
   - packages/mpv_kit_video/windows/d3d11_interop.cpp
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

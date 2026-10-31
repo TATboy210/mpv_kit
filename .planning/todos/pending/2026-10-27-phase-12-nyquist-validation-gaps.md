@@ -10,6 +10,9 @@ files:
   - example/integration_test/real_plugin_test.dart
   - .github/workflows/native-verify.yml
   - tools/constants_audit.sh
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

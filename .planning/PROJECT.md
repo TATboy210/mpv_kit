@@ -2,25 +2,31 @@
 
 ## What This Is
 
-libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 通过 Vulkan 把 mpv 画面零拷贝渲染到 Flutter 纹理，`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 LGPL libmpv。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
+libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 经统一的 `RenderBackend` 生命周期接口把 mpv 画面零拷贝渲染到 Flutter 纹理（Windows D3D11 / Vulkan、Linux OpenGL / Vulkan、macOS MoltenVK→IOSurface，auto 回退链终点为软件渲染），`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 LGPL libmpv。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
 
 ## Core Value
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
-## Current Milestone: v3.0 统一渲染生命周期与平台原生图形后端
+## Current State (after v3.0, 2026-10-31)
 
-**Goal:** 把渲染链路收敛到统一的 `RenderBackend` 生命周期接口，各平台使用适合自身生态的图形后端并尽量做到硬件解码零拷贝；Flutter 只需拿到可采样纹理、可靠帧通知与确定的资源释放。
+**Milestone v3.0 统一渲染生命周期与平台原生图形后端 已交付并以 `override_closeout` 关闭。** Phase 12–17.1，共 54 个计划，2026-10-26 → 2026-10-31。需求 29/31 完成；D3D-08（用户决定不切换，Windows 仍 Vulkan 优先，d3d11 为第二选择与强制项）与 HWD-03（无 Linux GPU 硬件，仅有 DRM_DISPLAY_V2 接线）为有意的部分完成，未改写为绿。
 
-**Target features:**
-- 统一 `RenderBackend` 接口（Create / AllocTarget / Render / FrameReady / Release / Destroy），现有 Vulkan 与软件后端先迁移且行为不变
-- Windows 原生 D3D11：基于 libplacebo `pl_d3d11` 的新 libmpv D3D11 render 后端（新下游补丁），DXGI 共享句柄交给 `GpuSurfaceTexture`，d3d11va 零拷贝；**mpv_kit 渲染链路中禁止 ANGLE/EGL**（media_kit 只读参考）
-- Linux OpenGL：mpv OpenGL render API + `FlTextureGL`，vaapi（EGL dma-buf）/ nvdec 零拷贝；Vulkan 后续扩展
-- macOS Metal：方案由调研决定（MoltenVK→IOSurface / OpenGL+IOSurface / 自写 Metal 后端的成本对比）
-- auto 回退：平台原生 → Vulkan → 软件，经现有 `MpvVideoRenderer` 枚举接入，不新增公共 API
-- 软件解码与硬件解码两条路径在 CI runner 上真实插件验证，外加 UHD 长时间回归
+**已交付：**
+- 统一 `RenderBackend` 接口（Phase 12）：Vulkan/软件后端迁移后常量与 reason 字符串零改动；ADR 0004 的 reason 语法与 `MPV_KIT_VIDEO_API` 强制变量；`report_swap`/`context_free` 只在渲染线程。
+- Windows 原生 D3D11 后端（Phase 14，无 ANGLE，`pe_audit.py` CI 门禁）：上游 D3D11 render API 补丁 0010、gpu-next D3D11 分支、每控制器独立设备、d3d11va 真零拷贝（RTX 4060 `hwdec-current=d3d11va`）。
+- Linux OpenGL 后端（Phase 15）：EGL 独立上下文 + 导出纹理 blit + `FlTextureGL`，仅在 llvmpipe 上验证。
+- macOS 路线 ADR 0005：保留 MoltenVK→IOSurface；ADR 0006 按平台的 hwdec 默认列表（行为变更，用户 `hwdec` 仍优先）。
+- 故障注入 + 强制后端矩阵 + RTX 4060 4K 30 分钟（Phase 17）；Phase 17.1 发布并钉住 bundle。
+- **发布：** GitHub Release `v0.1.0-dev.4`（tag 在 `47cbbf2`，六个 LGPL bundle，含 Windows D3D11 与 Linux OpenGL），`bundles.dart` 钉到 dev.4；`mpv_kit` / `mpv_kit_libs` / `mpv_kit_video` 0.1.0-dev.4 于 2026-10-31 发布到 pub.dev（pub 源码含 tag 之后的 WR-01 修复 `d891f3b`，bundle 相同）。INT-1/INT-2（过期 pin）已对 git/path、托管 CI、RTX 4060 与 pub.dev 消费者关闭。
 
-## Current State (after v2.0 close-out, 2026-10-25)
+**收尾类型 override_closeout：** 5 个阶段的 verification 因后续提交而过期（用户选择不重跑）；7 个 todo 与 1 个 deferred 项已确认带入下一里程碑；一个 debug 会话原样保留。
+
+**未验证 / 已知限制：** 真实 Linux GPU（NVIDIA/AMD/Intel、Wayland、GL device loss）与真实 Apple GPU 无证据；GTX 960M 上 d3d11 有效丢帧约 3.5% 对 Vulkan 约 0.5%（原因未解释）；d3d11 在示例窗口被遮挡时 4K 偶有少量 VO 丢帧；d05 像素探针 0.0 / 第二控制器首帧停滞（RBE-01 人工项）仍未定位。
+
+**Next milestone:** 未定义；候选见 Active 与 `/gsd-new-milestone`。
+
+## Previous State (after v2.0 close-out, 2026-10-25)
 
 **Milestone v2.0 closed by user decision as a simple close-out.** 2 of 5 phases
 complete (7, 8), Phase 9 partially delivered, Phase 10 halted with evidence
@@ -38,7 +44,7 @@ consumption plus ADR 0003.
 Impeller consumption path survives the 30 s + 100-round workload — is still
 unsettled: an unexplained soak abort was observed once and never reproduced.
 
-**Next milestone:** not yet defined; see Deferred above and `/gsd-new-milestone`.
+**Next milestone:** (v2.0 时) not yet defined；已由 v3.0 承接。
 
 ## Requirements
 
@@ -86,17 +92,27 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 - ✓ Windows 外部纹理消费路径的静态取证：两种表面类型都经 ANGLE，DXGI 资源归 mpv_kit 自己的 D3D11 设备，无 fence/keyed mutex；Impeller 仅去掉 Ganesh 每次 resolve 的 flush/reset — COMP-01 / Phase 10
 - ✓ ADR 0003 记录路线判定：3.47.8 上「无 ANGLE」不可验证；Impeller 不等于绕过 — Phase 10
 
-- ✓ 统一 `RenderBackend` 生命周期接口，现有 Vulkan/软件后端迁移且无回归（golden 冻结零改动、常量审计 ok、RTX 4060 4K 与 Phase 4 持平、渲染线程亲和、`MPV_KIT_VIDEO_API`）— RBE-01..08 / Phase 12
+### Validated in v3.0
+
+- ✓ 统一 `RenderBackend` 生命周期接口，现有 Vulkan/软件后端迁移且无回归（golden 冻结零改动、常量审计 ok、RTX 4060 4K 与 Phase 4 持平、渲染线程亲和、`MPV_KIT_VIDEO_API`）— RBE-01..08 / Phase 12（RBE-01 的 d05 像素探针 0.0 为人工待办，用户 UAT 接受）
+- ✓ macOS 路线 ADR 0005（保留 MoltenVK→IOSurface）、macOS 经 `RenderBackend` 行为不变、VideoToolbox 在 MoltenVK 上零拷贝（hosted macos-15 VM 证据）— MAC-01/02、HWD-04 / Phase 13
+- ✓ Windows 原生 D3D11 后端（无 ANGLE、PE 审计门禁、补丁 0010、gpu/gpu-next 变体、独立设备 + 共享纹理环 + fence、device lost 映射）— D3D-01..07 / Phase 14
+- ✓ Linux OpenGL 后端（EGL 独立上下文、导出纹理、`render_gl_smoke`、auto 链 vulkan/gpu-next → opengl/gpu → vulkan/gpu → software；仅 llvmpipe）— GLX-01..04 / Phase 15
+- ✓ 按平台 hwdec 默认列表（ADR 0006）、Windows d3d11va 真零拷贝（RTX 4060）、`hwdec-current` 断言与软件解码路径 — HWD-01/02/05 / Phase 16
+- ✓ 回退链故障注入、`MPV_KIT_VIDEO_API` 强制后端 CI 矩阵、`MPV_KIT_REQUIRE_HWDEC` 守卫、RTX 4060 上 d3d11/Vulkan 各 4K 30 分钟（前台零丢帧）与 100 轮 resize/dispose soak — VER-01..04 / Phase 17
+- ✓ 发布并钉住含 D3D11/OpenGL 的 bundle（`v0.1.0-dev.4`），三包 0.1.0-dev.4 发布到 pub.dev，INT-1/INT-2 关闭 — Phase 17.1
+- ✓ 严格 `MpvLibrary.open`（显式路径/`MPV_KIT_LIBMPV_PATH` 失败即抛）、stamp 仅在 MANIFEST 库齐全时可信（WR-01）、Linux pinned-only 消费者路径 CI — quick 261028-moj / 261031-wrf
 
 ### Active
 
-<!-- v3.0 范围；REQ-ID 见 REQUIREMENTS.md。 -->
+<!-- 下一里程碑候选（尚未立项）；v3.0 遗留见 REQUIREMENTS.md 与 todos/pending。 -->
 
-- [ ] Windows 原生 D3D11 后端（无 ANGLE）+ d3d11va 零拷贝
-- [ ] Linux OpenGL 后端 + vaapi/nvdec 零拷贝
-- [ ] macOS Metal 路线决策与实施
-- [ ] 平台原生 → Vulkan → 软件的 auto 回退与诚实的 backend/reason 上报
-- [ ] 软硬解码 × 各后端的 CI 真实插件验证与 UHD 长时间回归
+- [ ] **稳定的呈现纹理句柄（Describe）**：quick 261030-umq 测得每次运行 7440/7440 次句柄变化，Flutter 的单句柄缓存每帧未命中（bind 约 0.44–0.52 ms/帧）
+- [ ] d3d11va-zero-copy 与 d3d11va-copy/Vulkan 的 A/B；MMCSS 线程调度
+- [ ] 延后的发布门禁（deferred publish gate）
+- [ ] GTX 960M 上 d3d11 慢于 Vulkan 的探查；之后重新评估 **D3D-08**（Windows auto 链 d3d11 优先）
+- [ ] 真实 Linux GPU 证据（vaapi 互操作，关闭 **HWD-03**；NVIDIA/AMD/Intel、Wayland、GL device loss）与真实 Apple GPU 证据
+- [ ] 已确认带入的 7 个 todo：第二控制器首帧停滞 / d05 像素探针、示例 HUD 增强、GTX960 + 核显笔记本 4K 回退软件、Phase 12 review 跟进与 Nyquist 缺口、macOS route 单次截图 oracle、d3d11 慢于 Vulkan（Maxwell）
 
 ### Deferred from v2.0（继续延后，用户 2026-10-26 决定）
 
@@ -115,20 +131,22 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 
 - **移动端（Android/iOS/web）** — 本阶段明确不做；渲染互操作与 bundle 目标都未覆盖。
 - **新增或破坏性公共 API** — 本里程碑 API 冻结，所有改动必须向后兼容。
-- **版本发布节点、CHANGELOG、pub 发布流程** — 用户明确不着急，专注源码健康度。
+- ~~版本发布节点、CHANGELOG、pub 发布流程~~ — 已被取代：v3.0 的 Phase 17.1 经用户明确决定发布 GitHub Release `v0.1.0-dev.4` 并将三包发布到 pub.dev（2026-10-30/31）。后续版本发布仍须用户逐次明确批准。
 - **新功能（display-sync/vsync 回报、HDR、播放列表、字幕等）** — 暂缓到后续里程碑。
-- **推倒重写现有渲染路径** — v3.0 允许新增平台后端与统一接口，但现有 Vulkan/软件路径行为不变、每个新后端可独立回滚（2026-10-26 修订，原为「大规模渲染架构重写」）。
+- **Windows 默认切到 d3d11 优先（D3D-08）** — v3.0 用户决定保持 Vulkan 优先（GTX 960M 有效丢帧 d3d11 约 3.5% vs Vulkan 约 0.5%）；待慢速原因解释后再议（见 Active）。
+- **nvdec、gpu-next over GL（补丁 0011）、device lost 原地重建、原生 Metal 后端** — 明确延后（REQUIREMENTS Future：HWD-F1/GLX-F1/RBE-F1/MAC-F1）。
+- **推倒重写现有渲染路径** — v3.0 允许新增平台后端与统一接口，但现有 Vulkan/软件路径行为不变、每个新后端可独立回滚（2026-10-26 修订，原为「大规模渲染架构重写」）；该约束继续适用。
 - **Windows ANGLE 路线** — 用户明确禁止：mpv_kit 自己的渲染链路不得经 ANGLE/EGL（Flutter 引擎内部消费 DXGI 句柄时使用 ANGLE 不在我们控制范围内）。
 
 ## Context
 
-- 仓库当前在 `feat/mpv-master-upgrade` 分支。v2.0 期间 vendored mpv 进一步推进到 `v0.41.0-1115-gb2c255c13`（REBASE-01，含 v1 `0008` 归因修正）。
+- 仓库当前在 `feat/mpv-master-upgrade` 分支（PR #1 待合并；`main` 仍钉 dev.3）。v2.0 期间 vendored mpv 推进到 `v0.41.0-1115-gb2c255c13`；v3.0 新增上游 D3D11 render API 补丁 0010 及 gpu-next D3D11 分支，Windows bundle 加入 shaderc + 共享 SPIRV-Cross，Linux bundle 打开 GL/EGL。
 - 里程碑 v2.0 以 `override_closeout` 关闭：Phase 9/10/11 未完成部分写入 `MILESTONES.md` 的 Known Gaps / Deferred，不回填为绿。
-- 现有文档：`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE-diagrams.md`、`docs/adr/0001`、`docs/adr/0002`、`docs/adr/0003`、`docs/reverse-engineering/`（01/02/03）。
+- 现有文档：`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE-diagrams.md`、`docs/adr/0001`–`0006`（0004 后端上报、0005 macOS 路线、0006 hwdec 默认值）、`docs/reverse-engineering/`（01/02/03）。
 - 代码库映射位于 `.planning/codebase/`（STACK、ARCHITECTURE、STRUCTURE、CONVENTIONS、TESTING、INTEGRATIONS、CONCERNS），缺陷与脆弱点以 `CONCERNS.md` 为准。
-- 真机验证目前只有 Windows x64（RTX 4060）；Linux/macOS 仅编译与 lavapipe/MoltenVK 冒烟。
+- 真机验证目前只有 Windows x64（RTX 4060，另有 GTX 960M + HD 530 笔记本）；Linux 仅 llvmpipe/lavapipe，macOS 仅 hosted macos-15 VM（MoltenVK）。
 - 本地 `bt/` 下的 `libmpv-2.dll` **带 patch 0006**（导出 `mpv_kit_stream_*`）。Windows 没有 rpath，直接把它设为 `MPV_KIT_LIBMPV_PATH` 会因依赖 DLL 不在搜索路径而静默回落到 PATH 上的 stock 库；要跑流源测试必须同时把 `bt/` 加进 PATH。Phase 1 曾因此错误地把 3 条可执行测试记为「环境受限」。
-- 已知问题集中在：`Player.dispose` 非异常安全、`Mpv` 方法在 dispose 后仍可调用、属性事件重复解码、`MpvVideoController.create` 解析失败无回滚、流源错误被吞、`bt/` 38MB DLL 入库、`pubspec.lock` 被忽略、SDK 约束不一致。
+- v2.0 之前的已知问题（多数已在 v1.0 修复）集中在：`Player.dispose` 非异常安全、`Mpv` 方法在 dispose 后仍可调用、属性事件重复解码、`MpvVideoController.create` 解析失败无回滚、流源错误被吞、`bt/` 38MB DLL 入库、`pubspec.lock` 被忽略、SDK 约束不一致。
 - 探索阶段曾误判"Linux/macOS `create` 必然失败"与"系统 libmpv 不支持 `gpu-shader-cache-dir`"；经源码复核均为误报，现状可用但缺少测试与可读错误。
 
 ## Constraints
@@ -139,6 +157,8 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 - **Platform**: 不做移动端与 web。
 - **License**: libmpv/FFmpeg 保持 LGPL，禁止 GPL/nonfree 依赖进入 bundle。
 - **Verification**: 真实插件行为必须在 CI runner 上验证；mock channel 不能替代。
+- **Graphics (v3.0)**: mpv_kit 自己的 Windows 渲染链路不得经 ANGLE/EGL/WGL-GL（`pe_audit.py` CI 门禁）；新后端须可独立回滚，auto 链为 平台原生 → Vulkan → 软件。
+- **Release (v3.0)**: 发布 tag 只打在经两次门禁的候选上并需用户明确 go；pub.dev 发布需单独确认。
 
 ## Key Decisions
 
@@ -168,7 +188,23 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 | `inconclusive` 不得写成「不可行」 | D-05 未跑完时,失败归因于 harness 缺陷而渲染器;结论必须与证据强度匹配 | ✓ Phase 10 |
 | 里程碑收尾允许 `override_closeout` | 用户决定简单收尾;未完成阶段记为未交付,不补跑、不改写已有验证结论 | ✓ v2.0 close |
 | Phase 12 判 human_needed 的三项由用户 UAT 接受（SC1 第二控制器像素探针 0.0 转待办；RTX 4060 渲染 600 s 零掉帧代替 30 分钟渲染；CR-01 修复后不重跑真机） | 根因与重构无关、行为与基线一致；单独排查更高效 | ✓ Phase 12 |
-| mpv_kit 自身链路不经 ANGLE；Flutter 自己的 ANGLE 合成器保留（引擎所有） | GTX 960 + 核显笔记本退回软件渲染（dropped 1046、avsync 23.7 s），由 Phase 14 D3D11 后端解决 | — Pending (Phase 14) |
+| mpv_kit 自身链路不经 ANGLE；Flutter 自己的 ANGLE 合成器保留（引擎所有） | GTX 960 + 核显笔记本退回软件渲染（dropped 1046、avsync 23.7 s），由 Phase 14 D3D11 后端解决 | ✓ v3.0（D3D11 后端 + PE 审计门禁；该笔记本现走 Vulkan 或 d3d11，不再软件） |
+| 公共 `MpvVideoBackend` 枚举不变，真实 API 经 `reason` 首 token 上报（ADR 0004），wire 名严格校验 | 公共 API 冻结；新后端只增加 wire 名与候选项 | ✓ Phase 12 |
+| `MPV_KIT_VIDEO_API` 强制后端且永不回退（含 software） | CI 要能分别验证各后端；强制失败即 `render_init` | ✓ Phase 12/17 |
+| 搬迁提交不改任何常量与 reason；golden 先于搬迁冻结 | 行为不变可被 diff 证明 | ✓ Phase 12 |
+| Windows 保持 Vulkan 优先，d3d11 为第二选择与强制项（D-08 / D3D-08 未切换） | 用户 2026-10-29 选 keep；GTX 960M 上 d3d11 有效丢帧约 3.5% vs Vulkan 约 0.5% | ⚠️ Revisit（慢速原因解释后） |
+| FIFO 深度 2 就绪队列，`report_swap` 在发布时上报（261029-rcc） | 旧「取帧时 swap」在 RTX 4060 上丢弃 123/128 帧；FIFO 转为实际显示帧，A/B 有效丢帧 1→0 | ✓ quick 261029-rcc |
+| 上游 D3D11 render API 以 backport 补丁 0010 引入，不自定义 ABI | 自定义 ABI 与上游 PR #17764 下次 rebase 必然冲突 | ✓ Phase 14 |
+| 每个 D3D11 控制器独立 `ID3D11Device` + 共享纹理环 + fence 后发布，隔离期保持 4 | 不依赖 keyed mutex；与 Flutter 设备解耦 | ✓ Phase 14 |
+| macOS 保留 MoltenVK→IOSurface（ADR 0005，accepted） | 成本/弃用风险比较后不新增 macOS 候选；原生 Metal 等 libplacebo 支持后重评（MAC-F1） | ✓ Phase 13 |
+| Linux GL 用独立 EGL 上下文 + 导出纹理 blit，不入 Flutter share group；nvdec 与 gpu-next over GL 延后 | 隔离故障域；LGPL 安全 | ✓ Phase 15（仅 llvmpipe 验证） |
+| `Player` hwdec 默认改为按平台有序列表（ADR 0006），记为行为变更；用户 `hwdec` 优先 | 零拷贝候选在前 | ✓ Phase 16 |
+| 严格 `MpvLibrary.open`：显式路径/`MPV_KIT_LIBMPV_PATH` 失败即抛，不再静默回落 | 防止回落到 PATH 上的 stock 库掩盖错误 | ✓ quick 261028-moj |
+| 运行中的控制器不切换后端；device lost = 一个事件并停止渲染（RBE-F1 原地重建延后） | 确定状态优先于隐式恢复 | ✓ Phase 17 |
+| 发布 tag 只打在经两次门禁（PR gate + 演练）的候选上并需用户明确 go（否决 b524b3a，批准 47cbbf2） | 先做 umq 再发布，避免发出未完成的候选 | ✓ Phase 17.1 |
+| D-04「不发布 pub.dev」被取代：三包 0.1.0-dev.4 发布到 pub.dev，先 dry-run 再单独确认 | 用户 2026-10-30 决定；pub 消费者才能拿到 D3D11/OpenGL | ✓ Phase 17.1（pub 源码含 tag 之后的 WR-01，bundle 相同） |
+| `MPV_KIT_REQUIRE_HWDEC` 守卫与 hook stale-stamp 修复（stamp 需 MANIFEST 库齐全） | 静默 skip / 空 bundle 曾掩盖失败 | ✓ Phase 17 / 17.1 / 261031-wrf |
+| 里程碑以 `override_closeout` 收尾：过期验证不重跑，todo 带入下一里程碑 | 用户选择；如实记录而非补绿 | ✓ v3.0 close |
 
 ## Evolution
 
@@ -188,4 +224,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-27 after Phase 12*
+*Last updated: 2026-10-31 after v3.0 milestone*

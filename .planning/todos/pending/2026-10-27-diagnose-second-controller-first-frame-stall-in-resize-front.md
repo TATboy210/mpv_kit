@@ -10,6 +10,9 @@ files:
   - .planning/phases/12-renderbackend-seam/evidence/final-runs.txt
   - .planning/phases/12-renderbackend-seam/evidence/postfix-runs.txt
   - docs/perf/renderbackend-seam-regression.md
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

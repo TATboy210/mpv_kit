@@ -10,6 +10,9 @@ files:
   - example/integration_test/macos_route_probe.dart
   - .github/workflows/macos-route.yml
   - .planning/phases/14-windows-native-d3d11-backend/debug/macos-fifo-black-reference.md
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

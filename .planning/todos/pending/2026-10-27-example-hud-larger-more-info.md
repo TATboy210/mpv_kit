@@ -6,6 +6,9 @@ severity: minor
 files:
   - example/lib/hud.dart
   - example/lib/main.dart
+audit_acknowledged:
+  milestone: v3.0
+  at: 2026-10-31
 ---
 
 ## Problem

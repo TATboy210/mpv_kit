@@ -2,38 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: 统一渲染生命周期与平台原生图形后端
-current_phase: 17
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 17.1 complete — all phases complete
-last_updated: "2026-10-31T04:15:28.784Z"
+last_updated: "2026-10-31T08:38:35.189Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 17.1 complete
-state_head: 42094d3c8616c38d494bcc9986a8be9f651220ee
+last_activity_desc: Milestone v3.0 completed and archived
+state_head: 1e19ad81dfc30ea973543dc70654fc98b301443d
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 54
   completed_plans: 54
   percent: 100
+current_phase: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-27)
+See: .planning/PROJECT.md (updated 2026-10-31)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 17 — Fallback Hardening & UHD Regression (Phases 12–16 complete and verified; Phase 14 SC5 not switched by user decision)
+**Current focus:** Planning next milestone (v3.0 shipped 2026-10-31: GitHub Release v0.1.0-dev.4, pub.dev 0.1.0-dev.4)
 
 ## Current Position
 
-Phase: 17.1
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-31 — Phase 17.1 complete
-
-Progress: [██████████] 100%
+Phase: Milestone v3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-31 — Milestone v3.0 completed and archived
 
 ## Performance Metrics
 
@@ -321,6 +319,16 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_sessions | d3d11-render-context-not-implemented | awaiting_human_verify (NOT acknowledged: file is in the user-owned .planning/debug/, left untouched; fixed by bc6a6bf/091228a, still surfaces in audit-open) | 2026-10-31 | v3.0 |
+| verification_gaps | 12, 14, 16, 17, 17.1 VERIFICATION.md | stale (fingerprint drift from later umq/wrf/17.1 commits; reports were passed; not re-run, user chose override) | 2026-10-31 | v3.0 |
+| todos | 2026-10-27-diagnose-second-controller-first-frame-stall-in-resize-front.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-27-example-hud-larger-more-info.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-27-gtx960-igpu-laptop-4k-falls-back-to-software.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-27-phase-12-code-review-followups.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-27-phase-12-nyquist-validation-gaps.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-29-macos-route-test-single-capture-screenshot-oracle.md | (presence-only) | 2026-10-31 | v3.0 |
+| todos | 2026-10-30-d3d11-slower-than-vulkan-on-maxwell-before-switch.md | (presence-only) | 2026-10-31 | v3.0 |
+| deferred_items | 17/deferred-items.md: From 17-01 (constants_audit drift; macOS libplacebo skew) | acknowledged (both resolved by quick 261030-3pc) | 2026-10-31 | v3.0 |
 | verification_gaps | 10/10-VERIFICATION.md | gaps_found (acknowledged, not resolved) | 2026-10-25 | v2.0 |
 | Documentation | 8K 提交内存耗尽进程死亡(可复现,WER 证据)——用户确认暂无 8K 测试条件,撤下 PERF-03 的 8K 分句;记录保留供将来支持 8K 时参考 | documented, no action planned | 2026-10-24 (user decision) | — |
 | Native | Linux 运行期 GL 导入失败黑屏仅有 g_warning,无 Dart 事件(gl_interop.cc:296-321) | needs EventFn plumbing;超出 criterion 3 范围 | 2026-10-24 (Phase 3 close) | current |
@@ -331,26 +339,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | # | Description | Date | Commit | Directory |
 |---|---|---|---|---|
-| 261025-rkd | stream bridge cancel-after-close UAF, open leak, seek desync (0006) | 2026-10-25 | 5b58792 | .planning/quick\\261025-rkd-fix-0006-stream-bridge-native-bugs-in-native-mpv-stream-stre |
-| 261025-rki | Mpv.dispose disposes child clients before terminating the core | 2026-10-25 | 609c6e9 | .planning/quick\\261025-rki-fix-dart-deadlock-when-the-main-mpv-is-disposed-while-child |
-| 261025-rkj | stream bridge answers every claimed request; bounded open | 2026-10-25 | 7962c3f | .planning/quick\\261025-rkj-fix-dart-stream-bridge-requests-that-may-never-be-answered-p |
-| 261025-rkm | hwdec-codecs default excludes ffv1 (mpv #18255) | 2026-10-25 | c126862 | .planning/quick\\261025-rkm-adjust-gpu-next-defaults-from-community-issues-without-publi |
-| 261025-rke | propagate render target failures; validate render_vk; roll back timeline value | 2026-10-25 | ddbf2a8 | .planning/quick\\261025-rke-propagate-render-target-return-failures-and-validate-render |
-| 261025-rkg | CoreAudio NULL guards (0007); WASAPI note vs upstream 4dfee61 | 2026-10-25 | ebf5a6e | .planning/quick\\261025-rkg-audio-patch-0007-fixes-add-null-guards-before-cfrelease-uid |
-| 261025-rkl | 14 libplacebo backports onto v7.360.1 | 2026-10-25 | a7ba508 | .planning/quick\\261025-rkl-backport-libplacebo-fixes-onto-v7-360-1-in-native-build-deps |
-| 261025-rkh | always use VK_QUEUE_FAMILY_EXTERNAL for shared images | 2026-10-25 | 12b5009 | .planning/quick\\261025-rkh-fix-unbalanced-vulkan-queue-family-ownership-transfer-on-eac |
-| 261025-rkf | keep host ICC across option changes in gpu-next libmpv | 2026-10-25 | 13c130b | .planning/quick\\261025-rkf-fix-gpu-next-libmpv-state-bugs-in-vo-gpu-next-c-patch-0004-k |
-| 261025-rkk | 0009 upstream backports (4 mpv commits) | 2026-10-25 | a2f7c0d | .planning/quick\\261025-rkk-add-native-patches-0009-upstream-backports-patch-with-upstre |
-| 261027-or3 | Linux release build against libdrm 2.4.113 (patch 0012) + LIBDRM-FLOOR guard; unblocks 14-03 | 2026-10-27 | 2b9f6e2 | [261027-or3-fix-linux-release-build-libdrm-2-4-114](./quick/261027-or3-fix-linux-release-build-libdrm-2-4-114/) |
-| 261028-moj | strict MpvLibrary.open: explicit path / MPV_KIT_LIBMPV_PATH never fall back; libmpv_guard removed; macOS CI step fixed | 2026-10-28 | dd75d28 | [261028-moj-strict-mpvlibrary-open-for-explicit-path](./quick/261028-moj-strict-mpvlibrary-open-for-explicit-path/) |
-| 261028-otr | macOS integration leg loads the branch libmpv (staged dylib, sandbox off on runner, software renderer, client API 2.6 asserted); pinned-bundle Vulkan run kept; branch+Vulkan app unverified | 2026-10-28 | 5522944 | [261028-otr-macos-integration-test-loads-the-verify-](./quick/261028-otr-macos-integration-test-loads-the-verify-/) |
-| 261029-ljp | example runner prefers the high-performance GPU (HighPerformancePreference); plugin logs the compositor adapter; laptop package2 | 2026-10-29 | 824a69e | [261029-ljp-hybrid-gpu-high-performance-adapter-for-](./quick/261029-ljp-hybrid-gpu-high-performance-adapter-for-/) |
-| 261029-nwm | log-only `superseded=` probe count, power-aware GPU preference, hybrid-GPU hint; swap-at-publish A/B FAILED on the RTX 4060 and was not shipped (control package only) | 2026-10-29 | ade3eea | [261029-nwm-report-swap-at-publish-power-aware-gpu-p](./quick/261029-nwm-report-swap-at-publish-power-aware-gpu-p/) |
-| 261029-rcc | FIFO ready queue of two frames, mpv swap reported at publish; RTX 4060 A/B PASS; laptop auto vulkan about 0.5 percent effective drops (estimate); CI pending | 2026-10-29 | 0e792c8 | [261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu](./quick/261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu/) |
-| 261030-3pc | macOS verify stages libmpv's Homebrew closure (@loader_path, ad hoc re-sign; integration job installs no formula, MACOS-DYLD homebrew=0 on runs 40939860843, 40943562883); Phase 12 constants audit re-pinned to CONSTANTS ok; CI green on 127a348 + c00e843 | 2026-10-30 | 6f6631c, 127a348 | [261030-3pc-ci-hygiene-macos-libplacebo-skew-and-con](./quick/261030-3pc-ci-hygiene-macos-libplacebo-skew-and-con/) |
-| 261030-5v4 | macos_route_test.dart judges the screenshot by `routeStableCapture` (two agreeing non-black captures, ROUTE-NOTE per discarded capture); fixes the single-capture flake of 40937808507/40939860844/40943562936, not caused by 3pc; CI green on 4285f2b + 8f06b0b | 2026-10-30 | 4285f2b | [261030-5v4-harden-macos-route-test-single-capture-o](./quick/261030-5v4-harden-macos-route-test-single-capture-o/) |
-| 261030-umq | log-only probe fields `render=`/`max_render=` (mpv render call) and `describes=`/`describe=`/`handle_changes=`/`binds=`/`bind=` (compositor Describe and engine bind); RTX 4060 four-combo A/B (d3d11/vulkan x d3d11va/vulkan/d3d11va-copy/no, 135 s each, fallback sample 60 fps looped): 0 effective drops, render_med 16.13-16.54 ms, handle_change_ratio 1.00 in all; nothing pushed | 2026-10-30 | c07f5ba, 48b92e3 | [261030-umq-renderer-probe-render-timing-and-pickup-](./quick/261030-umq-renderer-probe-render-timing-and-pickup-/) |
-| 261031-wrf | WR-01: the hook trusts the `<target>.ok` stamp only when every MANIFEST lib/ shared library exists (reinstall otherwise); WR-03: Linux pinned-only CI cell unsets MPV_KIT_LIBMPV_PATH and loads libmpv.so.2 from the app bundle (`PINNED-IDENTITY ... app_copy=same libmpv_env=unset`); CI green on ed36618 (native-verify 41180276172, flutter-plugin 41180276175, macos-route 41180276139) | 2026-10-31 | d891f3b, ed36618 | [261031-wrf-bundle-stamp-manifest-check-and-linux-consumer-path-ci](./quick/261031-wrf-bundle-stamp-manifest-check-and-linux-consumer-path-ci/) |
 
 ## Session Continuity
 
@@ -361,6 +349,5 @@ Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-ph
 
 ## Operator Next Steps
 
-- Phases 13, 14 and 15 are planned and may execute in parallel (14 before 15 if serialized): `/gsd-execute-phase 13`, `/gsd-execute-phase 14`, `/gsd-execute-phase 15`
-- Each phase opens with a push-authorization checkpoint; 13/14/15 share a golden-freeze gate (Phase 14's `golden-freeze-14.sha256` if present, else Phase 12's)
-- Phase 16 after 13/14/15 complete (plan with `--research-phase`), then Phase 17
+
+- Start the next milestone with /gsd-new-milestone
