@@ -57,7 +57,7 @@ Requirements archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 - [x] **Phase 15: Linux OpenGL Backend** - 上游 OpenGL render API + 独立 EGL context + EGLImage 导出，作为 Vulkan gpu-next 之后的档位 (completed 2026-10-28)
 - [x] **Phase 16: Hardware-Decode Zero-Copy** - 跨后端 hwdec 默认列表、d3d11va 真零拷贝、vaapi DRM display，每个测试断言是否零拷贝 (completed 2026-10-29)
 - [x] **Phase 17: Fallback Hardening & UHD Regression** - 故障注入、强制后端 CI 矩阵、硬解守卫，以及每个后端的 4K 30 分钟与 100 轮 soak (completed 2026-10-30)
-- [ ] **Phase 17.1: Close gap INT-1/INT-2: release and pin a libmpv bundle with the D3D11 and OpenGL backends** (INSERTED) - 发布并固定含 D3D11/OpenGL 后端的 libmpv bundle，在固定的 bundle 上重测消费者路径
+- [x] **Phase 17.1: Close gap INT-1/INT-2: release and pin a libmpv bundle with the D3D11 and OpenGL backends** (INSERTED) - 发布并固定含 D3D11/OpenGL 后端的 libmpv bundle，在固定的 bundle 上重测消费者路径 (completed 2026-10-31)
 
 **执行顺序：** 12 → {13, 14, 15} → 16 → 17。13 体量小，可以先做；14 与 15 没有文件重叠，可以并行（串行时 14 在前：未知最多，也是唯一有真机验证的平台）；16 需要 13/14/15 的后端就绪；17 收口。
 
@@ -292,7 +292,7 @@ Plans:
   2. `tools/pin_bundles.dart` updates `bundleTag` and every sha256 in `bundles.dart`; the build hook verifies them.
   3. With only the pinned bundle (no branch-built libmpv), forced `d3d11` renders on the Windows runner and on the RTX 4060, and forced `opengl` renders on the ubuntu runner; ANGLE-FREE and the LGPL audits stay green.
   4. The todo `2026-10-27-pin-a-bundle-with-the-d3d11-backend` is closed and covers Linux too.
-**Plans:** 7/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 17.1-01-PLAN.md — W1: hook stale-stamp fix, test first (D-07)
@@ -316,4 +316,4 @@ Plans:
 | 15. Linux OpenGL Backend | v3.0 | 7/7 | Complete    | 2026-10-28 |
 | 16. Hardware-Decode Zero-Copy | v3.0 | 6/6 | Complete    | 2026-10-29 |
 | 17. Fallback Hardening & UHD Regression | v3.0 | 5/5 | Complete    | 2026-10-30 |
-| 17.1. Release and pin bundle (INSERTED) | v3.0 | 7/7 | In Progress | - |
+| 17.1. Release and pin bundle (INSERTED) | v3.0 | 7/7 | Complete    | 2026-10-31 |
