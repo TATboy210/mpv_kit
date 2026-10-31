@@ -1,0 +1,14 @@
+# 14-08 Task 2, local MSVC run (RTX 4060 host, no libmpv): all renderer tests built with
+#   build/phase14/goldens/build_all.bat (cl /W4 /WX, chain_test added) and run with run_all.sh.
+# chain_test needs no Vulkan device or libmpv; golden = native/tests/golden/chain.txt (read only).
+# Date: 2026-10-27. CI runs of video_renderer_chain_test on linux x2, macos-15, windows-2025 and sanitizers: deferred (CI deferral 2026-10-27).
+sw_hold_front_test rc=0 HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+chain_test rc=0 GOLDEN ok scenarios=5|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=0

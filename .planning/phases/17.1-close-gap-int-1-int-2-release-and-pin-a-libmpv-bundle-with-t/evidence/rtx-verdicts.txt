@@ -1,0 +1,2 @@
+probe run=pin-d3d11 api=d3d11 reason="d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11" expect_match=yes nonBlack=1.0/1.0 exit=0
+probe run=pin-auto api=vulkan reason="vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU" expect_match=yes nonBlack=1.0/1.0 exit=0

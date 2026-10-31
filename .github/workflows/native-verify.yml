@@ -17,9 +17,26 @@ env:
   MESON_ARGS: >-
     -Dlibmpv=true -Dcplayer=false -Dgpl=false
     -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled
-    -Drubberband=disabled -Dtests=false --buildtype=release -Db_lundef=true
+    -Drubberband=disabled -Dtests=false
+    -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled
+    --buildtype=release -Db_lundef=true
 
 jobs:
+  # BUILD-01: prove vendor == base(MPV_VERSION) + patches before anything
+  # else trusts the vendored tree.
+  patch-drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Patch drift check
+        run: bash tools/check_patches.sh
+      - name: Six-target matrix and continue-on-error audit
+        run: python tools/check_matrix.py
+      # D3D-02: the ANGLE ban rule must turn red on synthetic violation
+      # samples (the test itself is green); see tools/rea_abi_audit.
+      - name: ANGLE ban audit self-test
+        run: python3 -I tools/rea_abi_audit/test_pe_audit.py
+
   linux:
     strategy:
       fail-fast: false
@@ -32,26 +49,56 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gcc \
+            meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils \
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
-            libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
-            mesa-vulkan-drivers vulkan-tools zlib1g-dev
+            mesa-vulkan-drivers vulkan-tools zlib1g-dev \
+            libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2 libva-dev
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
-          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib
+          # VA-API is compiled in explicitly (Phase 16, HWD-03): the release
+          # build (native/build/build.sh) already enables it, and the
+          # verification tier must match so that the hosted "no /dev/dri,
+          # safe fallback" runs happen on a libmpv that really contains vaapi.
+          meson setup out native/mpv $MESON_ARGS --prefix="$PWD/prefix" --libdir=lib \
+            -Dgl=enabled -Degl=enabled -Dplain-gl=enabled \
+            -Dvaapi=enabled -Dvaapi-drm=enabled -Ddrm=enabled
           meson compile -C out
           meson install -C out
           grep -E "vulkan|gl " out/config.h | head -20 || true
+          # GL render API must really be configured on (not just by default).
+          for f in GL EGL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-GL missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-GL ok"
+          # Same for the VA-API chain: VADisplay from a DRM render node plus
+          # the GL dma-buf interop (needs egl and libdrm).
+          for f in VAAPI VAAPI_DRM DMABUF_INTEROP_GL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-VAAPI missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-VAAPI ok"
       - name: ABI audit
         run: |
           nm -D --defined-only prefix/lib/libmpv.so.2 | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: render_vk smoke test (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           vulkaninfo --summary || true
           meson setup tests-out native/tests
@@ -60,6 +107,8 @@ jobs:
       - name: Dart tests (mpv_kit, mpv_kit_libs)
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/prefix/lib/libmpv.so.2
+          # libmpv.so dlopens the deps.sh-built libplacebo/dav1d at load time.
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
         run: |
           # Dart-only resolve: drop Flutter members (no Flutter SDK on every runner).
           sed -i.bak -e "/mpv_kit_video/d" -e "/example/d" pubspec.yaml && rm -rf example packages/mpv_kit_video
@@ -68,7 +117,464 @@ jobs:
           cd packages/mpv_kit && dart analyze --fatal-infos
           dart pub global run coverage:test_with_coverage
           awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
-          cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
+          # BUILD-02: the committed bundle pins must match the live release.
+          # pin_bundles.dart reads packages/mpv_kit_libs/... relative to the
+          # repo root (its usage line), so run it from there in a subshell.
+          (cd "$GITHUB_WORKSPACE" && dart run tools/pin_bundles.dart --check)
+          # The `lifecycle` tag is skipped by default in dart_test.yaml, so the
+          # concurrent coverage run above never executes the soak. The explicit
+          # file-scoped invocation below loads only lifecycle_test.dart, so no
+          # other suite's tests execute in that invocation and the process-wide
+          # RSS delta contains no other suite's allocations.
+          #
+          # `--run-skipped` is load-bearing: without it the same invocation
+          # reports "All tests skipped" and still exits 0, so dropping the flag
+          # would leave this job green with zero soak cycles. Only a missing or
+          # uncollected suite exits non-zero.
+          dart test -t failure-injection
+          dart test test/lifecycle_test.dart -t lifecycle --run-skipped
+          cd ../mpv_kit_libs && dart analyze --fatal-infos
+          dart pub global run coverage:test_with_coverage
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_libs line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
+
+      # The Flutter coverage job consumes this artifact instead of rebuilding
+      # libmpv: one build, one provenance (BUILD-01 direction). deps/lib is
+      # included because libmpv.so.2 dlopens the deps.sh-built libplacebo and
+      # dav1d from it at load time.
+      - name: Stage libmpv for the Flutter coverage job
+        run: |
+          mkdir -p stage/lib stage/deps
+          cp -r prefix/lib/. stage/lib/
+          cp -r deps/lib/. stage/deps/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-linux-${{ matrix.runner }}
+          path: stage
+          retention-days: 14
+
+  # VERIFY-04: line-coverage gate for mpv_kit_video. Its channel tests are
+  # skip-guarded on a real libmpv, so the job downloads the linux job's build
+  # instead of running them skipped; below 80% the job fails.
+  flutter-video-coverage:
+    needs: [linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # libmpv.so.2 resolves its FFmpeg/libass/Vulkan/EGL dependencies from
+      # the distro; the -dev packages carry the same runtime .so ABI the
+      # linux job builds against.
+      - name: Install libmpv runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev \
+            libva-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: libmpv-verify-linux-ubuntu-24.04
+          path: stage
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: mpv_kit_video coverage gate (80%)
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          LD_LIBRARY_PATH: ${{ github.workspace }}/stage/lib:${{ github.workspace }}/stage/deps
+        run: |
+          cd packages/mpv_kit_video
+          flutter test --coverage
+          flutter analyze --fatal-infos
+          awk -F: '/^LF:/{a+=$2} /^LH:/{b+=$2} END{printf "::notice::mpv_kit_video line coverage %.1f%% (%d/%d)\n",100*b/a,b,a; if (100*b/a < 80) exit 1}' coverage/lcov.info
+
+  # Phase 16 (HWD-05): real encoded media for the hardware-decode probes.
+  # The GPL encoders (x264/x265) only make test media here and never enter
+  # the LGPL libmpv bundle. The 640x360 files become app assets of the
+  # integration-test job; the 4K HEVC Main10 file is only an artifact, for
+  # the RTX 4060 session of 16-06 to download.
+  hwdec-samples:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Generate hwdec samples
+        shell: bash
+        run: |
+          bash tools/make_hwdec_samples.sh "$RUNNER_TEMP/hwdec-samples"
+          bash tools/make_hwdec_samples.sh --uhd "$RUNNER_TEMP/hwdec-samples-uhd"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hwdec-samples
+          path: ${{ runner.temp }}/hwdec-samples/*.mp4
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hwdec-samples-uhd
+          path: ${{ runner.temp }}/hwdec-samples-uhd/*.mp4
+          if-no-files-found: error
+          retention-days: 30
+
+  # VERIFY-01: run the real-plugin integration test (create -> render a
+  # frame -> dispose; no channel mocks) on real Flutter runners of every
+  # OS, against the libmpv the verify tier above just built (artifacts,
+  # never rebuilt). A failure on any OS fails the workflow: no
+  # continue-on-error.
+  integration-test:
+    needs: [linux, windows, macos, hwdec-samples]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux
+            artifact: libmpv-verify-linux-ubuntu-24.04
+            # The linux job stages libmpv under lib/ and the deps.sh
+            # libplacebo/dav1d it dlopens under deps/.
+            libname: lib/libmpv.so.2
+          - runner: windows-2025
+            target: windows
+            artifact: libmpv-verify-CLANG64
+            libname: libmpv-2.dll
+          - runner: macos-15
+            target: macos
+            artifact: libmpv-verify-macos-macos-15
+            libname: libmpv.2.dylib
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Linux build and runtime dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
+            xvfb mesa-vulkan-drivers \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev \
+            libva-dev
+          # Same runtime set as flutter-video-coverage: the verify-tier
+          # libmpv.so.2 links the distro FFmpeg/libass/Vulkan/EGL.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: stage
+      - name: Bundle the artifact into the example (windows)
+        # Windows searches the executable's directory before PATH, and the
+        # mpv_kit_libs hook would put its pinned bundle there. Its same-name
+        # dependency DLLs (libharfbuzz-0.dll without DirectWrite, ...) shadow
+        # the artifact's msys2 closure, so MPV_KIT_LIBMPV_PATH fails to load
+        # ("The specified procedure could not be found"). MpvLibrary is
+        # strict about MPV_KIT_LIBMPV_PATH and throws MpvLibraryNotFound; it
+        # used to fall through to the libmpv of the bundle pinned at that
+        # time (the release before patch 0010), which had no D3D11 render API
+        # (run 40617697855: "mpv_render_context_create: operation not
+        # implemented"). Pointing the hook at the artifact makes
+        # the executable directory carry the one consistent closure.
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          mkdir -p bundle/lib
+          cp stage/*.dll bundle/lib/
+          printf '\nhooks:\n  user_defines:\n    mpv_kit_libs:\n      libmpv_bundle: %s\n' \
+            "$(cygpath -m "$PWD/bundle")" >> pubspec.yaml
+      - name: Download hwdec samples (app assets)
+        # Bundled at build time, so the macOS sandbox does not matter.
+        uses: actions/download-artifact@v4
+        with:
+          name: hwdec-samples
+          path: example/integration_test/route_samples
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve workspace
+        run: flutter pub get
+      # Proves what the two macOS app runs below would load: the staged libmpv
+      # references only OS libraries and staged files, and in a Dart process
+      # every non-OS image (libplacebo included) comes from stage/, none from
+      # the Homebrew prefix. The job installs no Homebrew formula.
+      - name: Staged libmpv closure (macOS)
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          bash tools/stage_macos_closure.sh --check "stage/${{ matrix.libname }}"
+          dart tools/macos_dyld_images.dart "$PWD/stage/${{ matrix.libname }}" "$(brew --prefix)"
+      - name: Real-plugin integration test
+        shell: bash
+        env:
+          # MpvLibrary is strict about MPV_KIT_LIBMPV_PATH: it loads this
+          # build or throws MpvLibraryNotFound, never the pinned bundle's
+          # copy. The macOS case unsets it below (see there).
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$STAGED_LIBMPV")" && pwd)"
+          export PATH="$libdir:$PATH"
+          case "${{ matrix.target }}" in
+            linux)
+              export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
+              ;;
+            macos)
+              # The sandboxed example app cannot read the staged dylib's
+              # dependencies, which sit next to it in stage/ outside the app
+              # container ("file system sandbox blocked open()"), so this run
+              # uses the mpv_kit_libs bundle (Vulkan renderer, the release
+              # pinned in bundles.dart); the branch build is exercised by the
+              # next step.
+              cd example && env -u MPV_KIT_LIBMPV_PATH flutter test integration_test/real_plugin_test.dart -d macos
+              # HWD-05/SC4: `hwdec=no` software decode on the Vulkan backend
+              # (MoltenVK), with the same bundled libmpv (the release pinned in
+              # bundles.dart, not the branch build); the default-list result is
+              # recorded only. HWDEC-IDENTITY in the log names the libmpv.
+              env -u MPV_KIT_LIBMPV_PATH MPV_KIT_VIDEO_API=vulkan flutter test integration_test/hwdec_zero_copy_test.dart -d macos
+              ;;
+            *)
+              cd example
+              flutter test integration_test/real_plugin_test.dart -d windows
+              # Native D3D11 backend (Phase 14, D3D-06), forced with no
+              # fallback, one after the other (WARP). The first run takes the
+              # ID3D11Fence path (the runner has fences: spikes.txt gate
+              # fence=fence); the second forces the D3D11_QUERY_EVENT path
+              # (MPV_KIT_D3D11_SYNC is read by debug plugin builds only,
+              # which `flutter test` builds). The fence path on the RTX 4060
+              # is covered by 14-09.
+              MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
+              MPV_KIT_D3D11_SYNC=query MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/d3d11_backend_test.dart -d windows
+              # Phase 16 (HWD-05): WARP has no video decoder, so this leg shows
+              # that the Player's default hwdec list falls back to software
+              # decoding on WARP without a crash, and records what it chose.
+              # A real d3d11va zero-copy run is the RTX 4060 session of 16-06.
+              MPV_KIT_VIDEO_API=d3d11 flutter test integration_test/hwdec_zero_copy_test.dart -d windows
+              # HWD-05/SC4: `hwdec=no` software decode on the software backend
+              # (no lavapipe on this runner, so Vulkan is covered by linux and
+              # macOS); the default-list result is recorded only.
+              MPV_KIT_VIDEO_API=software flutter test integration_test/hwdec_zero_copy_test.dart -d windows
+              # D3D-07: debug-plugin failure injection (HRESULT layer; no real
+              # TDR). MPV_KIT_VIDEO_API stays unset so the auto chain runs.
+              MPV_KIT_D3D11_INJECT=device-removed:30 flutter test integration_test/d3d11_device_lost_test.dart -d windows
+              MPV_KIT_D3D11_INJECT=create-fail flutter test integration_test/d3d11_device_lost_test.dart -d windows
+              # Phase 17 (VER-03): MPV_KIT_REQUIRE_HWDEC guard, negative leg.
+              # WARP has no video decoder, so requiring zero-copy d3d11va must
+              # make hwdec_zero_copy_test fail; the script inverts that failure
+              # into this step's success and checks the HWDEC-REQUIRE fail line
+              # (the positive case is the RTX 4060 session of 17-04).
+              bash ../tools/require_hwdec_negative.sh windows d3d11 d3d11va
+              ;;
+          esac
+      - name: Real-plugin integration test (macOS, branch libmpv, software renderer)
+        # Loads THIS branch's libmpv (the staged artifact) in the real app and
+        # asserts it by client API (2.6 after patch 0010). Since v0.1.0-dev.4
+        # the pinned bundle reports client API 2.6 as well
+        # (native/mpv/include/mpv/client.h: MPV_MAKE_VERSION(2, 6)), so the API
+        # check no longer separates the two builds; MpvLibrary's strict
+        # MPV_KIT_LIBMPV_PATH handling (it never falls back) is what keeps this
+        # step on the staged build. Two limits, both measured (runs
+        # 40668191795, 40673113177):
+        #  * the example's sandbox (DebugProfile.entitlements) blocks the
+        #    staged dylib's dependencies (they sit next to it in stage/, outside
+        #    the app container), so it is switched off on this runner's
+        #    checkout only (never committed);
+        #  * with the Vulkan renderer the app dies in MpvVideoController.create
+        #    (after the staged libmpv loaded: the staged copy of Homebrew's
+        #    Vulkan loader and the bundled MoltenVK the plugin loads are two
+        #    stacks in one process), so the renderer is forced to software.
+        #    The branch build's Vulkan path on macOS is covered by the
+        #    render_vk smoke test in the macos job, not by this app.
+        if: matrix.target == 'macos'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_EXPECT_LIBMPV_API: '2.6'
+          MPV_KIT_VIDEO_RENDERER: software
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' example/macos/Runner/DebugProfile.entitlements
+          cd example && flutter test integration_test/real_plugin_test.dart -d macos
+          # HWD-05/SC4: `hwdec=no` software decode on the software renderer with
+          # the branch libmpv (same env, sandbox off); the default-list result
+          # is recorded only. HWDEC-IDENTITY in the log names the libmpv.
+          flutter test integration_test/hwdec_zero_copy_test.dart -d macos
+      # Phase 15 (GLX-03/GLX-04): the whole real-plugin test with the OpenGL
+      # backend forced (no fallback), under xvfb on llvmpipe.
+      - name: Real-plugin integration test (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux
+      # Phase 16 (HWD-05): the Player's default hwdec list against real
+      # encoded samples with the OpenGL backend forced; prints HWDEC lines.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
+      # Phase 16 (HWD-05/SC4): `hwdec=no` software decode on the Vulkan (lavapipe)
+      # backend, forced; the default-list result is recorded only.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=vulkan)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: vulkan
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
+      # Phase 16 (HWD-05/SC4): `hwdec=no` software decode on the software
+      # backend, forced; the default-list result is recorded only.
+      - name: hwdec zero-copy probe (linux, MPV_KIT_VIDEO_API=software)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: software
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/hwdec_zero_copy_test.dart -d linux
+      # Phase 15 (GLX-03) spike: mounted-texture pixel/orientation probe on the
+      # default chain (MPV_KIT_VIDEO_API unset). Hard assertions since 15-05;
+      # prints `PROBE {json}` and the Flutter version line.
+      - name: Texture probe (linux)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          echo "FLUTTER-VERSION $(flutter --version | head -n 1)"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 15 (GLX-03): the same probe with the OpenGL backend forced; its
+      # assertions (non-black, upright, resize, no render error) are hard.
+      - name: Texture probe (linux, MPV_KIT_VIDEO_API=opengl)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 15 (GLX-04): the auto chain on a host without a Vulkan driver.
+      # Both loader variables name a manifest that does not exist (the new and
+      # the old loader each read one of them), so vkCreateInstance fails like
+      # on a runner with no ICD, and vulkan/gpu-next loses. GL comes from Mesa
+      # llvmpipe through EGL and does not depend on any Vulkan ICD, so
+      # opengl/gpu must win with the Vulkan reason in its trail; the probe's
+      # assertions (non-black, upright, resize, same api for a second
+      # controller) are hard here too. MPV_KIT_VIDEO_API stays unset.
+      - name: Texture probe (linux, Vulkan unavailable)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          VK_DRIVER_FILES: ${{ runner.temp }}/no-vulkan-icd.json
+          VK_ICD_FILENAMES: ${{ runner.temp }}/no-vulkan-icd.json
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+      # Phase 17 (VER-02): every backend of each platform forced in turn
+      # (MPV_KIT_VIDEO_API, no fallback) against the same real-plugin texture
+      # probe. Cells live in tools/backend_matrix.sh: linux opengl/vulkan/
+      # software, windows d3d11/software plus vulkan asserted unavailable (the
+      # hosted runner has WARP only; the RTX 4060 cell is hand-run in 17-04),
+      # macOS vulkan/software. The macOS cells use the pinned bundle libmpv
+      # with this branch's plugin (the sandbox is already off on this checkout
+      # from the step above and does not matter for the bundle); the branch
+      # libmpv's Vulkan path on macOS is not part of this matrix. Every cell
+      # runs even after a failure and any failed cell fails the step; no
+      # continue-on-error.
+      - name: Backend matrix (MPV_KIT_VIDEO_API forced per backend, VER-02)
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          STAGED_LIBMPV: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$STAGED_LIBMPV")" && pwd)"
+          export PATH="$libdir:$PATH"
+          case "${{ matrix.target }}" in
+            linux)
+              export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              bash tools/backend_matrix.sh linux
+              ;;
+            macos)
+              # Same reason as the bundle run above: the sandboxed app cannot
+              # read the staged dylib's dependencies.
+              env -u MPV_KIT_LIBMPV_PATH bash tools/backend_matrix.sh macos
+              ;;
+            *)
+              bash tools/backend_matrix.sh windows
+              ;;
+          esac
+      # Phase 17 (VER-04, success criterion 4, opengl part): the platform-
+      # independent 100-round resize/dispose soak with the OpenGL backend
+      # forced. llvmpipe keeps its GL textures in process memory, so the RSS
+      # curve is the memory record here and its plateau (pre-registered rule in
+      # example/integration_test/soak_memory.dart) is a hard assertion. Real
+      # Linux GPU memory is not verified by this step. No continue-on-error.
+      - name: Backend soak (linux, MPV_KIT_VIDEO_API=opengl, VER-04)
+        if: matrix.target == 'linux'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+          MPV_KIT_SOAK_MEMORY: rss
+          # One glibc malloc arena. The 4-vCPU runner allows 32 arenas and
+          # each controller's short-lived render threads leave ~29 MiB of freed
+          # llvmpipe memory in whichever arena they landed in, so with the
+          # default the RSS late value tracks arena placement (37.5 % red over
+          # 16 soaks, glibc in-use flat). With one arena 32/32 soaks were flat
+          # and a deliberate 0.9 MiB/round leak still read as growth. See
+          # .planning/phases/17-fallback-hardening-uhd-regression/debug/
+          # ubuntu-soak-late-rss-growth.md.
+          MALLOC_ARENA_MAX: '1'
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          cd example && xvfb-run -a flutter test integration_test/backend_soak_test.dart -d linux
 
   # ASan + UBSan: debug libmpv (our patches and the stream bridge included)
   # driven by the native tests. Tests are built with the same sanitizers so
@@ -79,18 +585,35 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies
+        # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
+        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libplacebo-dev libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: deps
+          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
+      - name: Build libplacebo stack (deps.sh)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash native/build/deps.sh "$PWD/deps"
       - name: Build libmpv (debug, ASan + UBSan)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps/lib/pkgconfig
         run: |
-          meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib
+          meson setup out native/mpv             -Dlibmpv=true -Dcplayer=false -Dgpl=false             -Dvulkan=enabled -Dlua=disabled -Djavascript=disabled             -Drubberband=disabled -Dtests=false             --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false             --prefix="$PWD/prefix" --libdir=lib -Dgl=enabled -Degl=enabled -Dplain-gl=enabled
           meson compile -C out
           meson install -C out
+          # GL render API must really be configured on (not just by default).
+          for f in GL EGL; do
+            grep -q "^#define HAVE_$f 1" out/config.h || { echo "CONFIG-GL missing HAVE_$f"; exit 1; }
+          done
+          echo "CONFIG-GL ok"
       - name: Native tests under sanitizers (lavapipe)
         env:
-          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
-          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
+          PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig:${{ github.workspace }}/deps/lib/pkgconfig
+          LD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib:${{ github.workspace }}/deps/lib
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |
@@ -119,6 +642,7 @@ jobs:
           nm -gU prefix/lib/libmpv.2.dylib | awk '{print $3}' | sed 's/^_//' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
       - name: Vulkan loader diagnostics
+        # Purely informational (vulkaninfo tail); failures are irrelevant.
         continue-on-error: true
         env:
           VK_LOADER_DEBUG: error,warn,info
@@ -126,9 +650,13 @@ jobs:
           brew install vulkan-tools || true
           vulkaninfo --summary 2>&1 | tail -40 || true
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
-        # GitHub's Intel macOS VMs expose a paravirtual GPU on which MoltenVK
-        # aborts inside vkCreateInstance; real Intel Macs are unaffected.
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Environment limitation, made explicit: GitHub's Intel macOS VMs
+        # expose a paravirtual GPU on which MoltenVK aborts inside
+        # vkCreateInstance; real Intel Macs are unaffected. The step is
+        # conditionally SKIPPED (visible in the run) rather than
+        # continue-on-error (which would mask real failures on this
+        # runner); arm64 runners still run it strictly.
+        if: matrix.runner != 'macos-15-intel'
         env:
           MVK_CONFIG_LOG_LEVEL: '2'
           VK_LOADER_DEBUG: error,warn
@@ -148,6 +676,22 @@ jobs:
           dart pub get
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
+      # The integration-test job (below) consumes this instead of rebuilding
+      # libmpv. Its own Homebrew could serve a different bottle than the one
+      # libmpv was linked against here (libplacebo 7.360.1 vs 7.387.0, runs
+      # 40917086107 and 40922504734), so libmpv ships with the exact closure
+      # it was built against: every Homebrew dylib it links, transitively,
+      # copied next to it with @loader_path install names. Verify tier only.
+      - name: Stage libmpv for the integration test
+        run: |
+          mkdir -p stage
+          cp -r prefix/lib/. stage/
+          bash tools/stage_macos_closure.sh stage/libmpv.2.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-verify-macos-${{ matrix.runner }}
+          path: stage
+          retention-days: 14
 
   windows:
     strategy:
@@ -188,6 +732,8 @@ jobs:
           }
       - uses: msys2/setup-msys2@v2
         id: msys2
+        # Retry pattern, not suppression: an immediate second attempt
+        # follows (below); if both fail, the build step fails the job.
         continue-on-error: true
         with:
           msystem: ${{ matrix.msystem }}
@@ -205,11 +751,17 @@ jobs:
             libass:p vulkan-headers:p vulkan-loader:p shaderc:p spirv-cross:p ntldd:p
       - name: Build libmpv
         run: |
-          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled --prefix="$PWD/prefix"
+          # D3D-02: no ANGLE/EGL/WGL-GL in mpv_kit's Windows chain; the verify
+          # layer switches them off explicitly, like the release build.
+          meson setup out native/mpv $MESON_ARGS -Dd3d11=enabled \
+            -Dgl=disabled -Degl=disabled -Degl-angle=disabled \
+            -Degl-angle-lib=disabled -Degl-angle-win32=disabled \
+            -Dgl-win32=disabled -Dgl-dxinterop=disabled \
+            -Dgl-dxinterop-d3d9=disabled --prefix="$PWD/prefix"
           meson compile -C out
           meson install -C out
       - name: ABI audit
-        run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt
+        run: python -I tools/rea_abi_audit/pe_audit.py prefix/bin/libmpv-2.dll --expect tools/rea_abi_audit/expected_symbols.txt --forbid-gpl --forbid-angle
       - name: render_vk smoke test (lavapipe)
         run: |
           export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig" PATH="$PWD/prefix/bin:$PATH"

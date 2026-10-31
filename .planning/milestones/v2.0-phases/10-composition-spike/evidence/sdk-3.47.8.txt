@@ -1,0 +1,106 @@
+# Flutter 3.47.8 SDK identity — Phase 10 Impeller smoke preparation
+
+Date (UTC): 2026-10-24
+Host: Windows 11 (win32), Git Bash
+Purpose: pin the ONE SDK used to build and run the Phase 10 Impeller smoke
+(D-02, D-02a, threat T-10-08). No second SDK was installed and no engine DLL
+was substituted anywhere. `pub get` / `build` / `test` all use this SDK.
+
+## SDK path and version
+
+```
+SDK path:        D:/flutter
+flutter binary:  D:/flutter/bin/flutter
+```
+
+`D:/flutter/bin/flutter --version` (captured 2026-10-24T17:26Z):
+
+```
+Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 737ba8f885 (2 days ago) • 2026-10-22 21:37:31 -0700
+Engine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (37 hours ago) • 2026-10-23 02:13:38.000Z
+Tools • Dart 3.13.7 • DevTools 2.60.0
+```
+
+| Property | Value |
+|---|---|
+| Flutter version | 3.47.8 (stable) |
+| Framework revision | `737ba8f885` |
+| Engine revision | `cf636b1dfb` |
+| Engine hash | `dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2` |
+| Dart | 3.13.7 |
+
+## Engine artifact identity
+
+Path:
+`D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll`
+
+| Property | Value |
+|---|---|
+| Size | 46,636,544 bytes |
+| sha256 | `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170` |
+
+Companion PDB (same directory):
+
+| Property | Value |
+|---|---|
+| Path | `D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll.pdb` |
+| Size | 278,859,776 bytes |
+
+Both the DLL and the PDB are present locally; nothing was downloaded.
+
+## Commands used (reproducible)
+
+```bash
+D:/flutter/bin/flutter --version
+DLL="D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll"
+ls -l "$DLL"
+sha256sum "$DLL"
+ls -l "$DLL.pdb"
+```
+
+Observed output:
+
+```
+Flutter 3.47.8 • channel stable • ...
+Framework • revision 737ba8f885 ...
+Engine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) ...
+Tools • Dart 3.13.7 • DevTools 2.60.0
+
+-rwxr-xr-x 1 ... 46636544 .../flutter_windows.dll
+9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170 *.../flutter_windows.dll
+-rw-r--r-- 1 ... 278859776 .../flutter_windows.dll.pdb
+```
+
+## CI version lock
+
+`.github/workflows/flutter-plugin.yml`: `env.FLUTTER_VERSION` must equal
+`3.47.8` so CI builds the same SDK this evidence and the smoke use. That is
+the ONLY CI-side change permitted in Phase 10. Proof (run after the edit):
+
+```bash
+grep -c 'FLUTTER_VERSION: 3.47.8' .github/workflows/flutter-plugin.yml   # => 1
+```
+
+## Not used / excluded
+
+- `D:/mpv_kit/example/windows/flutter/ephemeral/flutter_windows.dll`
+  (46,621,696 B, sha256 `b60f6940…`) is a stale build-tree copy. It is NOT
+  the SDK artifact and was not used for anything.
+- No other Flutter SDK is installed for this work; no engine DLL was swapped
+  into any SDK (T-10-08).
+
+## Disk numbers (gate context)
+
+From `evidence/disk-gate.txt` (`df -B1 .`, captured before any build):
+
+| Property | Value |
+|---|---|
+| avail_bytes | 8,183,160,832 |
+| threshold_bytes | 5,905,580,032 (5.5 GiB) |
+| status | ok |
+
+## Repository hygiene
+
+No binary content is committed. Only the textual identity evidence in this
+directory is tracked.

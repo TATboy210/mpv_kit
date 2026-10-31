@@ -17,10 +17,10 @@ index 2a4838e..a006a24 100644
   --- mpv 0.39.0 ---
 diff --git a/include/mpv/render_vk.h b/include/mpv/render_vk.h
 new file mode 100644
-index 0000000..c4cac70
+index 0000000..c6377c7
 --- /dev/null
 +++ b/include/mpv/render_vk.h
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,127 @@
 +/* Copyright (C) 2026 the mpv_kit developers
 + *
 + * Permission to use, copy, modify, and/or distribute this software for any
@@ -121,7 +121,10 @@ index 0000000..c4cac70
 + * call, so the host may destroy it once signal_semaphore has been reached.
 + *
 + * Semaphores may be binary (value ignored, use 0) or timeline (value used).
-+ * VK_NULL_HANDLE disables the corresponding wait/signal.
++ * wait_semaphore may be VK_NULL_HANDLE (no wait). signal_semaphore is
++ * required: rendering fails with MPV_ERROR_INVALID_PARAMETER without one.
++ * It is signalled only when mpv_render_context_render() succeeds; on failure
++ * the host must not wait for signal_value.
 + */
 +typedef struct mpv_vulkan_image {
 +    VkImage image;
@@ -168,7 +171,7 @@ index fb10be5..c6ff0a4 100644
  
      # Allow projects to build with libmpv by cloning into ./subprojects/mpv
 diff --git a/video/out/gpu/libmpv_gpu.c b/video/out/gpu/libmpv_gpu.c
-index 1b13c79..4154281 100644
+index 1b13c79..ddb75b3 100644
 --- a/video/out/gpu/libmpv_gpu.c
 +++ b/video/out/gpu/libmpv_gpu.c
 @@ -8,6 +8,9 @@
@@ -181,15 +184,55 @@ index 1b13c79..4154281 100644
  #endif
      NULL
  };
+@@ -188,7 +191,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
+ 
+     struct ra_fbo target = {.tex = tex, .flip = flip};
+     gl_video_render_frame(p->renderer, frame, &target, RENDER_FRAME_DEF);
+-    p->context->fns->done_frame(p->context, frame->display_synced);
++    if (!p->context->fns->done_frame(p->context, frame->display_synced))
++        return MPV_ERROR_GENERIC;
+ 
+     return 0;
+ }
 diff --git a/video/out/gpu/libmpv_gpu.h b/video/out/gpu/libmpv_gpu.h
-index 497dcc3..2b25502 100644
+index 497dcc3..2f3595b 100644
 --- a/video/out/gpu/libmpv_gpu.h
 +++ b/video/out/gpu/libmpv_gpu.h
-@@ -38,3 +38,4 @@ struct libmpv_gpu_context_fns {
+@@ -31,10 +31,12 @@ struct libmpv_gpu_context_fns {
+                     struct ra_tex **out);
+     // Signal that the ra_tex object obtained with wrap_fbo is no longer used.
+     // For certain backends, this might also be used to signal the end of
+-    // rendering (like OpenGL doing weird crap).
+-    void (*done_frame)(struct libmpv_gpu_context *ctx, bool ds);
++    // rendering (like OpenGL doing weird crap). Returns false if the target
++    // could not be handed back to the host (render must then fail).
++    bool (*done_frame)(struct libmpv_gpu_context *ctx, bool ds);
+     // Free all data in ctx->priv.
+     void (*destroy)(struct libmpv_gpu_context *ctx);
  };
  
  extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
 +extern const struct libmpv_gpu_context_fns libmpv_gpu_context_vk;
+diff --git a/video/out/opengl/libmpv_gl.c b/video/out/opengl/libmpv_gl.c
+index e9fffa7..7f47e60 100644
+--- a/video/out/opengl/libmpv_gl.c
++++ b/video/out/opengl/libmpv_gl.c
+@@ -84,13 +84,14 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
+     return 0;
+ }
+ 
+-static void done_frame(struct libmpv_gpu_context *ctx, bool ds)
++static bool done_frame(struct libmpv_gpu_context *ctx, bool ds)
+ {
+     struct priv *p = ctx->priv;
+ 
+     struct ra_swapchain *sw = p->ra_ctx->swapchain;
+     struct vo_frame dummy = {.display_synced = ds};
+     ra_gl_ctx_submit_frame(sw, &dummy);
++    return true;
+ }
+ 
+ static void destroy(struct libmpv_gpu_context *ctx)
 diff --git a/video/out/vulkan/context.c b/video/out/vulkan/context.c
 index 7c196eb..e7d1584 100644
 --- a/video/out/vulkan/context.c
@@ -249,10 +292,10 @@ index c3013ed..b57acc7 100644
                               pl_vk_inst vkinst,
 diff --git a/video/out/vulkan/libmpv_vk.c b/video/out/vulkan/libmpv_vk.c
 new file mode 100644
-index 0000000..91c6717
+index 0000000..46c10a5
 --- /dev/null
 +++ b/video/out/vulkan/libmpv_vk.c
-@@ -0,0 +1,238 @@
+@@ -0,0 +1,256 @@
 +/*
 + * This file is part of mpv.
 + *
@@ -311,6 +354,10 @@ index 0000000..91c6717
 +        MP_FATAL(ctx, "MPV_RENDER_PARAM_VULKAN_INIT_PARAMS missing or incomplete.\n");
 +        return MPV_ERROR_INVALID_PARAMETER;
 +    }
++    if (ip->num_extensions < 0 || (ip->num_extensions > 0 && !ip->extensions)) {
++        MP_FATAL(ctx, "Invalid extensions/num_extensions.\n");
++        return MPV_ERROR_INVALID_PARAMETER;
++    }
 +    if (!ip->lock_queue != !ip->unlock_queue) {
 +        MP_FATAL(ctx, "lock_queue and unlock_queue must be set together.\n");
 +        return MPV_ERROR_INVALID_PARAMETER;
@@ -365,11 +412,12 @@ index 0000000..91c6717
 +
 +// Return the current target to the host (transition + signal) and drop the
 +// wrapper. Destruction is deferred by libplacebo until the GPU is done.
-+static void release_target(struct libmpv_gpu_context *ctx)
++// Returns false if the host semaphore will not be signalled.
++static bool release_target(struct libmpv_gpu_context *ctx)
 +{
 +    struct priv *p = ctx->priv;
 +    if (!p->target)
-+        return;
++        return true;
 +
 +    bool ok = pl_vulkan_hold_ex(p->vk.gpu, pl_vulkan_hold_params(
 +        .tex = p->target,
@@ -385,6 +433,7 @@ index 0000000..91c6717
 +
 +    pl_tex_destroy(p->vk.gpu, &p->target);
 +    p->target_ra = (struct ra_tex) {0};
++    return ok;
 +}
 +
 +static bool same_image(const mpv_vulkan_image *a, const mpv_vulkan_image *b)
@@ -408,12 +457,24 @@ index 0000000..91c6717
 +        MP_FATAL(ctx, "Render target lacks VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT.\n");
 +        return MPV_ERROR_INVALID_PARAMETER;
 +    }
++    // pl_vulkan_hold_ex() asserts a semaphore; reject instead of aborting.
++    if (!img->signal_semaphore) {
++        MP_FATAL(ctx, "Render target lacks a signal_semaphore.\n");
++        return MPV_ERROR_INVALID_PARAMETER;
++    }
 +
 +    // vo_libmpv calls wrap_fbo() twice per frame (get_target_size, then
 +    // render) with a single done_frame(). Re-wrapping would wait on the host
 +    // semaphore twice, so reuse the pending wrapper for the same image.
 +    if (p->target) {
 +        if (same_image(&p->image, img)) {
++            // The wait side is already queued; take the hand-back from this
++            // call, so a wrapper left over from an aborted frame signals the
++            // value the host waits for now, not the stale one.
++            p->image.signal_semaphore = img->signal_semaphore;
++            p->image.signal_value = img->signal_value;
++            p->image.final_layout = img->final_layout;
++            p->image.queue_family = img->queue_family;
 +            *out = &p->target_ra;
 +            return 0;
 +        }
@@ -456,11 +517,11 @@ index 0000000..91c6717
 +    return 0;
 +}
 +
-+static void done_frame(struct libmpv_gpu_context *ctx, bool ds)
++static bool done_frame(struct libmpv_gpu_context *ctx, bool ds)
 +{
 +    // Submits pending work, transitions to final_layout and signals the host
 +    // semaphore once rendering completes.
-+    release_target(ctx);
++    return release_target(ctx);
 +}
 +
 +static void destroy(struct libmpv_gpu_context *ctx)

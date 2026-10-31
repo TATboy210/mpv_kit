@@ -31,11 +31,13 @@ struct libmpv_gpu_context_fns {
                     struct ra_tex **out);
     // Signal that the ra_tex object obtained with wrap_fbo is no longer used.
     // For certain backends, this might also be used to signal the end of
-    // rendering (like OpenGL doing weird crap).
-    void (*done_frame)(struct libmpv_gpu_context *ctx, bool ds);
+    // rendering (like OpenGL doing weird crap). Returns false if the target
+    // could not be handed back to the host (render must then fail).
+    bool (*done_frame)(struct libmpv_gpu_context *ctx, bool ds);
     // Free all data in ctx->priv.
     void (*destroy)(struct libmpv_gpu_context *ctx);
 };
 
 extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
 extern const struct libmpv_gpu_context_fns libmpv_gpu_context_vk;
+extern const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11;

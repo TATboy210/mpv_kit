@@ -1,0 +1,56 @@
+diff --git a/src/colorspace.c b/src/colorspace.c
+index 795cc68a5d..50dfcdbb00 100644
+--- a/src/colorspace.c
++++ b/src/colorspace.c
+@@ -1683,11 +1683,15 @@ bool pl_primaries_superset(const struct pl_raw_primaries *a,
+ 
+ bool pl_primaries_valid(const struct pl_raw_primaries *prim)
+ {
+-    // Test to see if the primaries form a valid triangle (nonzero area)
+-    float area = (prim->blue.x - prim->green.x) * (prim->red.y  - prim->green.y)
+-               - (prim->red.x  - prim->green.x) * (prim->blue.y - prim->green.y);
+-
+-    return fabs(area) > 1e-6 && test_point_gamut(prim->white, prim);
++    // The white point must lie strictly inside the triangle spanned by the
++    // primaries, otherwise the RGB<->XYZ matrix is singular. This also rejects
++    // a degenerate triangle, as the three signed areas sum to its area.
++    float d1 = test_point_line(prim->white, prim->red,   prim->green),
++          d2 = test_point_line(prim->white, prim->green, prim->blue),
++          d3 = test_point_line(prim->white, prim->blue,  prim->red);
++
++    return (d1 >  1e-6f && d2 >  1e-6f && d3 >  1e-6f) ||
++           (d1 < -1e-6f && d2 < -1e-6f && d3 < -1e-6f);
+ }
+ 
+ static inline float xy_dist2(struct pl_cie_xy a, struct pl_cie_xy b)
+diff --git a/src/tests/colorspace.c b/src/tests/colorspace.c
+index ac611d6ea1..9f8203f5c5 100644
+--- a/src/tests/colorspace.c
++++ b/src/tests/colorspace.c
+@@ -398,6 +398,26 @@ int main()
+     REQUIRE(pl_primaries_compatible(bt2020, dcip3));
+     REQUIRE(pl_primaries_compatible(bt709, dcip3));
+ 
++    for (enum pl_color_primaries p = 0; p < PL_COLOR_PRIM_COUNT; p++)
++        REQUIRE(pl_primaries_valid(pl_raw_primaries_get(p)));
++    struct pl_raw_primaries bad = {0};
++    REQUIRE(!pl_primaries_valid(&bad));
++    bad = *bt2020;
++    bad.white = bad.blue; // white point on a vertex
++    REQUIRE(!pl_primaries_valid(&bad));
++    bad = *bt2020;
++    bad.white.x = (bad.red.x + bad.green.x) / 2; // white point on an edge
++    bad.white.y = (bad.red.y + bad.green.y) / 2;
++    REQUIRE(!pl_primaries_valid(&bad));
++    bad = *bt2020;
++    bad.white.x = 0.1f; // white point outside the triangle
++    bad.white.y = 0.9f;
++    REQUIRE(!pl_primaries_valid(&bad));
++    bad = *bt2020;
++    bad.blue.x = (bad.red.x + bad.green.x) / 2; // collinear primaries
++    bad.blue.y = (bad.red.y + bad.green.y) / 2;
++    REQUIRE(!pl_primaries_valid(&bad));
++
+     struct pl_raw_primaries bt709_2020 = pl_primaries_clip(bt709, bt2020);
+     struct pl_raw_primaries bt2020_709 = pl_primaries_clip(bt2020, bt709);
+     REQUIRE(pl_raw_primaries_similar(&bt709_2020, bt709));

@@ -1,3 +1,29 @@
+## 0.1.0-dev.4
+
+- Changed: `MpvLibrary.open` (and so `Mpv.create`/`Player` with `libraryPath`)
+  is strict about explicitly named libraries. An explicit `path`, else a
+  non-empty `MPV_KIT_LIBMPV_PATH`, is tried alone; if it fails to load
+  (missing file, unresolved dependency, incompatible client API) it throws
+  `MpvLibraryNotFound` carrying the loader's reason instead of silently
+  falling back to the next candidate (which ran the wrong libmpv). The
+  platform default names are only tried when neither is given. Signatures are
+  unchanged.
+- Fixed: disposing an `Mpv` while clients created from it were still alive
+  hung forever; `dispose()` now disposes those clients first.
+- Fixed: custom stream protocols always answer a claimed request: a source
+  whose `size` getter throws, or a URI that is not valid UTF-8, fails the
+  load instead of freezing it, and an opener that does not complete within
+  30 s fails with `loadingFailed` (a source arriving later is closed).
+- Changed: `Player` no longer hardware-decodes FFV1 by default
+  (`hwdec-codecs` excludes `ffv1`, mpv #18255); override it through
+  `options`.
+- Changed (behavior): `Player` now defaults `hwdec` to a per-platform,
+  zero-copy-first list instead of one shared list: Windows
+  `vulkan,d3d11va,d3d11va-copy,auto-safe`, Linux `vulkan,vaapi,auto-safe`,
+  macOS `videotoolbox,auto-safe`, other `auto-safe` (was
+  `vulkan,d3d11va-copy,auto-safe` everywhere). An explicit `hwdec` in `options`
+  still wins. See ADR 0006.
+
 ## 0.1.0-dev.3
 
 - No API changes; released together with mpv_kit_libs 0.1.0-dev.3.

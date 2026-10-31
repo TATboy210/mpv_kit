@@ -83,6 +83,10 @@ OSStatus ca_get_str(AudioObjectID id, ca_scope scope, ca_sel selector,
     OSStatus err =
         ca_get(id, scope, selector, sizeof(CFStringRef), (void **)&string);
     CHECK_CA_ERROR_SILENT_L(coreaudio_error);
+    // A property may report success without a string; callers expect a
+    // string on noErr and CFRelease(NULL) crashes.
+    if (!string)
+        return kAudioHardwareUnspecifiedError;
 
     *data = cfstr_get_cstr(string);
     CFRelease(string);

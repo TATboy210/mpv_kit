@@ -1,3 +1,27 @@
+## 0.1.0-dev.4
+
+- Fixed: a failed render no longer causes a false `gpuTimeout` on the next
+  frame (the unsignalled timeline value is rolled back).
+- Fixed: shared images use the external queue family from the first frame,
+  pairing every Vulkan ownership transfer.
+- Fixed: a host ICC profile set on the controller survives option changes
+  with the gpu-next renderer.
+- Fixed: `MpvVideoEventKind.softwareFallback` was emitted before any listener
+  could subscribe and so was always lost; it is now delivered to the first
+  listener of `MpvVideoController.events`.
+- Windows: new native Direct3D 11 backend (mpv's D3D11 render API on
+  Flutter's adapter). `auto` tries `vulkan/gpu-next`, `d3d11/gpu-next`,
+  `vulkan/gpu`, `d3d11/gpu`, then software, and `MPV_KIT_VIDEO_API=d3d11`
+  forces it. It needs a libmpv built with the D3D11 render API (mpv_kit
+  patch 0010).
+- Linux: new native OpenGL backend (mpv's OpenGL render API on Flutter's
+  `EGLDisplay`) that serves mpv's `gpu` renderer. `auto` tries
+  `vulkan/gpu-next`, `opengl/gpu`, `vulkan/gpu`, then software, and
+  `MPV_KIT_VIDEO_API=opengl` forces it. It needs a libmpv built with GL/EGL.
+- `MpvVideoController.reason` names the API that won and lists one
+  `unavailable` entry per candidate tried before it; `backend` still reports
+  only `vulkan` or `software` (ADR 0004). No public API changed.
+
 ## 0.1.0-dev.3
 
 - Requires mpv_kit / mpv_kit_libs 0.1.0-dev.3: zero-copy Vulkan rendering

@@ -1,9 +1,15 @@
 #include "vulkan_backend.h"
 
+#include <mpv/render_vk.h>
+
 #include <algorithm>
 #include <bitset>
 #include <cstring>
+#include <memory>
 #include <mutex>
+
+#include "drm_render_node.h"
+#include "render_backend.h"
 
 namespace mpv_kit {
 namespace {
@@ -166,6 +172,15 @@ bool VulkanContext::Init(std::string* error) {
   return PickDevice(error) && CreateDevice(error);
 }
 
+// When no device is picked, `*error` lists why each one was rejected, in
+// enumeration order, joined with ", ": "Vulkan < 1.3 on <deviceName>" for a
+// device below Vulkan 1.3, and "<deviceName> is not the compositor adapter"
+// when Interop::AcceptDevice refused it. The Windows AcceptDevice checks both
+// the adapter LUID and the KMT BGRA8 import capability; both are reported as
+// "not the compositor adapter" (the two categories the user asked to tell
+// apart: driver version vs adapter mismatch). With no physical device at all
+// the original wording is kept. VulkanRenderBackend::Create passes the whole
+// string through SanitizeReasonField, so device names need no cleaning here.
 bool VulkanContext::PickDevice(std::string* error) {
   uint32_t n = 0;
   vkEnumeratePhysicalDevices(instance_, &n, nullptr);
@@ -175,11 +190,22 @@ bool VulkanContext::PickDevice(std::string* error) {
   // Prefer the device the compositor uses (interop decides), then discrete.
   VkPhysicalDevice best = VK_NULL_HANDLE;
   int best_score = -1;
+  std::string rejected;
+  auto reject = [&rejected](const std::string& why) {
+    if (!rejected.empty()) rejected += ", ";
+    rejected += why;
+  };
   for (VkPhysicalDevice pd : devices) {
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(pd, &props);
-    if (props.apiVersion < VK_API_VERSION_1_3) continue;
-    if (!interop_->AcceptDevice(pd)) continue;
+    if (props.apiVersion < VK_API_VERSION_1_3) {
+      reject(std::string("Vulkan < 1.3 on ") + props.deviceName);
+      continue;
+    }
+    if (!interop_->AcceptDevice(pd)) {
+      reject(std::string(props.deviceName) + " is not the compositor adapter");
+      continue;
+    }
     int score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU   ? 3
                 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2
                                                                             : 1;
@@ -190,7 +216,9 @@ bool VulkanContext::PickDevice(std::string* error) {
     }
   }
   if (!best) {
-    *error = "no Vulkan 1.3 device shareable with the compositor";
+    *error = rejected.empty()
+                 ? "no Vulkan 1.3 device shareable with the compositor"
+                 : rejected;
     return false;
   }
   physical_device_ = best;
@@ -338,11 +366,44 @@ bool VulkanContext::CreateDevice(std::string* error) {
   return true;
 }
 
+namespace {
+void DestroyAll(VkDevice device, VkSemaphore timeline, VulkanInterop* interop,
+                std::vector<SharedImage>* images) {
+  if (!device || images->empty()) return;
+  for (auto& img : *images) {
+    if (img.ready_value != 0) {
+      VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+      wi.semaphoreCount = 1;
+      wi.pSemaphores = &timeline;
+      wi.pValues = &img.ready_value;
+      // Same 1 s bound as WaitImage(): a stuck GPU must not wedge us.
+      vkWaitSemaphores(device, &wi, 1'000'000'000ull);
+    }
+    // A moved-out slot (image == null) is skipped: only the Vulkan side is
+    // destroyed here — the D3D11 texture the compositor still samples is
+    // kept alive by its own COM reference in the interop layer.
+    if (img.image || img.platform) interop->DestroyImage(device, &img);
+  }
+  images->clear();
+}
+}  // namespace
+
 bool VulkanContext::AllocateRing(int count, int width, int height,
-                                 std::string* error) {
-  FreeRetired();
-  retired_ = std::move(ring_);
-  ring_.clear();
+                                 SharedImage* keep_retired, std::string* error) {
+  FreeRetired();  // the previous generation's survivor had its quarantine
+  // Retire only the compositor-facing front image: everything else in the
+  // old generation is dead weight — count×w×h×4 bytes (~930 MB at 8K).
+  retired_.clear();
+  if (keep_retired && (keep_retired->image || keep_retired->platform))
+    retired_.push_back(std::move(*keep_retired));
+  // SharedImage is a plain aggregate: the move above only copied it, so the
+  // source slot still holds the handles. Clear it so DestroyAll(ring_) below
+  // skips it (its moved-out rule) instead of destroying the retired image.
+  if (keep_retired) *keep_retired = SharedImage{};
+  // Destroy the rest of the old ring. Each image is awaited on its own last
+  // timeline value: a device-wide vkDeviceWaitIdle would also serialize the
+  // decode and present queues for the whole reallocation.
+  DestroyAll(device_, timeline_, interop_, &ring_);
   ring_.resize(count);
   for (auto& img : ring_) {
     if (!interop_->CreateImage(physical_device_, device_, width, height, &img)) {
@@ -354,28 +415,23 @@ bool VulkanContext::AllocateRing(int count, int width, int height,
   return true;
 }
 
-namespace {
-void DestroyAll(VkDevice device, VulkanInterop* interop,
-                std::vector<SharedImage>* images) {
-  if (!device || images->empty()) return;
-  vkDeviceWaitIdle(device);
-  for (auto& img : *images) {
-    if (img.image || img.platform) interop->DestroyImage(device, &img);
-  }
-  images->clear();
-}
-}  // namespace
-
 void VulkanContext::FreeRing() {
-  DestroyAll(device_, interop_, &ring_);
+  DestroyAll(device_, timeline_, interop_, &ring_);
   FreeRetired();
 }
 
-void VulkanContext::FreeRetired() { DestroyAll(device_, interop_, &retired_); }
+void VulkanContext::FreeRetired() {
+  DestroyAll(device_, timeline_, interop_, &retired_);
+}
 
 uint64_t VulkanContext::NextSignalValue(int i) {
   ring_[i].ready_value = ++timeline_value_;
   return ring_[i].ready_value;
+}
+
+void VulkanContext::RollbackSignalValue(int i, uint64_t previous) {
+  // timeline_value_ stays monotonic; skipping a value is fine for a timeline.
+  ring_[i].ready_value = previous;
 }
 
 VkResult VulkanContext::WaitImage(int i) {
@@ -387,6 +443,177 @@ VkResult VulkanContext::WaitImage(int i) {
   wi.pValues = &img.ready_value;
   // 1 s timeout: a stuck GPU must not wedge the render thread forever.
   return vkWaitSemaphores(device_, &wi, 1'000'000'000ull);
+}
+
+namespace {
+
+/// MPV_RENDER_API_TYPE_VULKAN into the VulkanContext's shared-image ring
+/// (RenderBackend). The device is created by the first Create().
+class VulkanRenderBackend final : public RenderBackend {
+ public:
+  explicit VulkanRenderBackend(VulkanInterop* interop) : interop_(interop) {}
+  // Runs after Release freed the render context (render_backend.h contract),
+  // so mpv and libva no longer use the render node fd when it is closed.
+  ~VulkanRenderBackend() override {
+    if (drm_fd_ >= 0) interop_->CloseDrmRenderNode(drm_fd_);
+  }
+
+  const char* wire_name() const override { return "vulkan"; }
+  Backend frame_kind() const override { return Backend::kVulkan; }
+  bool pipelined() const override { return true; }
+
+  int Create(const MpvApi& api, mpv_handle* handle, const char* renderer,
+             mpv_render_context** out, std::string* why) override {
+    *out = nullptr;
+    if (!vk_ && !device_failed_) {
+      vk_ = std::make_unique<VulkanContext>(interop_);
+      std::string init_error;
+      if (!vk_->Init(&init_error)) {
+        vk_.reset();
+        device_failed_ = true;
+        device_error_ = SanitizeReasonField(init_error);
+      }
+    }
+    if (device_failed_) {
+      *why = device_error_;
+      return MPV_ERROR_GENERIC;  // mpv was not asked (see device_failed())
+    }
+    VulkanContext& vk = *vk_;
+    mpv_vulkan_init_params init{};
+    init.instance = vk.instance();
+    init.get_instance_proc_addr = vkGetInstanceProcAddr;  // from volk
+    init.api_version = vk.api_version();
+    init.physical_device = vk.physical_device();
+    init.device = vk.device();
+    init.extensions = vk.enabled_extensions().data();
+    init.num_extensions = static_cast<int>(vk.enabled_extensions().size());
+    init.features = vk.features();
+    init.queue_graphics = {vk.graphics_queues().index, vk.graphics_queues().count};
+    init.queue_compute = {vk.compute_queues().index, vk.compute_queues().count};
+    init.queue_transfer = {vk.transfer_queues().index,
+                           vk.transfer_queues().count};
+
+    // VA-API interop (Phase 16): the render node of the device this backend
+    // renders on, resolved once. Every create (gpu-next and the gpu fallback)
+    // gets it; libmpv copies the struct but not the fd (see ~VulkanRenderBackend).
+    if (!drm_resolved_) {
+      drm_fd_ = interop_->OpenDrmRenderNode(vk.physical_device());
+      drm_resolved_ = true;
+    }
+    mpv_opengl_drm_params_v2 drm{};
+    FillDrmDisplayParams(drm_fd_, &drm);
+
+    int advanced = 1;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_API_TYPE,
+         const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
+        {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
+        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
+        {MPV_RENDER_PARAM_INVALID, nullptr},  // replaced when there is an fd
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    if (drm_fd_ >= 0) params[4] = {MPV_RENDER_PARAM_DRM_DISPLAY_V2, &drm};
+    const int err = api.render_context_create(out, handle, params);
+    if (err < 0) {
+      *why = "mpv_render_context_create: " +
+             SanitizeReasonField(api.error_string(err));
+      *out = nullptr;
+    }
+    return err;
+  }
+  bool device_failed() const override { return device_failed_; }
+  std::string device_name() const override {
+    return vk_ ? vk_->device_name() : std::string();
+  }
+  std::string RendererName(const MpvApi& api,
+                           mpv_render_context* ctx) const override {
+    // Ask mpv which renderer it really built: a libmpv without the
+    // renderer parameter ignores it and always uses its default.
+    const char* active = nullptr;
+    const int info = api.render_context_get_info(
+        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+    return info >= 0 && active ? active : "unknown renderer";
+  }
+
+  bool AllocTargets(int count, int width, int height, int keep_slot,
+                    std::string* error) override {
+    SharedImage* keep = keep_slot >= 0 ? &vk_->ring()[keep_slot] : nullptr;
+    return vk_->AllocateRing(count, width, height, keep, error);
+  }
+  void FreeRetired() override {
+    if (vk_) vk_->FreeRetired();
+  }
+  TargetView FrameFor(int slot) override {
+    TargetView view;
+    view.platform = vk_->ring()[slot].platform;
+    return view;
+  }
+
+  int Render(const MpvApi& api, mpv_render_context* ctx, int slot, int width,
+             int height) override {
+    // The image's own size: it is the ring's, which is [width]x[height].
+    (void)width;
+    (void)height;
+    SharedImage& img = vk_->ring()[slot];
+    mpv_vulkan_image target{};
+    target.image = img.image;
+    target.format = img.format;
+    target.usage = kSharedImageUsage;
+    target.width = img.width;
+    target.height = img.height;
+    // Images are shared with another API: transfer ownership to/from the
+    // external queue family and keep them in GENERAL layout between frames.
+    // Always EXTERNAL, also on first use: an acquire from EXTERNAL with
+    // UNDEFINED (contents discarded) is valid, while IGNORED on an
+    // EXCLUSIVE image with dedicated queue families is not
+    // (VUID-VkImageMemoryBarrier2-image-09117) and leaves the next frame's
+    // acquire without a matching release.
+    target.layout = img.initialized ? VK_IMAGE_LAYOUT_GENERAL
+                                    : VK_IMAGE_LAYOUT_UNDEFINED;
+    target.queue_family = VK_QUEUE_FAMILY_EXTERNAL;
+    target.final_layout = VK_IMAGE_LAYOUT_GENERAL;
+    target.signal_semaphore = vk_->timeline();
+    const uint64_t previous_ready = img.ready_value;
+    target.signal_value = vk_->NextSignalValue(slot);
+    int flip = 0;
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_VULKAN_IMAGE, &target},
+        {MPV_RENDER_PARAM_FLIP_Y, &flip},
+        {MPV_RENDER_PARAM_INVALID, nullptr},
+    };
+    const int err = api.render_context_render(ctx, params);
+    // A failed render signals nothing: without the rollback the next
+    // WaitImage(slot) would wait 1 s and report a false "gpu timeout".
+    if (err < 0) vk_->RollbackSignalValue(slot, previous_ready);
+    // Only a successful render transitions the image out of UNDEFINED.
+    if (err >= 0) img.initialized = true;
+    return err;
+  }
+  WaitResult Wait(int slot) override {
+    const VkResult result = vk_->WaitImage(slot);
+    if (result == VK_SUCCESS) return WaitResult::kOk;
+    return result == VK_ERROR_DEVICE_LOST ? WaitResult::kDeviceLost
+                                          : WaitResult::kTimeout;
+  }
+
+  void Release(const MpvApi& api, mpv_render_context* ctx) override {
+    api.render_context_free(ctx);
+  }
+
+ private:
+  VulkanInterop* const interop_;
+  std::unique_ptr<VulkanContext> vk_;  // destroyed last, with this backend
+  bool device_failed_ = false;
+  std::string device_error_;  // why Init failed, sanitized
+  int drm_fd_ = -1;           // DRM render node (VA-API), -1: none
+  bool drm_resolved_ = false;  // OpenDrmRenderNode was asked once
+};
+
+}  // namespace
+
+std::unique_ptr<RenderBackend> CreateVulkanBackend(VulkanInterop* interop) {
+  return std::make_unique<VulkanRenderBackend>(interop);
 }
 
 }  // namespace mpv_kit

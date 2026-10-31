@@ -1,0 +1,82 @@
+# Golden traces of the candidate chain with platform-provided backends
+# (video_renderer_chain_test, Phase 14 D3D-07).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from reading video_renderer.cc
+# (Start, NewBackend, UsedLater, OnRenderResult); they change only in
+# reviewed commits. The backends are fakes named "d3d11" and "vulkan", so the
+# reasons have the shape of the real ones.
+#
+# Line vocabulary:
+#   start ok backend=<wire> reason="<r>"   Start() result, wire_name(), backend_reason()
+#   start=false reason="<r>"               Start() failed; the reason is trails only
+#   create-attempts <api>/<renderer>[,...] render_context_create calls in order
+#                                          (devices that failed to initialise
+#                                          never reach mpv)
+#   device-inits d3d11=<n> vulkan=<n>      device initialisations per api
+#   log <line>                             renderer log lines of Start
+#   event <kind> [<msg>]                   EventFn (render thread)
+#   render buf=<b> frame=<n> WxH <fmt>     successful render of the fake target
+#   render skip                            SKIP_RENDERING
+#   acquire index=<i> WxH platform=<yes|no>  AcquireFront()
+#   draws <n>                              non-skip render calls in total
+#   teardown frees=<n>                     render_context_free calls after destruction
+
+# After the Windows switch the chain is d3d11/gpu-next, vulkan/gpu-next,
+# d3d11/gpu, vulkan/gpu, software/sw. The d3d11 device fails: its first
+# candidate leaves the trail, vulkan/gpu-next wins, d3d11 was initialised
+# once (its gpu candidate is not asked again).
+[post-switch-d3d11-device-fails]
+start ok backend=vulkan reason="vulkan (gpu-next) on fake-vk; d3d11/gpu-next unavailable: d3d11 device creation failed: 0x887A0004"
+create-attempts vulkan/gpu-next
+device-inits d3d11=1 vulkan=1
+log none
+teardown frees=1
+
+# gpu-next fails to create on both apis: it is tried on each api before any
+# gpu candidate, and d3d11/gpu wins with both gpu-next trails in chain order.
+[post-switch-gpu-next-fails-everywhere]
+start ok backend=d3d11 reason="d3d11 (gpu) on fake-d3d11; d3d11/gpu-next unavailable: mpv_render_context_create: fake error -18; vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18"
+create-attempts d3d11/gpu-next,vulkan/gpu-next,d3d11/gpu
+device-inits d3d11=1 vulkan=1
+log mpv_kit: gpu-next unavailable: fake error -18
+log mpv_kit: gpu-next unavailable: fake error -18
+teardown frees=1
+
+# Before the switch the roles swap: vulkan, the first api, fails its device.
+[pre-switch-vulkan-device-fails]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11; vulkan/gpu-next unavailable: no Vulkan 1.3 device"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=1
+log none
+teardown frees=1
+
+# MPV_KIT_VIDEO_API=d3d11 and a failing d3d11 device: every other candidate
+# (vulkan, software) is an excluded trail, nothing else is created, Start
+# fails.
+[forced-d3d11-device-fails]
+start=false reason="d3d11/gpu-next unavailable: d3d11 device creation failed: 0x887A0004; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11; d3d11/gpu unavailable: d3d11 device creation failed: 0x887A0004; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=d3d11; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=d3d11"
+create-attempts none
+device-inits d3d11=1 vulkan=0
+log mpv_kit: MPV_KIT_VIDEO_API=d3d11 restricts rendering to that API
+teardown frees=0
+
+# Wait reports kDeviceLost from its third call: the first frame (two waits)
+# is drawn, the second frame's first wait finds the device lost. Exactly one
+# device_lost event; the lost frame and the two after it are skips only
+# (one draw in total); the render context is freed once.
+[d3d11-device-lost]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+acquire index=0 64x36 platform=yes
+render skip
+event device_lost device lost
+render skip
+render skip
+draws 1
+teardown frees=1

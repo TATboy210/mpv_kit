@@ -1,0 +1,14 @@
+# 15-04 Task 3 RED, local (push-green-only: never pushed alone)
+sha=02ac6dd+uncommitted (render_backend.h RunBound seam, video_renderer_bind_test.cc, meson registration; video_renderer.cc still without RunBound calls)
+host=Windows MINGW64 (MSVC cl /W4 /WX), no libmpv, fake libmpv harness
+build=build/phase15/goldens/build_all.bat rt_red (gitignored)
+date=2026-10-27T20:43:39Z
+exit=1
+BIND violation: render_context_create called on a thread the backend has not bound
+BIND violation: render_context_get_info called on a thread the backend has not bound
+BIND violation: render_context_set_update_callback called on a thread the backend has not bound
+BIND violation: RunBound ran 0 time(s) (expected: once)
+BIND violation: render_context_create on the main thread (create-time call, expected: RunBound thread)
+BIND violation: render_context_get_info on the main thread (create-time call, expected: RunBound thread)
+BIND violation: render_context_set_update_callback on the main thread (registration, expected: RunBound thread)
+BIND violation: the RunBound thread never bound the backend

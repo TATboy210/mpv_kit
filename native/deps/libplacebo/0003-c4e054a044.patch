@@ -1,0 +1,13 @@
+diff --git a/src/pl_alloc.h b/src/pl_alloc.h
+index 0c14a4c1ca..382baa40c0 100644
+--- a/src/pl_alloc.h
++++ b/src/pl_alloc.h
+@@ -31,6 +31,8 @@ void *pl_realloc(void *parent, void *ptr, size_t size);
+ 
+ static inline void *pl_calloc(void *parent, size_t count, size_t size)
+ {
++    if (count && size > SIZE_MAX / count)
++        return NULL;
+     return pl_zalloc(parent, count * size);
+ }
+ 

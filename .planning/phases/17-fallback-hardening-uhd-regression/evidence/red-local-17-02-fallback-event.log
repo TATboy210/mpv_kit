@@ -1,0 +1,22 @@
+# 17-02 Task 2 RED (local only, unfixed video_controller.dart at 02af05a): new softwareFallback delivery tests
+# cmd: flutter test test/controller_channel_test.dart --plain-name 'softwareFallback delivery' (packages/mpv_kit_video, libmpv dev.2 bundle DLLs)
+00:00 +0: softwareFallback delivery (VER-01) goes to the first listener, which subscribes after create, once
+mpv_kit_video: software (software (sw) on cpu; vulkan/gpu-next unavailable: test)
+00:00 +0 -1: softwareFallback delivery (VER-01) goes to the first listener, which subscribes after create, once [E]
+  Expected: [
+              'rendering in software: software (sw) on cpu; vulkan/gpu-next unavailable: test'
+            ]
+    Actual: []
+     Which: at location [0] is [] which shorter than expected
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\controller_channel_test.dart 472:7             main.<fn>.<fn>
+  
+00:00 +0 -1: softwareFallback delivery (VER-01) is dropped with the stream when no one ever listened
+mpv_kit_video: software (software (sw) on cpu; vulkan/gpu-next unavailable: test)
+00:00 +1 -1: Some tests failed.
+
+Failing tests:
+  D:/mpv_kit/packages/mpv_kit_video/test/controller_channel_test.dart: softwareFallback delivery (VER-01) goes to the first listener, which subscribes after create, once
+Some tests failed.

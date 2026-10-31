@@ -1,0 +1,25 @@
+sha=7af34319485dd609cbc4e41e53971b5d74051f21 workflow=native-verify.yml run=40721479785 conclusion=failure
+sha=7af34319485dd609cbc4e41e53971b5d74051f21 workflow=flutter-plugin.yml run=40721479783 conclusion=success
+rerun sha=7af34319485dd609cbc4e41e53971b5d74051f21 run=40721479785 attempt=2 (macos integration-test cancelled while queued; infra)
+sha=7af34319485dd609cbc4e41e53971b5d74051f21 workflow=native-verify.yml run=40721479785 conclusion=success
+sha=7af34319485dd609cbc4e41e53971b5d74051f21 workflow=flutter-plugin.yml run=40721479783 conclusion=success
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
+plan=16-03 task=1 ci-gate=pass sha=7af34319485dd609cbc4e41e53971b5d74051f21 native-verify run=40721479785 (1 infra rerun of cancelled macos integration-test) flutter-plugin run=40721479783 (CI-GATE ok); vaapi=no-log at this sha because the verify-tier libmpv had no vaapi yet (information only)
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+sha=01af48479e09118412096e27998ccd313834d28d workflow=native-verify.yml run=40727372337 conclusion=success
+sha=01af48479e09118412096e27998ccd313834d28d workflow=flutter-plugin.yml run=40727372347 conclusion=success
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=display-not-created
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=display-not-created
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=interop-unavailable
+drm-smoke job="linux (ubuntu-24.04-arm)" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=interop-unavailable
+drm-smoke job="sanitizers" line=RENDER_GL drm ok api=gl renderer=gpu vaapi=no-log
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu native_resource=upstream vaapi=no-log
+drm-smoke job="sanitizers" line=RENDER_VK drm ok renderer=gpu-next native_resource=registered vaapi=no-log
+hwdec-vaapi-built line=HWDEC {"schema":"hwdec-1","test":"hwdec_zero_copy","sample":"hevc-10bit","at":"end","api":"opengl","requested":"no","hwdecCurrent":"no","hwdecInterop":null,"pixelformat":"yuv420p10","hwPixelformat":null,"d3d11vaZeroCopy":null,"outcome":"software","zeroCopy":false,"reason":"opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl"}
+plan=16-03 task=2 ci-gate=pass sha=01af48479e09118412096e27998ccd313834d28d native-verify run=40727372337 flutter-plugin run=40727372347 (CI-GATE ok; no reruns)

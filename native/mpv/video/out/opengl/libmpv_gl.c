@@ -84,13 +84,14 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
     return 0;
 }
 
-static void done_frame(struct libmpv_gpu_context *ctx, bool ds)
+static bool done_frame(struct libmpv_gpu_context *ctx, bool ds)
 {
     struct priv *p = ctx->priv;
 
     struct ra_swapchain *sw = p->ra_ctx->swapchain;
     struct vo_frame dummy = {.display_synced = ds};
     ra_gl_ctx_submit_frame(sw, &dummy);
+    return true;
 }
 
 static void destroy(struct libmpv_gpu_context *ctx)

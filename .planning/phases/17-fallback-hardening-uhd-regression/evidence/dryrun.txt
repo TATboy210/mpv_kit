@@ -1,0 +1,4 @@
+gate run=dryrun result=FAIL desktop=unlocked ac=yes disk_free_repo_mib=5518 stray_example=0 heavy_gpu=Deskrawl:12 native_equal=n/a at=2026-10-30T02:10:56.923Z
+run=dryrun attempt=1 start=2026-10-30T02:11:01.309Z end=2026-10-30T02:11:06.519Z exit=0 log=rtx-dryrun.log vram=rtx-dryrun.vram.csv standby_during=none forensics=none
+csv_rows=3
+csv_first=2026-10-30T02:11:03.767Z,,,2994.6,Deskrawl

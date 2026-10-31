@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  FLUTTER_VERSION: 3.47.6
+  FLUTTER_VERSION: 3.47.8
 
 jobs:
   build:
@@ -36,7 +36,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
+            libpulse0 libasound2t64 libva2 libva-drm2 libvulkan1             xvfb libegl-dev libgl-dev libegl-mesa0 libgl1-mesa-dri
+          # The second line is the hook bundle's host-provided runtime set
+          # (package.sh system allowlist: audio, VA-API, Vulkan loader); a
+          # minimal runner lacks libpulse.so.0, so libmpv.so.2 fails to load.
+          # The third line is the runtime of the pinned-only opengl probe
+          # (xvfb display, libglvnd EGL/GL, Mesa EGL and DRI drivers named
+          # explicitly because --no-install-recommends skips them).
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -44,10 +51,96 @@ jobs:
           cache: true
       - name: Resolve workspace
         run: flutter pub get
-      - name: Analyze plugin and example
-        run: |
-          cd packages/mpv_kit_video && flutter analyze --fatal-infos && flutter test
-          cd ../../example && flutter analyze --fatal-infos
       - name: Build example (${{ matrix.target }})
+        # Runs before the locate step: since Flutter 3.47 `flutter pub get`
+        # no longer runs native-assets build hooks, so it is `flutter build`
+        # that makes the mpv_kit_libs hook download the pinned bundle.
         working-directory: example
         run: flutter build ${{ matrix.target }} --debug
+      - name: ANGLE ban audit (plugin DLL)
+        # D3D-02: mpv_kit's own Windows chain must not touch ANGLE/EGL. Only
+        # the plugin DLL is audited: flutter_windows.dll embeds ANGLE for the
+        # Flutter engine itself, which is outside mpv_kit's chain (ADR 0003).
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          dlls=$(find example/build/windows -name mpv_kit_video_plugin.dll)
+          if [ -z "$dlls" ]; then echo "mpv_kit_video_plugin.dll not found"; exit 1; fi
+          echo "$dlls" | while IFS= read -r dll; do
+            python -I tools/rea_abi_audit/pe_audit.py "$dll" --forbid-angle
+          done
+      - name: Locate the hook-bundle libmpv
+        # The mpv_kit_libs build hook downloaded the pinned bundle during
+        # the example build; point the tests at it so the channel tests run
+        # for real instead of silently skipping (ROADMAP phase-6 criterion 3).
+        shell: bash
+        run: |
+          lib=$(find .dart_tool/hooks_runner/shared/mpv_kit_libs/build             \( -name 'libmpv-2.dll' -o -name 'libmpv.so.2' -o -name 'libmpv.2.dylib' \)             | head -1)
+          if [ -z "$lib" ]; then echo "no hook bundle found"; exit 1; fi
+          dir=$(cd "$(dirname "$lib")" && pwd)
+          # Git Bash prints POSIX paths (/d/a/...) that Windows Dart and the
+          # loader cannot use; that is why runs 40949963646, 40984192897 and
+          # 41065294826 reported "7 tests passed, 1 failed." on a green
+          # Windows job. cygpath exists only on Windows runners, so there the
+          # libmpv file and the PATH entry are written as native paths. The
+          # dir goes on PATH so Windows resolves the dependency DLLs
+          # (README: local libmpv).
+          if command -v cygpath >/dev/null 2>&1; then
+            echo "MPV_KIT_LIBMPV_PATH=$(cygpath -w "$dir/$(basename "$lib")")" >> "$GITHUB_ENV"
+            cygpath -w "$dir" >> "$GITHUB_PATH"
+          else
+            echo "MPV_KIT_LIBMPV_PATH=$dir/$(basename "$lib")" >> "$GITHUB_ENV"
+            echo "$dir" >> "$GITHUB_PATH"
+          fi
+          echo "MPV_KIT_REQUIRE_LIBMPV=1" >> "$GITHUB_ENV"
+      - name: Analyze plugin and example
+        # PATH already carries the hook-bundle dir (previous step); with
+        # MPV_KIT_REQUIRE_LIBMPV=1 the channel tests run for real.
+        # On Windows this step used to run under pwsh, where only the last
+        # command's exit code counted. GitHub runs bash as
+        # `bash --noprofile --norc -eo pipefail`, so every failing line fails
+        # the step; `&&` chains are avoided because `bash -e` ignores the
+        # failure of a non-final `&&` element.
+        shell: bash
+        run: |
+          cd packages/mpv_kit_video
+          flutter analyze --fatal-infos
+          flutter test
+          cd ../../example
+          flutter analyze --fatal-infos
+
+      # v3.0 audit INT-1/INT-2: this workflow builds no libmpv, so the two
+      # steps below prove that the pinned bundle alone carries the Windows
+      # D3D11 and Linux OpenGL backends. A libmpv without patch 0010 fails the
+      # d3d11 step (run 40617697855: "d3d11/gpu-next unavailable:
+      # mpv_render_context_create: operation not implemented"), so they ran
+      # first with the pin commit and are never pushed without it. Each ends
+      # with tools/pinned_bundle_identity.sh, which proves the run used the
+      # pinned bundle's files.
+      - name: Pinned bundle only, forced d3d11 (INT-1)
+        if: matrix.target == 'windows'
+        shell: bash
+        working-directory: example
+        env:
+          MPV_KIT_VIDEO_API: d3d11
+        run: |
+          # The consumer path: libmpv-2.dll is found by default name in the
+          # executable directory, where the hook put the pinned bundle.
+          unset MPV_KIT_LIBMPV_PATH
+          flutter test integration_test/d3d11_backend_test.dart -d windows
+          bash ../tools/pinned_bundle_identity.sh windows-x64 build/windows/x64/runner/Debug
+      - name: Pinned bundle only, forced opengl (INT-2)
+        if: matrix.target == 'linux'
+        shell: bash
+        working-directory: example
+        env:
+          MPV_KIT_VIDEO_API: opengl
+        run: |
+          # The consumer path (as INT-1): libmpv.so.2 is found by default name
+          # in the app bundle's lib/ through the runner's $ORIGIN/lib RUNPATH,
+          # where the hook put the pinned bundle; libEGL.so.1 is a host library
+          # (libglvnd, installed above). The Locate step's explicit path is
+          # dropped so the hook-cache copy cannot stand in for the bundle.
+          unset MPV_KIT_LIBMPV_PATH
+          xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
+          bash ../tools/pinned_bundle_identity.sh linux-x64 build/linux/x64/debug/bundle/lib

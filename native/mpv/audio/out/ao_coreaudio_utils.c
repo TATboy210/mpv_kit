@@ -88,6 +88,11 @@ OSStatus ca_select_device(struct ao *ao, char* name, AudioDeviceID *device)
 
     if (name && name[0]) {
         CFStringRef uid = cfstr_from_cstr(name);
+        // NULL for a name that is not valid UTF-8; CFRelease(NULL) crashes.
+        if (!uid) {
+            err = kAudioHardwareBadDeviceError;
+            CHECK_CA_ERROR("invalid device UID");
+        }
         AudioValueTranslation v = (AudioValueTranslation) {
             .mInputData = &uid,
             .mInputDataSize = sizeof(CFStringRef),

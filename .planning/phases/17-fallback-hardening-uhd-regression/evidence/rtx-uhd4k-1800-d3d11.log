@@ -1,0 +1,63 @@
+2026-10-30T08:13:42.685Z Resolving dependencies in `D:\mpv_kit`...
+2026-10-30T08:13:42.811Z Downloading packages...
+2026-10-30T08:13:42.878Z   _fe_analyzer_shared 103.0.0 (110.0.0 available)
+2026-10-30T08:13:42.905Z   analyzer 13.3.0 (14.6.0 available)
+2026-10-30T08:13:42.933Z   cross_file 0.3.5+5 (0.4.0 available)
+2026-10-30T08:13:42.961Z   crypto 3.0.7 (3.0.8 available)
+2026-10-30T08:13:43.003Z   cupertino_icons 1.0.9 (2.0.0 available)
+2026-10-30T08:13:43.033Z   desktop_drop 0.7.1 (0.9.2 available)
+2026-10-30T08:13:43.061Z   frontend_server_client 4.1.0 (4.2.0 available)
+2026-10-30T08:13:43.089Z   http_multi_server 3.2.2 (3.2.3 available)
+2026-10-30T08:13:43.118Z   material_color_utilities 0.13.0 (0.13.1 available)
+2026-10-30T08:13:43.161Z   package_config 2.2.0 (3.0.0 available)
+2026-10-30T08:13:43.193Z   shelf 1.4.2 (1.4.3 available)
+2026-10-30T08:13:43.228Z   shelf_static 1.1.3 (1.2.0 available)
+2026-10-30T08:13:43.260Z   test 1.31.1 (1.33.0 available)
+2026-10-30T08:13:43.294Z   test_api 0.7.12 (0.7.15 available)
+2026-10-30T08:13:43.341Z   test_core 0.6.18 (0.6.21 available)
+2026-10-30T08:13:43.386Z   vector_math 2.4.3 (2.4.4 available)
+2026-10-30T08:13:43.421Z   vm_service 15.3.0 (15.4.0 available)
+2026-10-30T08:13:43.455Z   web 1.1.1 (1.1.2 available)
+2026-10-30T08:13:43.485Z Got dependencies in `D:\mpv_kit`!
+2026-10-30T08:13:43.513Z 18 packages have newer versions incompatible with dependency constraints.
+2026-10-30T08:13:43.539Z Try `flutter pub outdated` for more information.
+2026-10-30T08:13:43.602Z 00:00 +0: loading D:/mpv_kit/example/integration_test/uhd_endurance_test.dart
+2026-10-30T08:14:06.325Z Building Windows application...                                    22.6s
+2026-10-30T08:14:06.360Z ✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+2026-10-30T08:14:08.395Z 00:00 +0: UHD endurance 3840x2160 x 1800s
+2026-10-30T08:14:08.915Z mpv_kit_video: d3d11 (d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11)
+2026-10-30T08:14:09.129Z HWDEC {"schema":"hwdec-1","test":"uhd_endurance","sample":"lavfi","at":"first-frame","api":"d3d11","requested":"auto-safe","hwdecCurrent":"no","hwdecInterop":"d3d11va,dxva2-dxgi","pixelformat":"yuv420p","hwPixelformat":null,"d3d11vaZeroCopy":false,"outcome":"software","zeroCopy":false,"reason":"d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11"}
+2026-10-30T08:44:09.636Z BENCH uhd {"label":"4k-rendered-1800-d3d11","size":"3840x2160","seconds":1800,"rendered":true,"renderErrors":0,"deviceLost":false,"frameDropCountFinal":3,"decoderFrameDropCountFinal":0,"avsyncPeakAbs":0.000015991211334664968,"totalAvsyncChangeFinal":-0.033333331467742665,"voDelayedFrameCountAvg":0.0,"voDelayedFrameCountMax":0,"displaySyncActive":false,"estimatedVfFpsFinal":30.000000000000018,"rssBytes":844218368,"samplesPerMinute":[{"t":"11","avsync":0.00001030476887120546,"total-avsync-change":-0.0333333333333376,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"71","avsync":0.000008809407515908418,"total-avsync-change":-0.03333333333675407,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"131","avsync":0.000011301676402508676,"total-avsync-change":-0.03333333334330337,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"191","avsync":0.000007690429642492891,"total-avsync-change":-0.03333333334989437,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"251","avsync":0.000007893880170695144,"total-avsync-change":-0.033333333356479686,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"311","avsync":0.000007303874153652412,"total-avsync-change":-0.03333333329060982,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"371","avsync":0.00000840250696287903,"total-avsync-change":-0.03333333321721109,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"431","avsync":0.000012603760164264788,"total-avsync-change":-0.03333333314385215,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"491","avsync":0.000010904948297862926,"total-avsync-change":-0.033333333070481794,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"551","avsync":0.000011403402098153492,"total-avsync-change":-0.033333332997108236,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"611","avsync":0.000010803222988686745,"total-avsync-change":-0.03333333292369874,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"671","avsync":0.000011393229557232765,"total-avsync-change":-0.03333333285028925,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"731","avsync":0.000011108398894399407,"total-avsync-change":-0.03333333277684565,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"791","avsync":0.000005310059063567962,"total-avsync-change":-0.033333332703424784,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"851","avsync":0.000010498047237961217,"total-avsync-change":-0.03333333263001529,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"911","avsync":0.000009501139780931922,"total-avsync-change":-0.03333333255657169,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"971","avsync":0.00000790405317058207,"total-avsync-change":-0.03333333248317357,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1031","avsync":0.000010904948320122898,"total-avsync-change":-0.0333333324098093,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1091","avsync":0.000013498942453893381,"total-avsync-change":-0.033333332336408596,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1151","avsync":0.000006896973111847338,"total-avsync-change":-0.033333332262985155,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1211","avsync":0.00000809733112189237,"total-avsync-change":-0.03333333218960719,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1271","avsync":0.000010396321923178409,"total-avsync-change":-0.03333333211618375,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1331","avsync":0.00001119995156612097,"total-avsync-change":-0.03333333204278305,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1391","avsync":0.000009908040667805373,"total-avsync-change":-0.03333333196935961,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1451","avsync":0.000012491862394159448,"total-avsync-change":-0.03333333189591343,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1511","avsync":0.000011006673544033951,"total-avsync-change":-0.033333331822535464,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1571","avsync":0.000010701497811127503,"total-avsync-change":-0.0333333317491575,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1631","avsync":0.000008697510032573685,"total-avsync-change":-0.03333333167571132,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1691","avsync":0.000010904948225032296,"total-avsync-change":-0.03333333160233336,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"1751","avsync":0.00001129150428114123,"total-avsync-change":-0.033333331528932655,"frame-drop-count":3,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false}]}
+2026-10-30T08:44:09.816Z ══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+2026-10-30T08:44:09.872Z The following TestFailure was thrown while running async test code:
+2026-10-30T08:44:09.910Z Expected: <0>
+2026-10-30T08:44:09.940Z   Actual: <3>
+2026-10-30T08:44:09.966Z VO drops must stay at zero
+2026-10-30T08:44:09.993Z 
+2026-10-30T08:44:10.032Z When the exception was thrown, this was the stack:
+2026-10-30T08:44:10.057Z #0      fail (package:matcher/src/expect/expect.dart:187:31)
+2026-10-30T08:44:10.081Z #1      _expect (package:matcher/src/expect/expect.dart:182:3)
+2026-10-30T08:44:10.105Z #2      expect (package:matcher/src/expect/expect.dart:65:3)
+2026-10-30T08:44:10.131Z #3      expect (package:flutter_test/src/widget_tester.dart:473:18)
+2026-10-30T08:44:10.160Z #4      main.<anonymous closure>.<anonymous closure> (file:///D:/mpv_kit/example/integration_test/uhd_endurance_test.dart:325:7)
+2026-10-30T08:44:10.186Z <asynchronous suspension>
+2026-10-30T08:44:10.211Z #5      LiveTestWidgetsFlutterBinding.runAsync (package:flutter_test/src/binding.dart:3035:14)
+2026-10-30T08:44:10.236Z <asynchronous suspension>
+2026-10-30T08:44:10.261Z #6      main.<anonymous closure> (file:///D:/mpv_kit/example/integration_test/uhd_endurance_test.dart:99:5)
+2026-10-30T08:44:10.287Z <asynchronous suspension>
+2026-10-30T08:44:10.319Z #7      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+2026-10-30T08:44:10.349Z <asynchronous suspension>
+2026-10-30T08:44:10.375Z #8      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+2026-10-30T08:44:10.399Z <asynchronous suspension>
+2026-10-30T08:44:10.429Z <asynchronous suspension>
+2026-10-30T08:44:10.456Z (elided one frame from package:stack_trace)
+2026-10-30T08:44:10.481Z ════════════════════════════════════════════════════════════════════════════════════════════════════
+2026-10-30T08:44:10.508Z 30:01 +0 -1: UHD endurance 3840x2160 x 1800s [E]
+2026-10-30T08:44:10.537Z   Test failed. See exception logs above.
+2026-10-30T08:44:10.566Z   The test description was: UHD endurance 3840x2160 x 1800s
+2026-10-30T08:44:10.595Z   
+2026-10-30T08:44:10.624Z 30:01 +0 -1: (tearDownAll)
+2026-10-30T08:44:10.667Z 30:01 +0 -1: Some tests failed.
+2026-10-30T08:44:10.728Z 
+2026-10-30T08:44:10.754Z Failing tests:
+2026-10-30T08:44:10.794Z   D:/mpv_kit/example/integration_test/uhd_endurance_test.dart: UHD endurance 3840x2160 x 1800s

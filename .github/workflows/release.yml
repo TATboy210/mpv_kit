@@ -43,17 +43,18 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential pkg-config python3-pip python3-jinja2 ninja-build \
-            nasm curl ca-certificates xz-utils git patchelf binutils \
+            nasm curl ca-certificates xz-utils git patch patchelf binutils \
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
             libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
-            ffmpeg unzip hwdata
+            ffmpeg unzip hwdata \
+            libegl-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
           pip3 install 'meson==1.9.1' 'cmake==3.31.6'
       - uses: actions/checkout@v5
       - uses: actions/cache@v4
         id: deps
         with:
           path: deps
-          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh') }}
+          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -61,6 +62,79 @@ jobs:
         run: |
           cp -a deps prefix
           SKIP_DEPS=1 bash native/build/build.sh "$PWD/prefix"
+      # The container's libdrm (2.4.113) is the runtime floor of the Linux
+      # bundle. This guard catches a vendored mpv that needs newer libdrm
+      # symbols; native-verify runs on ubuntu-24.04 (newer libdrm) and cannot.
+      - name: libmpv resolves against the container libdrm (2.4.113 floor)
+        shell: bash
+        run: |
+          libdrm_ver=$(pkg-config --modversion libdrm)
+          echo "container libdrm: $libdrm_ver"
+
+          # A libdrm copy in the prefix would mask the host's symbols.
+          if [ -n "$(find prefix/lib -maxdepth 1 -name 'libdrm*')" ]; then
+            echo "LIBDRM-FLOOR FAIL: prefix/lib contains a libdrm copy:" >&2
+            find prefix/lib -maxdepth 1 -name 'libdrm*' >&2
+            exit 1
+          fi
+
+          ldd_rc=0
+          ldd_out=$(LD_LIBRARY_PATH="$PWD/prefix/lib" ldd -r prefix/lib/libmpv.so.2 2>&1) || ldd_rc=$?
+          echo "ldd -r exit code: $ldd_rc"
+          printf '%s\n' "$ldd_out"
+
+          bad=$(printf '%s\n' "$ldd_out" | grep 'undefined symbol: drm' || true)
+          if [ -n "$bad" ]; then
+            echo "LIBDRM-FLOOR FAIL: libmpv needs libdrm symbols the container libdrm lacks:" >&2
+            printf '%s\n' "$bad" >&2
+            exit 1
+          fi
+
+          drm_line=$(printf '%s\n' "$ldd_out" | grep -E '^[[:space:]]*libdrm\.so\.2 => ' || true)
+          if [ -z "$drm_line" ]; then
+            echo "LIBDRM-FLOOR FAIL: ldd -r shows no 'libdrm.so.2 =>' line" >&2
+            exit 1
+          fi
+          drm_path=$(printf '%s\n' "$drm_line" | awk '{print $3}')
+          case "$drm_path" in
+            "$PWD"/prefix/*|"")
+              echo "LIBDRM-FLOOR FAIL: libdrm.so.2 resolved inside prefix/: '$drm_path'" >&2
+              exit 1 ;;
+            /*) echo "libdrm.so.2 resolved to $drm_path" ;;
+            *)
+              echo "LIBDRM-FLOOR FAIL: libdrm.so.2 did not resolve: '$drm_path'" >&2
+              exit 1 ;;
+          esac
+
+          # Imported drm* names, for the log; the three 2.4.114-only helpers must be absent.
+          drm_syms=$(nm -D --undefined-only prefix/lib/libmpv.so.2 | awk '$1 == "U" {print $2}' | sed 's/@.*//' | grep '^drm' | sort -u || true)
+          echo "libmpv imports (drm*):"
+          printf '%s\n' "$drm_syms"
+          new_syms=$(printf '%s\n' "$drm_syms" | grep -x -e drmModeCreateDumbBuffer -e drmModeDestroyDumbBuffer -e drmModeMapDumbBuffer || true)
+          if [ -n "$new_syms" ]; then
+            echo "LIBDRM-FLOOR FAIL: libmpv imports libdrm 2.4.114-only helpers:" >&2
+            printf '%s\n' "$new_syms" >&2
+            exit 1
+          fi
+
+          # Binding flags for the log (decides eager vs lazy failure on old hosts).
+          dyn=$(readelf -d prefix/lib/libmpv.so.2)
+          printf '%s\n' "$dyn" | grep -E 'NEEDED|FLAGS|BIND_NOW' || true
+          for lib in 'libdrm\.so\.2' 'libva-drm\.so\.2'; do
+            if ! printf '%s\n' "$dyn" | grep -Eq "\(NEEDED\).*\[$lib\]"; then
+              echo "LIBDRM-FLOOR FAIL: NEEDED lacks $lib" >&2
+              exit 1
+            fi
+          done
+
+          for flag in HAVE_DRM HAVE_VAAPI_DRM; do
+            if ! grep -Eq "^#define $flag 1[[:space:]]*$" .mpv-build/config.h; then
+              echo "LIBDRM-FLOOR FAIL: .mpv-build/config.h lacks '#define $flag 1'" >&2
+              exit 1
+            fi
+          done
+
+          echo "LIBDRM-FLOOR OK libdrm=$libdrm_ver undefined_drm=0"
       - name: render_vk smoke test (lavapipe)
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
@@ -75,10 +149,20 @@ jobs:
             | awk '{print $3}' | grep '^mpv_' | sort -u > exported.txt
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
+          # GLX-01: GL/EGL adds only host libEGL.so.1 (libglvnd) as a NEEDED
+          # entry; x11/wayland must stay off, so no X11/xcb/wayland library may
+          # appear in libmpv's dependencies.
+          objdump -p dist/libmpv-${{ matrix.target }}/lib/libmpv.so.2 \
+            | awk '$1 == "NEEDED" {print "NEEDED " $2}' | tee needed.txt
+          if grep -Eq 'NEEDED (libX11|libxcb|libwayland)' needed.txt; then
+            echo "NEEDED-GL FAIL: X11/xcb/wayland library in libmpv.so.2 dependencies" >&2
+            exit 1
+          fi
       - name: Test the packaged bundle (build prefix hidden)
         run: |
           mv prefix prefix.hidden
           LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
+          LD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_gl_smoke gl || [ $? -eq 77 ]
           mv prefix.hidden prefix
       - uses: dart-lang/setup-dart@v1
       - name: Dart tests and format matrix on the packaged bundle
@@ -116,7 +200,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install toolchain (build tools only)
         run: |
-          brew install ninja pkgconf nasm cmake dylibbundler
+          brew install ninja pkgconf nasm cmake dylibbundler gpatch
           python3 -m venv "$RUNNER_TEMP/py"
           "$RUNNER_TEMP/py/bin/pip" install 'meson==1.9.1' jinja2
           echo "$RUNNER_TEMP/py/bin" >> "$GITHUB_PATH"
@@ -124,7 +208,7 @@ jobs:
         id: deps
         with:
           path: deps
-          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh') }}
+          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -133,8 +217,10 @@ jobs:
           cp -a deps prefix
           SKIP_DEPS=1 bash native/build/build.sh "$PWD/prefix"
       - name: render_vk smoke test (MoltenVK; skipped without Metal)
-        # See native-verify.yml: MoltenVK aborts on GitHub's Intel VMs.
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Environment limitation, made explicit (see native-verify.yml):
+        # MoltenVK aborts on GitHub's Intel VMs; real Intel Macs are
+        # unaffected. Conditional skip is visible; arm64 runs strictly.
+        if: matrix.runner != 'macos-15-intel'
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/prefix/lib/pkgconfig
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/prefix/lib
@@ -149,7 +235,8 @@ jobs:
           diff tools/rea_abi_audit/expected_symbols.txt exported.txt
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }} 12.0
       - name: Test the packaged bundle (build prefix hidden)
-        continue-on-error: ${{ matrix.runner == 'macos-15-intel' }}
+        # Same Intel-VM environment limitation as the smoke step above.
+        if: matrix.runner != 'macos-15-intel'
         run: |
           mv prefix prefix.hidden
           DYLD_LIBRARY_PATH="$PWD/dist/libmpv-${{ matrix.target }}/lib" ./tests-out/render_vk_smoke || [ $? -eq 77 ]
@@ -199,7 +286,7 @@ jobs:
         with:
           msystem: ${{ matrix.msystem }}
           update: true
-          install: make diffutils
+          install: make diffutils patch
           pacboy: >-
             toolchain:p meson:p ninja:p cmake:p pkgconf:p python-jinja:p
             vulkan-loader:p libiconv:p ntldd:p ${{ matrix.nasm }}
@@ -207,7 +294,7 @@ jobs:
         id: deps
         with:
           path: deps
-          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh') }}
+          key: deps-${{ matrix.target }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -219,6 +306,39 @@ jobs:
         run: |
           bash native/build/package.sh prefix dist/libmpv-${{ matrix.target }}
           bash tools/bundle_report.sh dist/libmpv-${{ matrix.target }}
+      - name: render_d3d11 smoke on the packaged bundle (WARP)
+        # Proves that the bundle's own closure (libmpv, libplacebo's pl_d3d11,
+        # SPIRV-Cross, shaderc) renders through MPV_RENDER_API_TYPE_D3D11 on
+        # the runner's Basic Render Driver: gpu-next, gpu, and the persistent
+        # shader cache. The build prefix is hidden while the smoke runs and
+        # PATH holds only the bundle and the Windows directories, so any
+        # dependency that is not in the bundle fails the load. An exit of 77
+        # (skipped) fails too: the runner always has a D3D11 adapter.
+        run: |
+          export PKG_CONFIG_PATH="$PWD/prefix/lib/pkgconfig"
+          # MSYS2's vulkan.pc points at a directory without the Vulkan
+          # headers (render_vk.h includes them); the prefix has them.
+          export CFLAGS="-I$(cygpath -m "$PWD/prefix")/include"
+          meson setup tests-out native/tests
+          meson compile -C tests-out render_d3d11_smoke
+          mv prefix prefix.hidden
+          bundle_lib="$PWD/dist/libmpv-${{ matrix.target }}/lib"
+          winroot="$(cygpath -u "$SYSTEMROOT")"
+          cache_dir="$(cygpath -m "$(mktemp -d)")/d3d11-shader-cache"
+          status=0
+          for variant in "gpu-next" "gpu" "gpu-next --cache-dir=$cache_dir"; do
+            echo "::group::render_d3d11_smoke $variant"
+            # $variant is split on purpose: renderer and option arguments.
+            PATH="$bundle_lib:$winroot/system32:$winroot" \
+              ./tests-out/render_d3d11_smoke.exe $variant || status=$?
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then
+              echo "render_d3d11_smoke '$variant' failed with exit $status" >&2
+              break
+            fi
+          done
+          mv prefix.hidden prefix
+          exit "$status"
       - name: Format samples (MSYS2 ffmpeg CLI, after packaging)
         run: |
           for i in 1 2 3; do pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-ffmpeg" && break; sleep 20; done
@@ -256,7 +376,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Archive bundles
+      - name: Archive and verify bundles
         run: |
           mkdir release
           for d in artifacts/libmpv-*; do
@@ -265,6 +385,17 @@ jobs:
           done
           (cd release && sha256sum *.tar.gz > SHA256SUMS)
           cat release/SHA256SUMS
+          # Self-verification before publishing: every tar matches its
+          # SHA256SUMS line, and every tar carries a MANIFEST.txt whose
+          # per-file hashes verify against the archived contents.
+          for t in release/*.tar.gz; do
+            grep -F "$(sha256sum "$t" | cut -d' ' -f1)" release/SHA256SUMS               > /dev/null || { echo "$t: not in SHA256SUMS"; exit 1; }
+            rm -rf verify && mkdir verify
+            tar -C verify -xzf "$t"
+            test -f verify/MANIFEST.txt || { echo "$t: no MANIFEST.txt"; exit 1; }
+            (cd verify && sha256sum -c MANIFEST.txt)               || { echo "$t: MANIFEST mismatch"; exit 1; }
+            rm -rf verify
+          done
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}

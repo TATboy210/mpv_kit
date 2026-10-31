@@ -7,9 +7,11 @@
 library;
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 
 import '../ffi/bindings.dart';
 import '../ffi/library.dart';
@@ -21,7 +23,9 @@ import 'stream_bridge.dart';
 
 /// 一个 mpv 客户端（主句柄或通过 [createClient] 派生的子客户端）。
 final class Mpv {
-  Mpv._(this.bindings, this.handle, {required bool owner}) : _owner = owner {
+  Mpv._(this.bindings, this.handle, {required bool owner, Mpv? parent})
+    : _owner = owner,
+      _parent = parent {
     _wakeup = NativeCallable<MpvWakeupFn>.listener(_onWakeup);
     bindings.setWakeupCallback(handle, _wakeup.nativeFunction, nullptr);
   }
@@ -60,11 +64,22 @@ final class Mpv {
             // Builds without Lua have no `ytdl`/`osc` options: the feature is
             // absent, so there is nothing to disable.
             if (err.error != MpvError.optionNotFound) rethrow;
+            _recordIgnoredOption(mpv, e.key, err);
           }
         }
       }
       for (final e in options.entries) {
-        mpv.setOptionString(e.key, e.value);
+        try {
+          mpv.setOptionString(e.key, e.value);
+        } on MpvException catch (err) {
+          // The option pack (see Player) carries enhancement options that
+          // newer mpv versions added; an older libmpv — or a build with the
+          // feature compiled out — reports optionNotFound. The feature is
+          // absent, so there is nothing to set: keep the rest and continue
+          // (same contract as secureDefaults above).
+          if (err.error != MpvError.optionNotFound) rethrow;
+          _recordIgnoredOption(mpv, e.key, err);
+        }
       }
       if (initialize) mpv.initialize();
     } on Object {
@@ -91,13 +106,35 @@ final class Mpv {
   final Pointer<MpvHandle> handle;
 
   final bool _owner;
+
+  /// The client this one was derived from via [createClient]; null for the
+  /// owner, and cleared once this client is disposed.
+  Mpv? _parent;
+
+  /// Live clients derived from this one via [createClient].
+  ///
+  /// `mpv_terminate_destroy` waits until the core has no clients left (weak
+  /// ones included, `mp_shutdown_clients` in client.c), and only this isolate
+  /// can destroy them — so [dispose] must take them down first or it blocks
+  /// forever.
+  final _children = <Mpv>{};
   late final NativeCallable<MpvWakeupFn> _wakeup;
   final _events = StreamController<MpvEventData>.broadcast(sync: true);
   final _pending = <int, Completer<Object?>>{};
   final _observers = <int, StreamController<Object?>>{};
+  /// Invoked when a registered stream source's open/read/seek/close throws.
+  ///
+  /// `Player` installs this to surface source failures on `Player.errors`
+  /// with the original exception identity (OBS-01); direct
+  /// [registerStreamProtocol] users may install their own. The mpv-facing
+  /// error codes are unchanged — reporting is purely additive.
+  void Function(String operation, Object error, StackTrace stackTrace)?
+      onSourceError;
+
   final _streamBridges = <StreamBridge>[];
   var _nextId = 1;
   var _disposed = false;
+  var _nativeEntries = 0;
 
   /// 全部事件流（广播）。
   Stream<MpvEventData> get events => _events.stream;
@@ -105,24 +142,44 @@ final class Mpv {
   /// 句柄是否已销毁。
   bool get isDisposed => _disposed;
 
+  /// 通过存活检查、进入 native 边界的调用次数（仅测试使用）。
+  ///
+  /// It increments only after the `_disposed` check passes, so a rejected
+  /// post-dispose call can never be mistaken for a native entry.
+  @visibleForTesting
+  int get nativeEntriesForTesting => _nativeEntries;
+
   // ---------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------
 
   /// `mpv_initialize`。
-  void initialize() => _check(bindings.initialize(handle), 'initialize');
+  void initialize() {
+    _ensureAlive();
+    _check(bindings.initialize(handle), 'initialize');
+  }
 
   /// `mpv_client_name`。
-  String get clientName => readUtf8(bindings.clientName(handle));
+  String get clientName {
+    _ensureAlive();
+    return readUtf8(bindings.clientName(handle));
+  }
 
   /// `mpv_client_id`。
-  int get clientId => bindings.clientId(handle);
+  int get clientId {
+    _ensureAlive();
+    return bindings.clientId(handle);
+  }
 
   /// `mpv_get_time_ns`（mpv 内部单调时钟）。
-  int get timeNs => bindings.getTimeNs(handle);
+  int get timeNs {
+    _ensureAlive();
+    return bindings.getTimeNs(handle);
+  }
 
   /// `mpv_create_client` / `mpv_create_weak_client`：派生共享同一核心的子客户端。
   Mpv createClient(String name, {bool weak = false}) {
+    _ensureAlive();
     final h = using((a) {
       final n = name.toNativeUtf8(allocator: a);
       return weak
@@ -136,45 +193,69 @@ final class Mpv {
         operation: 'create_client',
       );
     }
-    return Mpv._(bindings, h, owner: false);
+    final child = Mpv._(bindings, h, owner: false, parent: this);
+    _children.add(child);
+    return child;
   }
 
   /// `mpv_load_config_file`。
-  void loadConfigFile(String path) => using(
-    (a) => _check(
-      bindings.loadConfigFile(handle, path.toNativeUtf8(allocator: a)),
-      'load_config_file($path)',
-    ),
-  );
+  void loadConfigFile(String path) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.loadConfigFile(handle, path.toNativeUtf8(allocator: a)),
+        'load_config_file($path)',
+      ),
+    );
+  }
 
   /// 销毁句柄。主句柄使用 `mpv_terminate_destroy` 终止核心。
   ///
   /// Idempotent. Pending futures complete with an error and observer streams
-  /// are closed.
+  /// are closed. Disposing a client also disposes every client created from
+  /// it with [createClient], recursively, before its own handle is destroyed.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    // Children first: the core cannot terminate while any client is alive,
+    // and each child's dispose shuts down its own stream bridges and calls
+    // `mpv_destroy`. `_disposed` is already set, so no child can be added
+    // meanwhile; iterate a snapshot because each child unlinks itself.
+    for (final c in _children.toList()) {
+      c.dispose();
+    }
+    _parent?._children.remove(this);
+    _parent = null;
+    // Order matters: null the wakeup callback while the handle is still alive
+    // (calling it after `mpv_terminate_destroy` would be a use-after-free),
+    // then let mpv threads blocked on Dart stream sources return, then destroy
+    // the core, and only then close the `NativeCallable` — once the core is
+    // gone no native thread can invoke it any more.
     bindings.setWakeupCallback(handle, nullptr, nullptr);
-    _wakeup.close();
     // Unblock mpv threads waiting on Dart stream sources, or destroying the
     // core would wait for them forever (this isolate is busy right here).
     for (final b in _streamBridges) {
       b.shutdown();
     }
     (_owner ? bindings.terminateDestroy : bindings.destroy)(handle);
+    _wakeup.close();
     for (final b in _streamBridges) {
       b.close();
     }
     _streamBridges.clear();
     for (final c in _pending.values) {
+      c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
       c.completeError(StateError('mpv handle disposed'));
     }
     _pending.clear();
-    for (final c in _observers.values) {
-      unawaited(c.close());
+    // Closing an observer controller runs its `onCancel`, which removes the
+    // entry from `_observers`; iterate a snapshot so that mutation cannot
+    // corrupt the iteration.
+    for (final c in _observers.values.toList()) {
+      _closeIfOpen(c);
     }
     _observers.clear();
-    unawaited(_events.close());
+    _closeIfOpen(_events);
   }
 
   // ---------------------------------------------------------------------
@@ -182,29 +263,35 @@ final class Mpv {
   // ---------------------------------------------------------------------
 
   /// `mpv_set_option_string`。
-  void setOptionString(String name, String value) => using(
-    (a) => _check(
-      bindings.setOptionString(
-        handle,
-        name.toNativeUtf8(allocator: a),
-        value.toNativeUtf8(allocator: a),
+  void setOptionString(String name, String value) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.setOptionString(
+          handle,
+          name.toNativeUtf8(allocator: a),
+          value.toNativeUtf8(allocator: a),
+        ),
+        'set_option($name)',
       ),
-      'set_option($name)',
-    ),
-  );
+    );
+  }
 
   /// `mpv_set_option`（MPV_FORMAT_NODE）。
-  void setOption(String name, Object? value) => using(
-    (a) => _check(
-      bindings.setOption(
-        handle,
-        name.toNativeUtf8(allocator: a),
-        MpvFormat.node,
-        writeNode(value, a).cast(),
+  void setOption(String name, Object? value) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.setOption(
+          handle,
+          name.toNativeUtf8(allocator: a),
+          MpvFormat.node,
+          writeNode(value, a).cast(),
+        ),
+        'set_option($name)',
       ),
-      'set_option($name)',
-    ),
-  );
+    );
+  }
 
   // ---------------------------------------------------------------------
   // Commands
@@ -214,32 +301,39 @@ final class Mpv {
   ///
   /// [args] may be a positional list (`['loadfile', path]`) or a named map
   /// (`{'name': 'loadfile', 'url': path}`).
-  Object? command(Object args) => using((a) {
-    final result = a<MpvNode>();
-    _check(
-      bindings.commandNode(handle, writeNode(args, a), result),
-      'command(${_describe(args)})',
-    );
-    try {
-      return readNode(result);
-    } finally {
-      bindings.freeNodeContents(result);
-    }
-  });
+  Object? command(Object args) {
+    _ensureAlive();
+    return using((a) {
+      final result = a<MpvNode>();
+      _check(
+        bindings.commandNode(handle, writeNode(args, a), result),
+        'command(${_describe(args)})',
+      );
+      try {
+        return readNode(result);
+      } finally {
+        bindings.freeNodeContents(result);
+      }
+    });
+  }
 
   /// `mpv_command_string`：解析 input.conf 语法的命令串。
-  void commandString(String command) => using(
-    (a) => _check(
-      bindings.commandString(handle, command.toNativeUtf8(allocator: a)),
-      'command_string($command)',
-    ),
-  );
+  void commandString(String command) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.commandString(handle, command.toNativeUtf8(allocator: a)),
+        'command_string($command)',
+      ),
+    );
+  }
 
   /// `mpv_command_node_async`：异步命令，结果经 COMMAND_REPLY 事件返回。
   ///
   /// Returns a [MpvAsyncCommand] whose `abort()` maps to
   /// `mpv_abort_async_command`.
   MpvAsyncCommand commandAsync(Object args) {
+    _ensureAlive();
     final id = _allocId();
     final c = Completer<Object?>();
     _pending[id] = c;
@@ -247,6 +341,7 @@ final class Mpv {
       final rc = bindings.commandNodeAsync(handle, id, writeNode(args, a));
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'command_async(${_describe(args)})'));
       }
     });
@@ -258,59 +353,74 @@ final class Mpv {
   // ---------------------------------------------------------------------
 
   /// `mpv_set_property`（MPV_FORMAT_NODE，自动类型转换）。
-  void setProperty(String name, Object? value) => using(
-    (a) => _check(
-      bindings.setProperty(
-        handle,
-        name.toNativeUtf8(allocator: a),
-        MpvFormat.node,
-        writeNode(value, a).cast(),
+  void setProperty(String name, Object? value) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.setProperty(
+          handle,
+          name.toNativeUtf8(allocator: a),
+          MpvFormat.node,
+          writeNode(value, a).cast(),
+        ),
+        'set_property($name)',
       ),
-      'set_property($name)',
-    ),
-  );
+    );
+  }
 
   /// `mpv_set_property_string`。
-  void setPropertyString(String name, String value) => using(
-    (a) => _check(
-      bindings.setPropertyString(
-        handle,
-        name.toNativeUtf8(allocator: a),
-        value.toNativeUtf8(allocator: a),
+  void setPropertyString(String name, String value) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.setPropertyString(
+          handle,
+          name.toNativeUtf8(allocator: a),
+          value.toNativeUtf8(allocator: a),
+        ),
+        'set_property($name)',
       ),
-      'set_property($name)',
-    ),
-  );
+    );
+  }
 
   /// `mpv_del_property`。
-  void deleteProperty(String name) => using(
-    (a) => _check(
-      bindings.delProperty(handle, name.toNativeUtf8(allocator: a)),
-      'del_property($name)',
-    ),
-  );
+  void deleteProperty(String name) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.delProperty(handle, name.toNativeUtf8(allocator: a)),
+        'del_property($name)',
+      ),
+    );
+  }
 
   /// `mpv_get_property`（MPV_FORMAT_NODE）。
-  Object? getProperty(String name) => using((a) {
-    final node = a<MpvNode>();
-    _check(
-      bindings.getProperty(
-        handle,
-        name.toNativeUtf8(allocator: a),
-        MpvFormat.node,
-        node.cast(),
-      ),
-      'get_property($name)',
-    );
-    try {
-      return readNode(node);
-    } finally {
-      bindings.freeNodeContents(node);
-    }
-  });
+  Object? getProperty(String name) {
+    _ensureAlive();
+    return using((a) {
+      final node = a<MpvNode>();
+      _check(
+        bindings.getProperty(
+          handle,
+          name.toNativeUtf8(allocator: a),
+          MpvFormat.node,
+          node.cast(),
+        ),
+        'get_property($name)',
+      );
+      try {
+        return readNode(node);
+      } finally {
+        bindings.freeNodeContents(node);
+      }
+    });
+  }
 
   /// 读取属性，不可用/不存在时返回 null 而不是抛错。
   Object? tryGetProperty(String name) {
+    // Guard at this entry too: the inner `on MpvException` must not be able to
+    // convert a post-dispose StateError into a silent null.
+    _ensureAlive();
     try {
       return getProperty(name);
     } on MpvException catch (e) {
@@ -323,21 +433,25 @@ final class Mpv {
   }
 
   /// `mpv_get_property_string` / `mpv_get_property_osd_string`。
-  String? getPropertyString(String name, {bool osd = false}) => using((a) {
-    final n = name.toNativeUtf8(allocator: a);
-    final p = osd
-        ? bindings.getPropertyOsdString(handle, n)
-        : bindings.getPropertyString(handle, n);
-    if (p == nullptr) return null;
-    try {
-      return readUtf8(p);
-    } finally {
-      bindings.free(p.cast());
-    }
-  });
+  String? getPropertyString(String name, {bool osd = false}) {
+    _ensureAlive();
+    return using((a) {
+      final n = name.toNativeUtf8(allocator: a);
+      final p = osd
+          ? bindings.getPropertyOsdString(handle, n)
+          : bindings.getPropertyString(handle, n);
+      if (p == nullptr) return null;
+      try {
+        return readUtf8(p);
+      } finally {
+        bindings.free(p.cast());
+      }
+    });
+  }
 
   /// `mpv_set_property_async`。
   Future<void> setPropertyAsync(String name, Object? value) {
+    _ensureAlive();
     final id = _allocId();
     final c = Completer<Object?>();
     _pending[id] = c;
@@ -351,6 +465,7 @@ final class Mpv {
       );
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'set_property_async($name)'));
       }
     });
@@ -359,6 +474,7 @@ final class Mpv {
 
   /// `mpv_get_property_async`。
   Future<Object?> getPropertyAsync(String name) {
+    _ensureAlive();
     final id = _allocId();
     final c = Completer<Object?>();
     _pending[id] = c;
@@ -371,6 +487,7 @@ final class Mpv {
       );
       if (rc < 0) {
         _pending.remove(id);
+        c.future.ignore(); // abandoned reply: no unhandled error (OBS-02)
         c.completeError(_error(rc, 'get_property_async($name)'));
       }
     });
@@ -381,24 +498,36 @@ final class Mpv {
   ///
   /// Cancelling the last subscription calls `mpv_unobserve_property`.
   Stream<Object?> observeProperty(String name) {
+    _ensureAlive();
     final id = _allocId();
     late final StreamController<Object?> controller;
     controller = StreamController<Object?>(
       sync: true,
-      onListen: () => using((a) {
-        final rc = bindings.observeProperty(
-          handle,
-          id,
-          name.toNativeUtf8(allocator: a),
-          MpvFormat.node,
-        );
-        if (rc < 0) {
-          controller.addError(_error(rc, 'observe_property($name)'));
+      onListen: () {
+        // A stream created before dispose but listened to afterwards must not
+        // enter native code: the handle has already been destroyed.
+        if (_disposed) {
+          controller.addError(StateError('Mpv has been disposed'));
           unawaited(controller.close());
-        } else {
-          _observers[id] = controller;
+          return;
         }
-      }),
+        // Past the check: this subscription is the native entry point.
+        _nativeEntries++;
+        using((a) {
+          final rc = bindings.observeProperty(
+            handle,
+            id,
+            name.toNativeUtf8(allocator: a),
+            MpvFormat.node,
+          );
+          if (rc < 0) {
+            controller.addError(_error(rc, 'observe_property($name)'));
+            unawaited(controller.close());
+          } else {
+            _observers[id] = controller;
+          }
+        });
+      },
       onCancel: () {
         if (_observers.remove(id) != null && !_disposed) {
           bindings.unobserveProperty(handle, id);
@@ -411,6 +540,7 @@ final class Mpv {
   /// Reads [option] (see `MpvOptions`) as its Dart type; null when the
   /// value is unavailable (e.g. `no` for an optional number).
   T? getOptionValue<T extends Object>(MpvOption<T> option) {
+    _ensureAlive();
     final Object? v = switch (option.type) {
       MpvOptionType.flag => switch (tryGetProperty(option.name)) {
         final bool b => b,
@@ -434,6 +564,7 @@ final class Mpv {
   /// Sets [option] at runtime after checking the declared choices/range.
   /// Init-only options must be passed to [Mpv.create] instead.
   void setOptionValue<T extends Object>(MpvOption<T> option, T value) {
+    _ensureAlive();
     option.check(value);
     switch (value) {
       case final String s:
@@ -451,7 +582,13 @@ final class Mpv {
   /// Throws [UnsupportedError] if the loaded libmpv lacks the mpv_kit stream
   /// bridge, [MpvException] if the protocol is taken.
   void registerStreamProtocol(String protocol, MpvStreamOpener open) {
-    _streamBridges.add(StreamBridge.register(bindings, handle, protocol, open));
+    _ensureAlive();
+    final bridge = StreamBridge.register(bindings, handle, protocol, open);
+    // Captured at register time: Player installs onSourceError in its
+    // constructor, before any protocol can be registered on it.
+    bridge.onSourceError = (operation, error, stackTrace) =>
+        onSourceError?.call(operation, error, stackTrace);
+    _streamBridges.add(bridge);
   }
 
   // ---------------------------------------------------------------------
@@ -459,68 +596,147 @@ final class Mpv {
   // ---------------------------------------------------------------------
 
   /// `mpv_request_log_messages`（`no`/`fatal`/`error`/`warn`/`info`/`v`/`debug`/`trace`）。
-  void requestLogMessages(String minLevel) => using(
-    (a) => _check(
-      bindings.requestLogMessages(handle, minLevel.toNativeUtf8(allocator: a)),
-      'request_log_messages($minLevel)',
-    ),
-  );
+  void requestLogMessages(String minLevel) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.requestLogMessages(handle, minLevel.toNativeUtf8(allocator: a)),
+        'request_log_messages($minLevel)',
+      ),
+    );
+  }
 
   /// `mpv_request_event`：启用/禁用某类事件。
-  void requestEvent(int eventId, {required bool enable}) => _check(
-    bindings.requestEvent(handle, eventId, enable ? 1 : 0),
-    'request_event($eventId)',
-  );
+  void requestEvent(int eventId, {required bool enable}) {
+    _ensureAlive();
+    _check(
+      bindings.requestEvent(handle, eventId, enable ? 1 : 0),
+      'request_event($eventId)',
+    );
+  }
 
   /// `mpv_hook_add`：注册 hook（如 `on_load`）；在 [events] 上收到
   /// [HookEvent] 后必须调用 [hookContinue]。
-  void hookAdd(String name, {int priority = 0}) => using(
-    (a) => _check(
-      bindings.hookAdd(
-        handle,
-        _allocId(),
-        name.toNativeUtf8(allocator: a),
-        priority,
+  void hookAdd(String name, {int priority = 0}) {
+    _ensureAlive();
+    using(
+      (a) => _check(
+        bindings.hookAdd(
+          handle,
+          _allocId(),
+          name.toNativeUtf8(allocator: a),
+          priority,
+        ),
+        'hook_add($name)',
       ),
-      'hook_add($name)',
-    ),
-  );
+    );
+  }
 
   /// `mpv_hook_continue`。
-  void hookContinue(int id) =>
-      _check(bindings.hookContinue(handle, id), 'hook_continue');
+  void hookContinue(int id) {
+    _ensureAlive();
+    _check(bindings.hookContinue(handle, id), 'hook_continue');
+  }
 
   /// `mpv_wakeup`：打断阻塞中的 wait_event。
-  void wakeup() => bindings.wakeup(handle);
+  void wakeup() {
+    _ensureAlive();
+    bindings.wakeup(handle);
+  }
 
   /// `mpv_wait_async_requests`：阻塞直到所有异步请求完成（慎用：阻塞当前 isolate）。
-  void waitAsyncRequests() => bindings.waitAsyncRequests(handle);
+  void waitAsyncRequests() {
+    _ensureAlive();
+    bindings.waitAsyncRequests(handle);
+  }
 
-  /// `mpv_error_string`。
+  /// Options ignored at create time because this libmpv build does not know
+  /// them (`optionNotFound`), formatted `name (error)` (OBS-04 seam: the
+  /// tolerance that keeps newer-mpv options compatible must not hide typos).
+  @visibleForTesting
+  final List<String> ignoredOptionsForTesting = [];
+
+  /// `mpv_error_string`。纯查找,dispose 后仍然可用（IN-02）。
   String errorString(int code) => readUtf8(bindings.errorString(code));
 
-  /// `mpv_event_name`。
+  static void _recordIgnoredOption(Mpv mpv, String name, MpvException err) {
+    mpv.ignoredOptionsForTesting.add('$name (${err.message})');
+    developer.log(
+      'mpv_kit: option "$name" not found in this libmpv build; ignored',
+      level: 900,
+    );
+  }
+
+  /// `mpv_event_name`。纯查找,dispose 后仍然可用（IN-02）。
   String eventName(int eventId) => readUtf8(bindings.eventName(eventId));
 
   // ---------------------------------------------------------------------
   // Internals
   // ---------------------------------------------------------------------
 
+  /// Rejects calls against a destroyed handle before any FFI entry.
+  ///
+  /// Every public method that can reach the native handle starts with this
+  /// check, so a late timer or widget callback becomes a catchable
+  /// [StateError] instead of a process-level use-after-free. The counter is
+  /// incremented only past the check: a rejected call is never a native entry.
+  void _ensureAlive() {
+    if (_disposed) throw StateError('Mpv has been disposed');
+    _nativeEntries++;
+  }
+
   int _allocId() => _nextId++;
 
   /// 唤醒回调：在本 isolate 上排空事件队列（非阻塞）。
+  ///
+  /// 单个事件解码失败或同步监听器抛错绝不允许中断排空（OBS-02）——队列里
+  /// 排在其后的所有事件都会丢失。两类失败分别 containment 后继续。
   void _onWakeup(Pointer<Void> _) {
     while (!_disposed) {
       final p = bindings.waitEvent(handle, 0);
       if (p == nullptr || p.ref.eventId == MpvEventId.none) return;
-      _dispatch(MpvEventData.decode(p));
+      MpvEventData event;
+      try {
+        event = MpvEventData.decode(p);
+      } on Object catch (e, s) {
+        // 解码失败（例如未知 mpv_node 格式）：能定位到观察者就以流错误
+        // 送达（Player._bind 会转接 Player.errors），否则记录后丢弃。
+        // The controller's lifecycle belongs to observeProperty, not to
+        // this drain, so closing it here would be wrong.
+        // ignore: close_sinks
+        final observer = _observers[p.ref.replyUserdata];
+        if (observer != null && !observer.isClosed) {
+          try {
+            observer.addError(e, s);
+          } on Object {
+            _logDroppedEvent(e);
+          }
+        } else {
+          _logDroppedEvent(e);
+        }
+        continue;
+      }
+      try {
+        _dispatch(event);
+      } on Object catch (e) {
+        // 同步单订阅控制器的监听器抛错会从 add() 逸出：containment 后继续
+        // 排空。Player 侧的解析失败在 _bind 内自捕获并路由 Player.errors。
+        _logDroppedEvent(e);
+      }
     }
+  }
+
+  void _logDroppedEvent(Object e) {
+    // 900 = WARNING in dart:developer's log levels.
+    developer.log('mpv_kit: dropped malformed event: $e', level: 900);
   }
 
   void _dispatch(MpvEventData event) {
     switch (event) {
       case PropertyChangeEvent(:final replyUserdata, :final value):
-        _observers[replyUserdata]?.add(value);
+        // The controller may already be closed by teardown while a late event
+        // is still draining; adding to it would throw into the event loop.
+        _addIfOpen(_observers[replyUserdata], value);
       case GetPropertyReplyEvent(
         :final replyUserdata,
         :final error,
@@ -538,10 +754,41 @@ final class Mpv {
     if (!_events.isClosed) _events.add(event);
   }
 
+  /// Adds [value] to [observer] unless teardown already closed it.
+  static void _addIfOpen(
+    StreamController<Object?>? observer,
+    Object? value,
+  ) {
+    if (observer != null && !observer.isClosed) observer.add(value);
+  }
+
+  /// Closes [controller] unless it is already closed.
+  ///
+  /// [dispose] may be re-entered from a synchronous [events] listener, i.e.
+  /// while the sync broadcast controller is still firing. Dart rejects
+  /// `close()` at that moment with a [StateError] and leaves the controller
+  /// open — and because `_disposed` is already true, a second [dispose] cannot
+  /// retry. Catch only that error and retry once on the next microtask, after
+  /// the dispatch has unwound; this is the single close path allowed to retry.
+  static void _closeIfOpen<T>(StreamController<T> controller) {
+    if (controller.isClosed) return;
+    try {
+      unawaited(controller.close());
+    } on StateError {
+      scheduleMicrotask(() {
+        if (!controller.isClosed) unawaited(controller.close());
+      });
+    }
+  }
+
   void _complete(int id, int err, Object? value, String op) {
     final c = _pending.remove(id);
     if (c == null) return;
     if (err < 0) {
+      // Mark the reply future handled: a caller that dropped it must not
+      // produce an unhandled async error (OBS-02); listeners added later
+      // still receive the error.
+      c.future.ignore();
       c.completeError(_error(err, op));
     } else {
       c.complete(value);

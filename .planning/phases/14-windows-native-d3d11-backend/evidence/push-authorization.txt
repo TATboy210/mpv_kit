@@ -1,0 +1,4 @@
+push_authorized=yes scope=green-plus-scratch remote=origin branch=feat/mpv-master-upgrade force_push=no scratch_prefix=ci/14- scratch_red_allowed=yes dispatch=native-verify.yml,flutter-plugin.yml,release.yml granted_at=2026-10-27T06:51:28Z head_at_grant=182a09700cb311b14383979875533f26fbbe3b7a
+user_reply=green-plus-scratch
+terms=feat only pushes green; ci/14-* scratch branches may be pushed and dispatched and may go red; no force-push; no new PR; never push main; all ci/14-* remote branches are deleted at phase end (14-11)
+origin_at_grant=9b8acb58bc1c90d6e490548176b3fb22015491b1 pr=1 pr_state=open note=local feat is 9 docs/planning-only commits ahead of origin; pushing feat publishes them, covered by this authorization

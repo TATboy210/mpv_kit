@@ -1,0 +1,2 @@
+run=pin-d3d11 attempt=1 start=2026-10-31T03:19:42.914Z end=2026-10-31T03:20:18.775Z exit=0 log=rtx-pin-d3d11.log vram=none standby_during=none forensics=none
+run=pin-auto attempt=1 start=2026-10-31T03:20:42.455Z end=2026-10-31T03:21:09.272Z exit=0 log=rtx-pin-auto.log vram=none standby_during=none forensics=none

@@ -1,6 +1,10 @@
 #include "d3d11_interop.h"
 
+#include "d3d11_backend.h"
+
 #include <cstring>
+#include <cstdio>
+#include <string>
 
 namespace mpv_kit {
 
@@ -12,23 +16,152 @@ constexpr VkExternalMemoryHandleTypeFlagBits kHandleType =
 // Flutter's DXGI shared-handle path expects BGRA8.
 constexpr VkFormat kVkFormat = VK_FORMAT_B8G8R8A8_UNORM;
 constexpr DXGI_FORMAT kDxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+// Graphics APIs of one renderer tier, in preference order (ADR 0004,
+// Decision 5: within a tier the API preference is unchanged until the switch
+// to D3D11-first). Vulkan stays first, so a machine with a usable Vulkan
+// behaves as before and one without it uses D3D11 instead of software. The
+// switch commit (14-11) only reorders this array.
+constexpr const char* kWindowsApiOrder[] = {"vulkan", "d3d11"};
+
+// PCI vendor id of Microsoft: the Basic Render Driver (WARP). It is never
+// counted as integrated or discrete in the hybrid-GPU hint.
+constexpr UINT kMicrosoftVendorId = 0x1414;
+// Hybrid-GPU hint heuristic: "integrated" means under 512 MiB of
+// DedicatedVideoMemory (Intel iGPUs report about 128 MiB); a hardware adapter
+// with 512 MiB or more counts as discrete. AMD APUs with a UMA carve-out of
+// 512 MiB or more are not detected and get no hint, which is harmless.
+constexpr unsigned long long kIntegratedMaxDedicatedMiB = 512;
+constexpr unsigned long long kBytesPerMiB = 1024 * 1024;
+
+// DXGI_ADAPTER_DESC::Description is UTF-16; the log sinks take UTF-8.
+std::string Utf8(const WCHAR* wide) {
+  std::string name;
+  const int n = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0, nullptr,
+                                    nullptr);
+  if (n > 1) {
+    name.assign(static_cast<size_t>(n - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide, -1, name.data(), n, nullptr,
+                        nullptr);
+  }
+  return name;
+}
+
+// One log line to DebugView and stderr.
+void LogLine(const std::string& line) {
+  OutputDebugStringA((line + "\n").c_str());
+  if (stderr) fprintf(stderr, "%s\n", line.c_str());
+}
+
+unsigned long long DedicatedMiB(SIZE_T bytes) {
+  return static_cast<unsigned long long>(bytes / kBytesPerMiB);
+}
+
+// Writes the adapter Flutter composites on (and therefore the one this plugin
+// binds to) to the plugin's log sinks, DebugView and stderr. On hybrid-GPU
+// machines it lets a user's redirected log show which GPU is really in use.
+void LogCompositorAdapter(const DXGI_ADAPTER_DESC& desc) {
+  const std::string name = Utf8(desc.Description);
+  // LUID as <HighPart>:<LowPart>, eight hex digits each; removing the colon
+  // gives the value tools/d3d11_probe prints. Stable within one boot only.
+  char luid[24];
+  snprintf(luid, sizeof(luid), "%08lX:%08lX",
+           static_cast<unsigned long>(desc.AdapterLuid.HighPart),
+           static_cast<unsigned long>(desc.AdapterLuid.LowPart));
+  LogLine("mpv_kit: compositor adapter \"" + name + "\" luid=" + luid);
+}
+
+// Log-only hint for app authors: Flutter composites on an integrated GPU
+// while a discrete hardware GPU exists. The renderer reason is not changed.
+// Best effort: any DXGI failure just means no hint.
+void LogHybridGpuHint(IDXGIAdapter* adapter, const DXGI_ADAPTER_DESC& desc) {
+  if (desc.VendorId == kMicrosoftVendorId ||
+      DedicatedMiB(desc.DedicatedVideoMemory) >= kIntegratedMaxDedicatedMiB)
+    return;
+  ComPtr<IDXGIFactory1> factory;
+  if (FAILED(adapter->GetParent(__uuidof(IDXGIFactory1),
+                                reinterpret_cast<void**>(factory.GetAddressOf()))))
+    return;
+  for (UINT i = 0;; i++) {
+    ComPtr<IDXGIAdapter1> other;
+    if (FAILED(factory->EnumAdapters1(i, &other))) return;
+    DXGI_ADAPTER_DESC1 d{};
+    if (FAILED(other->GetDesc1(&d))) continue;
+    // Software adapters, Microsoft's, the compositor's own and small ones
+    // are not "another GPU worth rendering on".
+    if ((d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 ||
+        d.VendorId == kMicrosoftVendorId ||
+        (d.AdapterLuid.HighPart == desc.AdapterLuid.HighPart &&
+         d.AdapterLuid.LowPart == desc.AdapterLuid.LowPart) ||
+        DedicatedMiB(d.DedicatedVideoMemory) < kIntegratedMaxDedicatedMiB)
+      continue;
+    LogLine("mpv_kit: hybrid GPU hint: Flutter composites on \"" +
+            Utf8(desc.Description) + "\" (" +
+            std::to_string(DedicatedMiB(desc.DedicatedVideoMemory)) +
+            " MiB dedicated, looks integrated) while \"" +
+            Utf8(d.Description) + "\" (" +
+            std::to_string(DedicatedMiB(d.DedicatedVideoMemory)) +
+            " MiB) is present; set the GPU preference in the app's "
+            "windows/runner/main.cpp (flutter::DartProject::set_gpu_preference, "
+            "see the mpv_kit_video README) to render on it");
+    return;
+  }
+}
 }  // namespace
 
 D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
                            std::function<void()> frame_ready)
-    : frame_ready_(std::move(frame_ready)) {
-  if (!adapter) return;
+    : adapter_(adapter), frame_ready_(std::move(frame_ready)) {
+  if (!adapter) {
+    d3d_reason_ = "no DXGI adapter";
+    return;
+  }
   DXGI_ADAPTER_DESC desc{};
-  if (FAILED(adapter->GetDesc(&desc))) return;
+  if (FAILED(adapter->GetDesc(&desc))) {
+    d3d_reason_ = "failed to read the DXGI adapter desc";
+    return;
+  }
   luid_ = desc.AdapterLuid;
+  LogCompositorAdapter(desc);
+  LogHybridGpuHint(adapter, desc);
   // Our own device on Flutter's adapter, only used to create shareable
   // textures; Flutter opens them on its device via the shared handle.
   const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
                                       D3D_FEATURE_LEVEL_11_0};
-  D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
-                    D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
-                    static_cast<UINT>(std::size(levels)), D3D11_SDK_VERSION,
-                    &device_, nullptr, nullptr);
+  const HRESULT hr =
+      D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+                        D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
+                        static_cast<UINT>(std::size(levels)),
+                        D3D11_SDK_VERSION, &device_, nullptr, nullptr);
+  if (FAILED(hr)) {
+    // Record the actual failure instead of letting the renderer report a
+    // missing platform interop (OBS-03).
+    char code[16];
+    snprintf(code, sizeof(code), "0x%08lX", static_cast<unsigned long>(hr));
+    d3d_reason_ = std::string("d3d11 device creation failed: ") + code;
+  }
+}
+
+std::vector<BackendCandidate> D3D11Interop::BackendCandidates(
+    RendererChoice choice) const {
+  // Renderer quality first (gpu-next, then gpu), then the API order within
+  // each tier, then software; an explicit gpu-next / gpu request has no
+  // other tier, an explicit software request no GPU entry.
+  std::vector<BackendCandidate> chain;
+  const auto tier = [&chain](const char* renderer) {
+    for (const char* api : kWindowsApiOrder) chain.push_back({api, renderer});
+  };
+  if (choice != RendererChoice::kSoftware) {
+    if (choice != RendererChoice::kGpu) tier("gpu-next");
+    if (choice != RendererChoice::kGpuNext) tier("gpu");
+  }
+  chain.push_back({"software", "sw"});
+  return chain;
+}
+
+std::unique_ptr<RenderBackend> D3D11Interop::CreateBackend(const char* api) {
+  if (std::strcmp(api, "d3d11") != 0) return nullptr;
+  return CreateD3D11Backend(adapter_.Get());
 }
 
 std::vector<const char*> D3D11Interop::DeviceExtensions() const {
@@ -68,6 +201,8 @@ bool D3D11Interop::AcceptDevice(VkPhysicalDevice device) {
 
 bool D3D11Interop::CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,
                                int height, SharedImage* out) {
+  // Defensive: `vulkan()` gates on device_, but never dereference null.
+  if (!device_) return false;
   auto* tex = new Texture();
   D3D11_TEXTURE2D_DESC td{};
   td.Width = static_cast<UINT>(width);

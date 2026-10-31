@@ -1,0 +1,116 @@
+# Golden traces of the Linux candidate chain (video_renderer_linux_chain_test,
+# Phase 15 GLX-04).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from linux_candidates.h, ADR 0004
+# and video_renderer.cc (Start, NewBackend, UsedLater, ForcedAllows); they
+# change only in reviewed commits. The opengl backend is a fake with the wire
+# name "opengl", so the reasons have the shape of the real ones. The chain is
+# the one chosen at the 15-04 checkpoint (decisions.txt, `decision=linux-chain
+# choice=A`):
+#   auto      vulkan/gpu-next, opengl/gpu, vulkan/gpu, software/sw
+#   gpu       opengl/gpu, vulkan/gpu, software/sw
+#   gpu-next  vulkan/gpu-next, software/sw
+#   software  software/sw
+#
+# Line vocabulary (one block per VideoRenderer::Start):
+#   start ok backend=<wire> reason="<r>"   Start() true, wire_name(), backend_reason()
+#   start=false reason="<r>"               Start() false; the reason is trails only
+#   create-attempts <api>[/<renderer>],... render_context_create calls in order
+#                                          (a device that failed to initialise
+#                                          never reaches mpv)
+#   gl-backends=<n>                        opengl backends the engine asked the
+#                                          platform for (0: no opengl candidate
+#                                          was ever tried)
+#   log <line>|none                        every line Start logged, in order
+#   teardown frees=<n>                     render_context_free calls after destruction
+#
+# linux-auto-gpu-next-create-fails needs a Vulkan 1.3 device; without one only
+# that section is skipped (`LINUX-CHAIN vk scenario skipped: <why>`).
+
+# auto without a usable Vulkan: opengl/gpu wins, with the gpu-next trail only.
+[linux-auto-no-vulkan]
+start ok backend=opengl reason="opengl (gpu) on fake-gl; vulkan/gpu-next unavailable: platform interop unavailable: fake: no vulkan interop"
+create-attempts opengl/gpu
+gl-backends=1
+log none
+teardown frees=1
+
+# The GL device cannot be created: mpv is not asked, the device's why is the
+# trail, vulkan/gpu repeats the interop trail, software wins.
+[linux-auto-gl-device-fails]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform interop unavailable: fake: no vulkan interop; opengl/gpu unavailable: fake: no EGL display; vulkan/gpu unavailable: platform interop unavailable: fake: no vulkan interop"
+create-attempts sw
+gl-backends=1
+log none
+teardown frees=1
+
+# mpv's opengl create fails (-18): trail with the mpv error, one log line, then
+# vulkan/gpu and software.
+[linux-auto-gl-create-fails]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform interop unavailable: fake: no vulkan interop; opengl/gpu unavailable: mpv_render_context_create: fake error -18; vulkan/gpu unavailable: platform interop unavailable: fake: no vulkan interop"
+create-attempts opengl/gpu,sw
+gl-backends=1
+log mpv_kit: gpu unavailable: fake error -18
+teardown frees=1
+
+# gpu request: opengl/gpu first, nothing ranks before it, so no trail.
+[linux-gpu]
+start ok backend=opengl reason="opengl (gpu) on fake-gl"
+create-attempts opengl/gpu
+gl-backends=1
+log none
+teardown frees=1
+
+# gpu-next request: the chain has no opengl candidate; no opengl backend is
+# asked for and no opengl create happens.
+[linux-gpu-next]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform interop unavailable: fake: no vulkan interop"
+create-attempts sw
+gl-backends=0
+log none
+teardown frees=1
+
+# software request: only software, no trail.
+[linux-software]
+start ok backend=software reason="software (sw) on cpu"
+create-attempts sw
+gl-backends=0
+log none
+teardown frees=1
+
+# MPV_KIT_VIDEO_API=opengl: vulkan/gpu-next is excluded, opengl/gpu wins; the
+# candidates ranked after the winner leave nothing.
+[linux-forced-opengl]
+start ok backend=opengl reason="opengl (gpu) on fake-gl; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl"
+create-attempts opengl/gpu
+gl-backends=1
+log mpv_kit: MPV_KIT_VIDEO_API=opengl restricts rendering to that API
+teardown frees=1
+
+# MPV_KIT_VIDEO_API=opengl with a gpu-next request: no opengl candidate in the
+# chain, every candidate is excluded, Start fails (render_init upstream).
+[linux-forced-opengl-gpu-next]
+start=false reason="vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=opengl"
+create-attempts none
+gl-backends=0
+log mpv_kit: MPV_KIT_VIDEO_API=opengl restricts rendering to that API
+teardown frees=0
+
+# mpv's renderer query fails: the head says so instead of naming a renderer.
+[linux-renderer-unknown]
+start ok backend=opengl reason="opengl (unknown renderer) on fake-gl; vulkan/gpu-next unavailable: platform interop unavailable: fake: no vulkan interop"
+create-attempts opengl/gpu
+gl-backends=1
+log none
+teardown frees=1
+
+# A real Vulkan device whose gpu-next create fails: opengl/gpu wins before
+# vulkan/gpu is tried.
+[linux-auto-gpu-next-create-fails]
+start ok backend=opengl reason="opengl (gpu) on fake-gl; vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18"
+create-attempts vulkan/gpu-next,opengl/gpu
+gl-backends=1
+log mpv_kit: gpu-next unavailable: fake error -18
+teardown frees=1

@@ -1,0 +1,63 @@
+Resolving dependencies in `D:\mpv_kit`...
+Downloading packages...
+  _fe_analyzer_shared 103.0.0 (110.0.0 available)
+  analyzer 13.3.0 (14.6.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  desktop_drop 0.7.1 (0.9.2 available)
+  frontend_server_client 4.1.0 (4.2.0 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  shelf 1.4.2 (1.4.3 available)
+  shelf_static 1.1.3 (1.2.0 available)
+  test 1.31.1 (1.33.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  test_core 0.6.18 (0.6.21 available)
+  vm_service 15.3.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+Got dependencies in `D:\mpv_kit`!
+16 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading D:/mpv_kit/example/integration_test/uhd_endurance_test.dart
+Building Windows application...                                    21.3s
+✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+00:00 +0: UHD endurance 3840x2160 x 600s
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+01:13 +0: loading D:/mpv_kit/example/integration_test/uhd_endurance_test.dart
+Some possible finders for the widgets at Offset(470.0, 369.3):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+Some possible finders for the widgets at Offset(886.0, 554.7):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+Some possible finders for the widgets at Offset(1272.7, 310.7):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+Some possible finders for the widgets at Offset(1268.7, 421.3):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+10:00 +0: UHD endurance 3840x2160 x 600s
+BENCH uhd {"label":"4k-rendered","size":"3840x2160","seconds":600,"rendered":true,"renderErrors":0,"deviceLost":false,"frameDropCountFinal":0,"decoderFrameDropCountFinal":0,"avsyncPeakAbs":0.000013397217180299847,"totalAvsyncChangeFinal":-0.033333332935932464,"voDelayedFrameCountAvg":0.0,"voDelayedFrameCountMax":0,"displaySyncActive":false,"estimatedVfFpsFinal":30.000000000000018,"rssBytes":829779968,"samplesPerMinute":[{"t":"11","avsync":0.000010396321605876668,"total-avsync-change":-0.033333333333337205,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"71","avsync":0.0000115966796457867,"total-avsync-change":-0.033333333336753146,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"131","avsync":0.000006601969362696192,"total-avsync-change":-0.033333333343301026,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"191","avsync":0.000008799234997025618,"total-avsync-change":-0.03333333334988918,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"251","avsync":0.000010009765570639928,"total-avsync-change":-0.03333333335648018,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"311","avsync":0.000009704590240799948,"total-avsync-change":-0.03333333329061035,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"371","avsync":0.000009195963918240402,"total-avsync-change":-0.033333333217217376,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"431","avsync":0.000011006673585334248,"total-avsync-change":-0.033333333143852784,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"491","avsync":0.000011596680103420631,"total-avsync-change":-0.033333333070488184,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"551","avsync":0.000011901855850482423,"total-avsync-change":-0.033333332997154415,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false}]}
+10:01 +1: (tearDownAll)
+10:01 +1: All tests passed!

@@ -1,0 +1,29 @@
+# 16-06 Task 3 final audit (written by the executor before the human check; ROADMAP.md and REQUIREMENTS.md are NOT modified)
+product_sha=ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72 (15f61ff docs-only over it; test source f644220) release_run=40812562348 samples_run=40798831729 rtx_session=2026-10-29 (attempt 2 of the log set, see rtx4060-hwdec-runs.txt)
+## audit output 1: golden freeze gate (sha256sum -c .planning/phases/14-windows-native-d3d11-backend/evidence/golden-freeze-14.sha256)
+native/tests/renderer_harness.h: OK
+native/tests/video_renderer_golden_sw.cc: OK
+native/tests/video_renderer_golden_vk.cc: OK
+native/tests/golden/sw.txt: OK
+native/tests/golden/vk.txt: OK
+## audit output 2: python tools/check_matrix.py
+CHECK-MATRIX ok native-verify linux runners (x64+arm64)
+CHECK-MATRIX ok native-verify macos runners (arm64+x64)
+CHECK-MATRIX ok native-verify windows msystems (x64+arm64)
+CHECK-MATRIX ok release.yml six targets (6)
+CHECK-MATRIX ok ./.github/workflows/native-verify.yml continue-on-error allowed: Vulkan loader diagnostics
+CHECK-MATRIX ok ./.github/workflows/native-verify.yml continue-on-error allowed: msys2/setup-msys2@v2
+CHECK-MATRIX: all targets present, no unauthorized continue-on-error
+## audit output 3: bash .planning/phases/12-renderbackend-seam/tools/constants_audit.sh
+CONSTANTS ok
+## mapping
+id=HWD-01 状态=证明 证据=decision=hwdec-defaults (decisions.txt); hosted default-list lines in native-verify run=40798831729 (HWD default list + user override wins tests, ci-runs-16-02.txt run=40715501196/40715501232/40715501421); docs/adr/0006-hwdec-defaults.md; README '## Hardware decoding defaults' 说明=default list per platform adopted as a documented behavior change, user hwdec option still wins; per-platform real-hardware behavior is limited to what unverified.txt lists
+id=HWD-02 状态=证明 证据=run=40812562348 (bundle, manifest=ok) + samples run=40798831729 + rtx4060-hwdec-runs.txt line 'hwd02 sample=hevc-10bit-2160p attempt=2 api=d3d11 hwdecCurrent=d3d11va pixelformat=d3d11 hwPixelformat=p010 d3d11vaZeroCopy=false outcome_first=zero-copy outcome_end=zero-copy frameChecks=match,match,match flutterFrame=match playedToEnd=true hwdecStable=true' and raw HWDEC/HWDEC-RUN lines in evidence/rtx-hwdec-d3d11-a2.log 说明=hwdec-current is d3d11va (not d3d11va-copy), hardware pixelformat d3d11, hw-pixelformat p010, screenshots match the software reference at three seeks; acceptance is with MPV_KIT_VIDEO_API=d3d11 forced (decision=hwd02-acceptance forced-d3d11) before 14-11; default d3d11va includes one GPU-memory copy per frame and zero CPU round trips; attempt 1 (rtx-hwdec-d3d11.log) failed because the test's ready condition was fixed at 640x360 (f644220), kept in the ledger
+id=HWD-03 状态=部分证明 证据=run=40798831729 (CONFIG-VAAPI ok, RENDER_VK drm ok, RENDER_GL drm ok, DRM-PARAMS ok scenarios=4 on ubuntu and sanitizers) + run=40812562348 (HAVE_VAAPI_DRM 1, HAVE_DMABUF_INTEROP_GL 1 x64+arm64, NEEDED libva-drm.so.2) 说明=DRM_DISPLAY_V2 passing and safe software fallback without /dev/dri are proved; real vaapi interop load log and real zero-copy are 未验证 (unverified.txt: no Linux GPU hardware)
+id=HWD-05 状态=证明 证据=run=40798831729 (matrix: opengl/vulkan/software on ubuntu, d3d11(WARP)/software on windows, vulkan/software on macos-15: hwdec=no software in every cell; HWDEC assertion wiring in every soak/integration test, ci-runs-16-05.txt) plus RTX local runs in rtx4060-hwdec-runs.txt 说明=scope A (decision=hwd05-scope); the macOS videotoolbox screenshot check of the default-list hardware leg is flaky on 15f61ff and f644220 (native-verify runs 40800969371, 40816828616) and is under a separate debug session; that leg is not the software path HWD-05 requires
+id=SC1 状态=证明 证据=same as HWD-01 (run=40715501196, run=40798831729) 说明=default list is a per-platform ordered cross-backend list with zero-copy candidates first, documented in README and ADR 0006; a user-set hwdec option still wins (tested)
+id=SC2 状态=证明 证据=same as HWD-02 (run=40812562348; rtx-hwdec-d3d11-a2.log lines 'HWDEC ... sample=hevc-10bit-2160p ... at=first-frame/end ... hwdecCurrent=d3d11va ... pixelformat=d3d11 ... hwPixelformat=p010 ... outcome=zero-copy' and 'HWDEC-RUN ... frameChecks match,match,match') 说明=hwdec-current=d3d11va on the RTX 4060 with the D3D11 backend forced; no green or black frames (three-point screenshot comparison with the software reference); includes one GPU-memory copy per frame by default
+id=SC3 状态=部分证明 证据=run=40798831729 (RENDER_VK drm ok renderer=gpu-next native_resource=registered; RENDER_GL drm ok api=gl renderer=gpu; DRM-PARAMS ok scenarios=4) run=40812562348 (HAVE_VAAPI_DRM, HAVE_DMABUF_INTEROP_GL) 说明=parameter passing and the no-/dev/dri fallback are proved; 'vaapi interop log visible' and real zero-copy are 未验证 (unverified.txt)
+proposal=SC3-wording text="Linux 宿主向 mpv 传入 MPV_RENDER_PARAM_DRM_DISPLAY_V2（render node 由 EGL 设备或所选 Vulkan 物理设备反查）；GL（vo_gpu）与 Vulkan gpu-next 都把它注册为 native resource（hosted 以 fake libmpv 测试与 drm 冒烟证明）；没有 /dev/dri 的 runner 上安全回落到软件解码且不崩溃；vaapi interop 的实际加载与零拷贝因无硬件标为未验证" status=approved-by-user-2026-10-29
+id=SC4 状态=证明 证据=decision=hwd05-scope (decisions.txt); run=40798831729 (hwdec=no matrix above) 说明=every soak/integration test prints and asserts hwdec-current and zero-copy yes/no (HWDEC lines); the software path passes on d3d11 (WARP), opengl, vulkan and software hosted; real-hardware rows only on RTX 4060
+## unverified items: see unverified.txt (18 items with 状态=未验证)

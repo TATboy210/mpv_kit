@@ -30,6 +30,7 @@
 
 #include "config.h"
 #include "common/common.h"
+#include "common/stats.h"
 #include "misc/io_utils.h"
 #include "options/m_config.h"
 #include "options/options.h"
@@ -44,6 +45,7 @@
 #include "placebo/utils.h"
 #include "gpu/context.h"
 #include "gpu/hwdec.h"
+#include "gpu/utils.h"
 #include "gpu/video.h"
 #include "gpu/video_shaders.h"
 #include "sub/osd.h"
@@ -65,11 +67,13 @@ struct osd_entry {
     pl_tex tex;
     struct pl_overlay_part *parts;
     int num_parts;
+    int change_id;
 };
 
 struct osd_state {
     struct osd_entry entries[MAX_OSD_PARTS];
-    struct pl_overlay overlays[MAX_OSD_PARTS];
+    struct pl_overlay *overlays;
+    int num_overlays;
 };
 
 struct scaler_params {
@@ -102,13 +106,27 @@ struct cache {
     pl_cache cache;
 };
 
+// Mapping state of single hwdec frame.
+struct hwdec_slot {
+    struct ra_hwdec_mapper *mapper;
+    struct timer_pool *timer;
+    struct mp_pass_perf perf;
+    struct mp_image *owner;   // queue entry image that owns the mapping
+    bool acquired;            // between acquire and release of a render pass
+    pl_tex tex[4];            // plane textures of the current mapping
+};
+
 struct priv {
     struct mp_log *log;
     struct mpv_global *global;
+    struct stats_ctx *stats;
     struct ra_ctx *ra_ctx;
     struct gpu_ctx *context;
     struct ra_hwdec_ctx hwdec_ctx;
-    struct ra_hwdec_mapper *hwdec_mapper;
+    struct hwdec_slot hwdec;
+    struct hwdec_slot el_hwdec;
+    struct timer_pool *sw_upload_timer;
+    struct mp_pass_perf sw_upload_perf;
 
     // Allocated DR buffers
     mp_mutex dr_lock;
@@ -133,7 +151,12 @@ struct priv {
     double last_pts;
     bool is_interpolated;
     bool want_reset;
+    bool want_seek_reset;
+    bool flush_cache;
     bool frame_pending;
+    bool paused;
+    int last_ref_white;
+    int last_srgb_power22;
 
     pl_options pars;
     struct m_config_cache *opts_cache;
@@ -148,6 +171,9 @@ struct priv {
     struct pl_icc_params icc_params;
     char *icc_path;
     pl_icc_object icc_profile;
+    // libmpv: host profile from MPV_RENDER_PARAM_ICC_PROFILE, kept so that
+    // option updates re-apply it instead of unloading it.
+    struct bstr libmpv_icc;
 
     // Cached shaders, preserved across options updates
     struct user_hook *user_hooks;
@@ -164,6 +190,10 @@ struct priv {
     // the image the API user passed to mpv_render_context_render().
     bool libmpv;
     struct pl_swapchain_frame libmpv_target;
+    // libmpv: the render context did not attach a shader cache to p->gpu (the
+    // D3D11 context has no persistent cache of its own), so preinit() does it,
+    // like the windowed VO.
+    bool libmpv_vo_cache;
     // Decoder queue depth the renderer needs (see update_render_options).
     int req_frames;
 };
@@ -199,21 +229,17 @@ const struct m_opt_choice_alternatives lut_types[] = {
 #define OPT_BASE_STRUCT struct gl_next_opts
 const struct m_sub_options gl_next_conf = {
     .opts = (const struct m_option[]) {
-        {"sub-hdr-peak", OPT_CHOICE(sub_hdr_peak, {"sdr", PL_COLOR_SDR_WHITE}),
+        {"sub-hdr-peak", OPT_CHOICE(sub_hdr_peak, {"auto", 0}, {"sdr", PL_COLOR_SDR_WHITE}),
             M_RANGE(10, 10000)},
         {"image-subs-hdr-peak", OPT_CHOICE(image_subs_hdr_peak, {"sdr", PL_COLOR_SDR_WHITE},
-            {"video", -1}),  M_RANGE(10, 10000)},
+            {"video", -1}, {"video-static", -2}, {"video-dynamic", -3}),  M_RANGE(10, 10000)},
         {"allow-delayed-peak-detect", OPT_BOOL(delayed_peak)},
         {"border-background", OPT_CHOICE(border_background,
             {"none",  BACKGROUND_NONE},
             {"color", BACKGROUND_COLOR},
             {"tiles", BACKGROUND_TILES}
-#if PL_API_VER < 355
-            )},
-#else
             ,{"blur", BACKGROUND_BLUR})},
         {"background-blur-radius", OPT_FLOAT(background_blur_radius)},
-#endif
         {"corner-rounding", OPT_FLOAT(corner_rounding), M_RANGE(0, 1)},
         {"interpolation-preserve", OPT_BOOL(inter_preserve)},
         {"lut", OPT_STRING(lut.opt), .flags = M_OPT_FILE},
@@ -232,8 +258,7 @@ const struct m_sub_options gl_next_conf = {
         .border_background = BACKGROUND_COLOR,
         .background_blur_radius = 16.0f,
         .inter_preserve = true,
-        .sub_hdr_peak = PL_COLOR_SDR_WHITE,
-        .image_subs_hdr_peak = PL_COLOR_SDR_WHITE,
+        .image_subs_hdr_peak = 1000,
         .target_hint = -1,
         .target_hint_strict = true,
     },
@@ -315,16 +340,197 @@ static struct mp_image *get_image(struct vo *vo, int imgfmt, int w, int h,
     return mpi;
 }
 
+static bool upload_overlay_tex(struct vo *vo, struct osd_entry *entry,
+                               const struct sub_bitmaps *item)
+{
+    struct priv *p = vo->priv;
+    pl_fmt tex_fmt = p->osd_fmt[item->format];
+    if (!entry->tex)
+        MP_TARRAY_POP(p->sub_tex, p->num_sub_tex, &entry->tex);
+    // pl_tex_recreate() invalidates the texture even when it keeps it, so
+    // only call it when the size or format has to change. Textures only
+    // ever grow, so a size mismatch means the texture is too small.
+    pl_tex tex = entry->tex;
+    if (!tex || tex->params.w < item->packed_w ||
+        tex->params.h < item->packed_h || tex->params.format != tex_fmt)
+    {
+        entry->change_id = 0;
+        bool ok = pl_tex_recreate(p->gpu, &entry->tex, &(struct pl_tex_params) {
+            .format = tex_fmt,
+            .w = MPMAX(item->packed_w, tex ? tex->params.w : 0),
+            .h = MPMAX(item->packed_h, tex ? tex->params.h : 0),
+            .host_writable = true,
+            .sampleable = true,
+        });
+        if (!ok) {
+            MP_ERR(vo, "Failed recreating OSD texture!\n");
+            return false;
+        }
+    }
+    if (entry->change_id == item->change_id)
+        return true;
+    struct pl_tex_transfer_params upload_params = {
+        .tex        = entry->tex,
+        .rc         = { .x1 = item->packed_w, .y1 = item->packed_h, },
+        .row_pitch  = item->packed->stride[0],
+        .ptr        = item->packed->planes[0],
+    };
+    // Keep the image alive until it's fully read.
+    if (p->gpu->limits.callbacks) {
+        upload_params.callback = talloc_free;
+        upload_params.priv = mp_image_new_ref(item->packed);
+    }
+    if (!pl_tex_upload(p->gpu, &upload_params)) {
+        MP_ERR(vo, "Failed uploading OSD texture!\n");
+        talloc_free(upload_params.priv);
+        entry->change_id = 0;
+        return false;
+    }
+    entry->change_id = item->change_id;
+    return true;
+}
+
+// Duplicate overlay parts for each eye in stereo 3D modes
+static void dup_stereo_parts(struct priv *p, struct osd_entry *entry, int start,
+                             struct mp_osd_res res, const int div[2])
+{
+    int num_eye_parts = entry->num_parts - start;
+    for (int x = 0; x < div[0]; x++) {
+        for (int y = 0; y < div[1]; y++) {
+            if (x == 0 && y == 0)
+                continue;
+            float off_x = res.w * x;
+            float off_y = res.h * y;
+            for (int i = 0; i < num_eye_parts; i++) {
+                struct pl_overlay_part duped = entry->parts[start + i];
+                duped.dst.x0 += off_x;
+                duped.dst.x1 += off_x;
+                duped.dst.y0 += off_y;
+                duped.dst.y1 += off_y;
+                MP_TARRAY_APPEND(p, entry->parts, entry->num_parts, duped);
+            }
+        }
+    }
+}
+
+static struct pl_color_space bgra_overlay_color(struct priv *p,
+                                                const struct sub_bitmaps *item,
+                                                const struct sub_bitmap *b,
+                                                const struct mp_image *src,
+                                                float ref_luma)
+{
+    struct pl_color_space color = pl_color_space_srgb;
+
+    if (src && (item->video_color_space || b->bgra.video_color_space)) {
+        // Muxed image subtitles and overlays tagged with video_colorspace
+        // are in the video's colorspace
+        color = src->params.color;
+        if (pl_color_transfer_is_hdr(color.transfer)) {
+            // Don't apply `image_subs_hdr_peak` for overlays.
+            if (!b->bgra.video_color_space) {
+                bool use_static = p->next_opts->image_subs_hdr_peak == -2;
+                if (use_static || p->next_opts->image_subs_hdr_peak == -3) {
+                    float max;
+                    pl_color_space_nominal_luma_ex(pl_nominal_luma_params(
+                        .color      = &color,
+                        .metadata   = use_static ? PL_HDR_METADATA_HDR10 : PL_HDR_METADATA_ANY,
+                        .scaling    = PL_HDR_NITS,
+                        .out_max    = &max,
+                    ));
+                    color.hdr = (struct pl_hdr_metadata) {
+                        .max_luma = max,
+                    };
+                } else if (p->next_opts->image_subs_hdr_peak != -1) {
+                    color.hdr = (struct pl_hdr_metadata) {
+                        .max_luma = p->next_opts->image_subs_hdr_peak,
+                    };
+                }
+            }
+        } else if (ref_luma) {
+            color.hdr.max_luma = ref_luma;
+        }
+    } else {
+        // sRGB, unless tagged explicitly
+        if (b->bgra.primaries)
+            color.primaries = b->bgra.primaries;
+        if (b->bgra.transfer)
+            color.transfer = b->bgra.transfer;
+        if (!pl_color_transfer_is_hdr(color.transfer) && ref_luma)
+            color.hdr.max_luma = ref_luma;
+    }
+
+    // Explicit luminance peak overrides every other metadata
+    if (b->bgra.max_luma) {
+        color.hdr = (struct pl_hdr_metadata) {
+            .max_luma = b->bgra.max_luma,
+        };
+    }
+
+    return color;
+}
+
+static struct pl_color_space libass_overlay_color(struct priv *p,
+                                                  const struct sub_bitmaps *item,
+                                                  const struct mp_image *src,
+                                                  float ref_luma)
+{
+    struct pl_color_space color = pl_color_space_srgb;
+
+    if (src && item->video_color_space && !pl_color_transfer_is_hdr(src->params.color.transfer))
+        color = src->params.color;
+    if (src && pl_color_transfer_is_hdr(src->params.color.transfer) &&
+        p->next_opts->sub_hdr_peak)
+    {
+        color.hdr = (struct pl_hdr_metadata) {
+            .max_luma = p->next_opts->sub_hdr_peak,
+        };
+    } else if (ref_luma && !pl_color_transfer_is_hdr(color.transfer)) {
+        color.hdr.max_luma = ref_luma;
+    }
+
+    return color;
+}
+
+static void add_run_overlay(struct priv *p, struct osd_state *state,
+                            const struct osd_entry *entry,
+                            const struct sub_bitmaps *item,
+                            const struct pl_color_space *color, int start,
+                            enum pl_overlay_coords coords)
+{
+    MP_TARRAY_GROW(p, state->overlays, state->num_overlays);
+    struct pl_overlay *ol = &state->overlays[state->num_overlays++];
+    *ol = (struct pl_overlay) {
+        .tex = entry->tex,
+        .parts = entry->parts + start,
+        .num_parts = entry->num_parts - start,
+        .color = *color,
+        .coords = coords,
+    };
+
+    switch (item->format) {
+    case SUBBITMAP_BGRA:
+        ol->mode = PL_OVERLAY_NORMAL;
+        ol->repr.alpha = PL_ALPHA_PREMULTIPLIED;
+        break;
+    case SUBBITMAP_LIBASS:
+        ol->mode = PL_OVERLAY_MONOCHROME;
+        ol->repr.alpha = PL_ALPHA_INDEPENDENT;
+        break;
+    }
+}
+
 static void update_overlays(struct vo *vo, struct mp_osd_res res,
                             int flags, enum pl_overlay_coords coords,
                             struct osd_state *state, struct pl_frame *frame,
-                            struct mp_image *src)
+                            struct mp_image *src, int stereo_mode, float ref_luma)
 {
     struct priv *p = vo->priv;
     double pts = src ? src->pts : 0;
-
-    frame->overlays = state->overlays;
-    frame->num_overlays = 0;
+    int div[2];
+    mp_get_3d_side_by_side(stereo_mode, div);
+    res.w /= div[0];
+    res.h /= div[1];
+    state->num_overlays = 0;
 
     // libmpv: no OSD source until the VO attaches (update_external).
     if (!vo->osd)
@@ -337,96 +543,51 @@ static void update_overlays(struct vo *vo, struct mp_osd_res res,
         if (!item->num_parts || !item->packed)
             continue;
         struct osd_entry *entry = &state->entries[item->render_index];
-        pl_fmt tex_fmt = p->osd_fmt[item->format];
-        if (!entry->tex)
-            MP_TARRAY_POP(p->sub_tex, p->num_sub_tex, &entry->tex);
-        bool ok = pl_tex_recreate(p->gpu, &entry->tex, &(struct pl_tex_params) {
-            .format = tex_fmt,
-            .w = MPMAX(item->packed_w, entry->tex ? entry->tex->params.w : 0),
-            .h = MPMAX(item->packed_h, entry->tex ? entry->tex->params.h : 0),
-            .host_writable = true,
-            .sampleable = true,
-        });
-        if (!ok) {
-            MP_ERR(vo, "Failed recreating OSD texture!\n");
+        if (!upload_overlay_tex(vo, entry, item))
             break;
-        }
-        ok = pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params) {
-            .tex        = entry->tex,
-            .rc         = { .x1 = item->packed_w, .y1 = item->packed_h, },
-            .row_pitch  = item->packed->stride[0],
-            .ptr        = item->packed->planes[0],
-        });
-        if (!ok) {
-            MP_ERR(vo, "Failed uploading OSD texture!\n");
-            break;
-        }
 
+        MP_TARRAY_GROW(p, entry->parts, item->num_parts * div[0] * div[1]);
         entry->num_parts = 0;
+        struct pl_color_space color = {0};
+        int start = -1;
         for (int i = 0; i < item->num_parts; i++) {
             const struct sub_bitmap *b = &item->parts[i];
             if (b->dw == 0 || b->dh == 0)
                 continue;
-            uint32_t c = b->libass.color;
+            struct pl_color_space part_color = item->format == SUBBITMAP_BGRA
+                                    ? bgra_overlay_color(p, item, b, src, ref_luma)
+                                    : libass_overlay_color(p, item, src, ref_luma);
+            // Emit pl_overlay per each distinct colorspace run
+            if (start >= 0 && !pl_color_space_equal(&color, &part_color)) {
+                dup_stereo_parts(p, entry, start, res, div);
+                add_run_overlay(p, state, entry, item, &color, start, coords);
+                start = -1;
+            }
+            if (start < 0) {
+                start = entry->num_parts;
+                color = part_color;
+            }
             struct pl_overlay_part part = {
                 .src = { b->src_x, b->src_y, b->src_x + b->w, b->src_y + b->h },
                 .dst = { b->x, b->y, b->x + b->dw, b->y + b->dh },
-                .color = {
-                    (c >> 24) / 255.0f,
-                    ((c >> 16) & 0xFF) / 255.0f,
-                    ((c >> 8) & 0xFF) / 255.0f,
-                    (255 - (c & 0xFF)) / 255.0f,
-                }
             };
+            if (item->format == SUBBITMAP_LIBASS) {
+                uint32_t c = b->libass.color;
+                part.color[0] = (c >> 24) / 255.0f;
+                part.color[1] = ((c >> 16) & 0xFF) / 255.0f;
+                part.color[2] = ((c >> 8) & 0xFF) / 255.0f;
+                part.color[3] = (255 - (c & 0xFF)) / 255.0f;
+            }
             MP_TARRAY_APPEND(p, entry->parts, entry->num_parts, part);
         }
-
-        struct pl_overlay *ol = &state->overlays[frame->num_overlays++];
-        *ol = (struct pl_overlay) {
-            .tex = entry->tex,
-            .parts = entry->parts,
-            .num_parts = entry->num_parts,
-            .color = {
-                .primaries = PL_COLOR_PRIM_BT_709,
-                .transfer = PL_COLOR_TRC_SRGB,
-            },
-            .coords = coords,
-        };
-
-        switch (item->format) {
-        case SUBBITMAP_BGRA:
-            ol->mode = PL_OVERLAY_NORMAL;
-            ol->repr.alpha = PL_ALPHA_PREMULTIPLIED;
-            // Infer bitmap colorspace from source
-            if (src) {
-                ol->color = src->params.color;
-                if (pl_color_transfer_is_hdr(ol->color.transfer)) {
-                    if (!pl_color_transfer_is_hdr(frame->color.transfer)) {
-                        // Tone mapping targets SDR white
-                        ol->color.hdr = (struct pl_hdr_metadata) {
-                            .max_luma = PL_COLOR_SDR_WHITE,
-                        };
-                    } else if (p->next_opts->image_subs_hdr_peak != -1) {
-                        ol->color.hdr = (struct pl_hdr_metadata) {
-                            .max_luma = p->next_opts->image_subs_hdr_peak,
-                        };
-                    }
-                }
-            }
-            break;
-        case SUBBITMAP_LIBASS:
-            if (src && item->video_color_space && !pl_color_space_is_hdr(&src->params.color))
-                ol->color = src->params.color;
-            if (src && pl_color_transfer_is_hdr(frame->color.transfer)) {
-                ol->color.hdr = (struct pl_hdr_metadata) {
-                    .max_luma = p->next_opts->sub_hdr_peak,
-                };
-            }
-            ol->mode = PL_OVERLAY_MONOCHROME;
-            ol->repr.alpha = PL_ALPHA_INDEPENDENT;
-            break;
+        if (start >= 0) {
+            dup_stereo_parts(p, entry, start, res, div);
+            add_run_overlay(p, state, entry, item, &color, start, coords);
         }
     }
+
+    frame->overlays = state->overlays;
+    frame->num_overlays = state->num_overlays;
 
     talloc_free(subs);
 }
@@ -436,6 +597,10 @@ struct frame_priv {
     struct osd_state subs;
     uint64_t osd_sync;
     struct ra_hwdec *hwdec;
+    // Optional Dolby Vision FEL.
+    struct ra_hwdec *el_hwdec;
+    pl_tex el_tex[4];
+    struct pl_frame el_frame;
 };
 
 static int plane_data_from_imgfmt(struct pl_plane_data out_data[4],
@@ -531,35 +696,70 @@ static int plane_data_from_imgfmt(struct pl_plane_data out_data[4],
     return desc.num_planes;
 }
 
-static bool hwdec_reconfig(struct priv *p, struct ra_hwdec *hwdec,
-                           const struct mp_image_params *par)
+static void slot_unmap(struct priv *p, struct hwdec_slot *s)
 {
-    if (p->hwdec_mapper) {
-        if (mp_image_params_static_equal(par, &p->hwdec_mapper->src_params)) {
-            p->hwdec_mapper->src_params.repr.dovi = par->repr.dovi;
-            p->hwdec_mapper->dst_params.repr.dovi = par->repr.dovi;
-            p->hwdec_mapper->src_params.color.hdr = par->color.hdr;
-            p->hwdec_mapper->dst_params.color.hdr = par->color.hdr;
-            return p->hwdec_mapper;
-        } else {
-            ra_hwdec_mapper_free(&p->hwdec_mapper);
-        }
+    mp_assert(!s->acquired);
+    if (!s->mapper)
+        return;
+    // For RAs not based on ra_pl the plane textures are wrappers we created.
+    if (!ra_pl_get(s->mapper->ra)) {
+        for (int n = 0; n < MP_ARRAY_SIZE(s->tex); n++)
+            pl_tex_destroy(p->gpu, &s->tex[n]);
     }
-
-    p->hwdec_mapper = ra_hwdec_mapper_create(hwdec, par);
-    if (!p->hwdec_mapper) {
-        MP_ERR(p, "Initializing texture for hardware decoding failed.\n");
-        return NULL;
-    }
-
-    return p->hwdec_mapper;
+    memset(s->tex, 0, sizeof(s->tex));
+    ra_hwdec_mapper_unmap(s->mapper);
+    s->owner = NULL;
 }
 
-// For RAs not based on ra_pl, this creates a new pl_tex wrapper
-static pl_tex hwdec_get_tex(struct priv *p, int n)
+static bool slot_reconfig(struct priv *p, struct hwdec_slot *s,
+                          struct ra_hwdec *hwdec,
+                          const struct mp_image_params *par)
 {
-    struct ra_tex *ratex = p->hwdec_mapper->tex[n];
-    struct ra *ra = p->hwdec_mapper->ra;
+    if (s->mapper) {
+        if (mp_image_params_static_equal(par, &s->mapper->src_params)) {
+            s->mapper->src_params.repr.dovi = par->repr.dovi;
+            s->mapper->dst_params.repr.dovi = par->repr.dovi;
+            s->mapper->src_params.color.hdr = par->color.hdr;
+            s->mapper->dst_params.color.hdr = par->color.hdr;
+            return true;
+        }
+        slot_unmap(p, s);
+        ra_hwdec_mapper_free(&s->mapper);
+        timer_pool_destroy(s->timer);
+        s->timer = NULL;
+    }
+
+    s->mapper = ra_hwdec_mapper_create(hwdec, par);
+    if (!s->mapper) {
+        MP_ERR(p, "Initializing texture for hardware decoding failed.\n");
+        return false;
+    }
+    s->timer = timer_pool_create(p->ra_ctx->ra);
+
+    return true;
+}
+
+// The queue dropped this entry. Release the mapping if the entry owns it.
+static void slot_release_owner(struct priv *p, struct hwdec_slot *s,
+                               struct mp_image *owner)
+{
+    if (s->owner == owner)
+        slot_unmap(p, s);
+}
+
+static void slot_uninit(struct priv *p, struct hwdec_slot *s)
+{
+    slot_unmap(p, s);
+    ra_hwdec_mapper_free(&s->mapper);
+    timer_pool_destroy(s->timer);
+    s->timer = NULL;
+}
+
+// For RAs not based on ra_pl, this creates a new pl_tex wrapper.
+static pl_tex hwdec_get_tex(struct priv *p, struct ra_hwdec_mapper *mapper, int n)
+{
+    struct ra_tex *ratex = mapper->tex[n];
+    struct ra *ra = mapper->ra;
     if (ra_pl_get(ra))
         return (pl_tex) ratex->priv;
 
@@ -594,7 +794,83 @@ static pl_tex hwdec_get_tex(struct priv *p, int n)
 #endif
 
     MP_ERR(p, "Failed mapping hwdec frame? Open a bug!\n");
-    return false;
+    return NULL;
+}
+
+// Fill `frame->num_planes` and per-plane component_mapping from an
+// hwdec-mapped imgfmt description.
+static void setup_hwdec_plane_mapping(struct pl_frame *frame,
+                                      const struct mp_imgfmt_desc *desc)
+{
+    frame->num_planes = desc->num_planes;
+    for (int n = 0; n < frame->num_planes; n++) {
+        struct pl_plane *plane = &frame->planes[n];
+        int *map = plane->component_mapping;
+        for (int c = 0; c < mp_imgfmt_desc_get_num_comps(desc); c++) {
+            if (desc->comps[c].plane != n)
+                continue;
+            // Sort by component offset
+            uint8_t offset = desc->comps[c].offset;
+            int index = plane->components++;
+            while (index > 0 && desc->comps[map[index - 1]].offset > offset) {
+                map[index] = map[index - 1];
+                index--;
+            }
+            map[index] = c;
+        }
+    }
+}
+
+static bool slot_acquire(struct priv *p, struct hwdec_slot *s,
+                         struct mp_image *owner, struct mp_image *mpi,
+                         struct pl_frame *frame)
+{
+    if (s->owner != owner) {
+        // With one frame per role acquired at a time the previous owner is
+        // not in use and can be evicted. Interlaced sources would break this
+        // (prev and next are acquired alongside the image), see hwdec_slot.
+        if (s->acquired) {
+            MP_ERR(p, "Hardware frame of this role is still in use.\n");
+            return false;
+        }
+        slot_unmap(p, s);
+
+        stats_time_start(p->stats, "hwdec-map");
+        timer_pool_start(s->timer);
+        int ret = ra_hwdec_mapper_map(s->mapper, mpi);
+        timer_pool_stop(s->timer);
+        stats_time_end(p->stats, "hwdec-map");
+        if (ret < 0) {
+            MP_ERR(p, "Mapping hardware decoded surface failed.\n");
+            return false;
+        }
+        s->perf = timer_pool_measure(s->timer);
+        s->owner = owner;
+    }
+
+    if (ra_hwdec_mapper_begin_access(s->mapper) < 0)
+        return false;
+    // Set before handing out textures so that the release libplacebo issues
+    // after a failed acquire ends the access again.
+    s->acquired = true;
+
+    for (int n = 0; n < frame->num_planes; n++) {
+        if (!s->tex[n])
+            s->tex[n] = hwdec_get_tex(p, s->mapper, n);
+        if (!s->tex[n])
+            return false;
+        frame->planes[n].texture = s->tex[n];
+    }
+
+    return true;
+}
+
+static void slot_release(struct hwdec_slot *s)
+{
+    if (!s->acquired)
+        return;
+    ra_hwdec_mapper_end_access(s->mapper);
+    s->acquired = false;
 }
 
 static bool hwdec_acquire(pl_gpu gpu, struct pl_frame *frame)
@@ -602,20 +878,8 @@ static bool hwdec_acquire(pl_gpu gpu, struct pl_frame *frame)
     struct mp_image *mpi = frame->user_data;
     struct frame_priv *fp = mpi->priv;
     struct priv *p = fp->vo->priv;
-    if (!hwdec_reconfig(p, fp->hwdec, &mpi->params))
-        return false;
-
-    if (ra_hwdec_mapper_map(p->hwdec_mapper, mpi) < 0) {
-        MP_ERR(p, "Mapping hardware decoded surface failed.\n");
-        return false;
-    }
-
-    for (int n = 0; n < frame->num_planes; n++) {
-        if (!(frame->planes[n].texture = hwdec_get_tex(p, n)))
-            return false;
-    }
-
-    return true;
+    return slot_reconfig(p, &p->hwdec, fp->hwdec, &mpi->params) &&
+           slot_acquire(p, &p->hwdec, mpi, mpi, frame);
 }
 
 static void hwdec_release(pl_gpu gpu, struct pl_frame *frame)
@@ -623,13 +887,29 @@ static void hwdec_release(pl_gpu gpu, struct pl_frame *frame)
     struct mp_image *mpi = frame->user_data;
     struct frame_priv *fp = mpi->priv;
     struct priv *p = fp->vo->priv;
-    if (!ra_pl_get(p->hwdec_mapper->ra)) {
-        for (int n = 0; n < frame->num_planes; n++)
-            pl_tex_destroy(p->gpu, &frame->planes[n].texture);
-    }
-
-    ra_hwdec_mapper_unmap(p->hwdec_mapper);
+    slot_release(&p->hwdec);
 }
+
+#if PL_API_VER >= 367
+static bool hwdec_acquire_el(pl_gpu gpu, struct pl_frame *frame)
+{
+    struct mp_image *bl_mpi = frame->user_data;
+    struct mp_image *el_mpi = bl_mpi->enhancement_layer;
+    struct frame_priv *fp = bl_mpi->priv;
+    struct priv *p = fp->vo->priv;
+    // The EL image belongs to the BL queue entry, which therefore owns the slot.
+    return slot_reconfig(p, &p->el_hwdec, fp->el_hwdec, &el_mpi->params) &&
+           slot_acquire(p, &p->el_hwdec, bl_mpi, el_mpi, frame);
+}
+
+static void hwdec_release_el(pl_gpu gpu, struct pl_frame *frame)
+{
+    struct mp_image *bl_mpi = frame->user_data;
+    struct frame_priv *fp = bl_mpi->priv;
+    struct priv *p = fp->vo->priv;
+    slot_release(&p->el_hwdec);
+}
+#endif
 
 static bool format_supported(struct vo *vo, int format, bool use_uint)
 {
@@ -643,6 +923,90 @@ static bool format_supported(struct vo *vo, int format, bool use_uint)
     for (int i = 0; i < planes; i++) {
         if (!pl_plane_find_fmt(p->gpu, NULL, &data[i]))
             return false;
+    }
+
+    return true;
+}
+
+// Effective reference white luminance in nits to assume for SDR content.
+static float get_ref_luma(struct priv *p)
+{
+    const struct gl_video_opts *opts = p->opts_cache->opts;
+    if (opts->hdr_reference_white)
+        return opts->hdr_reference_white;
+
+#if PL_API_VER >= 371
+    // auto: follow the system reference white, if available
+    // Use auto mode only on libplacebo >= 371, to avoid luminance mismatches,
+    // on SDR->SDR in some corner cases. User override is still respected, to
+    // preserve previous behavior.
+    struct ra_swapchain *sw = p->ra_ctx->swapchain;
+    if (sw && sw->fns->target_ref_luma)
+        return sw->fns->target_ref_luma(sw);
+#endif
+
+    return 0;
+}
+
+static bool use_ref_luma(const struct pl_color_space *csp, const struct pl_color_space *target_csp)
+{
+    if (!pl_color_transfer_is_hdr(csp->transfer))
+        return true;
+#if PL_API_VER >= 362
+    if (csp->transfer == PL_COLOR_TRC_SCRGB && target_csp && !pl_color_transfer_is_hdr(target_csp->transfer))
+        return true;
+#endif
+    return false;
+}
+
+static bool upload_planes_sw(struct vo *vo, pl_gpu gpu, struct mp_image *mpi,
+                             struct pl_frame *frame, pl_tex tex[4])
+{
+    struct priv *p = vo->priv;
+    struct pl_plane_data data[4] = {0};
+
+    // At this point, we know that the format is supported, query_format()
+    // makes sure of that. Just check if we should use UINT as a fallback.
+    bool use_uint = !format_supported(vo, mpi->imgfmt, false);
+    int planes = plane_data_from_imgfmt(data, &frame->repr.bits, mpi->imgfmt,
+                                        use_uint);
+    if (!planes)
+        return false;
+
+    frame->num_planes = planes;
+    for (int n = 0; n < planes; n++) {
+        struct pl_plane *plane = &frame->planes[n];
+        data[n].width = mp_image_plane_w(mpi, n);
+        data[n].height = mp_image_plane_h(mpi, n);
+        if (mpi->stride[n] < 0) {
+            data[n].pixels = mpi->planes[n] + (data[n].height - 1) * mpi->stride[n];
+            data[n].row_stride = -mpi->stride[n];
+            plane->flipped = true;
+        } else {
+            data[n].pixels = mpi->planes[n];
+            data[n].row_stride = mpi->stride[n];
+        }
+
+        pl_buf buf = get_dr_buf(p, data[n].pixels);
+        if (buf) {
+            data[n].buf = buf;
+            data[n].buf_offset = (uint8_t *) data[n].pixels - buf->data;
+            data[n].pixels = NULL;
+        }
+        // Keep the image alive until it's fully read.
+        if (gpu->limits.callbacks) {
+            data[n].callback = talloc_free;
+            data[n].priv = mp_image_new_ref(mpi);
+        }
+
+        if (!pl_upload_plane(gpu, plane, &tex[n], &data[n])) {
+            talloc_free(data[n].priv);
+            return false;
+        }
+
+        // Without async callback support, we have to poll...
+        if (!gpu->limits.callbacks && data[n].buf)
+            while (pl_buf_poll(gpu, data[n].buf, UINT64_MAX));
     }
 
     return true;
@@ -663,12 +1027,12 @@ static bool map_frame(pl_gpu gpu, pl_tex *tex, const struct pl_source_frame *src
         // only reconfig the mapper here (potentially creating it) to access
         // `dst_params`. In practice, though, this should not matter unless the
         // image format changes mid-stream.
-        if (!hwdec_reconfig(p, fp->hwdec, &mpi->params)) {
+        if (!slot_reconfig(p, &p->hwdec, fp->hwdec, &mpi->params)) {
             talloc_free(mpi);
             return false;
         }
 
-        par = p->hwdec_mapper->dst_params;
+        par = p->hwdec.mapper->dst_params;
     }
 
     mp_image_params_guess_csp(&par);
@@ -685,9 +1049,9 @@ static bool map_frame(pl_gpu gpu, pl_tex *tex, const struct pl_source_frame *src
     };
 
     const struct gl_video_opts *opts = p->opts_cache->opts;
-    if (opts->hdr_reference_white && !pl_color_transfer_is_hdr(frame->color.transfer))
-        frame->color.hdr.max_luma = opts->hdr_reference_white;
-
+    float ref_luma;
+    if (!pl_color_transfer_is_hdr(frame->color.transfer) && (ref_luma = get_ref_luma(p)))
+        frame->color.hdr.max_luma = ref_luma;
 
     if (opts->treat_srgb_as_power22 & 1 && frame->color.transfer == PL_COLOR_TRC_SRGB) {
         // The sRGB EOTF is a pure gamma 2.2 function. See reference display in
@@ -696,75 +1060,75 @@ static bool map_frame(pl_gpu gpu, pl_tex *tex, const struct pl_source_frame *src
     }
 
     if (fp->hwdec) {
+        p->sw_upload_perf.count = 0;
 
         struct mp_imgfmt_desc desc = mp_imgfmt_get_desc(par.imgfmt);
         frame->acquire = hwdec_acquire;
         frame->release = hwdec_release;
-        frame->num_planes = desc.num_planes;
-        for (int n = 0; n < frame->num_planes; n++) {
-            struct pl_plane *plane = &frame->planes[n];
-            int *map = plane->component_mapping;
-            for (int c = 0; c < mp_imgfmt_desc_get_num_comps(&desc); c++) {
-                if (desc.comps[c].plane != n)
-                    continue;
-
-                // Sort by component offset
-                uint8_t offset = desc.comps[c].offset;
-                int index = plane->components++;
-                while (index > 0 && desc.comps[map[index - 1]].offset > offset) {
-                    map[index] = map[index - 1];
-                    index--;
-                }
-                map[index] = c;
-            }
-        }
-
+        setup_hwdec_plane_mapping(frame, &desc);
     } else { // swdec
+        p->hwdec.perf.count = 0;
 
-        struct pl_plane_data data[4] = {0};
-        bool use_uint = false;
+        if (!p->sw_upload_timer)
+            p->sw_upload_timer = timer_pool_create(p->ra_ctx->ra);
 
-        // At this point, we know that the format is supported, query_format()
-        // makes sure of that. Just check if we should use UINT as a fallback.
-        if (!format_supported(vo, mpi->imgfmt, false))
-            use_uint = true;
-
-        frame->num_planes = plane_data_from_imgfmt(data, &frame->repr.bits, mpi->imgfmt, use_uint);
-        for (int n = 0; n < frame->num_planes; n++) {
-            struct pl_plane *plane = &frame->planes[n];
-            data[n].width = mp_image_plane_w(mpi, n);
-            data[n].height = mp_image_plane_h(mpi, n);
-            if (mpi->stride[n] < 0) {
-                data[n].pixels = mpi->planes[n] + (data[n].height - 1) * mpi->stride[n];
-                data[n].row_stride = -mpi->stride[n];
-                plane->flipped = true;
-            } else {
-                data[n].pixels = mpi->planes[n];
-                data[n].row_stride = mpi->stride[n];
-            }
-
-            pl_buf buf = get_dr_buf(p, data[n].pixels);
-            if (buf) {
-                data[n].buf = buf;
-                data[n].buf_offset = (uint8_t *) data[n].pixels - buf->data;
-                data[n].pixels = NULL;
-            } else if (gpu->limits.callbacks) {
-                data[n].callback = talloc_free;
-                data[n].priv = mp_image_new_ref(mpi);
-            }
-
-            if (!pl_upload_plane(gpu, plane, &tex[n], &data[n])) {
-                MP_ERR(vo, "Failed uploading frame!\n");
-                talloc_free(data[n].priv);
-                talloc_free(mpi);
-                return false;
-            }
+        stats_time_start(p->stats, "swdec-upload");
+        timer_pool_start(p->sw_upload_timer);
+        bool ok = upload_planes_sw(vo, gpu, mpi, frame, tex);
+        timer_pool_stop(p->sw_upload_timer);
+        stats_time_end(p->stats, "swdec-upload");
+        if (!ok) {
+            MP_ERR(vo, "Failed uploading frame!\n");
+            talloc_free(mpi);
+            return false;
         }
-
+        p->sw_upload_perf = timer_pool_measure(p->sw_upload_timer);
     }
 
     // Update chroma location, must be done after initializing planes
     pl_frame_set_chroma_location(frame, par.chroma_location);
+
+#if PL_API_VER >= 367
+    if (mpi->enhancement_layer) {
+        struct mp_image *el = mpi->enhancement_layer;
+        fp->el_hwdec = ra_hwdec_get(&p->hwdec_ctx, el->imgfmt);
+
+        struct mp_image_params el_par = el->params;
+        bool el_ok = true;
+        if (fp->el_hwdec) {
+            if (slot_reconfig(p, &p->el_hwdec, fp->el_hwdec, &el->params)) {
+                el_par = p->el_hwdec.mapper->dst_params;
+            } else {
+                fp->el_hwdec = NULL;
+                el_ok = false;
+            }
+        }
+        mp_image_params_guess_csp(&el_par);
+
+        fp->el_frame = (struct pl_frame) {
+            .color = el_par.color,
+            .repr  = el_par.repr,
+            .user_data = mpi, // BL mpi
+        };
+
+        if (el_ok && fp->el_hwdec) {
+            struct mp_imgfmt_desc desc = mp_imgfmt_get_desc(el_par.imgfmt);
+            fp->el_frame.acquire = hwdec_acquire_el;
+            fp->el_frame.release = hwdec_release_el;
+            setup_hwdec_plane_mapping(&fp->el_frame, &desc);
+        } else if (el_ok) {
+            el_ok = upload_planes_sw(vo, gpu, el, &fp->el_frame, fp->el_tex);
+        }
+
+        if (el_ok) {
+            pl_frame_set_chroma_location(&fp->el_frame, el_par.chroma_location);
+            frame->enhancement_layer = &fp->el_frame;
+        } else {
+            MP_WARN(vo, "Failed setting up enhancement layer; "
+                    "rendering base layer only.\n");
+        }
+    }
+#endif
 
     if (mpi->film_grain)
         pl_film_grain_from_av(&frame->film_grain, (AVFilmGrainParams *) mpi->film_grain->data);
@@ -793,6 +1157,12 @@ static void unmap_frame(pl_gpu gpu, struct pl_frame *frame,
         if (tex)
             MP_TARRAY_APPEND(p, p->sub_tex, p->num_sub_tex, tex);
     }
+    for (int i = 0; i < MP_ARRAY_SIZE(fp->el_tex); i++) {
+        if (fp->el_tex[i])
+            pl_tex_destroy(gpu, &fp->el_tex[i]);
+    }
+    slot_release_owner(p, &p->hwdec, mpi);
+    slot_release_owner(p, &p->el_hwdec, mpi);
     talloc_free(mpi);
 }
 
@@ -878,7 +1248,8 @@ static void apply_target_contrast(struct priv *p, struct pl_color_space *color, 
 }
 
 static void apply_target_options(struct priv *p, struct pl_frame *target,
-                                 float min_luma, bool hint)
+                                 float min_luma, bool hint, float target_ref_luma,
+                                 const struct pl_color_space *target_csp)
 {
     update_lut(p, &p->next_opts->target_lut);
     target->lut = p->next_opts->target_lut.lut;
@@ -895,28 +1266,24 @@ static void apply_target_options(struct priv *p, struct pl_frame *target,
         target->color.transfer = opts->target_trc;
     if (opts->target_peak && (!target->color.hdr.max_luma || !hint))
         target->color.hdr.max_luma = opts->target_peak;
-    if (opts->hdr_reference_white && (!target->color.hdr.max_luma || !hint) &&
-        !pl_color_transfer_is_hdr(target->color.transfer)) {
-        target->color.hdr.max_luma = opts->hdr_reference_white;
+    if (target_ref_luma && (!target->color.hdr.max_luma || !hint) &&
+        use_ref_luma(&target->color, target_csp)) {
+        target->color.hdr.max_luma = target_ref_luma;
     }
     if ((!target->color.hdr.min_luma || !hint))
         apply_target_contrast(p, &target->color, min_luma);
-    if (opts->target_gamut) {
-        // Ensure resulting gamut still fits inside container
-        const struct pl_raw_primaries *gamut, *container;
-        gamut = pl_raw_primaries_get(opts->target_gamut);
-        container = pl_raw_primaries_get(target->color.primaries);
-        target->color.hdr.prim = pl_primaries_clip(gamut, container);
-    }
+    if (opts->target_gamut)
+        mp_parse_raw_primaries(mp_null_log, opts->target_gamut, &target->color.hdr.prim);
     int dither_depth = opts->dither_depth;
     if (dither_depth == 0) {
         struct ra_swapchain *sw = p->ra_ctx->swapchain;
-        if (sw && sw->fns->color_depth && sw->fns->color_depth(sw) != -1) {
-            dither_depth = sw->fns->color_depth(sw);
-        } else if (!pl_color_transfer_is_hdr(target->color.transfer)) {
-            dither_depth = 8;
-        }
+        dither_depth = sw && sw->fns->color_depth ? sw->fns->color_depth(sw) : 0;
     }
+#if PL_API_VER >= 362
+    // Don't dither scRGB, assume downstream will handle quantization properly.
+    if (target->color.transfer == PL_COLOR_TRC_SCRGB)
+        dither_depth = -1;
+#endif
     if (dither_depth > 0) {
         struct pl_bit_encoding *tbits = &target->repr.bits;
         tbits->color_depth += dither_depth - tbits->sample_depth;
@@ -961,6 +1328,34 @@ static void apply_crop(struct pl_frame *frame, struct mp_rect crop,
     }
 }
 
+static bool set_colorspace_hint(struct priv *p, struct pl_color_space *hint)
+{
+    // libmpv: no swapchain to hint; the target's colorspace was fixed by
+    // the API user (see libmpv_render()).
+    if (p->libmpv)
+        return false;
+
+    struct ra_swapchain *sw = p->ra_ctx->swapchain;
+
+    struct mp_image_params params = {
+        .color = hint ? *hint : pl_color_space_srgb,
+        .repr = {
+            .sys = PL_COLOR_SYSTEM_RGB,
+            .levels = p->output_levels ? p->output_levels : PL_COLOR_LEVELS_FULL,
+            .alpha = p->ra_ctx->opts.want_alpha ? PL_ALPHA_INDEPENDENT : PL_ALPHA_NONE,
+        },
+    };
+
+    if (sw->fns->set_color && sw->fns->set_color(sw, hint ? &params : NULL)) {
+        if (hint) {
+            *hint = params.color;
+            return true;
+        }
+    }
+    pl_swapchain_colorspace_hint(p->sw, hint);
+    return false;
+}
+
 static void update_tm_viz(struct pl_color_map_params *params,
                           const struct pl_frame *target)
 {
@@ -982,36 +1377,6 @@ static void update_tm_viz(struct pl_color_map_params *params,
     params->visualize_hue = M_PI / 4.0;
 }
 
-static enum pl_color_primaries get_best_prim_container(const struct pl_raw_primaries *gamut)
-{
-    enum pl_color_primaries container = PL_COLOR_PRIM_UNKNOWN;
-
-    if (!pl_primaries_valid(gamut))
-        return container;
-
-    const struct pl_raw_primaries *best = NULL;
-    for (enum pl_color_primaries prim = 1; prim < PL_COLOR_PRIM_COUNT; prim++) {
-        const struct pl_raw_primaries *raw = pl_raw_primaries_get(prim);
-        if (pl_raw_primaries_similar(raw, gamut)) {
-            container = prim;
-            best = raw;
-            break;
-        }
-
-        if (pl_primaries_superset(raw, gamut) &&
-            (!best || pl_primaries_superset(best, raw)))
-        {
-            container = prim;
-            best = raw;
-        }
-    }
-
-    if (!best)
-        container = PL_COLOR_PRIM_BT_2020;
-
-    return container;
-}
-
 static void update_hook_opts_dynamic(struct priv *p, const struct pl_hook *hook,
                                      const struct mp_image *mpi);
 
@@ -1025,15 +1390,15 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     struct pl_render_params params = pars->params;
     const struct gl_video_opts *opts = p->opts_cache->opts;
     bool will_redraw = frame->display_synced && frame->num_vsyncs > 1;
-    bool cache_frame = will_redraw || frame->still;
+    bool cache_frame = will_redraw || frame->still || p->paused;
     bool can_interpolate = opts->interpolation && frame->display_synced &&
-                           !frame->still && frame->num_frames > 1;
+                           !frame->still && frame->num_frames > 1 && !p->paused;
     double pts_offset = can_interpolate ? frame->ideal_frame_vsync : 0;
     params.info_callback = info_callback;
     params.info_priv = vo;
     params.skip_caching_single_frame = !cache_frame;
     params.preserve_mixing_cache = p->next_opts->inter_preserve && !frame->still;
-    if (frame->still)
+    if (frame->still || p->paused)
         params.frame_mixer = NULL;
 
     if (frame->current && frame->current->params.vflip) {
@@ -1042,6 +1407,13 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
         params.distort_params = &pars->distort_params;
     } else {
         params.distort_params = NULL;
+    }
+
+    // Frames up to last_id were pushed before the seek. Redraws of them keep
+    // the queue as it is, the reset happens with the first new frame.
+    if (p->want_seek_reset && frame->num_frames && frame->frame_id > p->last_id) {
+        p->want_seek_reset = false;
+        p->want_reset = true;
     }
 
     // pl_queue advances its internal virtual PTS and culls available frames
@@ -1054,7 +1426,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     // already requested. Clamp the check to 0, as we don't have the previous
     // frame in vo_frame anyway.
     struct pl_source_frame vpts;
-    if (frame->current && !p->want_reset) {
+    if (frame->current && !p->want_reset && !p->want_seek_reset) {
         if (pl_queue_peek(p->queue, 0, &vpts) &&
             frame->current->pts + MPMAX(0, pts_offset) < vpts.pts)
         {
@@ -1070,11 +1442,16 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
         int id = frame->frame_id + n;
 
         if (p->want_reset) {
-            pl_renderer_flush_cache(p->rr);
             pl_queue_reset(p->queue);
             p->last_pts = 0.0;
             p->last_id = 0;
             p->want_reset = false;
+            p->flush_cache = true;
+        }
+
+        if (p->flush_cache) {
+            pl_renderer_flush_cache(p->rr);
+            p->flush_cache = false;
         }
 
         if (id <= p->last_id)
@@ -1099,24 +1476,16 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
 
     struct ra_swapchain *sw = p->ra_ctx->swapchain;
 
-    bool pass_colorspace = false;
     struct pl_color_space target_csp = {0};
     // TODO: Implement this for all backends
     if (sw && sw->fns->target_csp)
         target_csp = sw->fns->target_csp(sw);
     if (target_csp.primaries == PL_COLOR_PRIM_UNKNOWN)
-        target_csp.primaries = get_best_prim_container(&target_csp.hdr.prim);
+        target_csp.primaries = mp_get_best_prim_container(&target_csp.hdr.prim);
     if (!pl_color_transfer_is_hdr(target_csp.transfer)) {
         // limit min_luma to 1000:1 contrast ratio in SDR mode
         if (target_csp.hdr.min_luma > PL_COLOR_SDR_WHITE / PL_COLOR_SDR_CONTRAST)
             target_csp.hdr.min_luma = 0;
-        // Don't use reported display peak in SDR mode. Mostly because libplacebo
-        // forcefully switches to PQ if hinting hdr metadata, ignoring the transfer
-        // set in the hint. But also because setting target peak in SDR mode is
-        // very specific usecase, needs proper calibration, users can set it manually.
-        target_csp.hdr.max_luma = 0;
-        target_csp.hdr.max_cll = 0;
-        target_csp.hdr.max_fall = 0;
     }
     // maxFALL in display metadata is in fact MaxFullFrameLuminance. Wayland
     // reports it as maxFALL directly, but this doesn't mean the same thing.
@@ -1133,10 +1502,14 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     // Assume HDR is supported, if target_csp() is not available
     // TODO: Remove this fallback when all backends support target_csp()
     bool target_unknown = target_csp.transfer == PL_COLOR_TRC_UNKNOWN;
+    float target_ref_luma = 0;
     if (target_unknown) {
         target_csp = (struct pl_color_space){
             .transfer = opts->target_trc ? opts->target_trc : pl_color_space_hdr10.transfer };
+    } else {
+        target_ref_luma = get_ref_luma(p);
     }
+    bool external_params = false;
     if (target_hint && frame->current) {
         const struct pl_color_space *source = &frame->current->params.color;
         const struct pl_color_space *target = &target_csp;
@@ -1151,14 +1524,6 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
                 pl_color_space_merge(&hint, source);
             if (target_unknown && !opts->target_trc && !pl_color_transfer_is_hdr(source->transfer))
                 hint = *source;
-            // Vulkan doesn't have support for gamma 2.2 transfer function,
-            // so even though requested preferred color space is gamma 2.2, we
-            // fallback to sRGB. sRGB itself is ambiguous, but at least we have
-            // options to control the behavior.
-            // TODO: Revise this after fix for linear transfers lands in libplacebo.
-            // <https://code.videolan.org/videolan/libplacebo/-/merge_requests/759>
-            if (hint.transfer == PL_COLOR_TRC_GAMMA22)
-                hint.transfer = PL_COLOR_TRC_SRGB;
             // Restore target luminance if it was present, note that we check
             // max_luma only, this make sure that max_cll/max_fall is not take
             // from source.
@@ -1199,24 +1564,16 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
             hint.hdr.max_cll  = target->hdr.max_cll;
             hint.hdr.max_fall = target->hdr.max_fall;
         }
-        if (p->ra_ctx->fns && p->ra_ctx->fns->pass_colorspace &&
-            p->ra_ctx->fns->pass_colorspace(p->ra_ctx))
-            pass_colorspace = true;
         if (opts->target_prim)
             hint.primaries = opts->target_prim;
-        if (opts->target_gamut) {
-            // Ensure resulting gamut still fits inside container
-            const struct pl_raw_primaries *gamut, *container;
-            gamut = pl_raw_primaries_get(opts->target_gamut);
-            container = pl_raw_primaries_get(hint.primaries);
-            hint.hdr.prim = pl_primaries_clip(gamut, container);
-        }
+        if (opts->target_gamut)
+            mp_parse_raw_primaries(mp_null_log, opts->target_gamut, &hint.hdr.prim);
         if (opts->target_trc)
             hint.transfer = opts->target_trc;
         if (opts->target_peak)
             hint.hdr.max_luma = opts->target_peak;
-        if (opts->hdr_reference_white && !pl_color_transfer_is_hdr(hint.transfer))
-            hint.hdr.max_luma = opts->hdr_reference_white;
+        if (target_ref_luma && use_ref_luma(&hint, &target_csp))
+            hint.hdr.max_luma = target_ref_luma;
         // Always set maxCLL, display uses this metadata and we shouldn't let it
         // fallback to default value.
         if (!hint.hdr.max_cll)
@@ -1248,13 +1605,11 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
         // Update again after possible max_luma change
         if (p->icc_profile)
             hint = p->icc_profile->csp;
-        if (!pass_colorspace)
-            pl_swapchain_colorspace_hint(p->sw, &hint);
+        external_params = set_colorspace_hint(p, &hint);
     } else if (!target_hint) {
         if (!hint.hdr.min_luma)
             hint.hdr.min_luma = target_csp.hdr.min_luma;
-        if (p->sw)
-            pl_swapchain_colorspace_hint(p->sw, NULL);
+        external_params = set_colorspace_hint(p, NULL);
     }
 
     struct pl_swapchain_frame swframe;
@@ -1275,10 +1630,8 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
                 .pts = frame->current->pts + pts_offset,
                 .radius = pl_frame_mix_radius(&params),
                 .vsync_duration = can_interpolate ? frame->ideal_frame_vsync_duration : 0,
+                .drift_compensation = 0,
             );
-#if PL_API_VER >= 340
-            qparams.drift_compensation = 0;
-#endif
             pl_queue_update(p->queue, NULL, &qparams);
         }
         return VO_FALSE;
@@ -1290,8 +1643,20 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     // Calculate target
     struct pl_frame target;
     pl_frame_from_swapchain(&target, &swframe);
-    bool strict_sw_params = target_hint && !pass_colorspace && p->next_opts->target_hint_strict;
-    apply_target_options(p, &target, hint.hdr.min_luma, strict_sw_params);
+    if (external_params)
+        target.color = hint;
+    bool strict_sw_params = target_hint && p->next_opts->target_hint_strict;
+    apply_target_options(p, &target, hint.hdr.min_luma, strict_sw_params,
+                         target_ref_luma, &target_csp);
+    bool clip_gamut = pl_primaries_valid(&target.color.hdr.prim);
+#if PL_API_VER >= 362
+    clip_gamut = clip_gamut && target.color.transfer != PL_COLOR_TRC_SCRGB;
+#endif
+    if (clip_gamut) {
+        // Ensure resulting gamut still fits inside container
+        target.color.hdr.prim = pl_primaries_clip(&target.color.hdr.prim,
+                                    pl_raw_primaries_get(target.color.primaries));
+    }
     if (target.color.transfer == PL_COLOR_TRC_SRGB && frame->current &&
         ((opts->sdr_adjust_gamma == 0 && opts->target_trc == PL_COLOR_TRC_UNKNOWN) ||
          opts->sdr_adjust_gamma == -1))
@@ -1331,9 +1696,12 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
             target.color.transfer = PL_COLOR_TRC_SRGB;
 #endif
     }
+    stats_time_start(p->stats, "osd-update");
     update_overlays(vo, p->osd_res,
                     (frame->current && opts->blend_subs) ? OSD_DRAW_OSD_ONLY : 0,
-                    PL_OVERLAY_COORDS_DST_FRAME, &p->osd_state, &target, frame->current);
+                    PL_OVERLAY_COORDS_DST_FRAME, &p->osd_state, &target, frame->current,
+                    frame->current ? frame->current->params.stereo3d : 0, get_ref_luma(p));
+    stats_time_end(p->stats, "osd-update");
     apply_crop(&target, p->dst, swframe.fbo->params.w, swframe.fbo->params.h);
     update_tm_viz(&pars->color_map_params, &target);
 
@@ -1345,10 +1713,8 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
             .radius = pl_frame_mix_radius(&params),
             .vsync_duration = can_interpolate ? frame->ideal_frame_vsync_duration : 0,
             .interpolation_threshold = opts->interpolation_threshold,
+            .drift_compensation = 0,
         );
-#if PL_API_VER >= 340
-        qparams.drift_compensation = 0;
-#endif
 
         // Depending on the vsync ratio, we may be up to half of the vsync
         // duration before the current frame time. This works fine because
@@ -1372,7 +1738,8 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
         case PL_QUEUE_MORE:
             // This is expected to happen semi-frequently near the start and
             // end of a file, so only log it at high verbosity and move on.
-            MP_DBG(vo, "Render queue underrun.\n");
+            if (!frame->still)
+                MP_DBG(vo, "Render queue underrun.\n");
             break;
         case PL_QUEUE_OK:
             break;
@@ -1406,8 +1773,11 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
                     };
                     enum pl_overlay_coords rel = opts->blend_subs == BLEND_SUBS_VIDEO
                         ? PL_OVERLAY_COORDS_SRC_CROP : PL_OVERLAY_COORDS_DST_CROP;
+                    stats_time_start(p->stats, "osd-blend-update");
                     update_overlays(vo, res, OSD_DRAW_SUB_ONLY,
-                                    rel, &fp->subs, image, mpi);
+                                    rel, &fp->subs, image, mpi,
+                                    mpi->params.stereo3d, get_ref_luma(p));
+                    stats_time_end(p->stats, "osd-blend-update");
                     fp->osd_sync = p->osd_sync;
                 }
             } else {
@@ -1432,7 +1802,10 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     }
 
     // Render frame
-    if (!pl_render_image_mix(p->rr, &mix, &target, &params)) {
+    stats_time_start(p->stats, "render");
+    bool render_ok = pl_render_image_mix(p->rr, &mix, &target, &params);
+    stats_time_end(p->stats, "render");
+    if (!render_ok) {
         MP_ERR(vo, "Failed rendering frame!\n");
         goto done;
     }
@@ -1446,14 +1819,14 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
                         ? swframe.fbo->params.format->name : NULL,
         .w = mp_rect_w(p->dst),
         .h = mp_rect_h(p->dst),
-        .color = pass_colorspace ? hint : target.color,
+        .color = target.color,
         .repr = target.repr,
         .rotate = target.rotation,
     };
     vo->target_params = &p->target_params;
 
     if (vo->params) {
-        // Augment metadata with peak detection max_pq_y / avg_pq_y
+        // Augment metadata with the peak detection results
         vo->has_peak_detect_values = pl_renderer_get_hdr_metadata(p->rr, &vo->params->color.hdr);
     }
     mp_mutex_unlock(&vo->params_mutex);
@@ -1561,11 +1934,20 @@ static bool update_icc(struct priv *p, struct bstr icc)
     return ok;
 }
 
+// Whether a host-supplied libmpv ICC profile is in effect.
+static bool has_host_icc(struct priv *p)
+{
+    return p->libmpv && p->libmpv_icc.len;
+}
+
 // Returns whether the ICC profile was updated (even on failure)
 static bool update_auto_profile(struct priv *p, int *events)
 {
     const struct gl_video_opts *opts = p->opts_cache->opts;
-    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path)
+    // The host profile stands in for the auto profile; libmpv has no window
+    // to query, so querying would only unload it.
+    if (!opts->icc_opts || !opts->icc_opts->profile_auto || p->icc_path ||
+        has_host_icc(p))
         return false;
 
     MP_VERBOSE(p, "Querying ICC profile...\n");
@@ -1613,10 +1995,8 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
     enum pl_queue_status status;
     struct pl_queue_params qparams = *pl_queue_params(
         .pts = p->last_pts,
+        .drift_compensation = 0,
     );
-#if PL_API_VER >= 340
-        qparams.drift_compensation = 0;
-#endif
     status = pl_queue_update(p->queue, &mix, &qparams);
     mp_assert(status != PL_QUEUE_EOF);
     if (status == PL_QUEUE_ERR) {
@@ -1632,6 +2012,12 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
     // the resulting mix is the correct frame for this PTS
     struct pl_frame image = *(struct pl_frame *) mix.frames[0];
     struct mp_image *mpi = image.user_data;
+
+    // Clear reference luminance before taking a screenshot, we want screenshot
+    // to be independent of the system reference luminance.
+    if (!pl_color_transfer_is_hdr(image.color.transfer))
+        image.color.hdr.max_luma = 0;
+
     struct mp_rect src = p->src, dst = p->dst;
     struct mp_osd_res osd = p->osd_res;
     if (!args->scaled) {
@@ -1706,7 +2092,7 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
     const struct gl_video_opts *opts = p->opts_cache->opts;
     if (args->scaled) {
         // Apply target LUT, ICC profile and CSP override only in window mode
-        apply_target_options(p, &target, 0, false);
+        apply_target_options(p, &target, 0, false, 0, NULL);
     } else if (args->native_csp) {
         target.color = image.color;
     } else {
@@ -1752,11 +2138,13 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
         enum pl_overlay_coords rel = opts->blend_subs == BLEND_SUBS_VIDEO
             ? PL_OVERLAY_COORDS_SRC_CROP : PL_OVERLAY_COORDS_DST_CROP;
         update_overlays(vo, res, osd_flags,
-                        rel, &fp->subs, &image, mpi);
+                        rel, &fp->subs, &image, mpi,
+                        mpi->params.stereo3d, 0);
     } else {
         // Disable overlays when blend_subs is disabled
         update_overlays(vo, osd, osd_flags, PL_OVERLAY_COORDS_DST_FRAME,
-                        &p->osd_state, &target, mpi);
+                        &p->osd_state, &target, mpi,
+                        mpi->params.stereo3d, 0);
         image.num_overlays = 0;
     }
 
@@ -1791,27 +2179,48 @@ done:
 }
 
 static inline void copy_frame_info_to_mp(struct frame_info *pl,
-                                         struct mp_frame_perf *mp) {
+                                         struct mp_frame_perf *mp,
+                                         struct mp_pass_perf *hwdec_perf,
+                                         struct mp_pass_perf *sw_upload_perf)
+{
     static_assert(MP_ARRAY_SIZE(pl->info) == MP_ARRAY_SIZE(mp->perf), "");
     mp_assert(pl->count <= VO_PASS_PERF_MAX);
-    mp->count = MPMIN(pl->count, VO_PASS_PERF_MAX);
 
-    for (int i = 0; i < mp->count; ++i) {
+    struct mp_pass_perf *perf = mp->perf;
+    char (*desc)[VO_PASS_DESC_MAX_LEN] = mp->desc;
+    struct mp_pass_perf *perf_end = perf + VO_PASS_PERF_MAX;
+
+    if (hwdec_perf && hwdec_perf->count > 0) {
+        *perf++ = *hwdec_perf;
+        snprintf(*desc, sizeof(*desc), "map frame (hwdec)");
+        desc++;
+    }
+
+    if (sw_upload_perf && sw_upload_perf->count > 0) {
+        *perf++ = *sw_upload_perf;
+        snprintf(*desc, sizeof(*desc), "upload frame");
+        desc++;
+    }
+
+    for (int i = 0; i < pl->count && perf < perf_end; ++i) {
         const struct pl_dispatch_info *pass = &pl->info[i];
 
         static_assert(VO_PERF_SAMPLE_COUNT >= MP_ARRAY_SIZE(pass->samples), "");
         mp_assert(pass->num_samples <= MP_ARRAY_SIZE(pass->samples));
 
-        struct mp_pass_perf *perf = &mp->perf[i];
         perf->count = MPMIN(pass->num_samples, VO_PERF_SAMPLE_COUNT);
         memcpy(perf->samples, pass->samples, perf->count * sizeof(pass->samples[0]));
         perf->last = pass->last;
         perf->peak = pass->peak;
         perf->avg = pass->average;
 
-        strncpy(mp->desc[i], pass->shader->description, sizeof(mp->desc[i]) - 1);
-        mp->desc[i][sizeof(mp->desc[i]) - 1] = '\0';
+        strncpy(*desc, pass->shader->description, sizeof(*desc) - 1);
+        (*desc)[sizeof(*desc) - 1] = '\0';
+        perf++;
+        desc++;
     }
+
+    mp->count = perf - mp->perf;
 }
 
 static void update_ra_ctx_options(struct vo *vo, struct ra_ctx_opts *ctx_opts)
@@ -1838,6 +2247,10 @@ static int control(struct vo *vo, uint32_t request, void *data)
     case VOCTRL_PAUSE:
         if (p->is_interpolated)
             vo->want_redraw = true;
+        p->paused = true;
+        return VO_TRUE;
+    case VOCTRL_RESUME:
+        p->paused = false;
         return VO_TRUE;
 
     case VOCTRL_UPDATE_RENDER_OPTS: {
@@ -1865,13 +2278,13 @@ static int control(struct vo *vo, uint32_t request, void *data)
 
     case VOCTRL_RESET:
         // Defer until the first new frame (unique ID) actually arrives
-        p->want_reset = true;
+        p->want_seek_reset = true;
         return VO_TRUE;
 
     case VOCTRL_PERFORMANCE_DATA: {
         struct voctrl_performance_data *perf = data;
-        copy_frame_info_to_mp(&p->perf_fresh, &perf->fresh);
-        copy_frame_info_to_mp(&p->perf_redraw, &perf->redraw);
+        copy_frame_info_to_mp(&p->perf_fresh, &perf->fresh, &p->hwdec.perf, &p->sw_upload_perf);
+        copy_frame_info_to_mp(&p->perf_redraw, &perf->redraw, NULL, NULL);
         return true;
     }
 
@@ -2113,6 +2526,11 @@ done:
 static void uninit(struct vo *vo)
 {
     struct priv *p = vo->priv;
+
+    // Drain any in-flight uploads.
+    if (p->gpu)
+        pl_gpu_finish(p->gpu);
+
     pl_queue_destroy(&p->queue); // destroy this first
     for (int i = 0; i < MP_ARRAY_SIZE(p->osd_state.entries); i++)
         pl_tex_destroy(p->gpu, &p->osd_state.entries[i].tex);
@@ -2121,8 +2539,11 @@ static void uninit(struct vo *vo)
     for (int i = 0; i < p->num_user_hooks; i++)
         pl_mpv_user_shader_destroy(&p->user_hooks[i].hook);
 
+    timer_pool_destroy(p->sw_upload_timer);
+
     if (vo->hwdec_devs) {
-        ra_hwdec_mapper_free(&p->hwdec_mapper);
+        slot_uninit(p, &p->hwdec);
+        slot_uninit(p, &p->el_hwdec);
         ra_hwdec_ctx_uninit(&p->hwdec_ctx);
         hwdec_devices_set_loader(vo->hwdec_devs, NULL, NULL);
         hwdec_devices_destroy(vo->hwdec_devs);
@@ -2169,6 +2590,7 @@ static int preinit(struct vo *vo)
     p->video_eq = mp_csp_equalizer_create(p, vo->global);
     p->global = vo->global;
     p->log = vo->log;
+    p->stats = stats_ctx_create(p, vo->global, "vo/gpu-next");
 
     struct gl_video_opts *gl_opts = p->opts_cache->opts;
     if (!p->libmpv) {
@@ -2203,13 +2625,16 @@ static int preinit(struct vo *vo)
     mp_mutex_init(&p->dr_lock);
 
     // libmpv: the Vulkan render context already attached a shader cache
-    // with the same options and file layout to this gpu.
-    if (gl_opts->shader_cache && !p->libmpv)
+    // with the same options and file layout to this gpu. The D3D11 one has
+    // none, so the VO's own cache (which also stores the compiled DXBC) is
+    // used there, like in the windowed VO.
+    const bool ctx_cache = p->libmpv && !p->libmpv_vo_cache;
+    if (gl_opts->shader_cache && !ctx_cache)
         cache_init(vo, &p->shader_cache, 10 << 20, gl_opts->shader_cache_dir);
     if (gl_opts->icc_opts->cache)
         cache_init(vo, &p->icc_cache, 20 << 20, gl_opts->icc_opts->cache_dir);
 
-    if (!p->libmpv)
+    if (!ctx_cache)
         pl_gpu_set_cache(p->gpu, p->shader_cache.cache);
     p->rr = pl_renderer_create(p->pllog, p->gpu);
     p->queue = pl_queue_create(p->gpu);
@@ -2248,8 +2673,13 @@ static const struct pl_filter_config *map_scaler(struct priv *p,
 
     const struct gl_video_opts *opts = p->opts_cache->opts;
     const struct scaler_config *cfg = &opts->scaler[unit];
-    if (cfg->kernel.function == SCALER_INHERIT)
-        cfg = &opts->scaler[SCALER_SCALE];
+    struct scaler_config tmp;
+    if (cfg->kernel.function == SCALER_INHERIT) {
+        tmp = *cfg;
+        scaler_conf_merge(&tmp, &opts->scaler[SCALER_SCALE], unit);
+        cfg = &tmp;
+    }
+
     const char *kernel_name = m_opt_choice_str(cfg->kernel.functions,
                                                cfg->kernel.function);
 
@@ -2341,7 +2771,7 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
     if (!opts)
         return;
 
-    if (!opts->profile_auto && !p->icc_path) {
+    if (!opts->profile_auto && !p->icc_path && !has_host_icc(p)) {
         // Un-set any auto-loaded profiles if icc-profile-auto was disabled
         update_icc(p, (bstr) {0});
     }
@@ -2356,8 +2786,9 @@ static void update_icc_opts(struct priv *p, const struct mp_icc_opts *opts)
     p->icc_params.cache = p->icc_cache.cache;
 
     if (!opts->profile || !opts->profile[0]) {
-        // No profile enabled, un-load any existing profiles
-        update_icc(p, (bstr) {0});
+        // No profile enabled, un-load any existing profiles; a host profile
+        // is re-applied with the new parameters instead.
+        update_icc(p, has_host_icc(p) ? bstrdup(NULL, p->libmpv_icc) : (bstr) {0});
         TA_FREEP(&p->icc_path);
         return;
     }
@@ -2408,39 +2839,16 @@ static void update_lut(struct priv *p, struct user_lut *lut)
 static void update_hook_opts_dynamic(struct priv *p, const struct pl_hook *hook,
                                      const struct mp_image *mpi)
 {
-    float chroma_offset_x, chroma_offset_y;
-    pl_chroma_location_offset(mpi->params.chroma_location,
-                              &chroma_offset_x, &chroma_offset_y);
-    const struct {
-        const char *name;
-        double value;
-    } opts[] = {
-        {             "PTS", mpi->pts                           },
-        { "chroma_offset_x", chroma_offset_x                    },
-        { "chroma_offset_y", chroma_offset_y                    },
-        {        "min_luma", mpi->params.color.hdr.min_luma     },
-        {        "max_luma", mpi->params.color.hdr.max_luma     },
-        {         "max_cll", mpi->params.color.hdr.max_cll      },
-        {        "max_fall", mpi->params.color.hdr.max_fall     },
-        {     "scene_max_r", mpi->params.color.hdr.scene_max[0] },
-        {     "scene_max_g", mpi->params.color.hdr.scene_max[1] },
-        {     "scene_max_b", mpi->params.color.hdr.scene_max[2] },
-        {       "scene_avg", mpi->params.color.hdr.scene_avg    },
-        {        "max_pq_y", mpi->params.color.hdr.max_pq_y     },
-        {        "avg_pq_y", mpi->params.color.hdr.avg_pq_y     },
-    };
-
     for (int i = 0; i < hook->num_parameters; i++) {
+        double val;
         const struct pl_hook_par *hp = &hook->parameters[i];
-        for (int n = 0; n < MP_ARRAY_SIZE(opts); n++) {
-            if (strcmp(hp->name, opts[n].name) != 0)
-                continue;
+        if (!gpu_get_auto_param(mpi, bstr0(hp->name), &val))
+            continue;
 
-            switch (hp->type) {
-                case PL_VAR_FLOAT: hp->data->f = opts[n].value; break;
-                case PL_VAR_SINT:  hp->data->i = lrint(opts[n].value); break;
-                case PL_VAR_UINT:  hp->data->u = lrint(opts[n].value); break;
-            }
+        switch (hp->type) {
+        case PL_VAR_FLOAT: hp->data->f = val; break;
+        case PL_VAR_SINT:  hp->data->i = lrint(val); break;
+        case PL_VAR_UINT:  hp->data->u = lrint(val); break;
         }
     }
 }
@@ -2456,10 +2864,7 @@ static void update_hook_opts(struct priv *p, char **opts, const char *shaderpath
     if (!opts)
         return;
 
-    const char *basename = mp_basename(shaderpath);
-    struct bstr shadername;
-    if (!mp_splitext(basename, &shadername))
-        shadername = bstr0(basename);
+    struct bstr shadername = mp_strip_ext(mp_basename_bstr(bstr0(shaderpath)));
 
     for (int n = 0; opts[n * 2]; n++) {
         struct bstr k = bstr0(opts[n * 2 + 0]);
@@ -2531,23 +2936,15 @@ static void update_render_options(struct vo *vo)
     pars->params.disable_linear_scaling = !opts->linear_downscaling && !opts->linear_upscaling;
     pars->params.disable_fbos = opts->dumb_mode == 1;
 
-#if PL_API_VER >= 346
     static const int map_background_types[] = {
         [BACKGROUND_NONE]  = PL_CLEAR_SKIP,
         [BACKGROUND_COLOR] = PL_CLEAR_COLOR,
         [BACKGROUND_TILES] = PL_CLEAR_TILES,
-#if PL_API_VER >= 355
         [BACKGROUND_BLUR]  = PL_CLEAR_BLUR,
-#endif
     };
     pars->params.background = map_background_types[opts->background];
     pars->params.border = map_background_types[p->next_opts->border_background];
-#if PL_API_VER >= 355
     pars->params.blur_radius = p->next_opts->background_blur_radius;
-#endif
-#else
-    pars->params.blend_against_tiles = opts->background == BACKGROUND_TILES;
-#endif
     pars->params.tile_size = opts->background_tile_size * 2;
     for (int i = 0; i < 2; ++i) {
         pars->params.tile_colors[i][0] = opts->background_tile_color[i].r / 255.0f;
@@ -2572,10 +2969,12 @@ static void update_render_options(struct vo *vo)
         req_frames += ceilf(pars->params.frame_mixer->kernel->radius) *
                       (pars->params.skip_anti_aliasing ? 1 : 2);
     }
-    p->req_frames = MPMIN(VO_MAX_REQ_FRAMES, req_frames);
+    req_frames = MPMIN(VO_MAX_REQ_FRAMES, req_frames);
+    p->req_frames = req_frames;
+    // pl_queue also retains past frames for the symmetric mixing window,
     // libmpv: applied to the real VO in libmpv_update_external().
     if (!p->libmpv)
-        vo_set_queue_params(vo, 0, p->req_frames);
+        vo_set_queue_params(vo, 0, req_frames, 2 * req_frames - 1);
 
     pars->params.deband_params = opts->deband ? &pars->deband_params : NULL;
     pars->deband_params.iterations = opts->deband_opts->iterations;
@@ -2674,8 +3073,15 @@ AV_NOWARN_DEPRECATED(
 
     pars->params.hooks = p->hooks;
 
-    MP_DBG(p, "Render options updated, resetting render state.\n");
-    p->want_reset = true;
+    MP_DBG(p, "Render options updated, flushing renderer cache.\n");
+    p->flush_cache = p->paused || !p->next_opts->inter_preserve;
+
+    // These options are baked into mapped frames. Reset the queue to map the
+    // queued frames again.
+    p->want_reset = p->want_reset || p->last_ref_white != opts->hdr_reference_white;
+    p->want_reset = p->want_reset || ((p->last_srgb_power22 ^ opts->treat_srgb_as_power22) & 1);
+    p->last_ref_white = opts->hdr_reference_white;
+    p->last_srgb_power22 = opts->treat_srgb_as_power22;
 }
 
 const struct vo_driver video_out_gpu_next = {
@@ -2705,12 +3111,17 @@ const struct vo_driver video_out_gpu_next = {
 // libmpv render API backend (mpv_kit extension)
 //
 // Runs this renderer under mpv_render_context_render() with
-// MPV_RENDER_API_TYPE_VULKAN. The Vulkan device import and target wrapping
-// are shared with the gpu renderer (libmpv_gpu_context_vk); this part only
-// adapts the render_backend_fns entry points to the VO code above, which
-// operates on a private struct vo that carries no windowing state.
+// MPV_RENDER_API_TYPE_VULKAN or, on Windows, MPV_RENDER_API_TYPE_D3D11. The
+// device import and target wrapping are shared with the gpu renderer
+// (libmpv_gpu_context_vk / libmpv_gpu_context_d3d11); this part only adapts
+// the render_backend_fns entry points to the VO code above, which operates on
+// a private struct vo that carries no windowing state.
 
+#include "mpv/render_gl.h" // mpv_opengl_drm_params_v2 (type only)
 #include "mpv/render_vk.h"
+#if HAVE_D3D11
+#include "mpv/render_d3d11.h"
+#endif
 #include "video/out/gpu/libmpv_gpu.h"
 #include "video/out/libmpv.h"
 
@@ -2722,6 +3133,11 @@ struct libmpv_priv {
     struct mp_image_params params;
     // Owned here: uninit() clears the VO's copy of the pointer.
     pl_log pllog;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    // D3D11: the libplacebo device on the host's ID3D11Device, the same one
+    // the context's ra_d3d11 uses. Owned here; destroyed before that ra.
+    pl_d3d11 d3d11;
+#endif
 };
 
 static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
@@ -2730,7 +3146,19 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     struct libmpv_priv *lp = ctx->priv;
 
     char *api = get_mpv_render_param(params, MPV_RENDER_PARAM_API_TYPE, NULL);
-    if (!api || strcmp(api, MPV_RENDER_API_TYPE_VULKAN) != 0)
+    const struct libmpv_gpu_context_fns *fns = NULL;
+    bool is_d3d11 = false;
+    if (api && strcmp(api, MPV_RENDER_API_TYPE_VULKAN) == 0) {
+        fns = &libmpv_gpu_context_vk;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    } else if (api && strcmp(api, MPV_RENDER_API_TYPE_D3D11) == 0) {
+        // The upstream D3D11 context creates the ra_d3d11 on the host device;
+        // pl_d3d11 is added on the same device below.
+        fns = &libmpv_gpu_context_d3d11;
+        is_d3d11 = true;
+#endif
+    }
+    if (!fns)
         return MPV_ERROR_NOT_IMPLEMENTED;
     const char *renderer =
         get_mpv_render_param(params, MPV_RENDER_PARAM_VULKAN_RENDERER, "gpu-next");
@@ -2745,7 +3173,7 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     *lp->context = (struct libmpv_gpu_context) {
         .global = ctx->global,
         .log = ctx->log,
-        .fns = &libmpv_gpu_context_vk,
+        .fns = fns,
     };
     int err = lp->context->fns->init(lp->context, params);
     if (err < 0)
@@ -2761,8 +3189,51 @@ static int libmpv_init(struct render_backend *ctx, mpv_render_param *params)
     struct priv *p = vo->priv;
     p->libmpv = true;
     p->ra_ctx = lp->context->ra_ctx;
-    p->gpu = ra_pl_get(p->ra_ctx->ra);
+
+    // Hand the host's DRM render node to hwdec (VA-API). The gpu renderer's
+    // libmpv_gpu.c registers every native resource on the ra before
+    // gl_video_init_hwdecs(). preinit() below loads all hwdecs
+    // (libmpv load_all), so the resource must be on the ra before it, or
+    // hwdec_vaapi's create_drm_va_display() finds no render node. Only
+    // drm_params_v2 is registered: x11/wayland are disabled in mpv_kit builds
+    // and drm_draw_surface_size only serves the drmprime overlay (the host
+    // passes fd=-1, which skips it). The struct is copied like libmpv_gpu.c
+    // does; the fds stay owned by the host, which closes them after the render
+    // context is freed. (mpv_kit, Phase 16 HWD-03)
+    mpv_opengl_drm_params_v2 *drm =
+        get_mpv_render_param(params, MPV_RENDER_PARAM_DRM_DISPLAY_V2, NULL);
+    if (drm) {
+        drm = talloc_memdup(lp, drm, sizeof(*drm));
+        ra_add_native_resource(p->ra_ctx->ra, "drm_params_v2", drm);
+        MP_VERBOSE(ctx, "gpu-next: native resource drm_params_v2 (render_fd %d)\n",
+                   drm->render_fd);
+    }
+
     p->pllog = lp->pllog = mppl_log_create(lp, ctx->log);
+    if (!is_d3d11) {
+        p->gpu = ra_pl_get(p->ra_ctx->ra);
+    }
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    else if (p->pllog) {
+        // The ra_d3d11 (hwdec mapping, upstream D3D11 context) and the
+        // pl_d3d11 (this renderer) must share the host's device, exactly as
+        // in gpu_next/context.c. No silent fallback to the gpu renderer: the
+        // API user asked for this one.
+        ID3D11Device *device = ra_d3d11_get_device(p->ra_ctx->ra);
+        if (device) {
+            lp->d3d11 = pl_d3d11_create(p->pllog, pl_d3d11_params(
+                .device = device,
+            ));
+            SAFE_RELEASE(device);
+        }
+        if (lp->d3d11) {
+            p->gpu = lp->d3d11->gpu;
+            p->libmpv_vo_cache = true;
+        } else {
+            MP_ERR(ctx, "Failed to create a libplacebo D3D11 context.\n");
+        }
+    }
+#endif
     if (!p->gpu || !p->pllog) {
         mp_mutex_destroy(&vo->params_mutex);
         lp->vo = NULL;
@@ -2795,8 +3266,16 @@ static int libmpv_set_parameter(struct render_backend *ctx, mpv_render_param par
     switch (param.type) {
     case MPV_RENDER_PARAM_ICC_PROFILE: {
         mpv_byte_array *data = param.data;
-        // update_icc() takes ownership of the copy.
-        update_icc(p, bstrdup(NULL, (bstr){data->data, data->size}));
+        // Runs on the render thread, like draw: no lock needed. An empty
+        // profile clears the host profile.
+        talloc_free(p->libmpv_icc.start);
+        p->libmpv_icc = data && data->size
+            ? bstrdup(p, (bstr){data->data, data->size}) : (bstr) {0};
+        // A user --icc-profile wins; the host profile returns if it is cleared.
+        if (!p->icc_path) {
+            // update_icc() takes ownership of the copy.
+            update_icc(p, bstrdup(NULL, p->libmpv_icc));
+        }
         return 0;
     }
     default:
@@ -2821,7 +3300,9 @@ static void libmpv_reset(struct render_backend *ctx)
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
-    // Same as VOCTRL_RESET: defer until the next new frame arrives.
+    // Immediate, unlike VOCTRL_RESET's deferred want_seek_reset: vo_libmpv
+    // also resets on VO uninit/recreate, where the new VO restarts frame ids
+    // below p->last_id and a deferred reset would keep the old file's frames.
     p->want_reset = true;
 }
 
@@ -2834,7 +3315,7 @@ static void libmpv_update_external(struct render_backend *ctx, struct vo *vo)
     if (vo) {
         // Options may have changed the interpolation radius.
         update_options(lp->vo);
-        vo_set_queue_params(vo, 0, p->req_frames);
+        vo_set_queue_params(vo, 0, p->req_frames, 2 * p->req_frames - 1);
     }
 }
 
@@ -2860,14 +3341,51 @@ static int libmpv_get_target_size(struct render_backend *ctx,
     return 0;
 }
 
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+// Wraps MPV_RENDER_PARAM_D3D11_FBO for libplacebo. The texture's bind flags
+// decide what libplacebo may do with it, so "renderable" is checked here: a
+// texture without D3D11_BIND_RENDER_TARGET is the API user's mistake.
+static int wrap_d3d11_fbo(struct render_backend *ctx, pl_gpu gpu,
+                          mpv_render_param *params, pl_tex *out)
+{
+    mpv_d3d11_fbo *fbo =
+        get_mpv_render_param(params, MPV_RENDER_PARAM_D3D11_FBO, NULL);
+    if (!fbo || !fbo->tex)
+        return MPV_ERROR_INVALID_PARAMETER;
+
+    pl_tex tex = pl_d3d11_wrap(gpu, pl_d3d11_wrap_params(.tex = fbo->tex));
+    if (!tex)
+        return MPV_ERROR_UNSUPPORTED;
+    if (!tex->params.renderable) {
+        MP_ERR(ctx, "Texture was not created with D3D11_BIND_RENDER_TARGET\n");
+        pl_tex_destroy(gpu, &tex);
+        return MPV_ERROR_INVALID_PARAMETER;
+    }
+    *out = tex;
+    return 0;
+}
+#endif
+
 static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
                          struct vo_frame *frame)
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
 
-    struct ra_tex *tex;
-    int err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+    pl_tex fbo = NULL;
+    pl_tex d3d11_fbo = NULL; // D3D11: wrapped here, destroyed below
+    int err = 0;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    if (lp->d3d11) {
+        err = wrap_d3d11_fbo(ctx, p->gpu, params, &d3d11_fbo);
+        fbo = d3d11_fbo;
+    } else
+#endif
+    {
+        struct ra_tex *tex;
+        err = lp->context->fns->wrap_fbo(lp->context, params, &tex);
+        fbo = err < 0 ? NULL : tex->priv; // the pl_tex wrapped by mppl_wrap_tex()
+    }
     if (err < 0)
         return err;
 
@@ -2875,7 +3393,7 @@ static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
     // The host's image is a plain sRGB-encoded RGB surface, like a Vulkan
     // SDR swapchain image.
     p->libmpv_target = (struct pl_swapchain_frame) {
-        .fbo = tex->priv, // the pl_tex wrapped by mppl_wrap_tex()
+        .fbo = fbo,
         .flipped = flip,
         .color_repr = pl_color_repr_rgb,
         .color_space = {
@@ -2886,7 +3404,15 @@ static int libmpv_render(struct render_backend *ctx, mpv_render_param *params,
     draw_frame(lp->vo, frame);
     p->libmpv_target = (struct pl_swapchain_frame) {0};
 
-    lp->context->fns->done_frame(lp->context, frame->display_synced);
+    if (d3d11_fbo) {
+        // render_d3d11.h: everything is submitted before this returns and no
+        // reference to the host texture is kept.
+        pl_gpu_flush(p->gpu);
+        pl_tex_destroy(p->gpu, &d3d11_fbo);
+    }
+
+    if (!lp->context->fns->done_frame(lp->context, frame->display_synced))
+        return MPV_ERROR_GENERIC;
     return 0;
 }
 
@@ -2911,8 +3437,8 @@ static void libmpv_perfdata(struct render_backend *ctx,
 {
     struct libmpv_priv *lp = ctx->priv;
     struct priv *p = lp->vo->priv;
-    copy_frame_info_to_mp(&p->perf_fresh, &out->fresh);
-    copy_frame_info_to_mp(&p->perf_redraw, &out->redraw);
+    copy_frame_info_to_mp(&p->perf_fresh, &out->fresh, &p->hwdec.perf, &p->sw_upload_perf);
+    copy_frame_info_to_mp(&p->perf_redraw, &out->redraw, NULL, NULL);
 }
 
 static void libmpv_destroy(struct render_backend *ctx)
@@ -2929,6 +3455,11 @@ static void libmpv_destroy(struct render_backend *ctx)
         lp->vo = NULL;
     }
     ctx->hwdec_devs = NULL;
+#if HAVE_D3D11 && defined(PL_HAVE_D3D11)
+    // After the renderer and the hwdec mappers, before the context's
+    // ra_d3d11 (VO -> pl_d3d11 -> ra, as in gpu_next/context.c).
+    pl_d3d11_destroy(&lp->d3d11);
+#endif
     pl_log_destroy(&lp->pllog);
 
     if (lp->context) {

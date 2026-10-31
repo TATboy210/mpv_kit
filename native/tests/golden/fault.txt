@@ -1,0 +1,208 @@
+# Golden traces of the fallback chain and fault events under injected faults
+# (video_renderer_fault_test, Phase 17 VER-01).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from reading video_renderer.cc
+# (Start, NewBackend, UsedLater, RenderOnce, OnRenderResult, RenderLoop); they
+# change only in reviewed commits. The backends are fakes named "d3d11" and
+# "vulkan" with injected faults, so the reasons have the shape of the real
+# ones. Ring sizes follow a compositor latency of 4: 8 images, fallback 5.
+#
+# Line vocabulary:
+#   start ok backend=<wire> reason="<r>"   Start() result, wire_name(), backend_reason()
+#   start=false reason="<r>"               Start() failed; the reason is trails only
+#   create-attempts <api>/<renderer>[,...] render_context_create calls in order
+#                                          (devices that failed to initialise
+#                                          never reach mpv); cumulative until `recreate`
+#   device-inits d3d11=<n> vulkan=<n>      device initialisations per api; cumulative
+#                                          over the whole scenario, `recreate` included
+#   log <line>                             renderer log lines of Start
+#   alloc ring=<n> <W>x<H> ok|fail         AllocTargets call of the fake backend
+#   event <kind> [<msg>]                   EventFn (render thread)
+#   render buf=<b> frame=<n> WxH <fmt>     successful mpv render into a fake target
+#   render skip                            SKIP_RENDERING
+#   acquire index=<i> WxH platform=<yes|no>  AcquireFront()
+#   draws <n>                              non-skip render calls since the last `recreate`
+#   backoffs ok <ms,...>                   measured intervals between renders met
+#                                          the lower bounds (and the cap)
+#   backoffs measured <ms,...>             they did not: the measured intervals
+#   retry-after-backoff ok|measured <ms>   the retry came no earlier than its backoff
+#   retry-after-resize ok|measured <ms>    the retry followed the resize within the slack
+#   recreate                               the renderer was destroyed, the fake libmpv
+#                                          reset, and a new renderer is created on the
+#                                          same platform (faults persist)
+#   teardown frees=<n>                     render_context_free calls after destruction
+
+# The d3d11 device is lost while its backend is created: both d3d11
+# candidates carry the trail, vulkan/gpu-next wins, d3d11 was initialised once
+# (its gpu candidate is not asked again) and nothing raises an event.
+[create-device-lost-next-api]
+start ok backend=vulkan reason="vulkan (gpu-next) on fake-vk; d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected)"
+create-attempts vulkan/gpu-next
+device-inits d3d11=1 vulkan=1
+log none
+teardown frees=1
+
+# d3d11's device is gone and vulkan's mpv creates are rejected on both
+# renderers: software wins and its reason lists the four failed candidates in
+# chain order. Each failed vulkan create is logged (a failed device is not),
+# the Vulkan fall-back notice carries the whole trail, and the software
+# renderer then draws a frame.
+[create-every-gpu-candidate-fails]
+start ok backend=software reason="software (sw) on cpu; d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; d3d11/gpu unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu unavailable: mpv_render_context_create: fake error -18"
+create-attempts vulkan/gpu-next,vulkan/gpu,sw
+device-inits d3d11=1 vulkan=1
+log mpv_kit: gpu-next unavailable: fake error -18
+log mpv_kit: gpu unavailable: fake error -18
+log mpv_kit: Vulkan backend unavailable (d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; d3d11/gpu unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected); vulkan/gpu unavailable: mpv_render_context_create: fake error -18), falling back to software rendering
+event resize 64x36
+render buf=0 frame=1 64x36 rgb0
+draws 1
+teardown frees=1
+
+# The d3d11 backend loses its device at the publish gate of its third frame
+# (frames 1 and 2 were drawn and taken): the lost frame is drawn, then exactly
+# one device_lost; the two mpv frames after it are skips only (three draws in
+# total); the render context is freed once. The renderer is then created again
+# while the device is still gone: d3d11's device fails (second initialisation),
+# the chain moves on to vulkan/gpu-next with the d3d11 trail, and it draws.
+[runtime-device-lost-then-recreate]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+alloc ring=8 64x36 ok
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+acquire index=0 64x36 platform=yes
+render buf=1 frame=2 64x36 bgr0
+acquire index=1 64x36 platform=yes
+render buf=2 frame=3 64x36 bgr0
+event device_lost device lost
+render skip
+render skip
+draws 3
+teardown frees=1
+recreate
+start ok backend=vulkan reason="vulkan (gpu-next) on fake-vk; d3d11/gpu-next unavailable: d3d11 device removed during initialisation: 0x887A0005 (injected)"
+create-attempts vulkan/gpu-next
+device-inits d3d11=2 vulkan=1
+log none
+alloc ring=8 64x36 ok
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+draws 1
+teardown frees=1
+
+# Seven publish-gate timeouts in a row, then the GPU recovers. gpu_timeout
+# comes on failures 1, 2 and 4 only (frames 1, 2 and 4 below); the retries of
+# the eight renders wait at least 100, 200, 400, 800, 1600, 3200 ms and then
+# the 5000 ms cap (not 6400 ms); one `recovered` follows the eighth render.
+# The frame never reaches the compositor before: no acquire, no resize
+# after the first.
+[runtime-timeout-storm]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+alloc ring=8 64x36 ok
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+event gpu_timeout gpu timeout
+render buf=0 frame=2 64x36 bgr0
+event gpu_timeout gpu timeout
+render buf=0 frame=3 64x36 bgr0
+render buf=0 frame=4 64x36 bgr0
+event gpu_timeout gpu timeout
+render buf=0 frame=5 64x36 bgr0
+render buf=0 frame=6 64x36 bgr0
+render buf=0 frame=7 64x36 bgr0
+render buf=0 frame=8 64x36 bgr0
+event recovered
+backoffs ok 100,200,400,800,1600,3200,5000
+draws 8
+teardown frees=1
+
+# The first two target allocations fail: the full ring (8) and then the
+# fallback ring (5) of the first frame. The frame is skipped and one
+# render_error carries the fallback attempt's reason. After the 100 ms backoff
+# the engine retries by itself, allocates the full ring, draws and recovers.
+[runtime-alloc-fails-then-backoff-recovers]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+alloc ring=8 64x36 ok
+event resize 64x36
+render buf=0 frame=1 64x36 bgr0
+event recovered
+retry-after-backoff ok
+draws 1
+teardown frees=1
+
+# Allocations at 64x36 fail for good. Five failed frames (two attempts and one
+# skip each) raise render_error on failures 1, 2 and 4 and leave a 1600 ms
+# backoff pending; a resize to 32x18 is retried at once instead, allocates the
+# full ring and recovers.
+[runtime-alloc-fails-resize-retries-at-once]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+alloc ring=8 32x18 ok
+event resize 32x18
+render buf=0 frame=1 32x18 bgr0
+event recovered
+retry-after-resize ok
+draws 1
+teardown frees=1
+
+# Allocations fail for good (only the first failure is listed: later backoff
+# retries are timing). The renderer is destroyed and created again: Start
+# picks the SAME backend, d3d11/gpu-next, because a failed allocation does not
+# advance the chain, and the first frame fails the same way. The chain moves
+# only when creation fails (ver01=create-chain); a running controller never
+# switches backend.
+[runtime-alloc-fails-persist-recreate-same-backend]
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=1 vulkan=0
+log none
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+teardown frees=1
+recreate
+start ok backend=d3d11 reason="d3d11 (gpu-next) on fake-d3d11"
+create-attempts d3d11/gpu-next
+device-inits d3d11=2 vulkan=0
+log none
+alloc ring=8 64x36 fail
+alloc ring=5 64x36 fail
+render skip
+event render_error CreateTexture2D failed: 0x8007000E (injected, ring 5)
+teardown frees=1

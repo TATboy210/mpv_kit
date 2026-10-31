@@ -1,0 +1,6 @@
+session_gate=gate run=session-start result=pass desktop=unlocked ac=yes disk_free_repo_mib=8522 stray_example=0 heavy_gpu=none native_equal=yes at=2026-10-30T07:54:35.269Z
+power_scheme=电源方案 GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (平衡)
+power_timeouts=sleep(STANDBYIDLE) ac=0x00000000 dc=0x00000000; screen-off(VIDEOIDLE) ac=0x00000000 dc=0x00000000 (0 = never; read-only powercfg /q, nothing changed)
+prep_sha=9ae347fd48aec7e6601b0448c8e2b04205291cef head_at_session_start=b34a402 (docs/CI-only since prep_sha)
+user_reply=start
+confirmed_at=2026-10-30T07:56:34Z

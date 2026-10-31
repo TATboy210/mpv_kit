@@ -120,8 +120,18 @@ case "$(uname -s)" in
           "$prefix"/*|/clang64/*|/clangarm64/*) cp "$unix" "$out/lib/" ;;
         esac
       done
-    python -I "$root/tools/rea_abi_audit/pe_audit.py" "$out/lib/libmpv-2.dll" \
-      --expect "$root/tools/rea_abi_audit/expected_symbols.txt" --forbid-gpl
+    # D3D-02: every DLL of the bundle is audited (GPL and ANGLE/EGL bans);
+    # no DLL is excluded by name. libmpv-2.dll also gets the symbol check.
+    for dll in "$out"/lib/*.dll; do
+      if [ "$(basename "$dll")" = "libmpv-2.dll" ]; then
+        python -I "$root/tools/rea_abi_audit/pe_audit.py" "$dll" \
+          --expect "$root/tools/rea_abi_audit/expected_symbols.txt" \
+          --forbid-gpl --forbid-angle
+      else
+        python -I "$root/tools/rea_abi_audit/pe_audit.py" "$dll" \
+          --forbid-gpl --forbid-angle
+      fi
+    done
     ;;
   *)
     echo "unsupported host $(uname -s)" >&2

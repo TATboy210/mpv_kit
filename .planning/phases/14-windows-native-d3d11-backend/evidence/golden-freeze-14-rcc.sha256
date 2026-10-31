@@ -1,0 +1,7 @@
+# quick 261029-rcc re-freeze; approval recorded in .planning/quick/261029-rcc-fifo-depth-2-frame-queue-with-swap-at-pu/261029-rcc-CONTEXT.md (golden_refreeze: approved); supersedes golden-freeze-14.sha256.
+# Only native/tests/golden/vk.txt changed, by the ring's extra image (create/destroy lines and serial renumbering), checked by build/rcc/golden_check.py.
+4dd9194e8a231774b002d32e0d8ce5c18c05eac243192ae656f44ee636c6d3a4 *native/tests/renderer_harness.h
+d6a33115ee93662b9effeb46f0fb3334778fbaadfa9b81ef637a0a64f49e2eab *native/tests/video_renderer_golden_sw.cc
+d3af81cbc1ea3b89bc789c735b62bb7175066de1e4f228208050ce269c969f9a *native/tests/video_renderer_golden_vk.cc
+4aa10846a71202e2848b376854d3fdf896bbd28fdc3f2f45ada1fd6ff77a1f35 *native/tests/golden/sw.txt
+29267e0b04f297305e10dc33af7efba6916420b50564ec6f54d044333ca65dae *native/tests/golden/vk.txt

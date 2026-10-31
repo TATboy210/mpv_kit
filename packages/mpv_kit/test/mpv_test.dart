@@ -6,7 +6,9 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -19,6 +21,13 @@ const _lavfi = 'av://lavfi:testsrc2=size=320x240:rate=30:duration=2';
 Mpv _create() => Mpv.create(
   options: const {'vo': 'null', 'ao': 'null', 'idle': 'yes', 'terminal': 'no'},
 );
+
+/// Upper bound for the child-process dispose scenario (VM start + compile +
+/// mpv init + dispose). A hang in `mpv_terminate_destroy` never returns, so
+/// past this the child is killed and the test fails instead of blocking CI.
+/// A healthy run measured 4-13 s on a loaded Windows host (mostly `dart run`
+/// startup), so 15 s would be flaky; the generous bound only delays a failure.
+const _childProcessTimeout = Duration(seconds: 60);
 
 Future<T> _firstWhere<T extends MpvEventData>(
   Mpv mpv, [
@@ -105,6 +114,26 @@ void main() {
       expect(mpv.tryGetProperty('duration'), isNull);
     });
 
+    test('an unknown option at create is recorded, not silent (OBS-04)',
+        () {
+      final mpv2 = Mpv.create(
+        options: const {'definitely-not-an-option': '1'},
+      );
+      addTearDown(mpv2.dispose);
+      expect(
+        mpv2.ignoredOptionsForTesting.join('\n'),
+        contains('definitely-not-an-option'),
+        reason: 'a tolerated unknown option must be observable (OBS-04)',
+      );
+    });
+
+    test('an invalid option value still fails create loudly', () {
+      expect(
+        () => Mpv.create(options: const {'volume': 'not-a-number'}),
+        throwsA(isA<MpvException>()),
+      );
+    });
+
     test('command returns structured result', () {
       final r = mpv.command(['expand-text', r'${volume}']);
       expect(r, isA<String>());
@@ -188,6 +217,138 @@ void main() {
         },
       );
     });
+
+    test('dispose closes Mpv.events and observer streams', () async {
+      final eventsDone = Completer<void>();
+      final observerDone = Completer<void>();
+      mpv.events.listen((_) {}, onDone: eventsDone.complete);
+      mpv
+          .observeProperty('volume')
+          .listen((_) {}, onDone: observerDone.complete);
+      mpv.dispose();
+      await eventsDone.future.timeout(const Duration(seconds: 5));
+      await observerDone.future.timeout(const Duration(seconds: 5));
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+      expect(mpv.isDisposed, isTrue);
+    });
+
+    test('observeProperty stream listened after dispose fails without native '
+        'access', () async {
+      final stream = mpv.observeProperty('volume');
+      mpv.dispose();
+      final error = Completer<Object>();
+      stream.listen((_) {}, onError: (Object e) => error.complete(e));
+      expect(
+        await error.future.timeout(const Duration(seconds: 5)),
+        isA<StateError>(),
+      );
+    });
+  });
+
+  group('post-dispose guard', () {
+    // Every public member that can reach the native handle must fail with a
+    // catchable StateError after dispose, and none of those rejections may
+    // count as a native entry (that would mean FFI was entered).
+    test('every public Mpv entry point throws StateError without a native '
+        'entry', () {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+
+      final liveEntries = mpv.nativeEntriesForTesting;
+      expect(mpv.getProperty('volume'), isNotNull);
+      expect(
+        mpv.nativeEntriesForTesting,
+        greaterThan(liveEntries),
+        reason: 'the counter must track real handler entries',
+      );
+
+      mpv.dispose();
+      final afterDispose = mpv.nativeEntriesForTesting;
+
+      final calls = <void Function()>[
+        mpv.initialize,
+        () => mpv.clientName,
+        () => mpv.clientId,
+        () => mpv.timeNs,
+        () => mpv.createClient('x'),
+        () => mpv.loadConfigFile('x'),
+        () => mpv.setOptionString('volume', '1'),
+        () => mpv.setOption('volume', 1.0),
+        () => mpv.command(['get-property', 'volume']),
+        () => mpv.commandString('set volume 1'),
+        () => mpv.commandAsync(['get-property', 'volume']),
+        () => mpv.setProperty('volume', 1.0),
+        () => mpv.setPropertyString('volume', '1'),
+        () => mpv.deleteProperty('volume'),
+        () => mpv.getProperty('volume'),
+        () => mpv.tryGetProperty('volume'),
+        () => mpv.getPropertyString('volume'),
+        () => mpv.setPropertyAsync('volume', 1.0),
+        () => mpv.getPropertyAsync('volume'),
+        () => mpv.observeProperty('volume'),
+        () => mpv.getOptionValue(MpvOptions.volume),
+        () => mpv.setOptionValue(MpvOptions.volume, 1.0),
+        () => mpv.registerStreamProtocol('x', (_) => null),
+        () => mpv.requestLogMessages('no'),
+        () => mpv.requestEvent(MpvEventId.tick, enable: false),
+        () => mpv.hookAdd('on_load'),
+        () => mpv.hookContinue(0),
+        mpv.wakeup,
+        mpv.waitAsyncRequests,
+        // errorString/eventName are guard-free since Phase 3 (IN-02): pure
+        // lookups that never touch the handle, usable after dispose.
+      ];
+
+      for (final call in calls) {
+        expect(call, throwsStateError);
+      }
+      expect(
+        mpv.nativeEntriesForTesting,
+        afterDispose,
+        reason: 'no post-dispose call may count as a native entry',
+      );
+    });
+
+    test('observer stream created before dispose fails on late listen without '
+        'native access', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final stream = mpv.observeProperty('volume');
+      mpv.dispose();
+      final before = mpv.nativeEntriesForTesting;
+
+      final error = Completer<Object>();
+      stream.listen((_) {}, onError: error.complete);
+      expect(
+        await error.future.timeout(const Duration(seconds: 5)),
+        isA<StateError>(),
+      );
+      expect(mpv.nativeEntriesForTesting, before);
+    });
+
+    test('dispose from a synchronous events listener closes events without '
+        'throwing', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final done = Completer<void>();
+      Object? escaped;
+      mpv.events.listen(
+        (_) {
+          try {
+            mpv.dispose();
+          } on Object catch (error) {
+            escaped = error;
+          }
+        },
+        onDone: done.complete,
+      );
+      // Any event starts the synchronous dispatch that re-enters dispose.
+      unawaited(mpv.setPropertyAsync('volume', 42.0).catchError((Object _) {}));
+      await done.future.timeout(const Duration(seconds: 5));
+      expect(escaped, isNull);
+      expect(mpv.isDisposed, isTrue);
+      mpv.dispose(); // a second dispose is a no-op that must not throw
+    });
   });
 
   test('raw bindings remain usable for unwrapped calls', () {
@@ -195,5 +356,117 @@ void main() {
     addTearDown(mpv.dispose);
     expect(mpv.bindings.getTimeUs(mpv.handle), greaterThan(0));
     expect(mpv.handle, isNot(nullptr));
+  });
+
+  group('error surfacing (OBS-02)', () {
+    /// Runs [body] in a guarded zone collecting escaped errors, rethrowing
+    /// body failures (mirrors failure_injection_test.dart's `_guarded`).
+    Future<void> guarded(
+      List<Object> zoneErrors,
+      Future<void> Function() body,
+    ) async {
+      await runZonedGuarded(
+        body,
+        (error, _) => zoneErrors.add(error),
+      );
+    }
+
+    test('a throwing observer listener does not abort the drain', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final zoneErrors = <Object>[];
+      Future<void> waitUntil(bool Function() ok) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (!ok()) {
+          if (DateTime.now().isAfter(deadline)) {
+            fail('timed out waiting for a drain condition');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      }
+
+      await guarded(zoneErrors, () async {
+        final seen = <Object?>[];
+        final subA = mpv.observeProperty('volume').listen((_) {
+          throw StateError('listener boom');
+        });
+        final subB = mpv.observeProperty('volume').listen(seen.add);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        mpv.setProperty('volume', 50.0);
+        // The drain must survive observer A's throw and still deliver to B —
+        // twice, proving later queued events keep flowing.
+        await waitUntil(() => seen.isNotEmpty);
+        mpv.setProperty('volume', 60.0);
+        await waitUntil(() => seen.length >= 2);
+        await subA.cancel();
+        await subB.cancel();
+      });
+      // Dart reports a throwing sync-controller listener to the zone (the
+      // add() caller is unaffected) — that is standard platform behaviour for
+      // a *user* listener, not an mpv_kit leak. Player._bind's own listeners
+      // contain parse failures and route them to Player.errors instead.
+      expect(
+        zoneErrors.where((e) => e is! StateError),
+        isEmpty,
+        reason: 'nothing besides the injected listener error may escape',
+      );
+      expect(zoneErrors, hasLength(2), reason: 'one per delivered event');
+    });
+
+    test('an abandoned async command error does not become an unhandled '
+        'error', () async {
+      final mpv = _create();
+      addTearDown(mpv.dispose);
+      final zoneErrors = <Object>[];
+      await guarded(zoneErrors, () async {
+        // Fire-and-forget: nobody listens to the reply future.
+        mpv.commandAsync({'name': 'definitely-not-a-command'});
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      expect(
+        zoneErrors,
+        isEmpty,
+        reason: 'a reply error for an abandoned future must be ignored',
+      );
+    });
+
+    test('errorString and eventName work after dispose (IN-02)', () async {
+      final mpv = _create();
+      mpv.dispose();
+      expect(mpv.errorString(0), isNotEmpty);
+      expect(mpv.eventName(1), isNotEmpty);
+    });
+  });
+
+  group('dispose with live child clients', () {
+    // mp_shutdown_clients (client.c) waits until the core has no clients
+    // left, weak ones included. If the owner's dispose does not destroy the
+    // children first, the synchronous FFI call blocks this isolate forever —
+    // no Dart timeout can fire — so the scenario runs in a child process.
+    test('owner dispose destroys child, weak and grandchild clients', () async {
+      final proc = await Process.start(Platform.resolvedExecutable, [
+        'run',
+        'test/fixtures/dispose_with_children.dart',
+      ]);
+      final out = StringBuffer();
+      final drained = Future.wait([
+        proc.stdout.transform(utf8.decoder).forEach(out.write),
+        proc.stderr.transform(utf8.decoder).forEach(out.write),
+      ]);
+      var timedOut = false;
+      final code = await proc.exitCode.timeout(
+        _childProcessTimeout,
+        onTimeout: () {
+          timedOut = true;
+          proc.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
+      // A killed child may leave its pipes open briefly; never wait unbounded.
+      await drained.timeout(const Duration(seconds: 5), onTimeout: () => []);
+      expect(timedOut, isFalse, reason: 'dispose hung; output:\n$out');
+      expect(code, 0, reason: '$out');
+      expect(out.toString(), contains('ok'));
+    }, timeout: const Timeout(Duration(seconds: 90)));
   });
 }

@@ -1,6 +1,14 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  # `dart:mirrors` is VM-only and the local Flutter workspace cannot resolve
+  # it. `analyzer.exclude` applies in EVERY context, so CI's Dart-only
+  # workspace loses static analysis for this file too, not just the local one.
+  # What still catches mistakes is `dart test`, which compiles and runs the
+  # file: hard compile errors fail the run, but lint/type diagnostics that do
+  # not stop compilation will not be reported for it anywhere.
+  exclude:
+    - test/api_freeze_test.dart
   language:
     strict-casts: true
     strict-inference: true

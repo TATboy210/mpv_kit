@@ -1,0 +1,18 @@
+trace-start utc=2026-10-26T10:59:18.933738Z
+t=338 round=0 step=preflight-dispose-begin rss=289484800 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=1
+t=341 round=0 step=preflight-unmount-done rss=289488896 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=1
+t=357 round=0 step=preflight-frame-done rss=289603584 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=1
+t=406 round=0 step=preflight-dispose-done rss=289697792 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=1
+t=409 round=1 step=create-begin rss=287371264 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=1
+t=502 round=1 step=create-done rss=300564480 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=504 round=1 step=mount-done rss=300564480 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=506 round=1 step=open-begin rss=300630016 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=513 round=1 step=open-done rss=307499008 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=627 round=1 step=params-wait-done rss=436973568 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=630 round=1 step=set-size-1280-begin rss=436977664 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=633 round=1 step=set-size-1280-done rss=437035008 resizeEvents=0 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=642 round=1 step=first-resize-wait-done rss=443031552 resizeEvents=1 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=644 round=1 step=hold-front-begin rss=438841344 resizeEvents=1 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=1148 round=1 step=hold-front-done rss=454074368 resizeEvents=1 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=1149 round=1 step=set-size-640-begin rss=454074368 resizeEvents=1 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2
+t=1153 round=1 step=set-size-640-done rss=454115328 resizeEvents=1 idleSoak=0 renderErrors=0 deviceLost=0 controllers=2

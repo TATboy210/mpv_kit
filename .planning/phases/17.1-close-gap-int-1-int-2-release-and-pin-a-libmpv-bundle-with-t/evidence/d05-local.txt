@@ -1,0 +1,7 @@
+d05-scripts encoding=utf-8 crlf=none files=3 syntax=ok
+d05-red-local NOT_REPRODUCIBLE locate=HEAD analyze=new bundle=v0.1.0-dev.3 archive_sha256=863f3643a5f948392c4c3ed3fc656b3354535d9ad9cdb5032d015775d7ca4ff8 value_form=posix exit=0 load_error=no log=d05-local-red.log
+d05-red-local-reason this host's path layer lets POSIX paths reach Windows Dart (also with MSYS2_ENV_CONV_EXCL set; cygpath -w returns /Users/... or /workspace/volumes/... here), while the CI Analyze step ran under pwsh with the Locate step's /d/a/... value and no conversion; the hosted red proof is evidence/d05-ci.txt
+d05-green locate=new analyze=new bundle=v0.1.0-dev.3 archive_sha256=863f3643a5f948392c4c3ed3fc656b3354535d9ad9cdb5032d015775d7ca4ff8 value_form=cygpath-w exit=0 load_error=no log=d05-local-green.log
+d05-ci-before run=40949963646 job=123715146292 job_conclusion=success summary="7 tests passed, 1 failed." load_error=yes
+d05-ci-before run=40984192897 job=123831214051 job_conclusion=success summary="7 tests passed, 1 failed." load_error=yes
+d05-ci-before run=41065294826 job=124094812213 job_conclusion=success summary="7 tests passed, 1 failed." load_error=yes

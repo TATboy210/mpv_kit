@@ -428,6 +428,29 @@ void main() {
         ]);
       });
     });
+
+    test('a property event decodes its node exactly once (PERF-01)', () {
+      using((a) {
+        final prop = a<MpvEventProperty>();
+        prop.ref
+          ..name = 'time-pos'.toNativeUtf8(allocator: a)
+          ..format = MpvFormat.node
+          ..data = writeNode(1.234, a).cast();
+        final e = a<MpvEvent>();
+        e.ref
+          ..eventId = MpvEventId.propertyChange
+          ..error = 0
+          ..replyUserdata = 1
+          ..data = prop.cast();
+        final before = MpvEventData.propDecodesForTesting;
+        MpvEventData.decode(e);
+        expect(
+          MpvEventData.propDecodesForTesting - before,
+          1,
+          reason: 'the name/value pair must come from a single _prop call',
+        );
+      });
+    });
   });
 
   group('nodes', () {

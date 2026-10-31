@@ -1,3 +1,30 @@
+## 0.1.0-dev.4
+
+- libmpv: stream-bridge use-after-free on cancel after close, a host-source
+  leak and seek desynchronisation fixed (patch 0006); render failures are
+  reported instead of silently succeeding (0001/0004); CoreAudio NULL-string
+  crashes fixed (0007); four upstream mpv fixes backported (0009).
+- libplacebo 7.360.1 with 14 upstream fixes (Vulkan command races,
+  external-image hand-off, pl_queue lifetime, memory safety).
+- The bundles are the v0.1.0-dev.4 release (`bundleTag`). Patch changes since
+  v0.1.0-dev.3: 0010 adds the Direct3D 11 render API, 0012 builds the Linux
+  libmpv against libdrm 2.4.113, 0008 (vendor integration fixes) and 0009
+  (upstream backports) are new, 0004 is now
+  `libmpv-gpu-next-render-backend-and-renderer-report` and absorbs 0005.
+  Windows libmpv gains the Direct3D 11 render API; the Windows bundle adds
+  `libshaderc_shared.dll` and `libspirv-cross-c-shared.dll` (with their
+  `licenses/shaderc` and `licenses/spirv-cross` entries). Linux libmpv is
+  built with OpenGL/EGL and needs the host `libEGL.so.1` (libglvnd), so a
+  host without libEGL cannot load it. macOS has no backend change.
+- The build hook reuses a cached bundle only when its extracted `lib/`
+  directory still holds every shared library that `MANIFEST.txt` lists (and the
+  manifest itself is present), so a stale `{target}.ok` stamp left by a cleaned
+  or partly cleaned cache (an empty `lib/`, or libmpv gone while a dependency
+  remains) now leads to a reinstall from the verified archive (or a fresh
+  download) instead of silently bundling no libmpv; a pinned bundle that
+  yields no shared libraries now fails the build with
+  `BundleIntegrityException`.
+
 ## 0.1.0-dev.3
 
 - Windows: the bundled libmpv now includes the Vulkan render API. The

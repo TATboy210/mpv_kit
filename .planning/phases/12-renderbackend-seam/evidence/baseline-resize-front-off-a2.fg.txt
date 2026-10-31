@@ -1,0 +1,13 @@
+2026-10-26T11:00:05.460Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:07.815Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:09.997Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:12.165Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:14.364Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:16.577Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:18.754Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:20.931Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:23.126Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:25.315Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:27.520Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:29.707Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:00:31.951Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10

@@ -1,0 +1,58 @@
+Resolving dependencies in `D:\mpv_kit`...
+Downloading packages...
+  _fe_analyzer_shared 103.0.0 (110.0.0 available)
+  analyzer 13.3.0 (14.6.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  crypto 3.0.7 (3.0.8 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  desktop_drop 0.7.1 (0.9.2 available)
+  frontend_server_client 4.1.0 (4.2.0 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  shelf 1.4.2 (1.4.3 available)
+  shelf_static 1.1.3 (1.2.0 available)
+  test 1.31.1 (1.33.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  test_core 0.6.18 (0.6.21 available)
+  vector_math 2.4.3 (2.4.4 available)
+  vm_service 15.3.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+Got dependencies in `D:\mpv_kit`!
+18 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading D:/mpv_kit/example/integration_test/uhd_endurance_test.dart
+Building Windows application...                                    19.0s
+✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+00:00 +0: UHD endurance 3840x2160 x 600s
+mpv_kit_video: vulkan (d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11)
+HWDEC {"schema":"hwdec-1","test":"uhd_endurance","sample":"lavfi","at":"first-frame","api":"d3d11","requested":"auto-safe","hwdecCurrent":"no","hwdecInterop":"d3d11va,dxva2-dxgi","pixelformat":"yuv420p","hwPixelformat":null,"d3d11vaZeroCopy":false,"outcome":"software","zeroCopy":false,"reason":"d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11"}
+07:22 +0: loading D:/mpv_kit/example/integration_test/uhd_endurance_test.dart
+Some possible finders for the widgets at Offset(410.0, 509.3):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+Some possible finders for the widgets at Offset(523.3, 420.7):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+Some possible finders for the widgets at Offset(435.3, 463.3):
+  find.byType(SizedBox)
+  find.byType(ValueListenableBuilder<int?>)
+  find.byType(Directionality)
+  find.byType(Focus)
+  find.byType(FocusTraversalGroup)
+  find.byElementType(InheritedModelElement<_MediaQueryAspect>)
+  find.byElementType(StatelessElement)
+10:01 +0: UHD endurance 3840x2160 x 600s
+BENCH uhd {"label":"4k-rendered-d3d11","size":"3840x2160","seconds":600,"rendered":true,"renderErrors":0,"deviceLost":false,"frameDropCountFinal":0,"decoderFrameDropCountFinal":0,"avsyncPeakAbs":0.00002010091184007079,"totalAvsyncChangeFinal":-0.03333333293581514,"voDelayedFrameCountAvg":0.0,"voDelayedFrameCountMax":0,"displaySyncActive":false,"estimatedVfFpsFinal":30.000000000000018,"rssBytes":820264960,"samplesPerMinute":[{"t":"11","avsync":0.000008097330719825102,"total-avsync-change":-0.03333333333333785,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"71","avsync":0.000010192871063074982,"total-avsync-change":-0.033333333336755214,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"131","avsync":0.000014200846303713544,"total-avsync-change":-0.03333333334330878,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"191","avsync":0.000013498942023459914,"total-avsync-change":-0.03333333334989409,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"251","avsync":0.000018697102816378486,"total-avsync-change":-0.03333333335648509,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"311","avsync":0.000012593587603360046,"total-avsync-change":-0.033333333290504426,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"371","avsync":0.00001099650104968708,"total-avsync-change":-0.03333333321713981,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"431","avsync":0.000011210124132798871,"total-avsync-change":-0.03333333314373547,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"491","avsync":0.000018503825246429795,"total-avsync-change":-0.033333333070376524,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false},{"t":"551","avsync":0.000013702392923697904,"total-avsync-change":-0.033333332996991615,"frame-drop-count":0,"decoder-frame-drop-count":0,"estimated-vf-fps":30.000000000000018,"vo-delayed-frame-count":0,"display-sync-active":false}]}
+10:01 +1: (tearDownAll)
+10:01 +1: All tests passed!

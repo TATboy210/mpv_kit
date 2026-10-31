@@ -44,6 +44,17 @@ class VulkanInterop {
   virtual bool CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,
                            int height, SharedImage* out) = 0;
   virtual void DestroyImage(VkDevice dev, SharedImage* img) = 0;
+  /// Linux (VA-API interop, Phase 16): opens the DRM render node of [device]
+  /// and returns its fd, or -1 for none. The caller owns the fd and hands it
+  /// back through CloseDrmRenderNode after the render context is freed; mpv
+  /// receives it as MPV_RENDER_PARAM_DRM_DISPLAY_V2 and does not dup it.
+  /// Default (Windows, macOS): -1.
+  virtual int OpenDrmRenderNode(VkPhysicalDevice device) {
+    (void)device;
+    return -1;
+  }
+  /// Closes an fd returned by OpenDrmRenderNode. Default: nothing to close.
+  virtual void CloseDrmRenderNode(int fd) { (void)fd; }
 };
 
 /// Instance, device and queues configured for libplacebo + Vulkan video.
@@ -55,15 +66,23 @@ class VulkanContext {
   /// Creates instance + device. On failure [error] explains why.
   bool Init(std::string* error);
 
-  /// (Re)allocates [count] images of the given size. The previous ring is
-  /// kept (retired) until FreeRetired() or the next reallocation, so its
-  /// last frame can stay on screen meanwhile. Waits for the GPU.
-  bool AllocateRing(int count, int width, int height, std::string* error);
+  /// (Re)allocates [count] images of the given size. Only the old
+  /// generation's front image ([keep_retired], may be null) survives into
+  /// retirement — its platform texture must stay valid while the compositor
+  /// may still sample it; the rest of the old generation is destroyed at
+  /// once (retiring everything would pin count×w×h×4 bytes of VRAM — at 8K
+  /// that is ~930 MB for nothing). Each destroyed image is awaited on its
+  /// own last timeline value, not with a device-wide vkDeviceWaitIdle.
+  bool AllocateRing(int count, int width, int height,
+                    SharedImage* keep_retired, std::string* error);
   void FreeRing();
   void FreeRetired();
 
   /// Reserves the next timeline value for a render into ring[i].
   uint64_t NextSignalValue(int i);
+  /// Restores ring[i]'s ready value after a render that signalled nothing,
+  /// so WaitImage(i) does not wait for a value that never arrives.
+  void RollbackSignalValue(int i, uint64_t previous);
   /// Waits until rendering into ring[i] has completed on the GPU:
   /// VK_SUCCESS, VK_TIMEOUT (1 s) or an error such as VK_ERROR_DEVICE_LOST.
   VkResult WaitImage(int i);

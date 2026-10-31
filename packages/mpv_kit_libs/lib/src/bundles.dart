@@ -7,7 +7,7 @@
 library;
 
 /// GitHub release tag the pinned bundles belong to.
-const bundleTag = 'v0.1.0-dev.3';
+const bundleTag = 'v0.1.0-dev.4';
 
 /// Download location of the bundle for [target] (e.g. `windows-x64`).
 Uri bundleUrl(String target) => Uri.https(
@@ -17,10 +17,10 @@ Uri bundleUrl(String target) => Uri.https(
 
 /// sha256 of `libmpv-<target>.tar.gz`, keyed by target.
 const bundleSha256 = <String, String>{
-  'linux-arm64': '6d4a08472c86e5375a44583dfb0b9e981abca0fc66217a095f6ba22a79e977a8',
-  'linux-x64': '7e81acfffee1a45b8f8af080d4cc57658f33992b7c8c93f9559378cf1355f8ce',
-  'macos-arm64': 'da2f350cccb65446b4111d252b68751a84d720931fef4ae2583d20ce3fa982af',
-  'macos-x64': 'e2e7d260b6e5738d51253ed0f91fce2d6e7e171c395a0667d251e4eae2bb6d08',
-  'windows-arm64': 'e4b4e9522517dbef8289c4a300ecdcf850532b178fb4916cee8f029410fc9f3c',
-  'windows-x64': '863f3643a5f948392c4c3ed3fc656b3354535d9ad9cdb5032d015775d7ca4ff8',
+  'linux-arm64': 'cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1',
+  'linux-x64': '2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29',
+  'macos-arm64': '38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a',
+  'macos-x64': 'c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190',
+  'windows-arm64': 'af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1',
+  'windows-x64': '6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254',
 };

@@ -1,0 +1,6 @@
+identity-source: flutter-run
+run: impeller-off (identity fallback control)
+command: cd example && MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter run -d windows --no-enable-impeller   (timeout 75s)
+start: 2026-10-24T17:46:26Z
+off_rc: 124
+end: 2026-10-24T17:47:41Z

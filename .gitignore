@@ -3,7 +3,14 @@ build/
 *.iml
 .idea/
 coverage/
-pubspec.lock
 native/out/
 !native/build/
 .ffmpeg-build/
+
+# Stale local libmpv DLLs (Oct 15, pre-rebase): superseded by the
+# mpv_kit_libs hook bundle — see README "Local libmpv for tests".
+bt/
+
+# Generated hwdec/route sample media (CI and the RTX session put them into this
+# asset directory; only its README is tracked).
+example/integration_test/route_samples/*.mp4

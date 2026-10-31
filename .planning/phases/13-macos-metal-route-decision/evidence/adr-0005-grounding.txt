@@ -1,0 +1,175 @@
+# ADR 0005 grounding records. Queries run at 2026-10-27T07:46:23Z.
+# Every [G<n>] in docs/adr/0005-macos-metal-route.md resolves to a record below.
+# Source kinds: repo <path>:<lines> | cmd <command> | research <file> <section>.
+
+G1 cmd gh api 'repos/haasn/libplacebo/contents/src?ref=v7.360.1' --jq '.[] | select(.type=="dir") | .name'
+  d3d11
+  glsl
+  gpu
+  include
+  opengl
+  shaders
+  tests
+  utils
+  vulkan
+  (v7.360.1 is the libplacebo tag the project builds against; the same query for the newest tag follows)
+G1 cmd gh api 'repos/haasn/libplacebo/contents/src?ref=v7.387.0' --jq '.[] | select(.type=="dir") | .name'   # newest tag at the query date
+  d3d11
+  glsl
+  gpu
+  include
+  opengl
+  shaders
+  tests
+  utils
+  vulkan
+G1 cmd gh api repos/haasn/libplacebo/releases/latest --jq '[.tag_name,.published_at]|@tsv'
+  v7.387.0	2026-10-25T20:33:16Z
+
+G2 cmd gh api repos/haasn/libplacebo/issues/370 --jq '[.state,.title,.created_at]|@tsv'
+  open	Metal backend for pl_gpu — interest check + working branch	2026-06-01T10:50:04Z
+
+G3 cmd gh api repos/haasn/libplacebo/issues/380 --jq '[.state,.title,.created_at]|@tsv'
+  open	Native Metal backend: ready for review, how should I submit it?	2026-09-28T07:04:49Z
+
+G4 cmd gh api 'repos/mpv-player/mpv/contents/include/mpv?ref=master' --jq '.[].name'
+  client.h
+  render.h
+  render_d3d11.h
+  render_gl.h
+  stream_cb.h
+  (render_vk.h is not listed: it is added by mpv_kit patch 0001, vendored at packages/mpv_kit_video/src/include/mpv/render_vk.h)
+
+G5 repo native/build/deps.sh:149-150 (pinned MoltenVK) + cmd gh api repos/KhronosGroup/MoltenVK/releases/latest --jq '[.tag_name,.published_at]|@tsv'
+  149:     fetch moltenvk \
+  150:       https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar \
+  v1.4.2	2026-07-24T14:00:46Z
+
+G6 repo native/build/build.sh:37-38 (Darwin mpv flags)
+  37:     mpv_args+=(-Dswift-build=disabled -Dcocoa=disabled -Dcoreaudio=enabled
+  38:       -Dvideotoolbox-pl=enabled -Dx11=disabled)
+
+G7 repo native/build/build.sh:71 (gl and egl disabled)
+  71:   -Dgl=disabled -Degl=disabled -Djpeg=disabled -Dlibarchive=disabled \
+
+G8 repo native/mpv/meson.build:1564-1575 (videotoolbox-gl needs gl-cocoa; videotoolbox-pl needs vulkan + CoreVideo) and :432-433 (cocoa feature)
+  1564: videotoolbox_gl = get_option('videotoolbox-gl').require(
+  1565:     features['gl-cocoa'] or features['ios-gl'],
+  1566:     error_message: 'gl-cocoa nor ios-gl could be found!',
+  1567: )
+  1568: features += {'videotoolbox-gl': videotoolbox_gl.allowed()}
+  1569: corevideo = dependency('appleframeworks', modules: ['CoreVideo'], required:
+  1570:     get_option('videotoolbox-pl').require(darwin))
+  1571: videotoolbox_pl = get_option('videotoolbox-pl').require(
+  1572:     features['vulkan'] and corevideo.found(),
+  1573:     error_message: 'vulkan or CV metal support could be found!',
+  1574: )
+  1575: features += {'videotoolbox-pl': videotoolbox_pl.allowed()}
+  432:                    required: get_option('cocoa'))
+  433: features += {'cocoa': cocoa.found()}
+
+G9 repo native/mpv/video/out/hwdec/hwdec_vt_pl.m:51-54 (requires PL_HANDLE_MTL_TEX import), :92-93 and :105 (MTLDevice via vkExportMetalObjectsEXT), :263 (import_handle)
+  51:     if (!(gpu->import_caps.tex & PL_HANDLE_MTL_TEX)) {
+  52:         MP_VERBOSE(hw, "VideoToolbox libplacebo interop requires support for "
+  53:                        "PL_HANDLE_MTL_TEX import.\n");
+  54:         return false;
+  92:             PFN_vkExportMetalObjectsEXT pExportMetalObjects = (PFN_vkExportMetalObjectsEXT)vulkan->get_proc_addr(vulkan->instance, "vkExportMetalObjectsEXT");
+  93:             if (pExportMetalObjects) {
+  105:                 pExportMetalObjects(vulkan->device, &objects_info);
+  263:             .import_handle = PL_HANDLE_MTL_TEX,
+
+G10 cmd gh api 'repos/haasn/libplacebo/contents/src/vulkan/gpu.c?ref=v7.360.1' --jq .content | base64 -d | grep -n -B1 -A3 'metal_objects'
+  373-
+  374:#ifdef VK_EXT_metal_objects
+  375-    if (vk->ExportMetalObjectsEXT && import)
+  376-        caps |= PL_HANDLE_MTL_TEX | PL_HANDLE_IOSURFACE;
+  377-#endif
+
+G11 repo packages/mpv_kit_video/macos/Classes/metal_interop.mm:146 (CreateBackend), :165-167 (VK_EXT_metal_objects), :194-197 (IOSurface import)
+  146: std::unique_ptr<RenderBackend> MetalInterop::CreateBackend(const char* api) {
+  165: std::vector<const char*> MetalInterop::DeviceExtensions() const {
+  166:   return {VK_EXT_METAL_OBJECTS_EXTENSION_NAME};
+  167: }
+  194:   VkImportMetalIOSurfaceInfoEXT import{
+  195:       VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT};
+  196:   import.ioSurface = surface;
+  197:   VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, &import};
+
+G12 repo native/mpv/video/out/vo_libmpv.c:119-126 (render_backends), native/mpv/video/out/gpu/libmpv_gpu.c:8-17 (context_backends), native/mpv/video/out/vo_gpu_next.c:3132-3133 and :3147 (gpu-next libmpv backend accepts only Vulkan)
+  119: const struct render_backend_fns *render_backends[] = {
+  120: #if HAVE_VULKAN
+  121:     // Vulkan API: gpu-next unless MPV_RENDER_PARAM_VULKAN_RENDERER is "gpu".
+  122:     &render_backend_gpu_next,
+  123: #endif
+  124:     &render_backend_gpu,
+  125:     &render_backend_sw,
+  126:     NULL
+  8: static const struct libmpv_gpu_context_fns *context_backends[] = {
+  9: #if HAVE_GL
+  10:     &libmpv_gpu_context_gl,
+  11: #endif
+  12: #if HAVE_VULKAN
+  13:     &libmpv_gpu_context_vk,
+  14: #endif
+  15:     NULL
+  16: };
+  17: 
+  3132:     if (!api || strcmp(api, MPV_RENDER_API_TYPE_VULKAN) != 0)
+  3133:         return MPV_ERROR_NOT_IMPLEMENTED;
+  3147:         .fns = &libmpv_gpu_context_vk,
+
+G13 repo .planning/REQUIREMENTS.md:67 (MAC-F1) and :78 (Out of Scope: macOS CGL backend)
+  67: - **MAC-F1**: libplacebo 合入 Metal `pl_gpu` 后的原生 Metal 后端
+  78: | macOS CGL 后端、`--wid` 窗口嵌入 | 已弃用 / 不符合 Flutter 纹理模型 |
+
+G14 research .planning/research/STACK.md section 5 table rows (lines 178 and 180) and .planning/research/FEATURES.md A-11 (line 84). Research-level source: not verified by this project.
+  178: | Renderer quality | gpu-next | gpu only. GL on macOS is capped at **4.1, with no compute shaders** (compute is GL 4.3), so compute-based paths are lost | gpu-next |
+  180: | Platform outlook | Metal underneath; MoltenVK actively maintained (1.4.2 pinned) | OpenGL **deprecated since macOS 10.14**; on Apple silicon it is a Metal-backed shim | Best in theory, but years of upstream churn |
+  84: | A-11 | **A new macOS OpenGL (CGL) backend** | media_kit and IINA use one, and `videotoolbox` has a GL interop. | CGL has been deprecated since 10.14. VT → GL uses rectangle textures that even gpu-next work has to normalise with an extra blit (#18607). IINA is stuck on it waiting for gpu-next. | MoltenVK → IOSurface (existing), or a Metal route (note N-4). |
+
+G15 repo packages/mpv_kit_video/macos/Classes/MpvKitVideoPlugin.mm:93-103 (copyPixelBuffer), :117 (32BGRA) + research .planning/research/STACK.md section 6 macOS FlutterTexture (lines 205-209)
+  93: - (CVPixelBufferRef)copyPixelBuffer {
+  94:   std::lock_guard<std::mutex> lock(_mutex);
+  95:   if (_dead) return nullptr;
+  96:   const Frame f = _renderer->AcquireFront();
+  97:   if (_renderer->backend() == Backend::kVulkan) {
+  98:     // Already retained for us in AcquireFront (MetalInterop::RetainFrame).
+  99:     return static_cast<CVPixelBufferRef>(f.platform);
+  100:   }
+  101:   if (!f.pixels) return nullptr;
+  102:   return [self copySoftwareFrame:f];
+  103: }
+  117:       (id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA),
+  205: ### macOS: `FlutterTexture` (`FlutterTexture.h`)
+  206: 
+  207: - `- (CVPixelBufferRef _Nullable)copyPixelBuffer` is called on the raster thread. The pixel format is `32BGRA` or `420YpCbCr8BiPlanar{Video,Full}Range`. It follows the Create Rule, so return +1 and the engine releases it.
+  208: - `textureFrameAvailable:` triggers it. `registerTexture:`/`unregisterTexture:` must be called on the platform thread. The optional `onTextureUnregistered:` is called on the raster thread.
+  209: - The buffer must be IOSurface-backed and Metal-compatible for zero-copy. The current `metal_interop.mm` already does this.
+
+G16 repo native/patches/UPSTREAM.md:58 (0007: why -Dcocoa=disabled) and native/build/build.sh:37
+  58: | 0007 audio device enumeration crashes | Two real upstream bugs: (a) macOS builds with `-Dcocoa=disabled` leave `cfstr_get_cstr` and Foundation/Metal symbols as dynamic lookups (hidden by upstream's `b_lundef=false`), so reading a device UID calls NULL; (b) WASAPI ties its hotplug/playback COM objects to the init thread's apartment, but `mpv_terminate_destroy` releases them on the client thread after the core thread exited, after COM unloaded mmdevapi. Fixed with `CoIncrementMTAUsage` and thread-checked `CoUninitialize`. | Keep downstream (both fixes are generic and could be offered upstream later). |
+  37:     mpv_args+=(-Dswift-build=disabled -Dcocoa=disabled -Dcoreaudio=enabled
+
+G17 repo native/build/deps.sh:180 (license moltenvk LICENSE), native/build/package.sh:89-91 (libMoltenVK.dylib in bundle); cmd gh api repos/KhronosGroup/MoltenVK --jq '[.license.spdx_id,.archived,.pushed_at]|@tsv' (2026-10-27: Apache-2.0, not archived, pushed 2026-10-13); research .planning/research/STACK.md:152 (Apache-2.0, research-level)
+  Apache-2.0	false	2026-10-13T17:33:45Z
+  180:     license moltenvk LICENSE
+  89:     # MoltenVK (libmpv links it directly, see deps.sh) is part of the
+  90:     # closure; the Flutter plugin loads the same copy.
+  91:     [ -f "$out/lib/libMoltenVK.dylib" ] || { echo "libMoltenVK.dylib missing from bundle" >&2; exit 1; }
+  152: | SPIRV-Cross (shared) | Apache-2.0 | `+spirv-cross-c-shared.dll` (Windows) | OK. Apache-2.0 is compatible with LGPL-2.1-**or-later** (it combines as LGPLv3). The bundle already links Apache-2.0 code: MoltenVK on macOS and the Vulkan headers. Ship its license under `share/licenses`. |
+
+G18 research .planning/research/STACK.md section 0 headline findings items 5-6 (lines 27-33), .planning/research/PITFALLS.md Pitfall 13 (line 296) + cmd gh api repos/mpv-player/mpv/pulls/16818 --jq '[.state,.merged,.title,.created_at,.updated_at]|@tsv'. The research lines are research-level sources: the IINA fork branches were not verified here.
+  27: 5. **No Metal renderer exists in mpv or in upstream libplacebo.** There are three unmerged efforts:
+  28:    - libplacebo MR [!858](https://code.videolan.org/videolan/libplacebo/-/merge_requests/858) by simonchrz, see [haasn/libplacebo#370](https://github.com/haasn/libplacebo/issues/370);
+  29:    - [haasn/libplacebo#380](https://github.com/haasn/libplacebo/issues/380), opened 2026-09-28, which is Apple-GPU-only;
+  30:    - IINA's experimental `lhc70000/libplacebo@a962968` (+3416 lines) plus a gpu-next render backend, `lhc70000/mpv@97179bce`, described in [mpv#16818 comments](https://github.com/mpv-player/mpv/pull/16818).
+  31: 
+  32:    **Recommendation: keep MoltenVK -> IOSurface as the macOS "native" backend for v3.0** (option a).
+  33: 6. **gpu-next over the libmpv OpenGL API is not upstream either.** mpv PR [#16818](https://github.com/mpv-player/mpv/pull/16818) "vo_libmpv: introduce 'gpu-next' render backend" (OpenGL only) has been open since 2025-09-20 and was last updated 2026-09-16. Upstream `MPV_RENDER_API_TYPE_OPENGL` drives only `vo_gpu` (`libmpv_gpu_context_gl`). Like D3D11, Linux GL with gpu-next is "ours to write" as an extension of patch 0004.
+  296: libplacebo has no Metal `pl_gpu`, and its backends are Vulkan, OpenGL and D3D11 ([libplacebo README](https://github.com/haasn/libplacebo)). A "self-written Metal backend" therefore means writing a new libplacebo GPU backend or a Metal `ra`. The OpenGL plus IOSurface route (IINA's historical path) runs on Apple's deprecated GL-over-Metal layer and only gets vo_gpu (Pitfall 7). mpv's macOS GL has resize crashes in the GL driver ([mpv#10406](https://github.com/mpv-player/mpv/issues/10406)) and resize lag ([mpv#14173](https://github.com/mpv-player/mpv/issues/14173)). media_kit's macOS output freezes during window resize ([media-kit#1176](https://github.com/media-kit/media-kit/issues/1176)). The existing MoltenVK→IOSurface route **is** already Metal underneath.
+  open	false	vo_libmpv: introduce 'gpu-next' render backend	2025-09-20T23:02:15Z	2026-09-16T16:03:12Z
+
+G19 repo .planning/phases/13-macos-metal-route-decision/13-01-SUMMARY.md:77 (real INTEGRATION line on macos-15), evidence/ci-runs.txt (native-verify run 40465908724 success), .github/workflows/native-verify.yml:193 (macos-15 runner)
+  77: - macos-15：`"backend":"vulkan","reason":"vulkan (gpu-next) on Apple Paravirtual device via MoltenVK"`
+  3:sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+  193:           - runner: macos-15

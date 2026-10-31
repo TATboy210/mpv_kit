@@ -1,0 +1,25 @@
+# 14-07 local evidence (RTX 4060 host, Windows MINGW64)
+#
+# Forced-d3d11 and auto real_plugin_test runs: deferred (CI deferral 2026-10-27).
+#   No libmpv built from this tree with patch 0010 (D3D11 render API) and the
+#   0004 D3D11 branch exists locally (no meson/mpv toolchain, no hosted
+#   release artifact), so MPV_KIT_VIDEO_API=d3d11 cannot reach a render
+#   context here. Command to run once a bundle from feat HEAD is available
+#   (libmpv-windows-x64 artifact of release.yml):
+#     MPV_KIT_LIBMPV_PATH=<dir>/libmpv-2.dll MPV_KIT_REQUIRE_LIBMPV=1 MPV_KIT_VIDEO_API=d3d11 \
+#       flutter test integration_test/real_plugin_test.dart -d windows   (in example/)
+#     (then again without MPV_KIT_VIDEO_API; expected reasons:
+#      "d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU" and
+#      "vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU")
+#
+# What was run locally (real output below):
+# 1. MSVC compile of the two new/changed plugin translation units, /W4 /WX,
+#    both configurations (without NDEBUG: MPV_KIT_D3D11_SYNC branch compiled;
+#    with /DNDEBUG: branch absent):
+#      cl /std:c++17 /EHsc /utf-8 /W4 /WX /c /DVK_NO_PROTOTYPES /DVK_USE_PLATFORM_WIN32_KHR
+#         /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DUNICODE /D_UNICODE [/DNDEBUG] windows\d3d11_backend.cpp windows\d3d11_interop.cpp
+#      d3d11_backend.cpp
+#      d3d11_interop.cpp
+#      EXIT=0   (both configurations)
+# 2. bash .planning/phases/12-renderbackend-seam/tools/constants_audit.sh
+#      CONSTANTS ok

@@ -1,0 +1,9 @@
+# 14-11 Task 1 (checkpoint:decision, blocking-human): Windows auto chain, D3D-08
+decision=keep user_reply=还有另一个因素，就是省电状态， 保持 Vulkan 优先 (Recommended)
+asked_by=orchestrator via AskUserQuestion on 2026-10-29 (options: 保持 Vulkan 优先 / 切到 d3d11 优先 / 先补测再决定); option description shown to the user: "GTX 960M 实测 Vulkan 丢帧约 3-6%、d3d11 约 25-34%；RTX 4060 两者都好；d3d11 继续作为退路。14-11 只修标签并记录决策。"
+basis=gtx960-laptop.txt package4 (0e792c8, FIFO ready queue, AC power): auto/vulkan effective drops about 0.5 percent (est; about 0.25 percent without one 140 ms stall) versus forced d3d11 about 3.5 percent (est), d3d11 done 3-13 ms vs vulkan 0.03-0.1 ms; before the FIFO 2.7-6 percent vs 25-34 percent; RTX 4060 good on both; power state is a second factor (power-aware GPU preference landed in ade3eea: discrete GPU only on AC power with battery saver off; the battery run was never done).
+d3d08=not-switched:keep
+switch_commit=none (Task 2 skipped: no kWindowsApiOrder change, no ci/14-switch branch, no RTX post-switch run, no rtx-post-switch.log)
+feat_commit=none
+chain_unchanged=vulkan/gpu-next, d3d11/gpu-next, vulkan/gpu, d3d11/gpu, software/sw (kWindowsApiOrder = {"vulkan", "d3d11"})
+scope_note=the approved option limited 14-11 to fixing the backend label and recording the decision; the label fix is commit c4768c5 (HUD backend field and startup log print the first token of controller.reason; MpvVideoBackend unchanged, enum_line audit stays 1), the decision docs are commit 8310775

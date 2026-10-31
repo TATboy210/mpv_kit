@@ -142,6 +142,68 @@ List<File> installBundle(File archive, String expectedSha256, Directory dir) {
   return sharedLibrariesIn(dir);
 }
 
+/// Whether [dir] has a MANIFEST.txt and every shared library it lists
+/// directly under `lib/` exists (at least one must be listed).
+///
+/// Nested paths (`lib/x/y.so`) and non-library files are ignored, matching
+/// what [sharedLibrariesIn] reports.
+bool _hasAllManifestLibraries(Directory dir) {
+  final manifestFile = File('${dir.path}/MANIFEST.txt');
+  if (!manifestFile.existsSync()) return false;
+  final expected = [
+    for (final path in parseManifest(manifestFile.readAsStringSync()).keys)
+      if (path.startsWith('lib/') &&
+          !path.substring(4).contains('/') &&
+          isSharedLibrary(path.substring(4)))
+        path,
+  ];
+  return expected.isNotEmpty &&
+      expected.every((path) => File('${dir.path}/$path').existsSync());
+}
+
+/// Resolves the pinned release bundle for [target] from the build-hook
+/// [cache] directory and returns its shared libraries.
+///
+/// Cache layout (names shared with the hook): archive
+/// `libmpv-<target>.tar.gz`, extracted directory `<target>/` and the stamp
+/// `<target>.ok` holding the pinned sha256. [fetch] writes the release
+/// archive to the file it is given (the hook passes a download).
+Future<List<File>> resolvePinnedBundle({
+  required Directory cache,
+  required String target,
+  required String pinnedSha256,
+  required Future<void> Function(File archive) fetch,
+}) async {
+  final archive = File('${cache.path}/libmpv-$target.tar.gz');
+  final extracted = Directory('${cache.path}/$target');
+  final stamp = File('${cache.path}/$target.ok');
+  if (stamp.existsSync() && stamp.readAsStringSync() == pinnedSha256) {
+    // A cleaned cache can leave a valid stamp over a missing, empty or
+    // partial extraction (e.g. libmpv gone while one dependency remains).
+    // Trust the stamp only while every shared library the MANIFEST lists
+    // under lib/ is really there; otherwise fall through and reinstall (the
+    // archive is re-hashed against the pin before it is reused). Existence
+    // only: the files were verified when they were extracted.
+    if (_hasAllManifestLibraries(extracted)) {
+      return sharedLibrariesIn(extracted);
+    }
+  }
+  if (!archive.existsSync() ||
+      sha256Hex(archive.readAsBytesSync()) != pinnedSha256) {
+    await fetch(archive);
+  }
+  final libs = installBundle(archive, pinnedSha256, extracted);
+  if (libs.isEmpty) {
+    // No stamp is written, so the next build retries instead of trusting a
+    // bundle that would silently emit no libmpv.
+    throw BundleIntegrityException(
+      '${archive.path}: no shared libraries under lib/ after installation',
+    );
+  }
+  stamp.writeAsStringSync(pinnedSha256);
+  return libs;
+}
+
 /// Downloads [url] to [target] (honours HTTPS_PROXY/HTTP_PROXY/NO_PROXY).
 ///
 /// Writes to a uniquely named temporary file that is renamed into place.

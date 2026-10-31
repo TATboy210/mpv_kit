@@ -3,14 +3,14 @@ description: >-
   Complete, low-overhead Dart FFI bindings for libmpv (mpv 0.41, client API 2.5):
   the full client API, mpv_node conversion, an isolate-safe event loop and a
   typed high-level Player. Rendering lives in mpv_kit_video.
-version: 0.1.0-dev.3
+version: 0.1.0-dev.4
 repository: https://github.com/TATboy210/mpv_kit
 issue_tracker: https://github.com/TATboy210/mpv_kit/issues
 topics: [mpv, video, audio, media, ffi]
 resolution: workspace
 
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.10.0
 
 dependencies:
   ffi: ^2.1.0
