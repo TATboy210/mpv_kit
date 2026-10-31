@@ -91,7 +91,7 @@ PR_PIN=(
   --log '^linux \(ubuntu-24\.04\)' 'PINS OK tag=v0\.1\.0-dev\.4 targets=6'
   --log '^build \(windows' 'PINNED-IDENTITY tag=v0\.1\.0-dev\.4 target=windows-x64 stamp=match archive=match manifest=ok libs=[0-9]+ app_copy=same libmpv_env=unset '
   --log '^build \(windows' 'D3D11-BACKEND \{"backend":"vulkan","reason":"d3d11 \(gpu-next\) on Microsoft Basic Render Driver; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11"'
-  --log '^build \(ubuntu' 'PINNED-IDENTITY tag=v0\.1\.0-dev\.4 target=linux-x64 stamp=match archive=match manifest=ok libs=[0-9]+ app_copy=skipped libmpv_env=hook-cache '
+  --log '^build \(ubuntu' 'PINNED-IDENTITY tag=v0\.1\.0-dev\.4 target=linux-x64 stamp=match archive=match manifest=ok libs=[0-9]+ app_copy=same libmpv_env=unset '
   --log '^build \(ubuntu' 'PROBE \{"api":"opengl","reason":"opengl \(gpu\) on [^;"]+; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl","supported":true,"nonBlackRatio":(0\.0[1-9]|0\.[1-9]|1\.0)'
   --log-absent '^build \(' 'PINNED-IDENTITY FAIL'
 )

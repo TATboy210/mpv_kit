@@ -136,7 +136,11 @@ jobs:
         env:
           MPV_KIT_VIDEO_API: opengl
         run: |
-          # MPV_KIT_LIBMPV_PATH comes from the Locate step and names the hook
-          # cache copy; the identity tool asserts that.
+          # The consumer path (as INT-1): libmpv.so.2 is found by default name
+          # in the app bundle's lib/ through the runner's $ORIGIN/lib RUNPATH,
+          # where the hook put the pinned bundle; libEGL.so.1 is a host library
+          # (libglvnd, installed above). The Locate step's explicit path is
+          # dropped so the hook-cache copy cannot stand in for the bundle.
+          unset MPV_KIT_LIBMPV_PATH
           xvfb-run -a flutter test integration_test/texture_probe_test.dart -d linux
-          bash ../tools/pinned_bundle_identity.sh linux-x64
+          bash ../tools/pinned_bundle_identity.sh linux-x64 build/linux/x64/debug/bundle/lib
