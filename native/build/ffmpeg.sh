@@ -57,6 +57,17 @@ case "$(uname -s)" in
     ;;
 esac
 
+# Size: one section per function/object so the linker drops what nothing
+# references (shinchiro/mpv-winbuild-cmake links FFmpeg the same way). Exports
+# come from the libav*.v version scripts and stay; no code is recompiled
+# differently, so decode speed is unchanged. FFmpeg's configure appends every
+# --extra-cflags/--extra-ldflags.
+platform_args+=(--extra-cflags="-ffunction-sections -fdata-sections")
+case "$(uname -s)" in
+  Darwin) platform_args+=(--extra-ldflags=-Wl,-dead_strip) ;;
+  *) platform_args+=(--extra-ldflags=-Wl,--gc-sections) ;;
+esac
+
 # Headers installed by deps.sh (Vulkan, dav1d) take precedence over the
 # host's, which may be too old (FFmpeg 8.1 needs Vulkan headers 1.3.277+).
 if [ -d "$prefix/include" ]; then
