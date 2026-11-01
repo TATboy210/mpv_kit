@@ -1,3 +1,9 @@
+## 0.1.0-dev.5 (unreleased)
+
+- Depends on mpv_kit / mpv_kit_libs 0.1.0-dev.5 (lower software-decode
+  memory, demuxer cache state API, smaller bundles). No changes to the
+  renderer or the platform graphics backends.
+
 ## 0.1.0-dev.4
 
 - Fixed: a failed render no longer causes a false `gpuTimeout` on the next
