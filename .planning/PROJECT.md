@@ -8,6 +8,19 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
+## Current Milestone: v3.1 依赖内存、体积与 API 优化（0.1.0-dev.5）
+
+**Goal:** 在渲染生命周期与平台原生图形后端代码不变的前提下，先测量验证、再降低依赖栈（libmpv/FFmpeg/libplacebo 等）的运行内存与 bundle 体积，并以只增不破方式补充依赖功能 API，发布 0.1.0-dev.5。
+
+**Target features:**
+- 基线与问题验证：dev.4 各目标体积明细、4K/8K 30 分钟 RSS/commit、Dart 事件重复发射、上游泄漏修复核对（只测量）
+- Dart 层内存优化：模型值相等去重、软件解码线程上限、demuxer-donate-buffer 纳入预算、缺失上游修复 backport（均以基线证实为前提）
+- 构建体积优化：统一 strip、FFmpeg filter 白名单、LTO/gc-sections、mpv cplugins/build-date 显式关闭、gzip -9、hook 清理旧 tag 缓存
+- 只增不破 API：`demuxerCacheState`、`autoTuneDemuxer` 开关、`eventQueueOverflows`
+- 版本 0.1.0-dev.5、bundle 发布与 pin、CHANGELOG 与 docs/perf 对比报告
+
+**Milestone constraints:** 不改 mpv_kit_video 原生渲染代码与 Windows shaderc/SPIRV-Cross/D3D11、libplacebo 图形选项、MoltenVK；保留 FFmpeg 网络协议；不禁用 decoder/demuxer/BSF；不用 `-Os`/`--enable-small`。
+
 ## Current State (after v3.0, 2026-10-31)
 
 **Milestone v3.0 统一渲染生命周期与平台原生图形后端 已交付并以 `override_closeout` 关闭。** Phase 12–17.1，共 54 个计划，2026-10-26 → 2026-10-31。需求 29/31 完成；D3D-08（用户决定不切换，Windows 仍 Vulkan 优先，d3d11 为第二选择与强制项）与 HWD-03（无 Linux GPU 硬件，仅有 DRM_DISPLAY_V2 接线）为有意的部分完成，未改写为绿。
@@ -24,7 +37,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 **未验证 / 已知限制：** 真实 Linux GPU（NVIDIA/AMD/Intel、Wayland、GL device loss）与真实 Apple GPU 无证据；GTX 960M 上 d3d11 有效丢帧约 3.5% 对 Vulkan 约 0.5%（原因未解释）；d3d11 在示例窗口被遮挡时 4K 偶有少量 VO 丢帧；d05 像素探针 0.0 / 第二控制器首帧停滞（RBE-01 人工项）仍未定位。
 
-**Next milestone:** 未定义；候选见 Active 与 `/gsd-new-milestone`。
+**Next milestone:** v3.1 依赖内存、体积与 API 优化（见 Current Milestone）。
 
 ## Previous State (after v2.0 close-out, 2026-10-25)
 
@@ -105,7 +118,15 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 
 ### Active
 
-<!-- 下一里程碑候选（尚未立项）；v3.0 遗留见 REQUIREMENTS.md 与 todos/pending。 -->
+<!-- v3.1 范围：详见 REQUIREMENTS.md。 -->
+
+- [ ] 依赖内存与体积的基线测量，问题经数据证实后才修复（v3.1）
+- [ ] Dart 层与默认选项的内存优化，不触碰渲染（v3.1）
+- [ ] bundle 体积缩减，图形后端依赖与网络协议保持不变（v3.1）
+- [ ] 只增不破的依赖功能 API：demuxer 缓存状态、自动调参开关、事件队列溢出（v3.1）
+- [ ] 发布 0.1.0-dev.5（v3.1）
+
+<!-- 以下为更早的候选（未纳入 v3.1）；v3.0 遗留见 todos/pending。 -->
 
 - [ ] **稳定的呈现纹理句柄（Describe）**：quick 261030-umq 测得每次运行 7440/7440 次句柄变化，Flutter 的单句柄缓存每帧未命中（bind 约 0.44–0.52 ms/帧）
 - [ ] d3d11va-zero-copy 与 d3d11va-copy/Vulkan 的 A/B；MMCSS 线程调度
@@ -130,7 +151,7 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 ### Out of Scope
 
 - **移动端（Android/iOS/web）** — 本阶段明确不做；渲染互操作与 bundle 目标都未覆盖。
-- **新增或破坏性公共 API** — 本里程碑 API 冻结，所有改动必须向后兼容。
+- **破坏性公共 API** — 所有改动必须向后兼容；v3.1 经用户决定（2026-11-01）允许只增不破的新增 API。
 - ~~版本发布节点、CHANGELOG、pub 发布流程~~ — 已被取代：v3.0 的 Phase 17.1 经用户明确决定发布 GitHub Release `v0.1.0-dev.4` 并将三包发布到 pub.dev（2026-10-30/31）。后续版本发布仍须用户逐次明确批准。
 - **新功能（display-sync/vsync 回报、HDR、播放列表、字幕等）** — 暂缓到后续里程碑。
 - **Windows 默认切到 d3d11 优先（D3D-08）** — v3.0 用户决定保持 Vulkan 优先（GTX 960M 有效丢帧 d3d11 约 3.5% vs Vulkan 约 0.5%）；待慢速原因解释后再议（见 Active）。
@@ -224,4 +245,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-31 after v3.0 milestone*
+*Last updated: 2026-11-01 after starting v3.1 milestone*

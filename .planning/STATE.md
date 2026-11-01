@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v3.0
-milestone_name: 统一渲染生命周期与平台原生图形后端
-status: Awaiting next milestone
-stopped_at: Phase 17.1 complete — all phases complete
-last_updated: "2026-10-31T08:38:35.189Z"
-last_activity: 2026-10-31
-last_activity_desc: Milestone v3.0 completed and archived
-state_head: 1e19ad81dfc30ea973543dc70654fc98b301443d
+milestone: v3.1
+milestone_name: 依赖内存、体积与 API 优化
+status: planning
+last_updated: "2026-11-01T11:25:40.992Z"
+last_activity: 2026-11-01
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 54
-  completed_plans: 54
-  percent: 100
-current_phase: 17
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,11 @@ See: .planning/PROJECT.md (updated 2026-10-31)
 
 ## Current Position
 
-Phase: Milestone v3.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-31 — Milestone v3.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-11-01 — Milestone v3.1 started
+
 
 ## Performance Metrics
 
