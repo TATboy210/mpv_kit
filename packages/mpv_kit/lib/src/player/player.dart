@@ -6,6 +6,8 @@
 library;
 
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'dart:math' show min;
 
 import 'package:meta/meta.dart';
 
@@ -134,7 +136,11 @@ final class Player {
         ...options,
       },
     );
-    return Player._(mpv, autoTuneDemuxer);
+    return Player._(
+      mpv,
+      autoTuneDemuxer,
+      userDecoderThreads: options.containsKey('vd-lavc-threads'),
+    );
   }
 
   /// 包装一个已存在的 [Mpv]（例如测试中使用 `vo=null`）。
@@ -143,7 +149,11 @@ final class Player {
   Player.wrap(Mpv mpv, {bool autoTuneDemuxer = true})
       : this._(mpv, autoTuneDemuxer);
 
-  Player._(this.mpv, this._demuxerAutoTune) {
+  Player._(
+    this.mpv,
+    this._demuxerAutoTune, {
+    bool userDecoderThreads = false,
+  }) {
     mpv.onSourceError = _reportSourceError;
     _bind('pause', paused, (v) => v == true);
     _bind('idle-active', idle, (v) => v == true);
@@ -249,6 +259,7 @@ final class Player {
       ..add(position)
       ..add(decodeWarning);
     _subs.add(mpv.events.listen(_onEvent));
+    _initDecoderThreadTune(userDecoderThreads);
   }
 
   // --- UHD-01: 帧尺寸自适应的 demuxer 队列预算 ---------------------------
@@ -260,6 +271,7 @@ final class Player {
   /// frameBytes = w × h × 1.5                    (YUV420P 规划单位)
   /// fwd = min(400MiB, 64 × frameBytes)          (64 帧读前,pack 上限承袭 v1)
   /// if frameBytes ≥ 32MiB: fwd = min(fwd, 256MiB)   (巨帧条款)
+  /// fwd = max(fwd, 150MiB)                      (下限 = mpv 默认值)
   /// back = clamp(fwd / 4, 32MiB, 100MiB)
   /// ```
   ///
@@ -270,16 +282,23 @@ final class Player {
   /// 提交耗尽即源于固定 400/100 与环的叠加,见
   /// docs/perf/2026-10-24-uhd-endurance.md)。
   ///
+  /// 下限:demuxer 队列装的是所有流的压缩包而不是原始帧,低分辨率源
+  /// (如 640x360 只得 21MiB)配高码率/无损音频时会饿死预读,故不低于
+  /// mpv 自身的默认 150MiB。本地文件只预读 `demuxer-readahead-secs`,
+  /// 实测队列只占数 MiB,这个下限不增加常驻内存。
+  ///
   /// 尺寸未知/非法返回 null(不调参)。
   @visibleForTesting
   static ({int fwd, int back})? demuxerQueueBudgetForTesting(int w, int h) {
     if (w <= 0 || h <= 0) return null;
     const fwdCap = 400 << 20, giantThreshold = 32 << 20,
-        giantCap = 256 << 20, backMin = 32 << 20, backMax = 100 << 20;
+        giantCap = 256 << 20, backMin = 32 << 20, backMax = 100 << 20,
+        fwdFloor = 150 << 20;
     final frameBytes = (w * h * 1.5).round();
     var fwd = 64 * frameBytes;
     if (fwd > fwdCap) fwd = fwdCap;
     if (frameBytes >= giantThreshold && fwd > giantCap) fwd = giantCap;
+    if (fwd < fwdFloor) fwd = fwdFloor;
     var back = fwd ~/ 4;
     if (back < backMin) back = backMin;
     if (back > backMax) back = backMax;
@@ -320,6 +339,93 @@ final class Player {
       _lastAppliedBudget = budget;
     } on Object {
       // 调参失败(如 dispose 竞态)只跳过;下一次事件再试。
+    }
+  }
+
+  // --- 软解线程数：按分辨率限制解码内存 ----------------------------------
+
+  /// 软解线程数(`vd-lavc-threads`)按帧尺寸取值;0 = mpv 自动。
+  ///
+  /// mpv 的自动值是 min(核数+1, 16),FFmpeg 帧线程每线程多占一帧,于是
+  /// 解码内存随核数增长。实测(16 线程 x64,dev.4,软解,AOT,峰值
+  /// RSS / 最大解码速度):
+  /// ```text
+  /// 2160x3840 60fps: 16 线程 484MiB/152fps,8 线程 303MiB/115fps
+  /// 1920x1080 25fps: 16 线程 153MiB/634fps,4 线程  82MiB/334fps
+  /// ```
+  /// 故 1080p 及以下取 4(1080p60 仍有 5 倍余量),到 4K(4096x2304)取 8
+  /// (4K60 仍近 2 倍余量),更大(8K)保持自动:8K 软解本就缺速度。永不超过
+  /// mpv 自动值,少核机器不会因此多开线程。硬解时 mpv 改用
+  /// `hwdec-threads`,此值只在回退软解时生效。
+  ///
+  /// 尺寸未知/非法返回 null(不调参)。
+  @visibleForTesting
+  static int? decoderThreadsForTesting(int w, int h, int cores) {
+    if (w <= 0 || h <= 0) return null;
+    final px = w * h;
+    if (px > 4096 * 2304) return 0;
+    final cap = px > 1920 * 1088 ? 8 : 4;
+    return min(cap, min(cores + 1, 16));
+  }
+
+  /// 我们最后一次设置的线程数;null = 尚未设置(此时 mpv 默认是 0)。
+  int? _appliedThreads;
+  var _threadTune = false;
+
+  /// 在专用弱子客户端上注册 `on_preloaded` hook:文件已打开、轨道已知、
+  /// 解码器尚未创建——`vd-lavc-threads` 只在解码器创建时读取,这是唯一
+  /// 能按本文件尺寸生效的时机。独立客户端让本 hook 与用户自己在
+  /// [mpv] 上注册的 hook 互不混淆;弱客户端不延长核心寿命,随 [mpv]
+  /// 一起销毁。用户以任何方式设过该选项(构造参数或已有核心上的非 0
+  /// 值)则不注册。
+  void _initDecoderThreadTune(bool userSet) {
+    if (userSet || mpv.tryGetProperty('vd-lavc-threads') != 0) return;
+    try {
+      final client = mpv.createClient('mpv_kit_decoder_threads', weak: true);
+      client.hookAdd('on_preloaded');
+      _subs.add(
+        client.events.listen((e) {
+          if (e is HookEvent) _onPreloaded(client, e);
+        }),
+      );
+      _threadTune = true;
+    } on MpvException {
+      // 无法创建客户端或 hook(旧 libmpv):不调参,行为同 dev.4。
+    }
+  }
+
+  void _onPreloaded(Mpv client, HookEvent e) {
+    try {
+      if (_disposed || !_threadTune || e.name != 'on_preloaded') return;
+      // 运行中被用户改过(既非默认 0 也非我们上次的值):永久让位。
+      final current = mpv.tryGetProperty('vd-lavc-threads');
+      if (current != 0 && current != _appliedThreads) {
+        _threadTune = false;
+        return;
+      }
+      var w = 0, h = 0;
+      for (final t in _maps(mpv.tryGetProperty('track-list'))) {
+        if (t['type'] != 'video' || t['albumart'] == true) continue;
+        final tw = nodeInt(t['demux-w']) ?? 0, th = nodeInt(t['demux-h']) ?? 0;
+        if (tw * th > w * h) (w, h) = (tw, th);
+      }
+      final threads = decoderThreadsForTesting(
+        w,
+        h,
+        Platform.numberOfProcessors,
+      );
+      if (threads == null || threads == current) return;
+      mpv.setProperty('vd-lavc-threads', threads);
+      _appliedThreads = threads;
+    } on Object {
+      // 调参失败只跳过本文件;绝不能卡住加载。
+    } finally {
+      // 必须放行:未 continue 的 hook 会让加载永远停在这里。
+      try {
+        client.hookContinue(e.id);
+      } on Object {
+        // 客户端已随 dispose 销毁:mpv 已自行放行。
+      }
     }
   }
 

@@ -7,6 +7,14 @@
 - Added: `Player.eventQueueOverflows`, fired when mpv's event queue for the
   client overflowed (discrete events such as log messages were dropped;
   property values and command replies are not lost).
+- Changed: software decoding uses at most 4 threads up to 1080p and 8 up to
+  4K (`vd-lavc-threads`, set per file before the decoder starts; 8K keeps
+  mpv's automatic count). Measured on a 16-thread x64: 1080p peak RSS
+  153 -> 82 MiB, 4K60 484 -> 303 MiB, both still decoding at well over
+  their frame rate. A `vd-lavc-threads` you set yourself is never changed.
+- Changed: the frame-size demuxer budget no longer goes below mpv's own
+  150 MiB default (640x360 got 21 MiB, which could starve readahead with
+  high-bitrate audio). Local files only fill a few MiB of it.
 - Added: `autoTuneDemuxer` parameter on `Player()` and `Player.wrap`
   (default `true`, unchanged behaviour); `false` keeps the configured
   `demuxer-max-bytes`/`demuxer-max-back-bytes` for every file.

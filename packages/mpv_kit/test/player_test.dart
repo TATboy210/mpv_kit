@@ -368,14 +368,18 @@ void main() {
 
   group('demuxer queue budget formula', () {
     // frameBytes = w*h*1.5; fwd = min(400MiB, 64*f), giant frame
-    // (>=32MiB) caps fwd at 256MiB; back = clamp(fwd/4, 32MiB, 100MiB).
+    // (>=32MiB) caps fwd at 256MiB, fwd >= 150MiB;
+    // back = clamp(fwd/4, 32MiB, 100MiB).
     final mib = 1024 * 1024;
     test('matrix across tiers', () {
       int? f(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.fwd;
       int? b(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.back;
-      // 640x360: frame 0.3296MiB -> 64*f = 21.1MiB (below floors later).
-      expect(f(640, 360), (640 * 360 * 1.5 * 64).round());
-      expect(b(640, 360), 32 * mib); // floor
+      // 640x360: 64*f = 21.1MiB -> raised to the 150MiB floor (mpv's own
+      // default); back 37.5MiB.
+      expect(f(640, 360), 150 * mib);
+      expect(b(640, 360), 150 * mib ~/ 4);
+      // 1280x720: 64*f = 84.4MiB -> floor as well.
+      expect(f(1280, 720), 150 * mib);
       // 1080p: frame 2.9756MiB -> 190.4MiB fwd; back 47.6MiB.
       expect(f(1920, 1080), (1920 * 1080 * 1.5 * 64).round());
       expect(b(1920, 1080), ((1920 * 1080 * 1.5 * 64) / 4).round());
@@ -387,6 +391,23 @@ void main() {
       expect(b(7680, 4320), 64 * mib);
       // Just under the giant threshold stays at the 400MiB cap.
       expect(f(4096, 2304), 400 * mib);
+    });
+
+    test('decoder threads: 4 up to 1080p, 8 up to 4K, auto above', () {
+      int? t(int w, int h, [int cores = 16]) =>
+          Player.decoderThreadsForTesting(w, h, cores);
+      expect(t(1280, 720), 4);
+      expect(t(1920, 1080), 4);
+      expect(t(1920, 1088), 4);
+      expect(t(2560, 1440), 8);
+      expect(t(3840, 2160), 8);
+      expect(t(2160, 3840), 8); // portrait 4K
+      expect(t(4096, 2304), 8);
+      expect(t(7680, 4320), 0); // 8K: mpv auto
+      // Never above mpv's own auto value (cores + 1, max 16).
+      expect(t(3840, 2160, 2), 3);
+      expect(t(1920, 1080, 2), 3);
+      expect(t(0, 1080), isNull);
     });
 
     test('degenerate dimensions return null (no tune)', () {
@@ -414,10 +435,10 @@ void main() {
       }
 
       await p.open('av://lavfi:testsrc2=size=640x360:rate=30:duration=8');
-      await untilBudget((640 * 360 * 1.5 * 64).round());
+      await untilBudget(150 * 1024 * 1024);
       expect(
         p.mpv.tryGetProperty('demuxer-max-back-bytes'),
-        32 * 1024 * 1024,
+        150 * 1024 * 1024 ~/ 4,
       );
 
       await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
@@ -438,6 +459,47 @@ void main() {
         p.mpv.tryGetProperty('demuxer-max-back-bytes'),
         100 * 1024 * 1024,
       );
+    });
+
+    test('decoder threads follow the frame size of each file', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      final cores = Platform.numberOfProcessors;
+      await p.open('av://lavfi:testsrc2=size=1280x720:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(1280, 720, cores),
+      );
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 3840);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(3840, 2160, cores),
+      );
+    });
+
+    test('a user vd-lavc-threads option is never changed', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes', 'vd-lavc-threads': '0',
+      });
+      addTearDown(p.dispose);
+      await p.open(_lavfi);
+      await _until(p.videoParams, (v) => v != null);
+      expect(p.mpv.tryGetProperty('vd-lavc-threads'), 0);
+    });
+
+    test('a runtime vd-lavc-threads change stops the tuning', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      p.mpv.setProperty('vd-lavc-threads', 2);
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v != null);
+      expect(p.mpv.tryGetProperty('vd-lavc-threads'), 2);
     });
 
     test('explicit user override stops auto-tune', () async {
