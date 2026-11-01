@@ -69,7 +69,7 @@ Future<List<File>> _resolve(
 
   final pinned = bundleSha256[target];
   if (bundleTag.isEmpty || pinned == null) return const [];
-  return resolvePinnedBundle(
+  final libs = await resolvePinnedBundle(
     cache: Directory.fromUri(
       input.outputDirectoryShared.resolve('$bundleTag/'),
     ),
@@ -77,4 +77,7 @@ Future<List<File>> _resolve(
     pinnedSha256: pinned,
     fetch: (archive) => download(bundleUrl(target), archive),
   );
+  // Only after the current pin is installed: older tags are dead weight.
+  pruneStaleBundles(Directory.fromUri(input.outputDirectoryShared), bundleTag);
+  return libs;
 }

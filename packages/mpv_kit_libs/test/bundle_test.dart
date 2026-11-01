@@ -410,6 +410,52 @@ void main() {
     });
   });
 
+  group('pruneStaleBundles', () {
+    late Directory shared;
+    setUp(() => shared = Directory.systemTemp.createTempSync('mpv_kit_prune'));
+    tearDown(() => shared.deleteSync(recursive: true));
+
+    Directory dir(String name) {
+      final d = Directory('${shared.path}/$name')..createSync();
+      File('${d.path}/libmpv-linux-x64.tar.gz').writeAsStringSync('x');
+      return d;
+    }
+
+    test('deletes other release tags and keeps the current one', () {
+      final old1 = dir('v0.1.0-dev.3');
+      final old2 = dir('v1.2.3');
+      final keep = dir('v0.1.0-dev.4');
+
+      final deleted = pruneStaleBundles(shared, 'v0.1.0-dev.4');
+
+      // Compare names: listSync joins with '\' on Windows.
+      expect(
+        deleted.map((d) => d.uri.pathSegments.lastWhere((s) => s.isNotEmpty)),
+        unorderedEquals(['v0.1.0-dev.3', 'v1.2.3']),
+      );
+      expect(old1.existsSync() || old2.existsSync(), isFalse);
+      expect(keep.existsSync(), isTrue);
+    });
+
+    test('leaves directories that are not release tags alone', () {
+      final runner = dir('337ce265dc');
+      final local = dir('local-linux-x64');
+      final odd = dir('v0.1');
+      File('${shared.path}/v0.1.0-dev.1').writeAsStringSync('file, not dir');
+
+      expect(pruneStaleBundles(shared, 'v0.1.0-dev.4'), isEmpty);
+      expect([runner, local, odd].every((d) => d.existsSync()), isTrue);
+      expect(File('${shared.path}/v0.1.0-dev.1').existsSync(), isTrue);
+    });
+
+    test('a missing shared directory is not an error', () {
+      expect(
+        pruneStaleBundles(Directory('${shared.path}/absent'), 'v1.0.0'),
+        isEmpty,
+      );
+    });
+  });
+
   test('bundleTarget covers the six release targets only', () {
     expect(bundleTarget('windows', 'arm64'), 'windows-arm64');
     expect(bundleTarget('macos', 'x64'), 'macos-x64');

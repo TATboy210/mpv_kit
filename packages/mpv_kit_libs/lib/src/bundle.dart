@@ -204,6 +204,36 @@ Future<List<File>> resolvePinnedBundle({
   return libs;
 }
 
+/// Release tag directory names the hook creates under its shared output
+/// directory (`v0.1.0-dev.4`, `v1.2.3`); anything else there belongs to
+/// someone else (the hooks runner, `local-<target>/`) and is left alone.
+final _releaseTag = RegExp(r'^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$');
+
+/// Deletes the cached bundles of every release tag in [shared] except
+/// [keepTag] and returns the deleted directories.
+///
+/// Each bumped pin leaves its archive and extraction behind (dev.1..dev.4
+/// accumulated about 200 MB in one checkout). Call only after [keepTag]
+/// resolved successfully, so a failed install never loses the previous
+/// bundle. Deletion is best effort: a directory that cannot be removed
+/// (e.g. a file still open on Windows) is skipped and retried next build.
+List<Directory> pruneStaleBundles(Directory shared, String keepTag) {
+  if (!shared.existsSync()) return const [];
+  final deleted = <Directory>[];
+  for (final entry in shared.listSync(followLinks: false)) {
+    if (entry is! Directory) continue;
+    final name = entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    if (name == keepTag || !_releaseTag.hasMatch(name)) continue;
+    try {
+      entry.deleteSync(recursive: true);
+      deleted.add(entry);
+    } on FileSystemException {
+      // Best effort, see above.
+    }
+  }
+  return deleted;
+}
+
 /// Downloads [url] to [target] (honours HTTPS_PROXY/HTTP_PROXY/NO_PROXY).
 ///
 /// Writes to a uniquely named temporary file that is renamed into place.
