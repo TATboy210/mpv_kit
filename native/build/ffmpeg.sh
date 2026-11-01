@@ -18,8 +18,17 @@ cd "$work"
 
 tarball=ffmpeg-$FFMPEG_VERSION.tar.xz
 if [ ! -f "$tarball" ]; then
-  curl -fsSL --retry 3 -o "$tarball.part" "https://ffmpeg.org/releases/$tarball"
-  mv "$tarball.part" "$tarball"
+  # Same scheme as fetch() in deps.sh: plain --retry skips connection resets
+  # (curl exit 35), which failed release runs on ffmpeg.org; the sha256 pin
+  # below still decides whether the file is accepted.
+  for url in "https://ffmpeg.org/releases/$tarball" \
+    "https://www.ffmpeg.org/releases/$tarball"; do
+    if curl -fsSL --retry 5 --retry-all-errors -o "$tarball.part" "$url"; then
+      mv "$tarball.part" "$tarball"
+      break
+    fi
+  done
+  [ -f "$tarball" ] || { echo "ffmpeg: download failed" >&2; exit 1; }
 fi
 if command -v sha256sum >/dev/null; then
   actual=$(sha256sum "$tarball" | cut -d' ' -f1)
