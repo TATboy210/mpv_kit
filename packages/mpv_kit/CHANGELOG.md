@@ -1,4 +1,4 @@
-## 0.1.0-dev.5 (unreleased)
+## 0.1.0-dev.5
 
 - Added: `Player.demuxerCacheState` (`MpvDemuxerCacheState`,
   `MpvSeekableRange`): bytes queued ahead and in total, buffered duration,

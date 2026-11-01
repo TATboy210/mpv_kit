@@ -1,5 +1,9 @@
-## 0.1.0-dev.5 (unreleased)
+## 0.1.0-dev.5
 
+- Pinned to the v0.1.0-dev.5 LGPL bundles: FFmpeg linked with
+  `--gc-sections`/`-dead_strip`, MSYS2 DLLs stripped on Windows, mpv built
+  without a build date, reproducible `gzip -9n` archives (each target
+  0.6-1.3% smaller than dev.4).
 - The build hook deletes the cached bundles of older release tags once the
   current pin is installed (each pin bump used to leave 17-70 MB behind).
 
