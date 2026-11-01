@@ -216,6 +216,39 @@ void main() {
     expect(info.videoCodec, isNotNull);
   });
 
+  test('demuxerCacheState is observed lazily and reports the queue', () async {
+    // Not bound before the first read: reading it registers one more state.
+    final before = player.stateStreamsForTesting.length;
+    final state = player.demuxerCacheState;
+    expect(player.stateStreamsForTesting.length, before + 1);
+    expect(state.value, isNull);
+    await player.open(_lavfi);
+    final s = await _until(state, (s) => s != null && s.totalBytes > 0);
+    expect(s!.forwardBytes, lessThanOrEqualTo(s.totalBytes));
+  });
+
+  test('eventQueueOverflows fires when the client stops draining', () async {
+    // Each script message to ourselves is one queued client-message event;
+    // the synchronous loop never yields, so this isolate cannot drain the
+    // 1000-entry client queue and mpv reports an overflow afterwards. (Log
+    // messages do not work here: mpv pulls them from a separate buffer.)
+    final overflow = player.eventQueueOverflows.first.timeout(
+      const Duration(seconds: 10),
+    );
+    final self = player.mpv.clientName;
+    var rejected = false;
+    for (var i = 0; i < 1100 && !rejected; i++) {
+      try {
+        player.mpv.command(['script-message-to', self, 'flood']);
+      } on MpvException {
+        // A choked queue refuses further client messages: it is full.
+        rejected = true;
+      }
+    }
+    expect(rejected, isTrue, reason: 'the queue never filled up');
+    await overflow;
+  });
+
   test('logs stream delivers messages at the requested level', () async {
     player.setLogLevel('v');
     final first = player.logs.first.timeout(const Duration(seconds: 10));
@@ -389,6 +422,22 @@ void main() {
 
       await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
       await untilBudget((1920 * 1080 * 1.5 * 64).round());
+    });
+
+    test('autoTuneDemuxer: false keeps the configured budget', () async {
+      final p = Player(
+        options: const {'vo': 'null', 'ao': 'null', 'idle': 'yes'},
+        autoTuneDemuxer: false,
+      );
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=640x360:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(p.mpv.tryGetProperty('demuxer-max-bytes'), 400 * 1024 * 1024);
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-back-bytes'),
+        100 * 1024 * 1024,
+      );
     });
 
     test('explicit user override stops auto-tune', () async {

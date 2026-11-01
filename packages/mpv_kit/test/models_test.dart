@@ -97,6 +97,119 @@ void main() {
     expect(MpvAudioDevice.fromNode({}).name, '');
   });
 
+  group('MpvDemuxerCacheState.fromNode', () {
+    test('parses every documented field', () {
+      final s = MpvDemuxerCacheState.fromNode({
+        'cache-end': 12.5,
+        'reader-pts': 2.0,
+        'cache-duration': 10.5,
+        'fw-bytes': 1000,
+        'total-bytes': 3000,
+        'file-cache-bytes': 4096,
+        'raw-input-rate': 125000,
+        'eof': true,
+        'underrun': false,
+        'idle': true,
+        'bof-cached': true,
+        'eof-cached': false,
+        'seekable-ranges': [
+          {'start': 20.0, 'end': 30.0},
+          {'start': 0.0, 'end': 12.5},
+        ],
+      })!;
+      expect(s.cacheEnd, const Duration(milliseconds: 12500));
+      expect(s.readerPts, const Duration(seconds: 2));
+      expect(s.cacheDuration, const Duration(milliseconds: 10500));
+      expect(s.forwardBytes, 1000);
+      expect(s.totalBytes, 3000);
+      expect(s.fileCacheBytes, 4096);
+      expect(s.rawInputRate, 125000);
+      expect([s.eof, s.underrun, s.idle], [true, false, true]);
+      expect([s.bofCached, s.eofCached], [true, false]);
+      // Sorted by start; mpv's own order is arbitrary.
+      expect(s.seekableRanges, const [
+        MpvSeekableRange(
+          start: Duration.zero,
+          end: Duration(milliseconds: 12500),
+        ),
+        MpvSeekableRange(
+          start: Duration(seconds: 20),
+          end: Duration(seconds: 30),
+        ),
+      ]);
+      expect(
+        () => s.seekableRanges.add(s.seekableRanges.first),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('non-map input (property unavailable) is null', () {
+      expect(MpvDemuxerCacheState.fromNode(null), isNull);
+      expect(MpvDemuxerCacheState.fromNode('x'), isNull);
+      expect(MpvDemuxerCacheState.fromNode(const [1]), isNull);
+    });
+
+    test('missing keys, wrong types and hostile numbers never throw', () {
+      final s = MpvDemuxerCacheState.fromNode({
+        'cache-end': double.nan,
+        'reader-pts': double.infinity,
+        'cache-duration': 'soon',
+        'fw-bytes': -5,
+        'total-bytes': double.nan,
+        'raw-input-rate': double.negativeInfinity,
+        'eof': 'yes',
+        'seekable-ranges': [
+          {'start': 5.0, 'end': 1.0}, // inverted
+          {'start': double.nan, 'end': 3.0},
+          {'start': 1.0},
+          'not a map',
+          {'start': 1.0, 'end': 2.0},
+        ],
+      })!;
+      expect(s.cacheEnd, isNull);
+      expect(s.readerPts, isNull);
+      expect(s.cacheDuration, isNull);
+      expect(s.forwardBytes, 0);
+      expect(s.totalBytes, 0);
+      expect(s.rawInputRate, isNull);
+      expect(s.eof, isFalse);
+      expect(s.seekableRanges, const [
+        MpvSeekableRange(
+          start: Duration(seconds: 1),
+          end: Duration(seconds: 2),
+        ),
+      ]);
+      expect(MpvDemuxerCacheState.fromNode({}), const MpvDemuxerCacheState());
+    });
+
+    test('caps an oversized seekable-ranges list', () {
+      final s = MpvDemuxerCacheState.fromNode({
+        'seekable-ranges': [
+          for (var i = 0; i < 10000; i++) {'start': i * 1.0, 'end': i + 0.5},
+        ],
+      })!;
+      expect(
+        s.seekableRanges,
+        hasLength(MpvDemuxerCacheState.maxSeekableRanges),
+      );
+    });
+
+    test('value semantics', () {
+      Map<String, Object?> node() => {
+        'fw-bytes': 7,
+        'seekable-ranges': [
+          {'start': 0.0, 'end': 1.0},
+        ],
+      };
+      final a = MpvDemuxerCacheState.fromNode(node());
+      final b = MpvDemuxerCacheState.fromNode(node());
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(a, isNot(MpvDemuxerCacheState.fromNode({'fw-bytes': 7})));
+      expect(a.toString(), contains('fw: 7 B'));
+    });
+  });
+
   test('album art tracks and replay gain values', () {
     expect(
       MpvTrack.fromNode({

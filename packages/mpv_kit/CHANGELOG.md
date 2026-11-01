@@ -1,3 +1,16 @@
+## 0.1.0-dev.5 (unreleased)
+
+- Added: `Player.demuxerCacheState` (`MpvDemuxerCacheState`,
+  `MpvSeekableRange`): bytes queued ahead and in total, buffered duration,
+  source read rate and seekable ranges from `demuxer-cache-state`. Observed
+  only from the first access; the parser never throws on malformed nodes.
+- Added: `Player.eventQueueOverflows`, fired when mpv's event queue for the
+  client overflowed (discrete events such as log messages were dropped;
+  property values and command replies are not lost).
+- Added: `autoTuneDemuxer` parameter on `Player()` and `Player.wrap`
+  (default `true`, unchanged behaviour); `false` keeps the configured
+  `demuxer-max-bytes`/`demuxer-max-back-bytes` for every file.
+
 ## 0.1.0-dev.4
 
 - Changed: `MpvLibrary.open` (and so `Mpv.create`/`Player` with `libraryPath`)

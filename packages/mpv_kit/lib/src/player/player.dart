@@ -95,9 +95,15 @@ final class Player {
   ///   8K HDR 渲染尖峰与掉帧正出在逐帧峰值检测上，这个全局默认已覆盖
   ///   8K；按宽度的逐文件规则只会重写已设好的值（且不得动用户的值），
   ///   故不另加。
+  ///
+  /// [autoTuneDemuxer] (default true) lets the player resize the demuxer
+  /// queue to the frame size of each file (see
+  /// [demuxerQueueBudgetForTesting]); pass false to keep the configured
+  /// `demuxer-max-bytes` / `demuxer-max-back-bytes` unchanged.
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
+    bool autoTuneDemuxer = true,
   }) {
     final mpv = Mpv.create(
       libraryPath: libraryPath,
@@ -128,13 +134,16 @@ final class Player {
         ...options,
       },
     );
-    return Player._(mpv);
+    return Player._(mpv, autoTuneDemuxer);
   }
 
   /// 包装一个已存在的 [Mpv]（例如测试中使用 `vo=null`）。
-  Player.wrap(Mpv mpv) : this._(mpv);
+  ///
+  /// [autoTuneDemuxer] has the same meaning as in [Player.new].
+  Player.wrap(Mpv mpv, {bool autoTuneDemuxer = true})
+      : this._(mpv, autoTuneDemuxer);
 
-  Player._(this.mpv) {
+  Player._(this.mpv, this._demuxerAutoTune) {
     mpv.onSourceError = _reportSourceError;
     _bind('pause', paused, (v) => v == true);
     _bind('idle-active', idle, (v) => v == true);
@@ -279,7 +288,9 @@ final class Player {
 
   /// 我们最后一次应用的预算(用户覆盖检测的基准之一);null = 尚未调过。
   ({int fwd, int back})? _lastAppliedBudget;
-  var _demuxerAutoTune = true;
+
+  /// 构造参数 `autoTuneDemuxer` 的初值；检测到用户覆盖后置 false。
+  bool _demuxerAutoTune;
 
   /// videoParams 变化时按帧尺寸重算 demuxer 队列;用户显式设置过则永久
   /// 让位。绝不抛错进流(调参失败只跳过本次)。
@@ -319,6 +330,7 @@ final class Player {
   final _states = <MpvState<Object?>>[];
   final _errors = StreamController<MpvPlaybackError>.broadcast();
   final _logs = StreamController<LogMessageEvent>.broadcast();
+  final _overflows = StreamController<void>.broadcast();
   final _disposeHooks = <Future<void> Function()>[];
   var _disposed = false;
 
@@ -461,6 +473,23 @@ final class Player {
     return state;
   }();
 
+  /// Demuxer cache state (`demuxer-cache-state`): bytes queued, buffered
+  /// duration and seekable ranges; null while no file is loaded.
+  ///
+  /// Observed from the first access only: mpv updates it several times a
+  /// second during playback, which players without a cache display should
+  /// not pay for.
+  late final MpvState<MpvDemuxerCacheState?> demuxerCacheState = () {
+    final state = MpvState<MpvDemuxerCacheState?>._(null);
+    if (_disposed) {
+      // Same as audioDevices: unreachable by dispose, so close it here.
+      unawaited(state._close());
+      return state;
+    }
+    _bind('demuxer-cache-state', state, MpvDemuxerCacheState.fromNode);
+    return state;
+  }();
+
   /// Selected audio output device (`audio-device`), `auto` by default.
   final audioDevice = MpvState<String>._('auto');
 
@@ -476,6 +505,15 @@ final class Player {
 
   /// mpv log messages at or above the level set with [setLogLevel].
   Stream<LogMessageEvent> get logs => _logs.stream;
+
+  /// Fires when mpv's event queue for this client overflowed
+  /// (`MPV_EVENT_QUEUE_OVERFLOW`).
+  ///
+  /// mpv then dropped discrete events such as log messages or
+  /// `start-file`/`end-file`; property values ([MpvState]s) and pending
+  /// command replies are not lost. Treat event history since the previous
+  /// notification as incomplete.
+  Stream<void> get eventQueueOverflows => _overflows.stream;
 
   // --- Opening -----------------------------------------------------------
 
@@ -792,6 +830,7 @@ final class Player {
       });
       await stage(_errors.close);
       await stage(_logs.close);
+      await stage(_overflows.close);
       // Registered states — including position/decodeWarning — close here, so
       // every listener receives `done`.
       for (final state in _states) {
@@ -914,6 +953,10 @@ final class Player {
         }
       case LogMessageEvent():
         if (!_logs.isClosed) _logs.add(e);
+      case QueueOverflowEvent():
+        // mpv sends at most one per full drain of the queue, so this cannot
+        // flood listeners.
+        if (!_overflows.isClosed) _overflows.add(null);
       case ShutdownEvent():
         for (final s in _states) {
           s._reset();

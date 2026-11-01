@@ -1,3 +1,8 @@
+## 0.1.0-dev.5 (unreleased)
+
+- The build hook deletes the cached bundles of older release tags once the
+  current pin is installed (each pin bump used to leave 17-70 MB behind).
+
 ## 0.1.0-dev.4
 
 - libmpv: stream-bridge use-after-free on cancel after close, a host-source
