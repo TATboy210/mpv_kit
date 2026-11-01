@@ -69,12 +69,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmap) | | |
+| BASE-01 | Phase 18 | Pending |
+| BASE-02 | Phase 18 | Pending |
+| BASE-03 | Phase 18 | Pending |
+| BASE-04 | Phase 18 | Pending |
+| BASE-05 | Phase 18 | Pending |
+| MEM-01 | Phase 19 | Pending |
+| MEM-02 | Phase 19 | Pending |
+| MEM-03 | Phase 19 | Pending |
+| MEM-04 | Phase 19 | Pending |
+| SIZE-01 | Phase 20 | Pending |
+| SIZE-02 | Phase 20 | Pending |
+| SIZE-03 | Phase 20 | Pending |
+| SIZE-04 | Phase 20 | Pending |
+| API-01 | Phase 21 | Pending |
+| API-02 | Phase 21 | Pending |
+| API-03 | Phase 21 | Pending |
+| API-04 | Phase 21 | Pending |
+| REL-01 | Phase 22 | Pending |
+| REL-02 | Phase 22 | Pending |
+| REL-03 | Phase 22 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 20 total
-- Mapped to phases: 0（等待 roadmap）
+- Mapped to phases: 20（Phase 18: 5 · Phase 19: 4 · Phase 20: 4 · Phase 21: 4 · Phase 22: 3）
+- Unmapped: 0
+- Duplicates: 0
 
 ---
 *Requirements defined: 2026-11-01*
-*Last updated: 2026-11-01 after initial definition*
+*Last updated: 2026-11-01 after roadmap creation (traceability filled)*

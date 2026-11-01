@@ -15,7 +15,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 **Target features:**
 - 基线与问题验证：dev.4 各目标体积明细、4K/8K 30 分钟 RSS/commit、Dart 事件重复发射、上游泄漏修复核对（只测量）
 - Dart 层内存优化：模型值相等去重、软件解码线程上限、demuxer-donate-buffer 纳入预算、缺失上游修复 backport（均以基线证实为前提）
-- 构建体积优化：统一 strip、FFmpeg filter 白名单、LTO/gc-sections、mpv cplugins/build-date 显式关闭、gzip -9、hook 清理旧 tag 缓存
+- 构建体积优化：统一 strip、LTO/gc-sections、mpv cplugins/build-date 显式关闭、gzip -9、hook 清理旧 tag 缓存（FFmpeg filter 白名单延后为 SIZE-F1）
 - 只增不破 API：`demuxerCacheState`、`autoTuneDemuxer` 开关、`eventQueueOverflows`
 - 版本 0.1.0-dev.5、bundle 发布与 pin、CHANGELOG 与 docs/perf 对比报告
 

@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v3.1
 milestone_name: 依赖内存、体积与 API 优化
 status: planning
-last_updated: "2026-11-01T11:25:40.992Z"
+last_updated: "2026-11-01T11:40:00.000Z"
 last_activity: 2026-11-01
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-31)
+See: .planning/PROJECT.md (updated 2026-11-01)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Planning next milestone (v3.0 shipped 2026-10-31: GitHub Release v0.1.0-dev.4, pub.dev 0.1.0-dev.4)
+**Current focus:** Phase 18 — 基线与问题验证（v3.1 首个阶段，只测量，不改产品代码）
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-11-01 — Milestone v3.1 started
+Phase: 18 of 22 (基线与问题验证)
+Plan: — (尚未规划)
+Status: Ready to discuss / plan Phase 18
+Last activity: 2026-11-01 — v3.1 路线图已创建（Phase 18-22，20/20 需求已映射）
+
+Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
 
 ## Performance Metrics
@@ -146,6 +148,12 @@ Last activity: 2026-11-01 — Milestone v3.1 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [v3.1 Roadmap]: 阶段 18-22：18 基线（只测量）→ {19 Dart 层内存, 20 构建体积, 21 依赖 API} → 22 发布；20/20 需求映射，无孤儿、无重复。19/20/21 各自只依赖 18。
+- [v3.1 Roadmap]: MEM-01..04 以 Phase 18 的 `BASELINE.md` 为准入：confirmed 才实施；not-confirmed（含「未能测量」）关闭且不改代码。
+- [v3.1 Roadmap]: 19 与 21 都改 `player.dart` / `models.dart`，且 API-02 开关包住 MEM-03 改动的 `_autoTuneDemuxer`，串行时先 19 后 21；20 只动构建脚本与 hook，与 Dart 代码无文件重叠。
+- [v3.1 Roadmap]: 压缩体积的归档只在 `release.yml` 的 `publish` job（仅 tag 触发）里生成；Phase 20 用同一归档命令对 `workflow_dispatch` 候选构件打包来比较，不为量体积而打 tag。
+- [v3.1 Roadmap]: 每个对外发布动作（tag / GitHub Release、pin 推送、pub.dev）各需用户明确批准；批准路线图不等于批准发布；顺序 REL-01 → REL-02 → REL-03。
+- [v3.1 Roadmap]: FFmpeg filter 白名单是 SIZE-F1（Future），不在本里程碑；PROJECT.md 的 target features 仍提到它，以 REQUIREMENTS.md 为准。
 - [v3.0 Roadmap]: 阶段 12-17：12 RenderBackend 接缝（基线先行、纯重构）→ 13 macOS 路线 ADR → 14 Windows D3D11 ∥ 15 Linux OpenGL → 16 硬解零拷贝 → 17 回退加固 + UHD 回归；31/31 需求映射，无孤儿、无重复。
 - [v3.0 Roadmap]: 硬约束——Windows 上 mpv_kit 自己的渲染链路禁止 ANGLE/EGL；D3D-02（Phase 14）把它变成 `pe_audit.py` CI 门禁，此后每个阶段都要保持为绿。
 - [v3.0 Roadmap]: HWD-04（VideoToolbox 零拷贝）放在 Phase 13，使 macOS 成为完整切片；HWD-01/02/03/05 留在 Phase 16，HWD-05 是 Phase 17 CI 矩阵所用的断言基础。
@@ -290,6 +298,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [v3.1 Phase 18] 8K 30 分钟数据（BASE-02 → MEM-03）依赖 8K 测试条件与宿主 commit 余量；既往 4K/8K 30 分钟运行用 lavfi 合成源（原始帧入 demuxer 队列、不经解码器），`vd-lavc-threads` 对照需要真实编码样本，方法留给 plan-phase。无法测量的项记 not-confirmed（原因：未测量），不推断。本阶段 8K 数据只是基线采集，不关闭 MEM-F1（UHD-02）。
 - [Phase 16 start, 2026-10-28] Phase 16 now owns the global plan pointer. Phase 14 plans 14-09, 14-10 and 14-11 remain PENDING user hardware sessions (RTX 4060 fence run, auto-chain switch, final gate); they are not abandoned. Phase 13's 13-06 stays deferred as well.
 - [Phase 14] GTX 960 + 核显笔记本上 Vulkan 判 `no Vulkan 1.3 device shareable with the compositor`，退回软件渲染，4K60 掉帧 1046、avsync 23.7 s；可能是 Flutter 适配器 LUID 与 GTX 960 不一致，也可能是驱动只到 Vulkan 1.2（未隔离）。作为 Phase 14 验收用例。
 - [v3.0] 唯一真机是 Windows x64 RTX 4060：硬解零拷贝、性能、4K 30 分钟、D-05 基线只能在本机证明；Linux GPU 与 macOS 硬件不可用，HWD-03/HWD-04 与 Linux 真驱动行为须如实标为「未验证」。
@@ -308,6 +317,7 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+- v3.1 roadmap created 2026-11-01: Phases 18-22 (基线与问题验证 / Dart 层内存优化 / 构建体积优化 / 依赖功能 API 增补 / 发布 0.1.0-dev.5), numbering continues from Phase 17.1.
 - Phase 17.1 inserted after Phase 17: Close gap INT-1/INT-2: release and pin a libmpv bundle with the D3D11 and OpenGL backends (milestone audit v3.0 INT-1/INT-2) (URGENT)
 
 ## Deferred Items
@@ -339,12 +349,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-31T03:56:31.323Z
-Stopped at: Phase 17.1 complete — all phases complete
+Last session: 2026-11-01T11:40:00.000Z
+Stopped at: v3.1 roadmap created — Phase 18 ready to discuss / plan
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 
 ## Operator Next Steps
 
 
-- Start the next milestone with /gsd-new-milestone
+- Discuss Phase 18 with /gsd-discuss-phase 18, or plan it directly with /gsd-plan-phase 18
