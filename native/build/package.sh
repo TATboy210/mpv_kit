@@ -117,7 +117,13 @@ case "$(uname -s)" in
       while read -r dll; do
         unix=$(cygpath -u "$dll")
         case "$unix" in
-          "$prefix"/*|/clang64/*|/clangarm64/*) cp "$unix" "$out/lib/" ;;
+          "$prefix"/*) cp "$unix" "$out/lib/" ;;
+          # MSYS2 ships some DLLs with their COFF symbol table (libc++ carries
+          # 3764 symbols, 250 KB); our own prefix is already installed with
+          # --strip. Exports are untouched and the audit below still runs.
+          /clang64/*|/clangarm64/*)
+            cp "$unix" "$out/lib/"
+            llvm-strip --strip-unneeded "$out/lib/$(basename "$unix")" ;;
         esac
       done
     # D3D-02: every DLL of the bundle is audited (GPL and ANGLE/EGL bans);

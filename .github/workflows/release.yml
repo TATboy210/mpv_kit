@@ -381,7 +381,10 @@ jobs:
           mkdir release
           for d in artifacts/libmpv-*; do
             name=$(basename "$d")
-            tar -C "$d" -czf "release/$name.tar.gz" .
+            # Reproducible archive: fixed order, owner and mtime, and no
+            # gzip timestamp (-n), so the same bundle hashes the same.
+            tar -C "$d" --sort=name --owner=0 --group=0 --numeric-owner \
+              --mtime=@0 -cf - . | gzip -9n > "release/$name.tar.gz"
           done
           (cd release && sha256sum *.tar.gz > SHA256SUMS)
           cat release/SHA256SUMS
