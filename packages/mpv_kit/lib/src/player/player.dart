@@ -353,17 +353,23 @@ final class Player {
   /// 2160x3840 60fps: 16 线程 484MiB/152fps,8 线程 303MiB/115fps
   /// 1920x1080 25fps: 16 线程 153MiB/634fps,4 线程  82MiB/334fps
   /// ```
-  /// 故 1080p 及以下取 4(1080p60 仍有 5 倍余量),到 4K(4096x2304)取 8
-  /// (4K60 仍近 2 倍余量),更大(8K)保持自动:8K 软解本就缺速度。永不超过
-  /// mpv 自动值,少核机器不会因此多开线程。硬解时 mpv 改用
-  /// `hwdec-threads`,此值只在回退软解时生效。
+  /// 故 1080p 及以下取 4(1080p60 仍有 5 倍余量),4K(4096x2304)及更大
+  /// 取 8。8K 曾保持自动(16 线程),dev.6 实测(8K HEVC Main10 50fps,
+  /// 16 线程 x64,`hwdec=no`,峰值 RSS / 20 s 内解码推进的片长):
+  /// ```text
+  /// 16 线程: 3433MiB / 20.56s    12 线程: 2908MiB / 20.06s
+  /// 10 线程: 2700MiB / 19.68s     8 线程: 2213MiB / 18.94s
+  /// ```
+  /// 8K 软解早已是内存带宽瓶颈:12→16 线程只多 2% 吞吐却多占 525MiB,
+  /// 8 线程少占 1.2GiB 仅慢约 8%,故 8K 与 4K 同样取 8——软解帧线程数
+  /// 是 8K 内存耗尽的主要可控项。永不超过 mpv 自动值,少核机器不会因此
+  /// 多开线程。硬解时 mpv 改用 `hwdec-threads`,此值只在回退软解时生效。
   ///
   /// 尺寸未知/非法返回 null(不调参)。
   @visibleForTesting
   static int? decoderThreadsForTesting(int w, int h, int cores) {
     if (w <= 0 || h <= 0) return null;
     final px = w * h;
-    if (px > 4096 * 2304) return 0;
     final cap = px > 1920 * 1088 ? 8 : 4;
     return min(cap, min(cores + 1, 16));
   }

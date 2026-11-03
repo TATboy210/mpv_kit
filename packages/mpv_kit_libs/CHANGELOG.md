@@ -1,3 +1,8 @@
+## 0.1.0-dev.6
+
+- Version bump only; this release has no native changes and stays pinned to
+  the v0.1.0-dev.5 bundles.
+
 ## 0.1.0-dev.5
 
 - Pinned to the v0.1.0-dev.5 LGPL bundles: FFmpeg linked with

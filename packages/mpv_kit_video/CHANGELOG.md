@@ -1,3 +1,8 @@
+## 0.1.0-dev.6
+
+- Depends on mpv_kit 0.1.0-dev.6 (8K software-decode thread cap). No changes
+  to the renderer or the platform graphics backends.
+
 ## 0.1.0-dev.5
 
 - Depends on mpv_kit / mpv_kit_libs 0.1.0-dev.5 (lower software-decode

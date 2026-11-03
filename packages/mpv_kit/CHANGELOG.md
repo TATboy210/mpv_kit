@@ -1,3 +1,14 @@
+## 0.1.0-dev.6
+
+- Changed: software decoding at 8K and above now uses at most 8 threads
+  (`vd-lavc-threads`), the same cap as 4K. mpv's automatic value is up to 16
+  frame threads, and each thread holds a full frame: measured on 8K HEVC
+  Main10 50 fps (16-thread x64, `hwdec=no`), peak RSS 3433 -> 2213 MiB
+  (-1.2 GiB) for about 8% less decode throughput (20.6 -> 18.9 s of video
+  decoded per 20 s). 12 threads was not a better trade: 525 MiB more for 2%
+  throughput. Values at 4K and below are unchanged, and a `vd-lavc-threads`
+  you set yourself is still never changed.
+
 ## 0.1.0-dev.5
 
 - Added: `Player.demuxerCacheState` (`MpvDemuxerCacheState`,

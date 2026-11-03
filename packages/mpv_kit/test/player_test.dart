@@ -393,7 +393,7 @@ void main() {
       expect(f(4096, 2304), 400 * mib);
     });
 
-    test('decoder threads: 4 up to 1080p, 8 up to 4K, auto above', () {
+    test('decoder threads: 4 up to 1080p, 8 above', () {
       int? t(int w, int h, [int cores = 16]) =>
           Player.decoderThreadsForTesting(w, h, cores);
       expect(t(1280, 720), 4);
@@ -403,10 +403,12 @@ void main() {
       expect(t(3840, 2160), 8);
       expect(t(2160, 3840), 8); // portrait 4K
       expect(t(4096, 2304), 8);
-      expect(t(7680, 4320), 0); // 8K: mpv auto
+      expect(t(7680, 4320), 8); // 8K: capped, see the doc comment
+      expect(t(8192, 4320), 8);
       // Never above mpv's own auto value (cores + 1, max 16).
       expect(t(3840, 2160, 2), 3);
       expect(t(1920, 1080, 2), 3);
+      expect(t(7680, 4320, 2), 3);
       expect(t(0, 1080), isNull);
     });
 
@@ -478,6 +480,14 @@ void main() {
       expect(
         p.mpv.tryGetProperty('vd-lavc-threads'),
         Player.decoderThreadsForTesting(3840, 2160, cores),
+      );
+      // 8K keeps the same cap (dev.6: frame threads are the dominant,
+      // controllable memory term for 8K software decode).
+      await p.open('av://lavfi:testsrc2=size=7680x4320:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(7680, 4320, cores),
       );
     });
 
