@@ -1,3 +1,7 @@
+## 0.1.0-dev.7
+
+- Version bump only; no API or behaviour changes in this package.
+
 ## 0.1.0-dev.6
 
 - Changed: software decoding at 8K and above now uses at most 8 threads

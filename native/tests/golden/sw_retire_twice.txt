@@ -13,11 +13,12 @@
 # the resize to 32x18 every render fails: the resize itself and four
 # retries (100 + 200 + 400 + 800 ms; render_error at the 1st, 2nd and 4th
 # failure), so the retired 64x36 frame is still what AcquireFront shows.
-# The second resize, to 48x27, retires the 32x18 buffers, which frees the
-# 64x36 ones; it retries at once and succeeds. While that render is held
-# in the fake AcquireFront has nothing to show: the 64x36 frame's pixels
-# are freed memory and must not be handed out (on the defect this line
-# reads `acquire index=-2 64x36 pixels=set`). Then the new ring rotates.
+# The second resize, to 48x27, keeps that retired generation alive
+# (kKeepRetiredFront: a resize before any new-size frame must not blank the
+# window), frees only the never-shown 32x18 buffers, and retries at once
+# and succeeds. While that render is held in the fake the 64x36 frame is
+# still handed out and still readable (frame=1). Then the new ring rotates
+# and the survivor is released with the next reallocation.
 [sw-retire-twice]
 start ok backend=software reason="software (sw) on cpu"
 create-attempts sw
@@ -36,7 +37,7 @@ render buf=0 32x18 rgb0 err=-20
 acquire index=-2 64x36 frame=1
 event resize 48x27
 render buf=0 frame=2 48x27 rgb0
-acquire index=-1 48x27 frame=none
+acquire index=-2 64x36 frame=1
 event recovered
 acquire index=0 48x27 frame=2
 render buf=1 frame=3 48x27 rgb0

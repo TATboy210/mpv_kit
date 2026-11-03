@@ -215,9 +215,15 @@ class D3D11RenderBackend final : public RenderBackend {
     return info >= 0 && active ? active : "unknown renderer";
   }
 
+  bool keeps_retired_front() const override { return true; }
+
   bool AllocTargets(int count, int width, int height, int keep_slot,
                     std::string* error) override {
-    FreeRetired();  // the previous generation's survivor had its quarantine
+    // kKeepRetiredFront: a resize arrived before any new-size frame, so the
+    // retired survivor is still the only picture. Keep it; the engine's
+    // FreeRetired (after the new-size frame and the quarantine) ends it.
+    if (keep_slot != kKeepRetiredFront)
+      FreeRetired();  // the previous generation's survivor had its quarantine
     if (width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION ||
         height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION) {
       *error = "texture " + std::to_string(width) + "x" +

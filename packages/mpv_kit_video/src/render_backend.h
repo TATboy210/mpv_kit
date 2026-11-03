@@ -60,6 +60,12 @@ std::vector<BackendCandidate> DefaultCandidates(RendererChoice choice);
 /// GPU completion of one render target.
 enum class WaitResult { kOk, kTimeout, kDeviceLost };
 
+/// [RenderBackend::AllocTargets] keep_slot sentinel: keep the generation
+/// already in retirement (the previous resize's survivor) alive instead of
+/// releasing it, and allocate the new ring around it. Only valid when the
+/// backend reports [RenderBackend::keeps_retired_front].
+inline constexpr int kKeepRetiredFront = -2;
+
 /// What the platform texture needs for one ring slot: exactly one of the
 /// two is set.
 struct TargetView {
@@ -90,7 +96,10 @@ struct TargetView {
 ///     (valid until the next AcquireFront(), video_renderer.h).
 ///   * FreeRetired releases every retired target. The engine calls it once
 ///     the first new-size frame was published and the compositor took
-///     quarantine+1 further frames.
+///     quarantine+1 further frames. A backend that reports
+///     keeps_retired_front() can be asked with [kKeepRetiredFront] to leave
+///     its current retirement untouched (a resize that arrives before any
+///     new-size frame); the same FreeRetired call still ends it.
 ///   * Release frees the render context (with the thread bound) before the
 ///     device; the destructor then frees the remaining targets and finally
 ///     the device.
@@ -149,9 +158,18 @@ class RenderBackend {
   virtual std::string RendererName(const MpvApi& api,
                                    mpv_render_context* ctx) const = 0;
 
+  /// True when AllocTargets accepts [kKeepRetiredFront]: it then keeps the
+  /// generation already in retirement alive, so the engine can keep showing
+  /// that frame across a second resize that happens before any new-size
+  /// frame was published. Default false: the engine treats the retired front
+  /// as released by the next allocation and never hands it out.
+  virtual bool keeps_retired_front() const { return false; }
+
   /// (Re)allocates [count] targets of [width]x[height]; only [keep_slot]
-  /// (-1: none) of the old generation survives into retirement. False with
-  /// *error set when allocation failed; then nothing is allocated.
+  /// (-1: none) of the old generation survives into retirement, or
+  /// [kKeepRetiredFront] keeps the backend's current retirement alive (see
+  /// keeps_retired_front). False with *error set when allocation failed;
+  /// then nothing is allocated.
   virtual bool AllocTargets(int count, int width, int height, int keep_slot,
                             std::string* error) = 0;
   /// Releases the retired generation. A no-op without one.

@@ -12,11 +12,11 @@
 # compositor. The resize to 32x18 retires serial 1 and frees the rest of
 # the old ring; the first 32x18 render fails (held in the fake meanwhile),
 # so serial 1 is still what AcquireFront shows. The second resize, to
-# 48x27, frees the retired serial 1 together with the whole 32x18 ring
-# (none of it was ever shown). Until the first 48x27 frame is published
-# (its timeline value is deferred) AcquireFront has nothing to show:
-# serial 1 is gone and must not be handed out. Then the new ring rotates
-# under quarantine 2, and every image is destroyed exactly once.
+# 48x27, keeps serial 1 alive (kKeepRetiredFront: a resize before any
+# new-size frame must not blank the window) and frees the 32x18 ring,
+# which was never shown. Until the first 48x27 frame is published serial 1
+# stays on screen; then the new ring rotates under quarantine 2 and serial
+# 1 is released once the compositor moved quarantine+1 frames past it.
 [vk-retire-twice]
 start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
 create-attempts vulkan/gpu-next
@@ -44,7 +44,6 @@ event resize 32x18
 render serial=7 32x18 err=-20
 acquire index=-2 64x36 serial=1
 event render_error render: fake error -20
-destroy serial=1
 destroy serial=7
 destroy serial=8
 destroy serial=9
@@ -59,13 +58,14 @@ create serial=17 48x27
 create serial=18 48x27
 event resize 48x27
 render serial=13 48x27
-acquire index=-1 48x27 serial=none
+acquire index=-2 64x36 serial=1
 event recovered
 acquire index=0 48x27 serial=13
 render serial=14 48x27
 acquire index=1 48x27 serial=14
 render serial=15 48x27
 acquire index=2 48x27 serial=15
+destroy serial=1
 quiesce renders=5 skips=0 swaps=5
 destroy serial=13
 destroy serial=14

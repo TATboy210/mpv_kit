@@ -187,10 +187,11 @@ void Teardown(Run& run, Rig& rig) {
 // One 64x36 frame (serial 1) is on screen. The resize to 32x18 retires
 // serial 1, and the first 32x18 render fails, so the 32x18 generation
 // never publishes a frame: serial 1 is still what the compositor shows. A
-// second resize to 48x27 then reallocates again; AllocateRing frees the
-// previous generation's survivor first, which is serial 1. From then on
-// AcquireFront must not hand serial 1 out: until the first 48x27 frame is
-// published there is nothing to show (index -1).
+// second resize to 48x27 then reallocates again with kKeepRetiredFront:
+// the survivor (serial 1) stays alive and keeps being shown, because a
+// resize that arrives before any new-size frame must not blank the window.
+// Serial 1 is released only after the first 48x27 frame was published and
+// the compositor moved quarantine+1 frames past it.
 //
 // Determinism: the failing 32x18 render is held inside the fake while the
 // second size is set, so the renderer retries at the new size at once

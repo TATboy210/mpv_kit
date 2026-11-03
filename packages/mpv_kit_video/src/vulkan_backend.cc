@@ -389,13 +389,20 @@ void DestroyAll(VkDevice device, VkSemaphore timeline, VulkanInterop* interop,
 }  // namespace
 
 bool VulkanContext::AllocateRing(int count, int width, int height,
-                                 SharedImage* keep_retired, std::string* error) {
-  FreeRetired();  // the previous generation's survivor had its quarantine
-  // Retire only the compositor-facing front image: everything else in the
-  // old generation is dead weight — count×w×h×4 bytes (~930 MB at 8K).
-  retired_.clear();
-  if (keep_retired && (keep_retired->image || keep_retired->platform))
-    retired_.push_back(std::move(*keep_retired));
+                                 SharedImage* keep_retired, bool adopt_retired,
+                                 std::string* error) {
+  if (!adopt_retired) {
+    FreeRetired();  // the previous generation's survivor had its quarantine
+    // Retire only the compositor-facing front image: everything else in the
+    // old generation is dead weight — count×w×h×4 bytes (~930 MB at 8K).
+    retired_.clear();
+    if (keep_retired && (keep_retired->image || keep_retired->platform))
+      retired_.push_back(std::move(*keep_retired));
+  }
+  // adopt_retired: a resize arrived before any new-size frame, so the
+  // survivor in retired_ is still the only picture. Keep it (and the
+  // engine's retired_front_) instead of freeing it; FreeRetired ends it
+  // once the new-size frame and the quarantine have passed.
   // SharedImage is a plain aggregate: the move above only copied it, so the
   // source slot still holds the handles. Clear it so DestroyAll(ring_) below
   // skips it (its moved-out rule) instead of destroying the retired image.
@@ -536,10 +543,12 @@ class VulkanRenderBackend final : public RenderBackend {
     return info >= 0 && active ? active : "unknown renderer";
   }
 
+  bool keeps_retired_front() const override { return true; }
   bool AllocTargets(int count, int width, int height, int keep_slot,
                     std::string* error) override {
     SharedImage* keep = keep_slot >= 0 ? &vk_->ring()[keep_slot] : nullptr;
-    return vk_->AllocateRing(count, width, height, keep, error);
+    return vk_->AllocateRing(count, width, height, keep,
+                             keep_slot == kKeepRetiredFront, error);
   }
   void FreeRetired() override {
     if (vk_) vk_->FreeRetired();

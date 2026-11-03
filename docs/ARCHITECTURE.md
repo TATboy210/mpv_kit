@@ -258,9 +258,12 @@ once its last GPU work has completed. The retired front stays valid, and is
 what `AcquireFront` hands out, until the first frame at the new size has
 been published and the compositor has taken quarantine + 1 further frames.
 Then `FreeRetired` releases it, exactly once. 12-07 fixed the earlier
-behaviour, which destroyed it at the reallocation itself; 12-09 fixed a
-resize that follows a resize without a frame, which handed out the
-generation before last. A platform object the compositor still holds is kept
+behaviour, which destroyed it at the reallocation itself; 12-09 stopped
+handing out the generation before last when a resize follows a resize
+without a frame; dev.7 keeps that survivor alive instead (a backend that
+advertises `keeps_retired_front()` is asked with `kKeepRetiredFront`), so a
+second resize before any new-size frame leaves the last picture on screen
+rather than a black window. `FreeRetired` still ends it at the same point. A platform object the compositor still holds is kept
 alive by the platform's own reference until the platform has unregistered
 the texture: on Windows the D3D11 texture's COM reference (released by the
 descriptor's release callback) and the instance kept until

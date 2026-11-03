@@ -170,16 +170,15 @@ void Teardown(Run& run, std::unique_ptr<VideoRenderer>& r) {
 // One 64x36 frame is on screen. The resize to 32x18 moves the 64x36
 // buffers into retirement and every 32x18 render fails, so the 32x18
 // generation never publishes a frame: the retired 64x36 frame is still
-// what the compositor shows. A second resize to 48x27 retires the 32x18
-// buffers in turn, which frees the 64x36 ones. From then on AcquireFront
-// must not hand out the 64x36 frame (its pixels point into freed memory):
-// until the first 48x27 frame is published there is nothing to show
-// (index -1).
+// what the compositor shows. A second resize to 48x27 keeps that retired
+// generation alive (kKeepRetiredFront: a resize before any new-size frame
+// must not blank the window) and frees only the 32x18 buffers. The 64x36
+// frame stays readable and on screen until the first 48x27 frame is
+// published.
 //
 // The 48x27 render is held inside the fake to observe the window between
-// the reallocation and the publish. That frame is never read through its
-// pixel pointer: on the defect it is freed memory, and the line and the
-// invariant below report it without touching it.
+// the reallocation and the publish; the survivor's pixels are read there
+// like anywhere else (frame=1).
 void SwRetireTwice(Run& run) {
   FakeInterop interop(/*latency=*/2, /*bgra=*/false, /*interop_reason=*/nullptr);
   auto r = MakeRenderer(interop);
@@ -207,11 +206,17 @@ void SwRetireTwice(Run& run) {
   Fake().WaitRenderHeld();
   run.trace.Add(Fake().DrainAsync());
   const mpv_kit::Frame window = r->AcquireFront();
-  run.trace.Add(AcquireLine(window) +
-                (window.pixels ? " pixels=set" : " frame=none"));
-  if (window.pixels && window.width == 64 && window.height == 36)
-    run.Invariant("USE AFTER FREE: retired 64x36 frame handed out after the "
-                  "48x27 reallocation freed its buffers");
+  if (window.pixels && window.width == 64 && window.height == 36) {
+    // The survivor is alive and still the last published frame.
+    const int frame =
+        window.pixels[0] | window.pixels[1] << 8 | window.pixels[2] << 16;
+    run.trace.Add(AcquireLine(window) + " frame=" + std::to_string(frame));
+    if (frame != 1)
+      run.Invariant("retired 64x36 frame is not the last published frame");
+  } else {
+    run.trace.Add(AcquireLine(window) + " frame=none");
+    run.Invariant("the retired 64x36 frame was dropped by the second resize");
+  }
   Fake().HoldRenders(false);
   interop.WaitFrameReady(want);
   Sync(run);

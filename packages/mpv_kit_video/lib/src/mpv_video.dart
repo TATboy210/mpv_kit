@@ -34,6 +34,38 @@ class _MpvVideoState extends State<MpvVideo> {
   Timer? _debounce;
   (int, int)? _requested;
 
+  /// Last non-null video geometry.
+  ///
+  /// Switching files makes mpv report `video-params` as unavailable for a
+  /// moment. Without this cache the widget would unmount its [Texture] and
+  /// show nothing (a black flash) even though the native renderer still
+  /// holds the last frame. The cache is not cleared on idle/stop: keeping
+  /// the last frame there is deliberate (it matches `keep-open=yes`), and
+  /// clearing it would bring the black switch flash back.
+  Size? _lastVideoSize;
+
+  /// True while the file switch passed through a null `video-params` and the
+  /// new geometry has not been applied yet. The next non-null build requests
+  /// the new size at once instead of through the 80 ms resize debounce: the
+  /// debounce exists for window drags, but a switch would otherwise keep the
+  /// previous size's ring on screen (mpv letterboxes the new frame into it).
+  bool _switchPending = false;
+
+  @override
+  void didUpdateWidget(covariant MpvVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A new controller owns a new native renderer with no size yet. The
+    // computed size may be identical, so only resetting the request makes
+    // the build below send its initial setSize.
+    if (!identical(oldWidget.controller, widget.controller)) {
+      _debounce?.cancel();
+      _debounce = null;
+      _requested = null;
+      _lastVideoSize = null;
+      _switchPending = false;
+    }
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -50,14 +82,15 @@ class _MpvVideoState extends State<MpvVideo> {
     return rotated ? size.flipped : size;
   }
 
-  void _requestSize(Size logical, double dpr) {
+  void _requestSize(Size logical, double dpr, {bool immediate = false}) {
     final w = (logical.width * dpr).round(), h = (logical.height * dpr).round();
     if (_requested == (w, h)) return;
     final first = _requested == null;
     _requested = (w, h);
     _debounce?.cancel();
-    if (first) {
-      // Nothing is on screen yet: render the first frame without waiting.
+    if (first || immediate) {
+      // Nothing is on screen yet, or a file switch just changed the source:
+      // render at the new size without waiting.
       unawaited(widget.controller.setSize(w, h));
       return;
     }
@@ -76,7 +109,17 @@ class _MpvVideoState extends State<MpvVideo> {
       stream: widget.controller.player.videoParams.stream,
       initialData: widget.controller.player.videoParams.value,
       builder: (context, snapshot) {
-        final video = _videoSize(snapshot.data);
+        // Transiently null params (file switch) keep the last geometry and
+        // the Texture mounted.
+        final measured = _videoSize(snapshot.data);
+        if (measured != null) {
+          _lastVideoSize = measured;
+        } else if (_lastVideoSize != null) {
+          _switchPending = true;
+        }
+        final video = measured ?? _lastVideoSize;
+        final immediate = _switchPending && measured != null;
+        if (immediate) _switchPending = false;
         return LayoutBuilder(
           builder: (context, constraints) {
             final box = constraints.biggest;
@@ -90,7 +133,7 @@ class _MpvVideoState extends State<MpvVideo> {
               video.width * fs.destination.width / fs.source.width,
               video.height * fs.destination.height / fs.source.height,
             );
-            _requestSize(shown, dpr);
+            _requestSize(shown, dpr, immediate: immediate);
             return ClipRect(
               // Tight on both ends: the parent may pass tight constraints that
               // are smaller (cover) or larger (contain) than the video rect.

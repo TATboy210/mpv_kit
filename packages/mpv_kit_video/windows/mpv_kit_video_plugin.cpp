@@ -111,6 +111,13 @@ struct Instance {
   int bind_count = 0;
   double bind_total_ms = 0;
   double bind_max_ms = 0;
+  // Lifetime counters for the "stats" method (never reset by the probe
+  // windows above). A null descriptor before any frame was ever shown is
+  // normal startup; after one, it means the compositor lost the picture.
+  std::atomic<int64_t> describes_total{0};
+  std::atomic<int64_t> null_describes{0};
+  std::atomic<int64_t> pixels_seen{0};
+  std::atomic<int64_t> null_pixels{0};
   std::unique_ptr<D3D11Interop> interop;
   std::unique_ptr<VideoRenderer> renderer;
   std::unique_ptr<flutter::TextureVariant> texture;
@@ -203,6 +210,21 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     auto it = id_v ? instances_.find(ToInt(*id_v)) : instances_.end();
     if (it == instances_.end())
       return result->Error("no_texture", "unknown textureId");
+    if (m == "stats") {
+      // Test/diagnostic only (no Dart public API): proves that a switch or
+      // resize never left the compositor without a frame after one existed.
+      Instance* inst = it->second.get();
+      return result->Success(EncodableValue(EncodableMap{
+          {EncodableValue("describes"),
+           EncodableValue(inst->describes_total.load())},
+          {EncodableValue("nullDescribes"),
+           EncodableValue(inst->null_describes.load())},
+          {EncodableValue("pixels"),
+           EncodableValue(inst->pixels_seen.load())},
+          {EncodableValue("nullPixels"),
+           EncodableValue(inst->null_pixels.load())},
+      }));
+    }
     if (m == "setSize") {
       const EncodableValue* w = Arg(*args, "width");
       const EncodableValue* h = Arg(*args, "height");
@@ -287,7 +309,11 @@ class MpvKitVideoPlugin : public flutter::Plugin {
             std::lock_guard<std::mutex> lock(raw->mutex);
             if (raw->dead) return nullptr;
             const Frame f = raw->renderer->AcquireFront();
-            if (!f.pixels) return nullptr;
+            if (!f.pixels) {
+              if (raw->pixels_seen.load() > 0) raw->null_pixels++;
+              return nullptr;
+            }
+            raw->pixels_seen++;
             raw->pixels.buffer = f.pixels;
             raw->pixels.width = static_cast<size_t>(f.width);
             raw->pixels.height = static_cast<size_t>(f.height);
@@ -382,8 +408,14 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     // Read before AcquireFront: it may mark the texture again (and so
     // restamp) for a frame that still waits, which must not hide this pickup.
     const int64_t ready = inst->frame_ready_ns.load();
+    inst->describes_total++;
     const Frame f = inst->renderer->AcquireFront();
-    if (!f.platform) return nullptr;
+    if (!f.platform) {
+      // A frame was shown before: this one lost it (the startup case, no
+      // handle yet, is not a defect).
+      if (inst->last_handle) inst->null_describes++;
+      return nullptr;
+    }
     auto* tex = static_cast<D3D11Interop::Texture*>(f.platform);
     // Engine update of the previous descriptor this thread handed out for
     // this instance, bracketed by the release callback below.

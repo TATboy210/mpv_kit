@@ -1,3 +1,19 @@
+## 0.1.0-dev.7
+
+- Fixed: switching to another file no longer shows a black frame. `MpvVideo`
+  keeps the last frame's geometry and the texture mounted while mpv reports
+  `video-params` as unavailable, requests the new size at once after a switch
+  instead of after the window-resize debounce, and resets its size state when
+  a different controller is mounted at the same size.
+- Fixed: a resize that arrives before the previous resize published a frame
+  (render failure or GPU timeout) no longer drops the only picture. The
+  Vulkan, D3D11 and software backends keep their retired survivor until the
+  first new-size frame and the compositor quarantine; backends that do not
+  advertise the capability (OpenGL) keep the old behaviour.
+- Added (test-only, Windows plugin): a `stats` method with lifetime
+  `describes`/`nullDescribes`/`pixels`/`nullPixels` counters. No Dart public
+  API change.
+
 ## 0.1.0-dev.6
 
 - Depends on mpv_kit 0.1.0-dev.6 (8K software-decode thread cap). No changes

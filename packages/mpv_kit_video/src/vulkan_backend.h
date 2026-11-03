@@ -73,8 +73,13 @@ class VulkanContext {
   /// once (retiring everything would pin count×w×h×4 bytes of VRAM — at 8K
   /// that is ~930 MB for nothing). Each destroyed image is awaited on its
   /// own last timeline value, not with a device-wide vkDeviceWaitIdle.
+  /// (Re)allocates the ring. [keep_retired] (a ring slot) survives into
+  /// retirement; with [adopt_retired] the generation already in retirement
+  /// is kept instead of freed (a resize before any new-size frame), and
+  /// [keep_retired] must be null.
   bool AllocateRing(int count, int width, int height,
-                    SharedImage* keep_retired, std::string* error);
+                    SharedImage* keep_retired, bool adopt_retired,
+                    std::string* error);
   void FreeRing();
   void FreeRetired();
 

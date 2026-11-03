@@ -155,6 +155,7 @@ class SoftwareBackend final : public RenderBackend {
   const char* wire_name() const override { return "software"; }
   Backend frame_kind() const override { return Backend::kSoftware; }
   bool pipelined() const override { return false; }
+  bool keeps_retired_front() const override { return true; }
 
   int Create(const MpvApi& api, mpv_handle* handle, const char* renderer,
              mpv_render_context** out, std::string* why) override {
@@ -192,8 +193,17 @@ class SoftwareBackend final : public RenderBackend {
     // So that generation is kept one reallocation longer (older_) and only
     // the one before it is freed here; FreeRetired() drops both once the
     // compositor has moved on. Allocation does not fail (bad_alloc aside).
-    (void)keep_slot;
     (void)error;
+    if (keep_slot == kKeepRetiredFront) {
+      // A second resize before any new-size frame: the survivor already
+      // sits in retired_, so leave that generation alone. Only the ring that
+      // was never shown (buffers_) and the two-generations-old data are
+      // released.
+      older_.clear();
+      buffers_.assign(count, std::vector<uint8_t>(size_t(width) * height * 4));
+      return true;
+    }
+    (void)keep_slot;  // the whole old generation is retired either way
     older_ = std::move(retired_);
     retired_ = std::move(buffers_);
     buffers_.assign(count, std::vector<uint8_t>(size_t(width) * height * 4));
@@ -713,15 +723,31 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   // Old generation's front slot, valid across the realloc below: the one
   // image whose Vulkan side survives into retirement.
   int keep_front = -1;
+  // Set by the failure path: an adopt attempt may have left a survivor
+  // alive, and the old front must stop naming it. Released outside the
+  // renderer lock (FreeRetired waits on GPU work).
+  bool release_retired = false;
+  // A resize that arrives before the previous one published any frame keeps
+  // the retirement from that previous resize: the backend leaves it alive
+  // instead of releasing it, and AcquireFront keeps showing it. Without this
+  // the second resize frees the only picture and the compositor gets no
+  // frame (a black window until the new size renders).
+  bool adopt = false;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     w = width_;
     h = height_;
     if (w != ring_w_ || h != ring_h_) {
-      // Forget the older survivor first: if the previous generation never
-      // published a frame, retired_front_ still names the one before it,
-      // which the reallocation below frees (golden *_retire_twice).
-      retired_front_ = Frame{};
+      const bool have_retired =
+          retired_front_.platform != nullptr || retired_front_.pixels != nullptr;
+      adopt = front_ < 0 && have_retired &&
+              render_backend_->keeps_retired_front();
+      if (!adopt) {
+        // Forget the older survivor: if the previous generation never
+        // published a frame, retired_front_ still names the one before it,
+        // which the reallocation below frees (golden *_retire_twice).
+        retired_front_ = Frame{};
+      }
       // Old images are about to be retired; their last frame stays on
       // screen until a new one exists.
       if (front_ >= 0) {
@@ -735,6 +761,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         retired_front_.platform = view.platform;
       }
       retired_countdown_ = -1;
+      if (adopt) keep_front = kKeepRetiredFront;
       // A waiting frame is older than the retired front and is dropped.
       if (queued_ >= 0) probe_superseded_++;
       front_ = in_use_ = queued_ = -1;
@@ -762,8 +789,11 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         // The failed attempt freed everything, the image it had just
         // retired included: nothing is left to keep (keep_front's slot is
         // gone with the old ring), and the old front must never be
-        // handed out again, as on the plain-failure branch below.
+        // handed out again, as on the plain-failure branch below. An adopt
+        // attempt may have left its survivor alive on purpose; release it
+        // before the old front stops naming it.
         retired_front_ = Frame{};
+        release_retired = true;
         if (ring_size_ > fallback_ring &&
             render_backend_->AllocTargets(fallback_ring, w, h, -1, error)) {
           log_("mpv_kit: shared-image allocation failed at ring " +
@@ -783,6 +813,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
         ring_h_ = h;
       }
     }
+    if (release_retired) render_backend_->FreeRetired();
     if (failed_before_render) {
       SkipFrame();  // mpv still waits for this frame to be consumed
       return RenderResult::kFailed;
