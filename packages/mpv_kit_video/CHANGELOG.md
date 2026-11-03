@@ -1,3 +1,23 @@
+## 0.1.0-dev.8
+
+- Fixed: a D3D11 device loss detected while allocating a new ring (resize) or
+  returning a render error now emits `deviceLost` once and stops rendering,
+  instead of backing off forever while Dart's `isBroken` stayed false.
+- Fixed: `ID3D11Fence::Signal` failures are checked; that slot falls back to
+  its `D3D11_QUERY_EVENT` completion instead of waiting for a value that was
+  never signalled. Three consecutive unusable query completions report
+  `deviceLost` instead of a 1 s timeout per frame.
+- Fixed: device creation retries with feature level 11_0 when the runtime
+  rejects 11_1 with `E_INVALIDARG` (backend and interop devices).
+- Fixed: the Windows plugin no longer dereferences the platform texture
+  struct after `AcquireFront` released the renderer lock (`RetainFrame` now
+  fills `Frame.handle`/`Frame.release_context` under the lock), defers
+  `Instance` deletion in the plugin destructor through `UnregisterTexture`,
+  and reports a failed texture registration instead of `textureId: -1`.
+- Added (test-only, Windows): injection modes `create-no-11-1`,
+  `device-removed:alloc`, `device-removed:render:<n>`, `signal-fail:<n>`,
+  `query-getdata-fail`, and `stats.sync`.
+
 ## 0.1.0-dev.7
 
 - Fixed: switching to another file no longer shows a black frame. `MpvVideo`

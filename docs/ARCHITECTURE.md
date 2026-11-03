@@ -39,7 +39,17 @@ app
   posts to a `NativeCallable.listener`; the owning isolate then drains
   `mpv_wait_event(0)` until empty and dispatches typed `MpvEventData`
   (property changes go to the `observeProperty` streams, async replies
-  complete their futures).
+  complete their futures). The drain is bounded (256 events or 2 ms) and
+  continues from a zero-duration timer, so timers and method channels get a
+  turn under log floods while the queue is still emptied to
+  `MPV_EVENT_NONE` (mpv only clears `need_wakeup` then). `events`,
+  `MpvState.stream` and `observeProperty` are synchronous broadcasts: their
+  listeners run inside that drain on the owning isolate and must be short
+  and non-blocking. A reply that cannot be decoded completes its future with
+  `MpvException(operation: 'decode_event')` instead of hanging; on
+  `MPV_EVENT_QUEUE_OVERFLOW` the `Player` re-reads every bound property so
+  its state is current after dropped discrete events (log messages have
+  their own buffer and are not part of that ring).
 * `Player` builds on `Mpv`: each piece of state is an `MpvState<T>` (value
   plus change stream) backed by one `mpv_observe_property`.
 

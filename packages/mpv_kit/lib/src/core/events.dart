@@ -6,6 +6,7 @@ import 'dart:ffi';
 import 'package:meta/meta.dart';
 
 import '../ffi/bindings.dart';
+import 'event_decode_hook.dart';
 import 'node.dart';
 
 /// 所有 mpv 事件的基类；对 [MpvEventId] 每个取值都有对应子类。
@@ -20,6 +21,11 @@ sealed class MpvEventData {
 
   /// 从 libmpv 拥有的事件指针解码（指针仅在下次 wait_event 前有效，故立即深拷贝）。
   static MpvEventData decode(Pointer<MpvEvent> p) {
+    final injected = debugEventDecodeFailure;
+    if (injected != null) {
+      final failure = injected(p);
+      if (failure != null) throw failure;
+    }
     final e = p.ref;
     final ud = e.replyUserdata;
     final err = e.error;

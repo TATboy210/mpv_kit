@@ -1,3 +1,23 @@
+## 0.1.0-dev.8
+
+- Fixed: the event drain is bounded (256 events or 2 ms per turn, continued
+  from a zero-duration timer) so a log flood cannot hold the isolate and
+  starve timers/platform channels; it still empties the queue to
+  `MPV_EVENT_NONE`.
+- Fixed: a reply event that cannot be decoded now completes its awaiting
+  future with `MpvException(operation: 'decode_event')` instead of leaving
+  `open`/`seek`/`screenshot` pending forever.
+- Changed: `Player` re-reads every bound property when mpv reports
+  `MPV_EVENT_QUEUE_OVERFLOW`, so state is current after dropped discrete
+  events. The `eventQueueOverflows` doc no longer mixes the event ring with
+  the separate log buffer.
+- Changed: `openPlaylist` submits all `loadfile ... append` commands before
+  awaiting their replies, so the playlist property is not reparsed once per
+  URL (O(N^2) in the drain). If one entry fails, the later ones are already
+  queued; the first error is still thrown. Synchronous `events`,
+  `MpvState.stream` and `observeProperty` listeners run inside the drain and
+  must not block (documented).
+
 ## 0.1.0-dev.7
 
 - Version bump only; no API or behaviour changes in this package.

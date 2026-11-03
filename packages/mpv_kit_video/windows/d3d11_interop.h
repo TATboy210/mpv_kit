@@ -35,9 +35,14 @@ class D3D11Interop : public Interop, public VulkanInterop {
   // mutex: the only bound on when ANGLE stops sampling an image is the
   // swap chain queue (DXGI default: 3 frames) plus the frame being built.
   int CompositorLatency() const override { return 4; }
-  /// AddRef for Flutter; released by the descriptor's release_callback.
-  void RetainFrame(void* platform) override {
-    static_cast<Texture*>(platform)->texture->AddRef();
+  /// AddRef for Flutter and copies the handle/release token into the frame
+  /// while the renderer lock is held; released by the descriptor callback.
+  void RetainFrame(void* platform, Frame* frame) override {
+    auto* tex = static_cast<Texture*>(platform);
+    if (!tex || !tex->texture) return;
+    tex->texture->AddRef();
+    frame->handle = tex->shared_handle;
+    frame->release_context = tex->texture.Get();
   }
   /// Windows chain (kWindowsApiOrder in d3d11_interop.cpp): the Vulkan and
   /// the native D3D11 backend per renderer tier, then software.

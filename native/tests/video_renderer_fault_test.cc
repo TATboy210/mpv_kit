@@ -105,6 +105,7 @@ struct ApiConfig {
   int alloc_fail_first = 0;  // the first n AllocTargets calls fail
   int alloc_fail_width = 0;  // > 0: AllocTargets at this width always fails
   int lost_from_gate = 0;    // > 0: the k-th publish gate and later: device lost
+  bool device_removed = false;  // device_removed() reports a removed device
   int timeout_gates = 0;     // the first n publish gates time out
 };
 
@@ -226,6 +227,7 @@ class FaultBackend final : public mpv_kit::RenderBackend {
     return err;
   }
   bool device_failed() const override { return !device_error_.empty(); }
+  bool device_removed() const override { return Config().device_removed; }
   std::string device_name() const override { return Config().device; }
   std::string RendererName(const MpvApi& api,
                            mpv_render_context* ctx) const override {
@@ -647,6 +649,7 @@ void RuntimeAllocFailsThenBackoffRecovers(Run& run) {
 // 1600 ms: the first allocation at the new size follows the resize within the
 // slack, succeeds, and the renderer recovers. (1600 ms stays distinguishable
 // from the 1000 ms sanitizer slack.)
+
 void RuntimeAllocFailsResizeRetriesAtOnce(Run& run) {
   Platform p(FullChain());
   p.apis["d3d11"].alloc_fail_width = kWidth;

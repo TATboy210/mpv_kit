@@ -11,6 +11,7 @@
 // raster thread only reads the shared handle cached in the platform object.
 #pragma once
 
+#include <d3d11.h>
 #include <dxgi.h>
 
 #include <memory>
@@ -24,5 +25,13 @@ namespace mpv_kit {
 /// created by the first Create(); a null adapter makes that Create fail with
 /// device_failed(). [adapter] is only used during that call.
 std::unique_ptr<RenderBackend> CreateD3D11Backend(IDXGIAdapter* adapter);
+
+/// D3D11CreateDevice with the Windows 8.1 feature-level rule: a runtime that
+/// rejects D3D_FEATURE_LEVEL_11_1 with E_INVALIDARG is retried with 11_0 only.
+/// [skip_11_1] (debug injection) takes the retry path directly. The outputs
+/// are untouched on failure.
+HRESULT CreateD3D11DeviceWithFeatureLevelFallback(
+    IDXGIAdapter* adapter, UINT flags, bool skip_11_1,
+    ID3D11Device** device, ID3D11DeviceContext** context);
 
 }  // namespace mpv_kit

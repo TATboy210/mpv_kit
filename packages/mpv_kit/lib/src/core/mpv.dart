@@ -133,6 +133,14 @@ final class Mpv {
 
   final _streamBridges = <StreamBridge>[];
   var _nextId = 1;
+
+  /// Drain bounds: after this many events or this much wall time, the rest of
+  /// the queue is drained from a zero-duration timer, so timers, method
+  /// channels and other isolate work get a turn during log floods or bursts.
+  static const int _drainEventBudget = 256;
+  static const int _drainTimeBudgetUs = 2000;
+  Timer? _drainTimer;
+  bool _drainScheduled = false;
   var _disposed = false;
   var _nativeEntries = 0;
 
@@ -217,6 +225,9 @@ final class Mpv {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _drainTimer?.cancel();
+    _drainTimer = null;
+    _drainScheduled = false;
     // Children first: the core cannot terminate while any client is alive,
     // and each child's dispose shuts down its own stream bridges and calls
     // `mpv_destroy`. `_disposed` is already set, so no child can be added
@@ -689,40 +700,88 @@ final class Mpv {
 
   /// 唤醒回调：在本 isolate 上排空事件队列（非阻塞）。
   ///
-  /// 单个事件解码失败或同步监听器抛错绝不允许中断排空（OBS-02）——队列里
-  /// 排在其后的所有事件都会丢失。两类失败分别 containment 后继续。
+  /// 单个事件解码失败或 `_dispatch` 自身抛错绝不允许中断排空（OBS-02）——
+  /// 队列里排在其后的所有事件都会丢失。同步广播监听器抛错由 Dart stream
+  /// 交给 zone，不会从 `add()` 逸出。两类失败分别 containment 后继续。
   void _onWakeup(Pointer<Void> _) {
+    if (_disposed || _drainScheduled) return;
+    _drain();
+  }
+
+  /// Drains the client queue in bounded chunks.
+  ///
+  /// mpv only clears its `need_wakeup` flag when the queue is empty, so the
+  /// drain must always reach [MpvEventId.none]. When the budget is hit the
+  /// continuation is scheduled with a zero-duration timer (not a microtask):
+  /// that lets timers and platform-channel callbacks run before the rest of
+  /// a burst, instead of a log flood holding the isolate indefinitely.
+  void _drain() {
+    final clock = Stopwatch()..start();
+    var processed = 0;
+    var more = false;
     while (!_disposed) {
       final p = bindings.waitEvent(handle, 0);
-      if (p == nullptr || p.ref.eventId == MpvEventId.none) return;
-      MpvEventData event;
-      try {
-        event = MpvEventData.decode(p);
-      } on Object catch (e, s) {
-        // 解码失败（例如未知 mpv_node 格式）：能定位到观察者就以流错误
-        // 送达（Player._bind 会转接 Player.errors），否则记录后丢弃。
-        // The controller's lifecycle belongs to observeProperty, not to
-        // this drain, so closing it here would be wrong.
-        // ignore: close_sinks
-        final observer = _observers[p.ref.replyUserdata];
-        if (observer != null && !observer.isClosed) {
-          try {
-            observer.addError(e, s);
-          } on Object {
-            _logDroppedEvent(e);
-          }
-        } else {
+      if (p == nullptr || p.ref.eventId == MpvEventId.none) break;
+      _handleRawEvent(p);
+      processed++;
+      if (processed >= _drainEventBudget ||
+          clock.elapsedMicroseconds >= _drainTimeBudgetUs) {
+        more = true;
+        break;
+      }
+    }
+    if (_disposed || !more) return;
+    _drainScheduled = true;
+    _drainTimer = Timer(Duration.zero, () {
+      _drainTimer = null;
+      _drainScheduled = false;
+      if (!_disposed) _drain();
+    });
+  }
+
+  void _handleRawEvent(Pointer<MpvEvent> p) {
+    MpvEventData event;
+    try {
+      event = MpvEventData.decode(p);
+    } on Object catch (e, s) {
+      // A reply that cannot be decoded must fail its awaiting future, not
+      // leave it pending forever: open/seek/screenshot await these.
+      final pending = _pending.remove(p.ref.replyUserdata);
+      if (pending != null) {
+        pending.future.ignore();
+        pending.completeError(
+          MpvException(
+            MpvError.generic.code,
+            'mpv reply event could not be decoded: $e',
+            operation: 'decode_event',
+          ),
+          s,
+        );
+        return;
+      }
+      // Otherwise the value belongs to an observer (Player._bind forwards
+      // it to Player.errors); the controller's lifecycle stays with
+      // observeProperty, so it is not closed here.
+      // ignore: close_sinks
+      final observer = _observers[p.ref.replyUserdata];
+      if (observer != null && !observer.isClosed) {
+        try {
+          observer.addError(e, s);
+        } on Object {
           _logDroppedEvent(e);
         }
-        continue;
-      }
-      try {
-        _dispatch(event);
-      } on Object catch (e) {
-        // 同步单订阅控制器的监听器抛错会从 add() 逸出：containment 后继续
-        // 排空。Player 侧的解析失败在 _bind 内自捕获并路由 Player.errors。
+      } else {
         _logDroppedEvent(e);
       }
+      return;
+    }
+    try {
+      _dispatch(event);
+    } on Object catch (e) {
+      // Contains a throw from _dispatch itself (e.g. a controller closed by
+      // teardown between the isClosed check and add). A sync broadcast
+      // listener that throws is reported to the zone by the stream, not here.
+      _logDroppedEvent(e);
     }
   }
 

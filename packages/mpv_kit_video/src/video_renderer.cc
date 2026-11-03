@@ -527,7 +527,7 @@ Frame VideoRenderer::AcquireFront() {
     // previous generation's last frame.
     if (retired_front_.platform) {
       f = retired_front_;
-      interop_->RetainFrame(f.platform);
+      interop_->RetainFrame(f.platform, &f);
     } else if (retired_front_.pixels) {
       f = retired_front_;
     }
@@ -538,7 +538,7 @@ Frame VideoRenderer::AcquireFront() {
   const TargetView view = render_backend_->FrameFor(next);
   f.pixels = view.pixels;
   f.platform = view.platform;
-  if (f.platform) interop_->RetainFrame(f.platform);
+  if (f.platform) interop_->RetainFrame(f.platform, &f);
   lock.unlock();
   // Flutter calls the texture callback only after the texture was marked
   // available, once per mark: without this mark the newer waiting frame
@@ -816,6 +816,10 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     if (release_retired) render_backend_->FreeRetired();
     if (failed_before_render) {
       SkipFrame();  // mpv still waits for this frame to be consumed
+      if (render_backend_->device_removed()) {
+        *error += " (device removed)";
+        return RenderResult::kDeviceLost;
+      }
       return RenderResult::kFailed;
     }
     Emit("resize", std::to_string(w) + "x" + std::to_string(h));
@@ -852,6 +856,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
     // The frame was consumed (unless the target was rejected up front,
     // where an extra swap is harmless): keep vo_libmpv's counts moving.
     ReportSwaps(1);
+    if (render_backend_->device_removed()) return RenderResult::kDeviceLost;
     return RenderResult::kFailed;
   }
   if (render_backend_->pipelined()) {

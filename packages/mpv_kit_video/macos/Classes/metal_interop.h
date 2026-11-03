@@ -34,7 +34,8 @@ class MetalInterop : public Interop, public VulkanInterop {
   bool SoftwareIsBgra() const override { return true; }  // kCVPixelFormatType_32BGRA
   void FrameReady() override { frame_ready_(); }
   /// +1 for Flutter: copyPixelBuffer returns an owned reference.
-  void RetainFrame(void* platform) override {
+  void RetainFrame(void* platform, Frame* frame) override {
+    (void)frame;
     CVPixelBufferRetain(static_cast<CVPixelBufferRef>(platform));
   }
   /// For "vulkan" with a Metal device present: the built-in Vulkan backend

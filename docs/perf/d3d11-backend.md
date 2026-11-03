@@ -119,3 +119,35 @@ Taking D3D11-first later stays a one-line reorder of `kWindowsApiOrder` plus the
 - **RTX 4060 Laptop GPU (this document, real hardware):** functional runs on both sync paths, 4K rendered 600 s, D-05 on/off, pickup and render waits, all with the backend forced to d3d11.
 - **GTX 960 laptop:** see "Hybrid-GPU laptops (14-10)" and "Windows auto chain decision (14-11)" above; the battery-power run is pending.
 - **Unverified / not applicable:** hardware decode zero-copy beyond what `docs/perf/hwdec-zero-copy.md` records (Phase 16), 8K (UHD-02), other GPU vendors, the battery-power laptop run, real-device creation failure falling back to Vulkan, Linux and macOS.
+
+## dev.8: sync and device-loss hardening
+
+* Device removal is now a `RenderBackend` capability (`device_removed()`).
+  The engine maps a failed `AllocTargets` (including the fallback ring) or a
+  failed `render_context_render` to `device_lost` when it is set, instead of
+  backing off forever. The Dart controller's `isBroken` becomes true and the
+  event carries the underlying allocation/render reason.
+* Every ring slot owns a `D3D11_QUERY_EVENT`; a failed `ID3D11Fence::Signal`
+  (HRESULT checked, counter not advanced) falls back to that slot's query.
+  `Wait` dispatches per slot (`fence`/`query`); three consecutive unusable
+  query completions report `device_lost` instead of a 1 s timeout per frame.
+* `Signal -> Flush -> Wait` is unchanged and now documented: mpv flushes its
+  own work before `done_frame`, so the backend `Flush` submits the Signal/End.
+* Device creation retries without `D3D_FEATURE_LEVEL_11_1` on
+  `E_INVALIDARG` (backend and interop devices).
+* `Interop::RetainFrame` fills `Frame::handle`/`Frame::release_context` under
+  the renderer lock; the Windows plugin no longer dereferences the platform
+  object after `AcquireFront` returns. The plugin destructor defers
+  `Instance` deletion through `UnregisterTexture`, and a failed
+  `RegisterTexture` is an error instead of `textureId: -1`.
+* Debug injection modes (`MPV_KIT_D3D11_INJECT`): `create-no-11-1`,
+  `device-removed:alloc`, `device-removed:render:<n>`, `signal-fail:<n>`,
+  `query-getdata-fail` (the last with `MPV_KIT_D3D11_SYNC=query`). The
+  plugin `stats` method reports `sync` (`fence`/`query`).
+
+Verified on the RTX 4060 with `example/integration_test/d3d11_sync_test.dart`
+(one mode per run): device removal during allocation and during render each
+produce exactly one `deviceLost`; `signal-fail:1` keeps frames flowing with
+no `gpuTimeout`/`renderError`; a failing query escalates to one `deviceLost`;
+`create-no-11-1` creates the D3D11 device. The fence and query backend tests
+(`d3d11_backend_test`) still pass.

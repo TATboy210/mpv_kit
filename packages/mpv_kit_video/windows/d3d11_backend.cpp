@@ -44,6 +44,9 @@ using Texture = D3D11Interop::Texture;
 /// a stuck GPU must not wedge the render thread. The timeout becomes
 /// gpu_timeout and the engine's backoff.
 constexpr DWORD kWaitTimeoutMs = 1000;
+/// Consecutive unusable query completions before the renderer reports
+/// itself lost (query mode only; the device may still be present).
+constexpr int kQueryFailureLimit = 3;
 
 /// Polls with SwitchToThread this many times before sleeping 1 ms per poll;
 /// a frame normally finishes within a few milliseconds and Sleep(1) can cost
@@ -102,8 +105,14 @@ bool ForceQuerySync() {
 /// Failure injection of one backend (see the file header). Empty in release
 /// builds.
 struct Injection {
-  bool create_fail = false;  // device creation fails
-  int removed_after = 0;     // > 0: removed after this many successful renders
+  bool create_fail = false;       // device creation fails
+  int removed_after = 0;          // > 0: removed after N renders
+  bool removed_at_alloc = false;  // next allocation fails, reports removal
+  int render_fail_at = 0;         // > 0: this render fails and reports removal
+  int signal_fail_at = 0;         // > 0: this Signal fails (query fallback)
+  bool query_fail = false;        // GetData always fails (escalation)
+  bool no_11_1 = false;           // force the 11_0-only creation retry
+  bool removed_injected = false;  // set when an injection reports removal
 };
 
 /// Reads MPV_KIT_D3D11_INJECT once. An invalid value is logged and treated as
@@ -114,8 +123,29 @@ Injection ReadInjection() {
   const std::string value = DebugEnv("MPV_KIT_D3D11_INJECT");
   if (value.empty()) return injection;
   const std::string removed = "device-removed:";
+  auto is_number = [](const std::string& t) {
+    return !t.empty() && t.size() <= 9 &&
+           t.find_first_not_of("0123456789") == std::string::npos;
+  };
+  auto tail = [&](const char* prefix) {
+    const std::string p(prefix);
+    return value.compare(0, p.size(), p) == 0 ? value.substr(p.size())
+                                              : std::string();
+  };
+  const std::string render_at = tail("device-removed:render:");
+  const std::string signal_at = tail("signal-fail:");
   if (value == "create-fail") {
     injection.create_fail = true;
+  } else if (value == "create-no-11-1") {
+    injection.no_11_1 = true;
+  } else if (value == "device-removed:alloc") {
+    injection.removed_at_alloc = true;
+  } else if (value == "query-getdata-fail") {
+    injection.query_fail = true;
+  } else if (!render_at.empty() && is_number(render_at)) {
+    injection.render_fail_at = std::atoi(render_at.c_str());
+  } else if (!signal_at.empty() && is_number(signal_at)) {
+    injection.signal_fail_at = std::atoi(signal_at.c_str());
   } else if (value.compare(0, removed.size(), removed) == 0) {
     const std::string digits = value.substr(removed.size());
     const bool numeric =
@@ -123,9 +153,14 @@ Injection ReadInjection() {
         digits.find_first_not_of("0123456789") == std::string::npos;
     injection.removed_after = numeric ? std::atoi(digits.c_str()) : 0;
   }
-  if (!injection.create_fail && injection.removed_after <= 0) {
+  if (!injection.create_fail && !injection.no_11_1 &&
+      !injection.removed_at_alloc && !injection.query_fail &&
+      injection.removed_after <= 0 && injection.render_fail_at <= 0 &&
+      injection.signal_fail_at <= 0) {
     Log("mpv_kit: MPV_KIT_D3D11_INJECT=" + value +
-        " ignored (expected create-fail or device-removed:<n>, n >= 1)");
+        " ignored (expected create-fail, create-no-11-1, "
+        "device-removed:<n>|alloc|render:<n>, signal-fail:<n> or "
+        "query-getdata-fail)");
     return Injection{};
   }
   Log("mpv_kit: D3D11 failure injection active: " + value);
@@ -142,11 +177,15 @@ bool IsRemovalError(HRESULT hr) {
 /// One ring slot: the shared texture handed to Flutter plus its completion
 /// state. [ready] is the fence value the slot's last successful render
 /// signals (0: nothing to wait for); [pending] marks an unfinished query.
+enum class SlotSync { kNone, kFence, kQuery };
+
 struct Slot {
   std::unique_ptr<Texture> texture;
-  ComPtr<ID3D11Query> query;  // query mode only
-  uint64_t ready = 0;         // fence mode only
-  bool pending = false;       // query mode only
+  ComPtr<ID3D11Query> query;  // created for every slot (fence fallback)
+  uint64_t ready = 0;         // kFence: value the last render signals
+  bool pending = false;       // kQuery: End() recorded, GetData outstanding
+  SlotSync sync = SlotSync::kNone;
+  int query_failures = 0;     // consecutive unusable completions
 };
 
 /// MPV_RENDER_API_TYPE_D3D11 into a ring of KMT-shared BGRA8 textures.
@@ -219,6 +258,11 @@ class D3D11RenderBackend final : public RenderBackend {
 
   bool AllocTargets(int count, int width, int height, int keep_slot,
                     std::string* error) override {
+    if (injection_.removed_at_alloc && !injection_.removed_injected) {
+      injection_.removed_injected = true;
+      *error = "device removed (injected during allocation)";
+      return false;
+    }
     // kKeepRetiredFront: a resize arrived before any new-size frame, so the
     // retired survivor is still the only picture. Keep it; the engine's
     // FreeRetired (after the new-size frame and the quarantine) ends it.
@@ -276,16 +320,45 @@ class D3D11RenderBackend final : public RenderBackend {
     // value alone means the next Wait never waits for a value that will not
     // come (the Vulkan backend's RollbackSignalValue).
     if (err < 0) return err;
-    rendered_++;  // injection clock (device-removed:<n>); render thread only
+    rendered_++;  // injection clock; render thread only
+    if (injection_.render_fail_at > 0 &&
+        rendered_ >= injection_.render_fail_at) {
+      injection_.removed_injected = true;
+      return MPV_ERROR_GENERIC;
+    }
     if (fence_mode_) {
-      s.ready = ++fence_value_;
-      context4_->Signal(fence_.Get(), s.ready);
+      const uint64_t next = fence_value_ + 1;
+      HRESULT hr = E_FAIL;
+      const bool inject_fail = injection_.signal_fail_at > 0 &&
+                               rendered_ >= injection_.signal_fail_at;
+      if (!inject_fail) hr = context4_->Signal(fence_.Get(), next);
+      if (SUCCEEDED(hr)) {
+        fence_value_ = next;
+        s.ready = next;
+        s.pending = false;
+        s.sync = SlotSync::kFence;
+      } else {
+        // Do not advance fence_value_: no slot may wait on a value that
+        // was never signalled. This slot's query records the completion
+        // after the render commands instead.
+        s.ready = 0;
+        s.sync = SlotSync::kQuery;
+        s.pending = true;
+        context_->End(s.query.Get());
+        if (!signal_failed_logged_) {
+          signal_failed_logged_ = true;
+          Log("mpv_kit: ID3D11Fence Signal failed (" + Hex(hr) +
+              "); using the query completion path");
+        }
+      }
     } else {
+      s.sync = SlotSync::kQuery;
       context_->End(s.query.Get());
       s.pending = true;
     }
-    // Submit now: mpv recorded on the immediate context, and nothing else
-    // would flush it before Wait.
+    // mpv flushed its own work inside render_context_render (done_frame ->
+    // ra_d3d11_flush), i.e. BEFORE the Signal/End above; this Flush is
+    // what submits the completion marker.
     context_->Flush();
     return err;
   }
@@ -293,7 +366,20 @@ class D3D11RenderBackend final : public RenderBackend {
   WaitResult Wait(int slot) override {
     if (DeviceRemoved()) return WaitResult::kDeviceLost;
     Slot& s = slots_[static_cast<size_t>(slot)];
-    return fence_mode_ ? WaitFence(s) : WaitQuery(&s);
+    switch (s.sync) {
+      case SlotSync::kFence:
+        return WaitFence(s);
+      case SlotSync::kQuery:
+        return WaitQuery(&s);
+      case SlotSync::kNone:
+        return WaitResult::kOk;
+    }
+    return WaitResult::kOk;
+  }
+
+  bool device_removed() const override { return DeviceRemoved(); }
+  const char* sync_mode() const override {
+    return fence_mode_ ? "fence" : "query";
   }
 
   void Release(const MpvApi& api, mpv_render_context* ctx) override {
@@ -317,23 +403,17 @@ class D3D11RenderBackend final : public RenderBackend {
                   Hex(DXGI_ERROR_UNSUPPORTED) + " (injected)");
     }
 
-    const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
-                                        D3D_FEATURE_LEVEL_11_0};
     UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT |
                  D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
-    HRESULT hr = D3D11CreateDevice(
-        adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels,
-        static_cast<UINT>(std::size(levels)), D3D11_SDK_VERSION, &device_,
-        nullptr, &context_);
+    HRESULT hr = CreateD3D11DeviceWithFeatureLevelFallback(
+        adapter.Get(), flags, injection_.no_11_1, &device_, &context_);
     if (FAILED(hr)) {
       // spikes.txt gate video_support=retry-without: Basic Render Driver and
       // WARP refuse VIDEO_SUPPORT, hardware adapters take it.
       const HRESULT first = hr;
       flags &= ~static_cast<UINT>(D3D11_CREATE_DEVICE_VIDEO_SUPPORT);
-      hr = D3D11CreateDevice(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr,
-                             flags, levels,
-                             static_cast<UINT>(std::size(levels)),
-                             D3D11_SDK_VERSION, &device_, nullptr, &context_);
+      hr = CreateD3D11DeviceWithFeatureLevelFallback(
+          adapter.Get(), flags, injection_.no_11_1, &device_, &context_);
       if (SUCCEEDED(hr))
         Log("mpv_kit: d3d11 device created without VIDEO_SUPPORT (" +
             Hex(first) + ")");
@@ -398,14 +478,13 @@ class D3D11RenderBackend final : public RenderBackend {
       *error = "failed to create shared texture: " + Hex(hr);
       return false;
     }
-    if (!fence_mode_) {
-      D3D11_QUERY_DESC qd{};
-      qd.Query = D3D11_QUERY_EVENT;
-      hr = device_->CreateQuery(&qd, &slot->query);
-      if (FAILED(hr)) {
-        *error = "failed to create completion query: " + Hex(hr);
-        return false;
-      }
+    // Every slot owns a query: the fallback when a fence Signal fails.
+    D3D11_QUERY_DESC qd{};
+    qd.Query = D3D11_QUERY_EVENT;
+    hr = device_->CreateQuery(&qd, &slot->query);
+    if (FAILED(hr)) {
+      *error = "failed to create completion query: " + Hex(hr);
+      return false;
     }
     slot->texture = std::move(tex);
     return true;
@@ -414,6 +493,7 @@ class D3D11RenderBackend final : public RenderBackend {
   /// The one source of the device removal reason: the real runtime, or in a
   /// debug build the injected DEVICE_REMOVED once enough frames rendered.
   HRESULT RemovedReason() const {
+    if (injection_.removed_injected) return DXGI_ERROR_DEVICE_REMOVED;
     if (injection_.removed_after > 0 && rendered_ >= injection_.removed_after)
       return DXGI_ERROR_DEVICE_REMOVED;
     return device_ ? device_->GetDeviceRemovedReason() : S_OK;
@@ -457,14 +537,22 @@ class D3D11RenderBackend final : public RenderBackend {
       // RTX 4060 the event query then stayed S_FALSE for the whole 1 s wait
       // in 5 of 6 runs (gpu_timeout); letting GetData flush as well completed
       // it every time (6 of 6). S_FALSE means not finished yet.
-      const HRESULT hr =
-          context_->GetData(s->query.Get(), &done, sizeof(done), 0);
+      const HRESULT hr = injection_.query_fail
+          ? E_FAIL
+          : context_->GetData(s->query.Get(), &done, sizeof(done), 0);
       if (hr == S_OK) {
         s->pending = false;
+        s->query_failures = 0;
         return WaitResult::kOk;
       }
       if (IsRemovalError(hr)) return WaitResult::kDeviceLost;
-      if (FAILED(hr) || Clock::now() >= deadline) return Timeout();
+      if (FAILED(hr) || Clock::now() >= deadline) {
+        // A completion path that never becomes usable wedges this slot;
+        // report the renderer unusable instead of timing out forever.
+        if (++s->query_failures >= kQueryFailureLimit)
+          return WaitResult::kDeviceLost;
+        return Timeout();
+      }
       if (poll < kQuerySpinPolls) {
         SwitchToThread();
       } else {
@@ -480,6 +568,7 @@ class D3D11RenderBackend final : public RenderBackend {
   ComPtr<ID3D11Fence> fence_;              // fence mode only
   HANDLE fence_event_ = nullptr;           // fence mode only
   bool fence_mode_ = false;
+  bool signal_failed_logged_ = false;  // render thread only
   uint64_t fence_value_ = 0;  // monotonic across ring reallocations
   bool device_failed_ = false;
   Injection injection_;       // debug builds only; empty otherwise
@@ -491,6 +580,40 @@ class D3D11RenderBackend final : public RenderBackend {
 };
 
 }  // namespace
+
+HRESULT CreateD3D11DeviceWithFeatureLevelFallback(
+    IDXGIAdapter* adapter, UINT flags, bool skip_11_1,
+    ID3D11Device** device, ID3D11DeviceContext** context) {
+  const D3D_FEATURE_LEVEL levels_11_1[] = {D3D_FEATURE_LEVEL_11_1,
+                                          D3D_FEATURE_LEVEL_11_0};
+  const D3D_FEATURE_LEVEL levels_11_0[] = {D3D_FEATURE_LEVEL_11_0};
+  ComPtr<ID3D11Device> made;
+  ComPtr<ID3D11DeviceContext> made_context;
+  HRESULT hr = E_FAIL;
+  if (!skip_11_1) {
+    hr = D3D11CreateDevice(
+        adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels_11_1,
+        static_cast<UINT>(std::size(levels_11_1)), D3D11_SDK_VERSION,
+        &made, nullptr, &made_context);
+    if (SUCCEEDED(hr)) {
+      if (device) *device = made.Detach();
+      if (context) *context = made_context.Detach();
+      return hr;
+    }
+    if (hr != E_INVALIDARG) return hr;
+  }
+  made.Reset();
+  made_context.Reset();
+  hr = D3D11CreateDevice(
+      adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, levels_11_0,
+      static_cast<UINT>(std::size(levels_11_0)), D3D11_SDK_VERSION, &made,
+      nullptr, &made_context);
+  if (SUCCEEDED(hr)) {
+    if (device) *device = made.Detach();
+    if (context) *context = made_context.Detach();
+  }
+  return hr;
+}
 
 std::unique_ptr<RenderBackend> CreateD3D11Backend(IDXGIAdapter* adapter) {
   return std::make_unique<D3D11RenderBackend>(adapter);

@@ -166,8 +166,11 @@ class MpvKitVideoPlugin : public flutter::Plugin {
   ~MpvKitVideoPlugin() override {
     registrar_->UnregisterTopLevelWindowProcDelegate(window_proc_id_);
     for (auto& [id, inst] : instances_) {
-      Stop(inst.get());
-      textures_->UnregisterTexture(id);
+      // Ownership moves to the unregister completion, exactly like the
+      // dispose path: a raster callback may still run after Unregister.
+      Instance* raw = inst.release();
+      Stop(raw);
+      textures_->UnregisterTexture(id, [raw] { delete raw; });
     }
     instances_.clear();
   }
@@ -223,6 +226,8 @@ class MpvKitVideoPlugin : public flutter::Plugin {
            EncodableValue(inst->pixels_seen.load())},
           {EncodableValue("nullPixels"),
            EncodableValue(inst->null_pixels.load())},
+          {EncodableValue("sync"),
+           EncodableValue(std::string(inst->renderer->sync_mode()))},
       }));
     }
     if (m == "setSize") {
@@ -321,6 +326,10 @@ class MpvKitVideoPlugin : public flutter::Plugin {
           }));
     }
     const int64_t id = textures_->RegisterTexture(inst->texture.get());
+    if (id < 0) {
+      Stop(raw);
+      return result->Error("render_init", "texture registration failed");
+    }
     inst->texture_id = id;
     const std::string wire = inst->renderer->wire_name();
     const std::string reason = inst->renderer->backend_reason();
@@ -410,13 +419,13 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     const int64_t ready = inst->frame_ready_ns.load();
     inst->describes_total++;
     const Frame f = inst->renderer->AcquireFront();
-    if (!f.platform) {
+    if (!f.platform || !f.release_context) {
       // A frame was shown before: this one lost it (the startup case, no
       // handle yet, is not a defect).
       if (inst->last_handle) inst->null_describes++;
       return nullptr;
     }
-    auto* tex = static_cast<D3D11Interop::Texture*>(f.platform);
+
     // Engine update of the previous descriptor this thread handed out for
     // this instance, bracketed by the release callback below.
     if (t_bound_owner == inst) {
@@ -427,8 +436,8 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     }
     // Flutter's ExternalTextureD3d recreates its EGL surface whenever the
     // handle differs from the one it last saw: count those changes.
-    if (tex->shared_handle != inst->last_handle) inst->handle_changes++;
-    inst->last_handle = tex->shared_handle;
+    if (f.handle != inst->last_handle) inst->handle_changes++;
+    inst->last_handle = f.handle;
     // Duration of this call from entry through AcquireFront and the handle
     // compare. It leaves out the descriptor stores and the window's log write.
     const double describe_ms =
@@ -439,12 +448,12 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     RecordPickup(inst, ready);
     auto& d = inst->descriptor;
     d.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
-    d.handle = tex->shared_handle;
+    d.handle = f.handle;
     d.width = d.visible_width = static_cast<size_t>(f.width);
     d.height = d.visible_height = static_cast<size_t>(f.height);
     d.format = kFlutterDesktopPixelFormatBGRA8888;
     // Balances the AddRef taken in RetainFrame once Flutter opened it.
-    d.release_context = tex->texture.Get();
+    d.release_context = f.release_context;
     d.release_callback = [](void* ctx) {
       // Measurement only: the end of the engine's GL bind and, on a handle
       // change, EGL surface recreate (external_texture_d3d.cc:71-115), which

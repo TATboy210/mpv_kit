@@ -152,6 +152,14 @@ class RenderBackend {
                      std::string* why) = 0;
   /// The device failed to initialise: every later Create fails the same way.
   virtual bool device_failed() const { return false; }
+  /// True when the device was removed/reset and no further frame can be
+  /// rendered. Consulted by the engine after a failed AllocTargets or Render,
+  /// on the render thread, so removal during a resize is reported as
+  /// device_lost instead of an endless backoff. Default false.
+  virtual bool device_removed() const { return false; }
+  /// Sync path in use ("fence" / "query"), diagnostics only; "" when not
+  /// applicable.
+  virtual const char* sync_mode() const { return ""; }
   /// Device for the reason head ("NVIDIA GeForce RTX 4060", "cpu").
   virtual std::string device_name() const = 0;
   /// Renderer mpv really built for [ctx] ("gpu-next", "gpu", "sw").

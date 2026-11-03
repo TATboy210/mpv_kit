@@ -440,6 +440,8 @@ final class Player {
 
   final _subs = <StreamSubscription<Object?>>[];
   final _states = <MpvState<Object?>>[];
+  /// One re-read per bound property, used after an event-queue overflow.
+  final _resync = <void Function()>[];
   final _errors = StreamController<MpvPlaybackError>.broadcast();
   final _logs = StreamController<LogMessageEvent>.broadcast();
   final _overflows = StreamController<void>.broadcast();
@@ -621,10 +623,13 @@ final class Player {
   /// Fires when mpv's event queue for this client overflowed
   /// (`MPV_EVENT_QUEUE_OVERFLOW`).
   ///
-  /// mpv then dropped discrete events such as log messages or
-  /// `start-file`/`end-file`; property values ([MpvState]s) and pending
-  /// command replies are not lost. Treat event history since the previous
-  /// notification as incomplete.
+  /// mpv then dropped discrete events such as `start-file`/`end-file`,
+  /// hooks and client messages; property values ([MpvState]s) and pending
+  /// command replies are not lost, and the [Player] re-reads every bound
+  /// property when this fires so the state is current again. Treat event
+  /// history since the previous notification as incomplete. Log messages
+  /// have their own buffer and drop there (oldest first) without this
+  /// event.
   Stream<void> get eventQueueOverflows => _overflows.stream;
 
   // --- Opening -----------------------------------------------------------
@@ -648,6 +653,13 @@ final class Player {
   }
 
   /// Replaces the playlist with [urls] and starts playing [startIndex].
+  ///
+  /// Every entry is submitted before the first reply is awaited, so mpv can
+  /// coalesce the `playlist` property notification instead of the drain
+  /// reparsing the whole list once per URL (the previous O(N^2) pattern).
+  /// If one append fails, the later entries are already queued (unlike a
+  /// per-URL await); the first error is still thrown. This method does not
+  /// wait for the `playlist` property to settle.
   Future<void> openPlaylist(
     List<String> urls, {
     int startIndex = 0,
@@ -662,9 +674,18 @@ final class Player {
     // `stop` clears the playlist; appended entries do not start playback
     // on their own, so the chosen entry is started explicitly.
     mpv.command(['stop']);
-    for (final url in urls) {
-      await mpv.commandAsync(['loadfile', url, 'append']).result;
+    final appends = <Future<Object?>>[];
+    try {
+      for (final url in urls) {
+        appends.add(mpv.commandAsync(['loadfile', url, 'append']).result);
+      }
+    } on Object {
+      for (final f in appends) {
+        f.ignore();
+      }
+      rethrow;
     }
+    await Future.wait(appends);
     mpv.command(['playlist-play-index', startIndex]);
   }
 
@@ -971,6 +992,20 @@ final class Player {
 
   void _bind<T>(String name, MpvState<T> state, T Function(Object?) parse) {
     _states.add(state);
+    _resync.add(() {
+      Object? raw;
+      try {
+        raw = mpv.tryGetProperty(name);
+      } on Object catch (e, st) {
+        _reportObservationFailure('property resync failed ($name)', e, st);
+        return;
+      }
+      try {
+        state._set(parse(raw));
+      } on Object catch (e, st) {
+        _reportObservationFailure('property resync parse failed ($name)', e, st);
+      }
+    });
     _subs.add(
       mpv.observeProperty(name).listen(
         (v) {
@@ -1066,6 +1101,12 @@ final class Player {
       case LogMessageEvent():
         if (!_logs.isClosed) _logs.add(e);
       case QueueOverflowEvent():
+        // Discrete events were dropped. Property values are generated on
+        // demand, not queued, so re-reading every bound property restores
+        // the latest state instead of leaving the app behind.
+        for (final reread in _resync) {
+          reread();
+        }
         // mpv sends at most one per full drain of the queue, so this cannot
         // flood listeners.
         if (!_overflows.isClosed) _overflows.add(null);

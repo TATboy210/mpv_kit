@@ -2,6 +2,8 @@
 
 #include "d3d11_backend.h"
 
+#include "d3d11_backend.h"
+
 #include <cstring>
 #include <cstdio>
 #include <string>
@@ -126,13 +128,11 @@ D3D11Interop::D3D11Interop(IDXGIAdapter* adapter,
   LogHybridGpuHint(adapter, desc);
   // Our own device on Flutter's adapter, only used to create shareable
   // textures; Flutter opens them on its device via the shared handle.
-  const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_1,
-                                      D3D_FEATURE_LEVEL_11_0};
-  const HRESULT hr =
-      D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
-                        D3D11_CREATE_DEVICE_BGRA_SUPPORT, levels,
-                        static_cast<UINT>(std::size(levels)),
-                        D3D11_SDK_VERSION, &device_, nullptr, nullptr);
+  Microsoft::WRL::ComPtr<ID3D11Device> created;
+  const HRESULT hr = CreateD3D11DeviceWithFeatureLevelFallback(
+      adapter, D3D11_CREATE_DEVICE_BGRA_SUPPORT, /*skip_11_1=*/false,
+      &created, nullptr);
+  if (SUCCEEDED(hr)) device_ = std::move(created);
   if (FAILED(hr)) {
     // Record the actual failure instead of letting the renderer report a
     // missing platform interop (OBS-03).

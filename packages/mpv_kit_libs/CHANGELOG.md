@@ -1,3 +1,8 @@
+## 0.1.0-dev.8
+
+- Version bump only; this release changes Dart and plugin code, not libmpv,
+  and stays pinned to the v0.1.0-dev.7 bundles.
+
 ## 0.1.0-dev.7
 
 - Version bump only; this release changes plugin and Dart code, not libmpv,

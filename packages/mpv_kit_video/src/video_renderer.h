@@ -47,6 +47,12 @@ struct Frame {
   const uint8_t* pixels = nullptr;
   // Vulkan backend: SharedImage::platform of the frame (already retained).
   void* platform = nullptr;
+  // Filled by Interop::RetainFrame while the renderer lock is held, so a
+  // platform thread never dereferences [platform] after AcquireFront
+  // returns: [handle] is the compositor handle, [release_context] holds the
+  // +1 reference (or opaque token) its release callback must release once.
+  void* handle = nullptr;
+  void* release_context = nullptr;
 };
 
 class VulkanInterop;  // vulkan_backend.h
@@ -70,9 +76,14 @@ class Interop {
   /// frame still waits. Implementations only mark the texture and must
   /// accept either thread.
   virtual void FrameReady() = 0;
-  /// Takes a reference on a shared image for the compositor. Called with the
-  /// renderer lock held, so the image cannot be freed concurrently.
-  virtual void RetainFrame(void* platform) { (void)platform; }
+  /// Takes a reference on a shared image for the compositor and fills the
+  /// platform fields of [frame] ([Frame::handle], [Frame::release_context]).
+  /// Called with the renderer lock held, so the platform object cannot be
+  /// freed concurrently and the caller may use those fields afterwards.
+  virtual void RetainFrame(void* platform, Frame* frame) {
+    (void)platform;
+    (void)frame;
+  }
   /// How many further frames the compositor may still sample an image it
   /// gave back (its GPU queue depth); see VideoRenderer's quarantine.
   /// Clamped to [1, VideoRenderer::kMaxQuarantine].
@@ -139,6 +150,10 @@ class VideoRenderer {
   /// docs/adr/0004-render-backend-reporting.md, Decision 2. Only valid
   /// after Start() returned true: before that there is no backend.
   const char* wire_name() const { return render_backend_->wire_name(); }
+  /// Sync path in use for diagnostics ("fence"/"query"), "" if none.
+  const char* sync_mode() const {
+    return render_backend_ ? render_backend_->sync_mode() : "";
+  }
 
  private:
   static void OnMpvUpdate(void* self);

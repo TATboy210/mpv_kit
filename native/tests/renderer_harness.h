@@ -796,7 +796,8 @@ class FakeInterop : public mpv_kit::Interop {
     cv_.notify_all();
   }
 
-  void RetainFrame(void* platform) override {
+  void RetainFrame(void* platform, mpv_kit::Frame* frame) override {
+    (void)frame;
     // Vulkan path: the compositor would now reference the platform object.
     const FakeImage e = Images().Entry(platform);
     if (e.serial != 0 && e.destroyed)
