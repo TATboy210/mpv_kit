@@ -226,6 +226,19 @@ final class MpvVideoController {
       // The enum reports d3d11/opengl as `vulkan`; print the real API.
       final api = backendApiName(controller.reason, controller.backend.name);
       debugPrint('mpv_kit_video: $api (${controller.reason})');
+      // dev.9 c-lite: on the native D3D11 backend the `vulkan` hwdec entry has
+      // no interop on that ra, so its probe can only fail; prune it before any
+      // file loads. Only while the core is idle (a loaded file would pay a
+      // decoder reinit) and only when the user did not override `hwdec`.
+      if (api == 'd3d11' &&
+          player.idle.value &&
+          player.mpv.getPropertyString('hwdec') ==
+              defaultHwdecFor(Platform.operatingSystem)) {
+        player.mpv.setPropertyString(
+          'hwdec',
+          defaultHwdecForBackend(Platform.operatingSystem, 'd3d11'),
+        );
+      }
       // 4K 下 software 回退是灾难性的（每帧 CPU 全量渲染 + 缓冲三重拷贝
       // ≈6GB/s 内存流量），release 构建连 debugPrint 都看不到——把它变成
       // 显式事件，让应用层有机会提示用户或拒绝大分辨率。
@@ -428,9 +441,11 @@ final class MpvVideoController {
     _autoDisplayFps = hz;
   }
 
-  /// Sets the render resolution in physical pixels (usually the widget size
-  /// times devicePixelRatio, capped at the video size). Cheap to call often:
-  /// unchanged sizes are ignored.
+  /// Sets the render resolution in physical pixels. Cheap to call often:
+  /// unchanged sizes are ignored. [MpvVideo] passes the widget size times
+  /// devicePixelRatio capped at the video's own pixel size
+  /// ([MpvVideo.capRenderSize]); callers that drive the controller directly
+  /// get exactly what they ask for.
   Future<void> setSize(int width, int height) async {
     if (_disposed || width <= 0 || height <= 0) return;
     if (_size == (width, height)) return;

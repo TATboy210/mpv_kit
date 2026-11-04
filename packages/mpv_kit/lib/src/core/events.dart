@@ -19,7 +19,9 @@ sealed class MpvEventData {
   /// 事件携带的 mpv 错误码（>=0 为成功）。
   final int error;
 
-  /// 从 libmpv 拥有的事件指针解码（指针仅在下次 wait_event 前有效，故立即深拷贝）。
+  /// 从 libmpv 拥有的事件指针解码（指针仅在下次 wait_event 前有效，故立即深拷贝；
+  /// 即便如 screenshot-raw 的大字节数组也必须在此拷贝：延迟到监听器读取时
+  /// 该内存已归还 mpv）。
   static MpvEventData decode(Pointer<MpvEvent> p) {
     final injected = debugEventDecodeFailure;
     if (injected != null) {

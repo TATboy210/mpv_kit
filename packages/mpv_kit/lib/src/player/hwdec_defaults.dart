@@ -14,6 +14,11 @@
 /// "无绿帧/黑帧"，故不在 Player 默认值中设置，见 ADR 0006。
 ///
 /// 用户经 `Player(options: {'hwdec': ...})` 覆盖，用户值始终优先。
+///
+/// dev.9 c-lite：获胜渲染后端为原生 D3D11 时，[MpvVideoController.create]
+/// 会在核心空闲且用户未覆盖的前提下把列表换成
+/// [defaultHwdecForBackend] 的 d3d11 变体（去掉在该 ra 上必失败的
+/// `vulkan` 探测）；其余情形保持上表不变。
 library;
 
 import 'dart:io' show Platform;
@@ -39,3 +44,14 @@ String defaultHwdecFor(String operatingSystem) => switch (operatingSystem) {
 
 /// 当前进程所在平台的默认 hwdec 列表。
 String platformDefaultHwdec() => defaultHwdecFor(Platform.operatingSystem);
+
+/// 后端感知的默认列表（dev.9 c-lite）。
+///
+/// 获胜渲染后端是原生 D3D11 时，`vulkan` 硬解条目在该 ra 上没有 interop，
+/// 探测必然失败（一次廉价但无意义的设备请求），故从列表头部移除；其余
+/// 组合与 [defaultHwdecFor] 完全一致。[apiToken] 取
+/// `backendApiName(reason, backend.name)` 的首 token（"d3d11"/"vulkan"/...）。
+String defaultHwdecForBackend(String operatingSystem, String apiToken) =>
+    (operatingSystem == 'windows' && apiToken == 'd3d11')
+    ? 'd3d11va,d3d11va-copy,auto-safe'
+    : defaultHwdecFor(operatingSystem);

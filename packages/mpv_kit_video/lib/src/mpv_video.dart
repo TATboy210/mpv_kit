@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' show min;
 
 import 'package:flutter/widgets.dart';
 import 'package:mpv_kit/mpv_kit.dart';
@@ -20,11 +21,21 @@ class MpvVideo extends StatefulWidget {
     required this.controller,
     this.fit = BoxFit.contain,
     this.resizeDebounce = const Duration(milliseconds: 80),
+    this.capRenderSize = true,
   });
 
   final MpvVideoController controller;
   final BoxFit fit;
   final Duration resizeDebounce;
+
+  /// Never render above the video's own pixel size (dev.9).
+  ///
+  /// A 1080p video in a 4K window would otherwise allocate a 4K shared-image
+  /// ring and pay 4x the fill rate for an upscale Flutter discards anyway.
+  /// With this on, the requested size is uniformly shrunk to the source
+  /// size; the texture is then stretched by the compositor (same quality as
+  /// any other upscale of an already-rendered frame, but cheaper).
+  final bool capRenderSize;
 
   @override
   State<MpvVideo> createState() => _MpvVideoState();
@@ -82,8 +93,29 @@ class _MpvVideoState extends State<MpvVideo> {
     return rotated ? size.flipped : size;
   }
 
-  void _requestSize(Size logical, double dpr, {bool immediate = false}) {
-    final w = (logical.width * dpr).round(), h = (logical.height * dpr).round();
+  void _requestSize(
+    Size logical,
+    double dpr, {
+    bool immediate = false,
+    Size? source,
+  }) {
+    var w = (logical.width * dpr).round();
+    var h = (logical.height * dpr).round();
+    if (source != null && source.width > 0 && source.height > 0) {
+      // Uniform shrink to the source's pixel size, applied before the
+      // `_requested` cache so the cached pair is the capped one.
+      final scale = min(
+        1.0,
+        min(
+          source.width / (logical.width * dpr),
+          source.height / (logical.height * dpr),
+        ),
+      );
+      if (scale < 1.0) {
+        w = (logical.width * dpr * scale).round();
+        h = (logical.height * dpr * scale).round();
+      }
+    }
     if (_requested == (w, h)) return;
     final first = _requested == null;
     _requested = (w, h);
@@ -102,7 +134,9 @@ class _MpvVideoState extends State<MpvVideo> {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    // Follows the window across monitors (refresh rate per display).
+    // Follows the window across monitors (refresh rate per display). The
+    // controller guards on an unchanged rate, so steady-state rebuilds do no
+    // FFI work at all; only a real display change reaches mpv.
     final hz = View.maybeOf(context)?.display.refreshRate;
     if (hz != null) widget.controller.syncDisplayRefreshRate(hz);
     return StreamBuilder<MpvVideoParams?>(
@@ -133,7 +167,12 @@ class _MpvVideoState extends State<MpvVideo> {
               video.width * fs.destination.width / fs.source.width,
               video.height * fs.destination.height / fs.source.height,
             );
-            _requestSize(shown, dpr, immediate: immediate);
+            _requestSize(
+              shown,
+              dpr,
+              immediate: immediate,
+              source: widget.capRenderSize ? video : null,
+            );
             return ClipRect(
               // Tight on both ends: the parent may pass tight constraints that
               // are smaller (cover) or larger (contain) than the video rect.

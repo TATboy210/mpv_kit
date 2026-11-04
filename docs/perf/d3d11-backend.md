@@ -151,3 +151,15 @@ produce exactly one `deviceLost`; `signal-fail:1` keeps frames flowing with
 no `gpuTimeout`/`renderError`; a failing query escalates to one `deviceLost`;
 `create-no-11-1` creates the D3D11 device. The fence and query backend tests
 (`d3d11_backend_test`) still pass.
+
+## dev.9: exception-path hardening
+
+* `Render` records the slot completion through its query when mpv reports an
+  error, so no slot can be published without a completion marker even if a
+  future mpv ever fails after submitting drawing.
+* The destructor drains an armed `SetEventOnCompletion` before closing the
+  event handle; `WAIT_FAILED` returns `kTimeout` at once; the query
+  escalation counter is per backend (three strikes, not three per slot).
+* `InitSync` logs the exact reason the fence path was skipped.
+* New debug injection `alloc-fail:<n>` exercises the engine's fallback-ring
+  retry without reporting device removal (`d3d11_sync_test.dart`).

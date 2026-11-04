@@ -186,6 +186,17 @@ final class StreamBridge {
   @visibleForTesting
   static Duration openTimeout = const Duration(seconds: 30);
 
+  /// Bound on one `read`/`seek` answer of a registered source (dev.9).
+  ///
+  /// A source whose read never completes otherwise blocks mpv's demuxer
+  /// thread forever (patch 0006 waits on the host), freezing playback and
+  /// `stop` with no error anywhere. On timeout the request is answered as a
+  /// failed read/seek (mpv then closes the stream) and reported through
+  /// [Mpv.onSourceError]; the buffer is never written after the deadline.
+  /// Kept generous so slow network sources are not killed.
+  @visibleForTesting
+  static Duration readTimeout = const Duration(seconds: 30);
+
   /// Decodes the NUL-terminated OPEN URI. Never throws, so a request that was
   /// already claimed is always answered: invalid UTF-8 becomes U+FFFD (the
   /// opener then simply rejects the URI) and nullptr the empty string.
@@ -365,7 +376,10 @@ final class StreamBridge {
     var result = -1;
     Uint8List? chunk;
     try {
-      chunk = source == null ? null : await source.read(capacity);
+      chunk = source == null
+          ? null
+          : await Future.sync(() => source.read(capacity))
+              .timeout(readTimeout);
     } on Object catch (e, s) {
       chunk = null;
       _report('read', e, s);
@@ -386,7 +400,7 @@ final class StreamBridge {
     try {
       result = source == null
           ? MpvError.generic.code
-          : await source.seek(offset);
+          : await Future.sync(() => source.seek(offset)).timeout(readTimeout);
     } on UnsupportedError catch (e, s) {
       result = MpvError.unsupported.code;
       _report('seek', e, s);

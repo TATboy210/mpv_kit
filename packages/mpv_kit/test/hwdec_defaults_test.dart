@@ -75,4 +75,19 @@ void main() {
   test('platformDefaultHwdec follows Platform.operatingSystem', () {
     expect(platformDefaultHwdec(), defaultHwdecFor(Platform.operatingSystem));
   });
+  test('the d3d11 render backend prunes the dead vulkan probe (dev.9)', () {
+    expect(
+      defaultHwdecForBackend('windows', 'd3d11'),
+      'd3d11va,d3d11va-copy,auto-safe',
+    );
+    // Every other combination keeps the platform list untouched.
+    for (final MapEntry(key: os, value: list) in _expected.entries) {
+      for (final api in ['vulkan', 'software', 'opengl', 'd3d11']) {
+        final want = (os == 'windows' && api == 'd3d11')
+            ? 'd3d11va,d3d11va-copy,auto-safe'
+            : list;
+        expect(defaultHwdecForBackend(os, api), want, reason: '$os/$api');
+      }
+    }
+  });
 }

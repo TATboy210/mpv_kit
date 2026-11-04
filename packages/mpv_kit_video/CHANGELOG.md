@@ -1,3 +1,16 @@
+## 0.1.0-dev.9
+
+- Fixed: a render error on the D3D11 backend now records the slot's
+  completion through its query before returning, so a slot is never
+  published without a completion marker even if mpv ever reports an error
+  after submitting drawing.
+- Fixed: the destructor drains an armed fence completion before closing the
+  event handle; `WAIT_FAILED` no longer spins until the deadline; the query
+  escalation counter is per backend, so three unusable completions report
+  device loss instead of one per ring slot.
+- Added: debug injection `alloc-fail:<n>` (plain allocation failure) and
+  `MpvVideo.capRenderSize`; `InitSync` logs why the fence path was skipped.
+
 ## 0.1.0-dev.8
 
 - Fixed: a D3D11 device loss detected while allocating a new ring (resize) or

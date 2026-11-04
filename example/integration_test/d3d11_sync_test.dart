@@ -7,7 +7,7 @@
 //
 // modes: device-removed:alloc | device-removed:render:<n> | signal-fail:<n> |
 //        query-getdata-fail (also set MPV_KIT_D3D11_SYNC=query) |
-//        create-no-11-1
+//        create-no-11-1 | alloc-fail:<n>
 //
 // Printing is the report channel:
 // ignore_for_file: avoid_print
@@ -122,6 +122,26 @@ void main() {
         expect(kinds, isNot(contains(MpvVideoEventKind.gpuTimeout)));
         expect(kinds, isNot(contains(MpvVideoEventKind.renderError)));
         expect(kinds, isNot(contains(MpvVideoEventKind.deviceLost)));
+      } else if (mode.startsWith('alloc-fail')) {
+        // One plain allocation failure: the engine must retry with the
+        // fallback ring, report render_error + recovered, and never lose
+        // the device.
+        unawaited(controller.setSize(960, 540));
+        final recDeadline = DateTime.now().add(const Duration(seconds: 10));
+        while (!kinds.contains(MpvVideoEventKind.resize) &&
+            DateTime.now().isBefore(recDeadline)) {
+          await _nextFrame();
+        }
+        // The failed full-ring attempt retries with the fallback ring inside
+        // the same render round: no render_error, no device loss, frames keep
+        // flowing (the retry is logged by the plugin).
+        for (var i = 0; i < 30; i++) {
+          await _nextFrame();
+        }
+        expect(kinds, contains(MpvVideoEventKind.resize));
+        expect(kinds, isNot(contains(MpvVideoEventKind.deviceLost)));
+        expect(player.mpv.tryGetProperty('estimated-vf-fps'), isNotNull);
+        framesAfter = 1;
       } else if (mode == 'create-no-11-1') {
         for (var i = 0; i < 40; i++) {
           await _nextFrame();

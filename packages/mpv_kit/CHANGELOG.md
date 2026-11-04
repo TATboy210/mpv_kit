@@ -1,3 +1,16 @@
+## 0.1.0-dev.9
+
+- Added: `defaultHwdecForBackend(os, apiToken)` (exported): the native D3D11
+  render backend prunes the `vulkan` hwdec entry, whose probe can only fail
+  on a D3D11 render API; `MpvVideoController.create` applies it while the
+  core is idle and only when `hwdec` was not overridden.
+- Added: `StreamBridge.readTimeout` (30 s) bounds one `read`/`seek` answer;
+  a source that never replies no longer blocks mpv's demuxer thread forever
+  (the request is answered as failed and reported like other source errors).
+- Changed: `MpvVideo` never requests a render size above the video's own
+  pixel size (`capRenderSize`, default true), so a 1080p video in a 4K
+  window no longer allocates a 4K shared-image ring.
+
 ## 0.1.0-dev.8
 
 - Fixed: the event drain is bounded (256 events or 2 ms per turn, continued

@@ -63,7 +63,11 @@ void main() {
     }
   });
 
-  Future<void> pumpVideo(WidgetTester tester, MpvVideoController c) async {
+  Future<void> pumpVideo(
+    WidgetTester tester,
+    MpvVideoController c, {
+    bool cap = true,
+  }) async {
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
@@ -71,7 +75,7 @@ void main() {
           child: SizedBox(
             width: 400,
             height: 300,
-            child: MpvVideo(controller: c),
+            child: MpvVideo(controller: c, capRenderSize: cap),
           ),
         ),
       ),
@@ -165,6 +169,54 @@ void main() {
       ),
       isTrue,
       reason: 'the new controller needs its own first setSize',
+    );
+  }, skip: skip != null);
+  testWidgets('the render size is capped at the source size', (tester) async {
+    final controller = await MpvVideoController.create(player);
+    addTearDown(controller.dispose);
+    await tester.runAsync(() async {
+      await player.open('av://lavfi:testsrc2=size=320x180:rate=30:duration=8');
+      await _until(
+        () => player.videoParams.value?.width == 320,
+        '320x180 params',
+      );
+    });
+    await pumpVideo(tester, controller);
+    await tester.pump();
+    // 400x225 display box at dpr 1, capped to the 320x180 source.
+    expect(
+      calls
+          .where((c) => c.method == 'setSize')
+          .map((c) => (c.arguments as Map)['width'])
+          .toList(),
+      contains(320),
+    );
+    expect(
+      calls.any(
+        (c) =>
+            c.method == 'setSize' &&
+            (c.arguments as Map)['width'] == 320 &&
+            (c.arguments as Map)['height'] == 180,
+      ),
+      isTrue,
+      reason: 'the capped pair must reach the renderer',
+    );
+
+    // Without the cap the display size is requested verbatim.
+    final uncapped = await MpvVideoController.create(player);
+    addTearDown(uncapped.dispose);
+    calls.clear();
+    await pumpVideo(tester, uncapped, cap: false);
+    await tester.pump();
+    expect(
+      calls.any(
+        (c) =>
+            c.method == 'setSize' &&
+            (c.arguments as Map)['width'] == 1200 &&
+            (c.arguments as Map)['height'] == 675,
+      ),
+      isTrue,
+      reason: 'capRenderSize: false must request the display size (dpr 3)',
     );
   }, skip: skip != null);
 }

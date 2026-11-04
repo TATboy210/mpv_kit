@@ -2,9 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v3.1
 milestone_name: 依赖内存、体积与 API 优化
+current_phase: 18
+current_phase_name: 基线与问题验证
 status: planning
-last_updated: "2026-11-01T11:40:00.000Z"
+stopped_at: context exhaustion at 76% (2026-11-04)
+last_updated: "2026-11-04T03:40:53.324Z"
 last_activity: 2026-11-01
+last_activity_desc: v3.1 路线图已创建（Phase 18-22，20/20 需求已映射）
+state_head: d8f300999e6157299801cd33a9761c9e0ee6562f
 progress:
   total_phases: 5
   completed_phases: 0
@@ -349,8 +354,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-01T11:40:00.000Z
-Stopped at: v3.1 roadmap created — Phase 18 ready to discuss / plan
+Last session: 2026-11-04T03:40:53.272Z
+Stopped at: context exhaustion at 76% (2026-11-04)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

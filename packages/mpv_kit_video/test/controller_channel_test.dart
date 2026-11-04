@@ -404,7 +404,10 @@ void main() {
     // The first size is applied without waiting for the debounce.
     await tester.runAsync(pumpEventQueue);
     final sizes = calls.where((m) => m.method == 'setSize').toList();
-    expect(sizes.single.arguments, containsPair('width', 1200));
+    // dev.9: the display rect (1200x675 at dpr 3) is capped to the source's
+    // own pixel size; rendering larger only wastes ring memory and fill rate.
+    expect(sizes.single.arguments, containsPair('width', 320));
+    expect(sizes.single.arguments, containsPair('height', 180));
   }, skip: skip != null);
 
   test('create maps every private GPU wire name to MpvVideoBackend.vulkan',
@@ -565,5 +568,57 @@ void main() {
       expect(MpvVideoRenderer.tryParse(r.wireName), r);
     }
     expect(MpvVideoRenderer.tryParse('vulkan'), isNull);
+  });
+  group('hwdec c-lite (dev.9)', () {
+    Future<MpvVideoController> createWith(String reason) {
+      messenger.setMockMethodCallHandler(_channel, (call) async {
+        calls.add(call);
+        if (call.method == 'create') {
+          return {'textureId': 9, 'backend': 'vulkan', 'reason': reason};
+        }
+        return null;
+      });
+      return MpvVideoController.create(player);
+    }
+
+    test('a d3d11 backend prunes the dead vulkan probe while idle', () async {
+      final c = await createWith('d3d11 (gpu-next) on test');
+      addTearDown(c.dispose);
+      expect(
+        player.mpv.getPropertyString('hwdec'),
+        defaultHwdecForBackend(Platform.operatingSystem, 'd3d11'),
+      );
+    });
+
+    test('a vulkan backend keeps the platform list', () async {
+      final c = await createWith('vulkan (gpu-next) on test');
+      addTearDown(c.dispose);
+      expect(
+        player.mpv.getPropertyString('hwdec'),
+        defaultHwdecFor(Platform.operatingSystem),
+      );
+    });
+
+    test('a user hwdec override is never rewritten', () async {
+      player.mpv.setPropertyString('hwdec', 'no');
+      final c = await createWith('d3d11 (gpu-next) on test');
+      addTearDown(c.dispose);
+      expect(player.mpv.getPropertyString('hwdec'), 'no');
+    });
+
+    test('a loaded file is not reinited', () async {
+      await player.open('av://lavfi:testsrc2=size=160x90:rate=5:duration=4');
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (player.idle.value && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      expect(player.idle.value, isFalse, reason: 'the source never loaded');
+      final c = await createWith('d3d11 (gpu-next) on test');
+      addTearDown(c.dispose);
+      expect(
+        player.mpv.getPropertyString('hwdec'),
+        defaultHwdecFor(Platform.operatingSystem),
+      );
+    });
   });
 }

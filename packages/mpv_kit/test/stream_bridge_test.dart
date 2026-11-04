@@ -53,6 +53,18 @@ final class _StuckSource implements MpvStreamSource {
   void close() {}
 }
 
+/// Opens fine, then never answers a read: the readTimeout must kick in.
+final class _StuckReadSource implements MpvStreamSource {
+  @override
+  int? get size => null;
+  @override
+  Future<Uint8List> read(int maxBytes) => Completer<Uint8List>().future;
+  @override
+  int seek(int offset) => 0;
+  @override
+  void close() {}
+}
+
 /// Reports a size it cannot compute, like a source whose header is corrupt.
 final class _ThrowingSizeSource implements MpvStreamSource {
   var closes = 0;
@@ -168,6 +180,20 @@ void main() {
     unawaited(p.open('stuck://x').catchError((Object _) {}));
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await p.dispose().timeout(const Duration(seconds: 10));
+  });
+
+  test('a stuck read fails the load after readTimeout (dev.9)', () async {
+    if (_skipWithoutBridge()) return;
+    final saved = StreamBridge.readTimeout;
+    addTearDown(() => StreamBridge.readTimeout = saved);
+    StreamBridge.readTimeout = const Duration(milliseconds: 300);
+    player.mpv.registerStreamProtocol('rstuck', (_) => _StuckReadSource());
+    final err = player.errors.first.timeout(const Duration(seconds: 10));
+    await player.open('rstuck://x');
+    final e = await err;
+    expect(e.error, MpvError.generic);
+    expect(e.message, contains('read'), reason: e.message);
+    expect(player.videoParams.value, isNull);
   });
 
   test('a source whose size throws fails the load and is closed', () async {

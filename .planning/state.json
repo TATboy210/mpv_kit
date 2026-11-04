@@ -1,38 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v2.0",
-  "phases": [
-    {
-      "number": "7",
-      "name": "mpv-master Vendor Advance & gpu-next Regression",
-      "status": "complete"
-    },
-    {
-      "number": "8",
-      "name": "Debug HUD & Drag-and-Drop",
-      "status": "complete"
-    },
-    {
-      "number": "9",
-      "name": "8K Full-Rate",
-      "status": "pending"
-    },
-    {
-      "number": "10",
-      "name": "Composition Spike",
-      "status": "in_progress"
-    },
-    {
-      "number": "11",
-      "name": "Native Composition Path",
-      "status": "pending"
-    }
-  ],
+  "milestone": "v3.1",
+  "phases": [],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-10-25T05:46:02.111Z"
+  "updated_at": "2026-11-01T11:25:41.006Z"
 }
