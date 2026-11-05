@@ -7,7 +7,7 @@
 library;
 
 /// GitHub release tag the pinned bundles belong to.
-const bundleTag = 'v0.1.0-dev.8';
+const bundleTag = 'v0.1.0-dev.9';
 
 /// Download location of the bundle for [target] (e.g. `windows-x64`).
 Uri bundleUrl(String target) => Uri.https(
@@ -19,8 +19,8 @@ Uri bundleUrl(String target) => Uri.https(
 const bundleSha256 = <String, String>{
   'linux-arm64': 'f70d88c0dc1a8a068c62d26a1fd137af2c9e8227450f375239c60d5b484ab721',
   'linux-x64': '94f28ca3055fdfbb92b85a3dd886ed9679a9a49bb07e4d6af87bc898c737756f',
-  'macos-arm64': '93cd6f17e17af75e0d6bdec9eed70201ac6d3aaed6eb230dd3e8b3136569eb15',
-  'macos-x64': '3f29d3fde2b1bd469b40a28591daff782ee196b2038cb5d5cc5c604272bdcd1f',
-  'windows-arm64': '720a4be7961ac694cf0eb2b8344dad266f249bd5ad5e9649d906d448230f28ef',
-  'windows-x64': '60fdb4e12358297f07c2414996b746aba902ee3fc7adea5972916ac11ff895d1',
+  'macos-arm64': '80294b6d29789bea79c2cdb054a31a169f451a241fd99ba9c876799fe7eee6ea',
+  'macos-x64': '74cabe5d9ce63be820bd5a158590fb4cc5c187384887c5c2b4f0a0b1147cb374',
+  'windows-arm64': 'ccf0ae3d99e171794a6c35ce13d1298f53f850233151966117bbcaa05ac5d802',
+  'windows-x64': '036ed371c477659136754f0c48a307f47fe46982e74d413c2e27845608e876e5',
 };
