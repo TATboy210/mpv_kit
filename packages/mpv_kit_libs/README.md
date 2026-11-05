@@ -30,7 +30,14 @@ hooks:
       libmpv_bundle: third_party/libmpv-windows-x64
 ```
 
-Alternatively skip this package and set `MPV_KIT_LIBMPV_PATH`.
+For a pure Dart app that depends on `mpv_kit` alone, you can instead skip
+this package and set `MPV_KIT_LIBMPV_PATH` (or rely on a system libmpv).
+
+A Flutter app cannot skip the package: `mpv_kit_video` depends on it, so
+`pub` always fetches its (small) source, and the build hook downloads the
+pinned bundle. `MPV_KIT_LIBMPV_PATH` only changes which library the runtime
+loads; it does not stop the hook. To avoid the bundle download, point the
+hook at a local bundle with the `libmpv_bundle` user define shown above.
 
 ## License
 
