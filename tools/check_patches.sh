@@ -5,10 +5,11 @@
 # Run from the repo root:
 #   bash tools/check_patches.sh
 #
-# The base commit comes from native/mpv/MPV_VERSION (e.g.
-# v0.41.0-1113-gfd9265a905). Patches are applied with GNU patch -p1 --
-# git apply reports false success on these patches (see
-# native/patches/UPSTREAM.md).
+# The base comes from native/mpv/MPV_VERSION. Two forms are accepted:
+#   * a release version (e.g. 0.42.0) -> upstream tag v0.42.0
+#   * a git describe string (e.g. v0.41.0-1113-gfd9265a905) -> that commit
+# Patches are applied with GNU patch -p1 -- git apply reports false
+# success on these patches (see native/patches/UPSTREAM.md).
 #
 # Exclusions: only .git and .gitignore. Anything else that would need
 # excluding must be added here with an explicit justification comment --
@@ -19,9 +20,13 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 version_file="$root/native/mpv/MPV_VERSION"
 
 base_desc="$(tr -d ' \t\r\n' < "$version_file")"
-short_sha="${base_desc##*-g}"
-if [[ ! "$short_sha" =~ ^[0-9a-f]{7,40}$ ]]; then
-  echo "CHECK-PATCHES FAIL: cannot parse a commit sha from $version_file ('$base_desc')" >&2
+if [[ "$base_desc" =~ -g([0-9a-f]{7,40})$ ]]; then
+  base_ref="${BASH_REMATCH[1]}"
+elif [[ "$base_desc" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  # Release tags commit MPV_VERSION with the bare version (e.g. 0.42.0).
+  base_ref="v$base_desc"
+else
+  echo "CHECK-PATCHES FAIL: cannot parse a tag or commit from $version_file ('$base_desc')" >&2
   exit 1
 fi
 
@@ -37,13 +42,18 @@ git -c core.autocrlf=false clone --quiet --filter=blob:none --no-checkout \
 git -C "$tmp/mpv" config core.autocrlf false
 # Short shas are not valid fetch refs; fetch the master branch (blobless:
 # commits+trees only, blobs arrive on checkout) and resolve the sha locally.
-git -C "$tmp/mpv" fetch --quiet origin master
-if ! git -C "$tmp/mpv" cat-file -e "${short_sha}^{commit}" 2>/dev/null; then
-  # The commit may live on another ref: fetch all refs and retry.
-  git -C "$tmp/mpv" fetch --quiet origin \
-    '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+# A release tag is fetched directly by ref.
+if [[ "$base_ref" == v* ]]; then
+  git -C "$tmp/mpv" fetch --quiet origin "refs/tags/$base_ref:refs/tags/$base_ref"
+else
+  git -C "$tmp/mpv" fetch --quiet origin master
+  if ! git -C "$tmp/mpv" cat-file -e "${base_ref}^{commit}" 2>/dev/null; then
+    # The commit may live on another ref: fetch all refs and retry.
+    git -C "$tmp/mpv" fetch --quiet origin \
+      '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+  fi
 fi
-git -C "$tmp/mpv" checkout --quiet --detach "$short_sha"
+git -C "$tmp/mpv" checkout --quiet --detach "$base_ref"
 echo "CHECK-PATCHES: base $(git -C "$tmp/mpv" rev-parse HEAD)"
 
 shopt -s nullglob

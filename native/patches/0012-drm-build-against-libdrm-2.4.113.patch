@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index a023a8f..cc77efe 100644
+index 4914aac..c1c1a93 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -1008,7 +1008,10 @@ if features['direct3d']
+@@ -1013,7 +1013,10 @@ if features['direct3d']
      sources += files('video/out/vo_direct3d.c')
  endif
  
@@ -15,7 +15,7 @@ index a023a8f..cc77efe 100644
  features += {'drm': drm.found() and libdisplay_info.found() and
               (features['vt.h'] or features['consio.h'] or features['wsdisplay-usl-io.h'])}
 diff --git a/video/out/vo_drm.c b/video/out/vo_drm.c
-index 28fd7db..37a8736 100644
+index 51cf6f5..986c860 100644
 --- a/video/out/vo_drm.c
 +++ b/video/out/vo_drm.c
 @@ -39,6 +39,54 @@
@@ -93,7 +93,7 @@ index 28fd7db..37a8736 100644
          MP_ERR(vo, "Cannot create dumb buffer: %s\n", mp_strerror(errno));
          goto err;
      }
-@@ -137,7 +185,7 @@ static struct framebuffer *setup_framebuffer(struct vo *vo)
+@@ -141,7 +189,7 @@ static struct framebuffer *setup_framebuffer(struct vo *vo)
  
      // prepare buffer for memory mapping
      uint64_t offset = 0;

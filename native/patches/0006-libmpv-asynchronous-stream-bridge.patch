@@ -97,30 +97,29 @@ index 0000000..46da1de
 +
 +#endif
 diff --git a/meson.build b/meson.build
-index c6ff0a4..175125b 100644
+index b61b8e9..bc15993 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -162,6 +162,7 @@ sources = files(
+@@ -169,6 +169,7 @@ sources = files(
      ## Player
      'player/audio.c',
      'player/client.c',
 +    'player/stream_bridge.c',
      'player/command.c',
      'player/configfiles.c',
-     'player/external_files.c',
-@@ -1797,7 +1798,8 @@ if get_option('libmpv')
-                  description: 'mpv media player client library')
+     'player/discnav.c',
+@@ -1853,7 +1854,7 @@ if get_option('libmpv')
  
      headers = ['include/mpv/client.h', 'include/mpv/render.h',
--               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h']
-+               'include/mpv/render_gl.h', 'include/mpv/stream_cb.h',
-+               'include/mpv/stream_bridge.h']
+                'include/mpv/render_d3d11.h', 'include/mpv/render_gl.h',
+-               'include/mpv/stream_cb.h']
++               'include/mpv/stream_cb.h', 'include/mpv/stream_bridge.h']
      if features['vulkan']
          headers += 'include/mpv/render_vk.h'
      endif
 diff --git a/player/stream_bridge.c b/player/stream_bridge.c
 new file mode 100644
-index 0000000..987fb81
+index 0000000..4cce0e4
 --- /dev/null
 +++ b/player/stream_bridge.c
 @@ -0,0 +1,298 @@

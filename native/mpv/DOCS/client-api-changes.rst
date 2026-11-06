@@ -32,7 +32,7 @@ API changes
 
 ::
 
- --- mpv_kit (patch on 0.41.0, API version unchanged) ---
+ --- mpv_kit (patch on 0.42.0, API version unchanged) ---
         - add <mpv/render_vk.h> and MPV_RENDER_API_TYPE_VULKAN: a Vulkan
           backend for the render API importing a host-owned VkDevice.
           Detect at compile time via MPV_RENDER_API_TYPE_VULKAN, at run

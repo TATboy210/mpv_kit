@@ -30,7 +30,7 @@ index 8ff76a8..f397c3a 100644
              .mInputData = &uid,
              .mInputDataSize = sizeof(CFStringRef),
 diff --git a/audio/out/ao_wasapi.c b/audio/out/ao_wasapi.c
-index 7ad1e64..29f3c48 100644
+index 27138a6..8201211 100644
 --- a/audio/out/ao_wasapi.c
 +++ b/audio/out/ao_wasapi.c
 @@ -295,17 +295,39 @@ static void uninit(struct ao *ao)
@@ -76,39 +76,21 @@ index 7ad1e64..29f3c48 100644
  
      state->opt_exclusive |= ao->init_flags & AO_INIT_EXCLUSIVE;
  
-@@ -503,7 +525,7 @@ static void hotplug_uninit(struct ao *ao)
- {
-     MP_DBG(ao, "Hotplug uninit\n");
-     wasapi_change_uninit(ao);
--    CoUninitialize();
-+    wasapi_com_uninit(ao);
- }
- 
- static int hotplug_init(struct ao *ao)
-@@ -511,7 +533,7 @@ static int hotplug_init(struct ao *ao)
-     MP_DBG(ao, "Hotplug init\n");
-     struct wasapi_state *state = ao->priv;
-     state->log = ao->log;
--    CoInitializeEx(NULL, COINIT_MULTITHREADED);
-+    wasapi_com_init(ao);
-     HRESULT hr = wasapi_change_init(ao, true);
-     EXIT_ON_ERROR(hr);
- 
 diff --git a/audio/out/ao_wasapi.h b/audio/out/ao_wasapi.h
-index cbd4a3f..8e1081d 100644
+index 79392eb..cddaeb0 100644
 --- a/audio/out/ao_wasapi.h
 +++ b/audio/out/ao_wasapi.h
-@@ -100,8 +100,20 @@ typedef struct wasapi_state {
-     struct ao_convert_fmt convert_format;
+@@ -101,8 +101,20 @@ typedef struct wasapi_state {
  
      change_notify change;
+     CO_MTA_USAGE_COOKIE hotplug_mta; // the hotplug instance keeps the MTA alive
 +
-+    // COM lifetime (mpv_kit). init/hotplug_init run on the core thread or a
-+    // client thread, but libmpv destroys on the client thread after the core
-+    // thread has exited. The MTA usage cookie keeps the MTA (and in-process
-+    // servers such as mmdevapi) alive until this ao has released its
-+    // objects, independent of any thread; CoUninitialize is only called on
-+    // the thread whose CoInitializeEx succeeded.
++    // COM lifetime of the playback instance (mpv_kit). init/uninit run on
++    // the core thread, but libmpv destroys on the client thread after the
++    // core thread exited. The MTA usage cookie keeps the MTA (and
++    // in-process servers such as mmdevapi) alive until this ao released
++    // its objects; CoUninitialize only runs on the thread whose
++    // CoInitializeEx succeeded. hotplug_init keeps its own cookie above.
 +    CO_MTA_USAGE_COOKIE mta_cookie;
 +    DWORD com_thread;
  } wasapi_state;
@@ -131,10 +113,10 @@ index 6785f5d..50b57f9 100644
 +    change->client.lpVtbl = NULL;
  }
 diff --git a/meson.build b/meson.build
-index 175125b..b0af124 100644
+index bc15993..4914aac 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -816,8 +816,12 @@ if features['audiounit']
+@@ -860,8 +860,12 @@ if features['audiounit']
      sources += files('audio/out/ao_audiounit.m')
  endif
  
@@ -149,7 +131,7 @@ index 175125b..b0af124 100644
  features += {'avfoundation': avfoundation.found()}
  if features['avfoundation']
      dependencies += avfoundation
-@@ -837,6 +841,16 @@ endif
+@@ -881,6 +885,16 @@ endif
  if features['audiounit'] or features['coreaudio'] or features['avfoundation']
      sources += files('audio/out/ao_coreaudio_chmap.c',
                       'audio/out/ao_coreaudio_utils.c')
@@ -166,7 +148,7 @@ index 175125b..b0af124 100644
  endif
  
  if features['avfoundation']
-@@ -1521,6 +1535,9 @@ if features['videotoolbox-gl']
+@@ -1573,6 +1587,9 @@ if features['videotoolbox-gl']
  endif
  if features['videotoolbox-pl']
      dependencies += corevideo
