@@ -116,6 +116,25 @@ cmake_build() {
   )
 }
 
+# autotools_build NAME [configure args...]: release tarballs ship configure.
+# --libdir is forced to PREFIX/lib so 64-bit Linux does not install to lib64.
+autotools_build() {
+  local name=$1
+  shift
+  (
+    cd "$work/src/$name"
+    if [ ! -x ./configure ]; then
+      echo "$name: source archive has no configure script" >&2
+      exit 1
+    fi
+    ./configure --prefix="$prefix" --libdir="$prefix/lib" \
+      --disable-static --enable-shared --disable-dependency-tracking \
+      --disable-nls "$@"
+    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+    make install
+  )
+}
+
 VK_SDK=1.4.363.0
 
 # --- Vulkan headers / loader -------------------------------------------
@@ -258,36 +277,10 @@ meson_build lcms2 -Djpeg=disabled -Dtiff=disabled -Dutils=false
 license lcms2 LICENSE
 
 # --- libplacebo ---------------------------------------------------------
-fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.1/libplacebo-v7.360.1.tar.gz \
-  14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39
-# Upstream fixes after 7.360.1 (Vulkan command races, external image
-# hand-off, pl_queue lifetime, memory safety, color metadata), applied in
-# order; see native/deps/libplacebo/ and native/patches/UPSTREAM.md.
-# GNU patch only (BSD patch differs on fuzz and exit codes), no fuzz, and
-# every patch must match its pinned sha256.
-placebo_patches="$here/../deps/libplacebo"
-gpatch=$(command -v gpatch || command -v patch || true)
-if [ -z "$gpatch" ] || ! "$gpatch" --version 2>/dev/null | grep -q 'GNU patch'; then
-  echo "libplacebo: GNU patch is required (install gpatch)" >&2
-  exit 1
-fi
-n_patches=0
-while read -r want name; do
-  [ -n "$name" ] || continue
-  f="$placebo_patches/$name"
-  got=$(sha256 "$f")
-  if [ "$got" != "$want" ]; then
-    echo "libplacebo: $name sha256 mismatch ($got)" >&2
-    exit 1
-  fi
-  "$gpatch" -p1 --batch --forward --fuzz=0 --no-backup-if-mismatch -s     -d "$work/src/libplacebo" -i "$f"
-  n_patches=$((n_patches + 1))
-done < "$placebo_patches/SHA256SUMS"
-n_files=$(find "$placebo_patches" -name '0*.patch' | wc -l)
-if [ "$n_patches" -ne 16 ] || [ "$n_files" -ne 16 ]; then
-  echo "libplacebo: expected 16 pinned patches, applied $n_patches of $n_files" >&2
-  exit 1
-fi
+# mpv 0.42 requires >= 7.387.0. The 16 backports used with 7.360.1 were all
+# ancestors of 7.387.0 and have been removed (see native/patches/UPSTREAM.md).
+fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.387.0/libplacebo-v7.387.0.tar.bz2 \
+  14ceeeb14d1c08fcdb1a782a06129da11f842c6fddbf3a43c1c4061406ad03d2
 # Vulkan everywhere, plus pl_d3d11 on Windows (mpv_kit's native D3D11 path;
 # an OpenGL backend would only add size). Dolby Vision metadata is handled
 # by libplacebo itself (libdovi is optional).
@@ -315,6 +308,110 @@ meson_build libplacebo -Dprefer_static=true -Dvulkan-sdk="$nprefix" \
   -Dlcms=enabled -Ddovi=enabled -Dlibdovi=disabled -Dunwind=disabled \
   -Dxxhash=disabled -Ddemos=false -Dtests=false -Dbench=false -Dfuzz=false
 license libplacebo LICENSE
+
+# --- Optical disc support (GPL full flavor) --------------------------------
+# mpv 0.42 gates CD and DVD behind -Dgpl; the 0.1.0-dev.10 bundle is GPL.
+# Blu-ray/UHD and its AACS/BD+ helpers are LGPL but dlopened by libbluray,
+# so they are copied explicitly by package.sh.
+fetch libgpg-error https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.61.tar.bz2 \
+  7a85413f2bc354f4f8aa832b718af122e48965e9e0eb9012ee659c13c6385c93
+autotools_build libgpg-error --disable-doc --disable-tests \
+  --disable-languages --disable-werror
+license libgpg-error COPYING COPYING.LIB
+
+fetch libgcrypt https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.4.tar.bz2 \
+  d77f68f48879510e79a2f65977ccc68981781ea0923e5bdffac2a193ea3d660e
+gcrypt_args=()
+if [ "$os" = windows ]; then
+  # MSYS2 CLANG64 cannot assemble libgcrypt's GAS sources; software AES is
+  # plenty for AACS/BD+ key derivation.
+  gcrypt_args+=(--disable-asm)
+fi
+autotools_build libgcrypt --disable-large-data-tests \
+  --disable-hmac-binary-check --disable-werror \
+  ${gcrypt_args[@]+"${gcrypt_args[@]}"}
+license libgcrypt COPYING COPYING.LIB
+
+fetch libaacs https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2 \
+  a88aa0ebe4c98a77f7aeffd92ab3ef64ac548c6b822e8248a8b926725bea0a39
+autotools_build libaacs --disable-werror
+license libaacs COPYING
+
+fetch libbdplus https://download.videolan.org/pub/videolan/libbdplus/0.2.0/libbdplus-0.2.0.tar.bz2 \
+  b93eea3eaef33d6e9155d2c34b068c505493aa5a4936e63274f4342ab0f40a58
+autotools_build libbdplus --disable-werror
+license libbdplus COPYING
+
+fetch libudfread https://download.videolan.org/pub/videolan/libudfread/libudfread-1.2.0.tar.xz \
+  bb477cbd4cfbfc7787d9d05b71ee5e70430f5cfebf1297497f7e83547958050f
+meson_build libudfread -Denable_examples=false
+license libudfread COPYING
+
+fetch libxml2 https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz \
+  98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821
+cmake_build libxml2 -DBUILD_SHARED_LIBS=ON \
+  -DLIBXML2_WITH_PYTHON=OFF -DLIBXML2_WITH_ICONV=OFF \
+  -DLIBXML2_WITH_HTTP=OFF -DLIBXML2_WITH_PROGRAMS=OFF \
+  -DLIBXML2_WITH_TESTS=OFF -DLIBXML2_WITH_ZLIB=OFF
+license libxml2 Copyright
+
+fetch libbluray https://code.videolan.org/videolan/libbluray/-/archive/1.5.1/libbluray-1.5.1.tar.bz2 \
+  0f415b559d7f074ba78db259f61c3c61458057263a0181aaafdee1856b0fb17f
+# HDMV menus only: no BD-J JAR (no JVM), no font stack (menus are bitmaps).
+# libaacs/libbdplus are dlopened at runtime; package.sh ships them.
+meson_build libbluray -Denable_docs=false -Denable_tools=false \
+  -Denable_devtools=false -Denable_examples=false -Dbdj_jar=disabled \
+  -Dfreetype=disabled -Dfontconfig=disabled -Dlibxml2=enabled \
+  -Dembed_udfread=false
+license libbluray COPYING
+
+fetch libdvdcss https://download.videolan.org/pub/videolan/libdvdcss/1.6.0/libdvdcss-1.6.0.tar.xz \
+  7ea556c846b7bfc32d47b41cae56d1863a6b6d5f706bb162778d6f298490977c
+autotools_build libdvdcss
+license libdvdcss COPYING
+
+fetch libdvdread https://code.videolan.org/videolan/libdvdread/-/archive/v7.1.1/libdvdread-7.1.1.tar.bz2 \
+  6dec544f502d7af70c5a8f8f19a49ffe2daca60dbd8fc0b4ffe3597fa791c24c
+meson_build libdvdread -Denable_docs=false -Dlibdvdcss=enabled
+license libdvdread COPYING
+
+fetch libdvdnav https://code.videolan.org/videolan/libdvdnav/-/archive/v7.0.0/libdvdnav-7.0.0.tar.bz2 \
+  1363cdfaf6e92c0b574579299b5480f5867fb32989451468a28f3f402ec48787
+meson_build libdvdnav -Denable_docs=false -Denable_examples=false
+license libdvdnav COPYING
+
+fetch libcdio https://github.com/libcdio/libcdio/releases/download/2.3.0/libcdio-2.3.0.tar.bz2 \
+  53e83d284667535a767fd2d31edad1a6701591960459df373a10f1f21e80a7ed
+autotools_build libcdio --disable-cxx --disable-cpp-progs \
+  --disable-example-progs --disable-vcd-info
+license libcdio COPYING
+
+# --- HTTP/2 stream backend (curl, HTTP/2 only) -----------------------------
+fetch mbedtls https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2 \
+  a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+cmake_build mbedtls -DBUILD_SHARED_LIBS=ON \
+  -DUSE_SHARED_MBEDTLS_LIBRARY=ON -DUSE_STATIC_MBEDTLS_LIBRARY=OFF \
+  -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF -DMBEDTLS_FATAL_WARNINGS=OFF
+license mbedtls LICENSE
+
+fetch nghttp2 https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.xz \
+  e05cb1388eaca3830aded4ccf20044b6e1ac1a61411dcca11b0437c4285c8bc2
+cmake_build nghttp2 -DENABLE_LIB_ONLY=ON -DENABLE_APP=OFF \
+  -DENABLE_EXAMPLES=OFF -DENABLE_TESTS=OFF -DENABLE_HPACK_TOOLS=OFF \
+  -DENABLE_STATIC_LIB=OFF -DENABLE_SHARED_LIB=ON
+license nghttp2 COPYING
+
+fetch curl https://curl.se/download/curl-8.23.0.tar.xz \
+  8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5
+cmake_build curl -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF \
+  -DBUILD_CURL_EXE=OFF -DCURL_USE_MBEDTLS=ON -DUSE_NGHTTP2=ON \
+  -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF -DUSE_LIBIDN2=OFF \
+  -DCURL_ZSTD=OFF -DCURL_BROTLI=OFF -DCURL_DISABLE_LDAP=ON \
+  -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON \
+  -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_IMAP=ON \
+  -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_TFTP=ON \
+  -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_MQTT=ON
+license curl COPYING
 
 # --- AV1 decoder ----------------------------------------------------------
 fetch dav1d https://downloads.videolan.org/pub/videolan/dav1d/1.5.4/dav1d-1.5.4.tar.xz \

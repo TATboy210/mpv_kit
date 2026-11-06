@@ -1,6 +1,6 @@
 # mpv_kit 架构图集(Architecture Diagrams)
 
-> 基线:mpv **v0.41.0-1113-gfd9265a905**(vendored 于 `native/mpv`)+ 7 个下游补丁
+> 基线:mpv **v0.42.0**(vendored 于 `native/mpv`)+ 7 个下游补丁
 > 生成:2026-10-22 / 更新:2026-10-23
 >
 > **维护指引**:升级 vendored mpv 基线或重放补丁时,对照
@@ -156,7 +156,7 @@ MpvVideo widget              └──────────┬─────
 ## 2.1 全模块地图(目录 → 文件数/代码行;★ = mpv_kit 补丁触碰)
 
 ```
-native/mpv\  (v0.41.0-1113-gfd9265a905, LGPL 构建, ~142k 行 C)
+native/mpv\  (v0.42.0, LGPL 构建, ~142k 行 C)
 │
 ├── player/                      23 files   25.0k   播放器核心
 │   ├── playloop.c               (1384)      主循环:每 tick 查状态/触发重绘
@@ -217,7 +217,7 @@ native/mpv\  (v0.41.0-1113-gfd9265a905, LGPL 构建, ~142k 行 C)
 │   ├── stream_cb.h                          stream 协议注册 API
 │   └── stream_bridge.h ★0006 新增           异步流桥公开头
 │
-├── meson.build ★0001/0006 修改              依赖与源列表(PL>=7.360.1 硬要求)
+├── meson.build ★0001/0006 修改              依赖与源列表(PL>=7.387.0 硬要求)
 └── test/                        29 files    5.2k   mpv 自测(mpv_kit 构建禁用)
 ```
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Release build of libmpv into PREFIX: dependencies (deps.sh), LGPL FFmpeg
-# (ffmpeg.sh), then the patched mpv with exactly the features mpv_kit uses.
+# (ffmpeg.sh), then the patched mpv with the GPL full feature set
+# (CD/DVD/Blu-ray/UHD HDMV + HTTP/2).
 # The result is packaged by package.sh.
 #
 # usage: native/build/build.sh PREFIX
@@ -21,7 +22,7 @@ fi
 ffmpeg_args=()
 mpv_args=()
 # config.h features that must be on after meson setup (extended per platform).
-required_features="VULKAN LIBPLACEBO"
+required_features="VULKAN LIBPLACEBO CDDA DVDNAV DVDA LIBBLURAY LIBCURL"
 case "$(uname -s)" in
   Linux)
     # VA-API through DRM render nodes only: no libva-x11/libX11 in libavutil.
@@ -89,23 +90,24 @@ bash "$here/ffmpeg.sh" "$prefix" ${ffmpeg_args[@]+"${ffmpeg_args[@]}"}
 # NULL function pointer at run time instead of a link error.
 build=${MPV_BUILDDIR:-$PWD/.mpv-build}
 rm -rf "$build"
-# mpv 0.41.0-1113 (master) additions: keep everything optional explicit,
-# and the LGPL bundle free of new dependencies (amf FRC filter, dvdnav's
-# sibling dvda, the libcurl stream backend, the subrandr subtitle renderer).
-# build-date=false keeps the build timestamp out of the binary, so the same
-# sources give the same libmpv (Homebrew and media-kit build mpv this way).
+# 0.1.0-dev.10 ships the GPL "full" flavor: -Dgpl=true and CD/DVD/Blu-ray
+# support. Blu-ray HDMV is built in; BD-J (JVM), DVB, JACK, caca, direct3d,
+# X11/Wayland and the optional AMF/subrandr code stay off. build-date=false
+# keeps the build timestamp out of the binary, so the same sources give the
+# same libmpv.
 meson setup "$build" "$root/native/mpv" --prefix="$prefix" --libdir=lib \
   --buildtype=release -Db_ndebug=false -Db_lundef=true --wrap-mode=nodownload \
-  -Dlibmpv=true -Dcplayer=false -Dtests=false -Dgpl=false \
+  -Dlibmpv=true -Dcplayer=false -Dtests=false -Dgpl=true \
   -Dvulkan=enabled -Dlcms2=enabled -Duchardet=enabled \
   -Diconv=enabled -Dzlib=enabled \
   -Djpeg=disabled -Dlibarchive=disabled \
-  -Dlibbluray=disabled -Ddvdnav=disabled -Dcdda=disabled -Dzimg=disabled \
+  -Dlibbluray=enabled -Ddvdnav=enabled -Dcdda=enabled -Ddvda=enabled \
+  -Dzimg=disabled -Ddvbin=disabled \
   -Dlua=disabled -Djavascript=disabled -Drubberband=disabled \
   -Dvapoursynth=disabled -Dsdl2-audio=disabled -Dsdl2-video=disabled \
   -Dsdl2-gamepad=disabled -Dopenal=disabled -Djack=disabled -Dsixel=disabled \
   -Dcaca=disabled -Dlibavdevice=enabled \
-  -Damf=disabled -Ddvda=disabled -Dlibcurl=disabled -Dsubrandr=disabled \
+  -Damf=disabled -Dlibcurl=enabled -Dsubrandr=disabled \
   -Dbuild-date=false \
   ${mpv_args[@]+"${mpv_args[@]}"}
 # -Dvulkan=enabled only makes the dependency lookup mandatory; mpv's

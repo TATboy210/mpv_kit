@@ -1,3 +1,23 @@
+## 0.1.0-dev.10
+
+- The released bundle is now the **GPL-3.0-or-later full flavor**: mpv 0.42.0,
+  libplacebo 7.387.0, FFmpeg 8.1.3 (LGPL) and the optical-disc stack.
+  - CD-DA through libcdio; DVD-Video menus through libdvdnav/libdvdread
+    (with libdvdcss); DVD-Audio through libdvdread; Blu-ray/UHD HDMV through
+    libbluray with AACS/BD+ helpers (libaacs/libbdplus; user supplies KEYDB).
+  - BD-J is not included (no JVM). VCD has no `vcd://` module; play
+    `MPEGAV/*.DAT` files directly.
+  - libcurl HTTP/2 backend (mbedTLS + nghttp2). `Player` keeps it disabled
+    by default; enable with `curl-enabled=yes`.
+- **License change:** applications shipping this bundle must be
+  GPL-compatible. The Dart packages remain MIT. `MPV_KIT_FLAVOR=lgpl` keeps
+  the old `-Dgpl=false` build for self-builders; the release pipeline does
+  not publish it.
+- Every bundle now carries `LICENSE.GPL`, `LICENSE.LGPL`, `SOURCE.txt` and the
+  third-party licenses; releases also carry `sources-<tag>.tar.gz`.
+- libplacebo moved from 7.360.1 to 7.387.0; the 16 local backports were
+  upstreamed and removed.
+
 ## 0.1.0-dev.9
 
 - Version bump only; this release changes Dart and plugin code, not libmpv.

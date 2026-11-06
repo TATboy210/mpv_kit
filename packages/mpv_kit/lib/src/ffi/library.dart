@@ -129,7 +129,7 @@ abstract final class MpvLibrary {
     throw MpvLibraryNotFound(attempts);
   }
 
-  /// 最低兼容的 client API 主版本（mpv 0.35+ 为 2）。
+  /// 最低兼容的 client API 主版本（mpv 0.35+ 为 2；0.42 为 2.6）。
   static const requiredMajor = 2;
 
   static void _checkApiVersion(MpvBindings b) {

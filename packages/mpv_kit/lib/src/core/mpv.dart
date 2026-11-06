@@ -311,7 +311,7 @@ final class Mpv {
   /// `mpv_command_node`：执行命令并返回结果。
   ///
   /// [args] may be a positional list (`['loadfile', path]`) or a named map
-  /// (`{'name': 'loadfile', 'url': path}`).
+  /// (`{'_name': 'loadfile', 'url': path}`).
   Object? command(Object args) {
     _ensureAlive();
     return using((a) {

@@ -1,3 +1,13 @@
+## 0.1.0-dev.10
+
+- Bundled libmpv moved to **mpv 0.42.0** (client API 2.6) and libplacebo
+  7.387.0. The Windows D3D11 render API now comes from upstream, so the
+  local backport patch was dropped; the D3D11 **gpu-next** path remains in
+  patch 0004 and the public renderer/behavior is unchanged.
+- Plugin headers were synchronized to client API 2.6.
+- The renderer/candidate chain, frame ring, quarantine and publish gates are
+  unchanged; the 0.42 rebase only adapts to upstream refactors.
+
 ## 0.1.0-dev.9
 
 - Fixed: a render error on the D3D11 backend now records the slot's

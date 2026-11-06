@@ -127,7 +127,15 @@ final class Player {
         'demuxer-max-back-bytes': '100MiB',
         'demuxer-hysteresis-bytes': '32MiB',
         'stream-buffer-size': '4MiB',
-        'hwdec-extra-frames': '6',
+        // mpv 0.42 changed this from a total count to extra frames beyond
+        // what the decoder needs, and made it a choice ("auto" sizes it from
+        // the VO's frame retention). "auto" keeps memory bounded and is the
+        // upstream default.
+        'hwdec-extra-frames': 'auto',
+        // 0.42's libcurl backend is on by default when built with FFmpeg
+        // 8.1.3. Keep the pre-0.42 network behavior (TLS/proxy/redirect
+        // handling) unless the app opts in with --curl-enabled=yes.
+        'curl-enabled': 'no',
         'dither': 'no',
         // mpv #17626：gpu-next 逐帧 HDR 峰值检测在 8K HDR 上造成渲染尖峰
         // 与掉帧；这个全局 no 已覆盖 7680 宽以上的源，无需按分辨率另设。
@@ -644,7 +652,10 @@ final class Player {
   }) async {
     mpv.setProperty('pause', !play);
     await mpv.commandAsync({
-      'name': 'loadfile',
+      // 0.42 client API 2.6: the canonical key is "_name"; "name" is still
+      // accepted, but "_name" avoids colliding with a command argument named
+      // "name".
+      '_name': 'loadfile',
       'url': url,
       'flags': 'replace',
       if (start != null || options != null)

@@ -1,7 +1,7 @@
 # Verify tier: compile the patched libmpv on every target with system/distro
 # dependencies, run the render_vk smoke test, the ABI audit and the Dart core
 # tests. Distro FFmpeg builds are often GPL, so these artifacts are for
-# verification only; redistributable LGPL binaries come from release.yml.
+# verification only; redistributable GPL full binaries come from release.yml.
 name: native-verify
 
 on:
@@ -57,12 +57,12 @@ jobs:
             mesa-vulkan-drivers vulkan-tools zlib1g-dev \
             libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2 libva-dev
         # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
-        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
+        # needs >=7.387.0 — build the pinned stack with deps.sh instead.
       - uses: actions/cache@v4
         id: deps
         with:
           path: deps
-          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
+          key: deps-verify-linux-${{ matrix.runner }}-${{ hashFiles('native/build/deps.sh') }}
       - name: Build libplacebo stack (deps.sh)
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -194,7 +194,7 @@ jobs:
 
   # Phase 16 (HWD-05): real encoded media for the hardware-decode probes.
   # The GPL encoders (x264/x265) only make test media here and never enter
-  # the LGPL libmpv bundle. The 640x360 files become app assets of the
+  # the release libmpv bundle. The 640x360 files become app assets of the
   # integration-test job; the 4K HEVC Main10 file is only an artifact, for
   # the RTX 4060 session of 16-06 to download.
   hwdec-samples:
@@ -586,7 +586,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install dependencies
         # No libplacebo-dev: the 24.04 distro ships 6.338, but mpv master
-        # needs >=7.360.1 — build the pinned stack with deps.sh instead.
+        # needs >=7.387.0 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
@@ -594,7 +594,7 @@ jobs:
         id: deps
         with:
           path: deps
-          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh', 'native/deps/libplacebo/**') }}
+          key: deps-verify-linux-ubuntu-24.04-${{ hashFiles('native/build/deps.sh') }}
       - name: Build libplacebo stack (deps.sh)
         if: steps.deps.outputs.cache-hit != 'true'
         run: bash native/build/deps.sh "$PWD/deps"
@@ -677,9 +677,9 @@ jobs:
           cd packages/mpv_kit && dart analyze --fatal-infos && dart test
           cd ../mpv_kit_libs && dart analyze --fatal-infos && dart test
       # The integration-test job (below) consumes this instead of rebuilding
-      # libmpv. Its own Homebrew could serve a different bottle than the one
-      # libmpv was linked against here (libplacebo 7.360.1 vs 7.387.0, runs
-      # 40917086107 and 40922504734), so libmpv ships with the exact closure
+      # libmpv. Its own Homebrew bottle can differ from the one libmpv was
+      # linked against here (runs 40917086107 and 40922504734 were a
+      # libplacebo 7.360.1-vs-7.387.0 skew), so libmpv ships with the exact closure
       # it was built against: every Homebrew dylib it links, transitively,
       # copied next to it with @loader_path install names. Verify tier only.
       - name: Stage libmpv for the integration test

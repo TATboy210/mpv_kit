@@ -1,3 +1,26 @@
+## 0.1.0-dev.10
+
+- Upgraded the bundled client API to **mpv 0.42.0** (client API 2.6).
+  `mpvProperties`/`mpvCommands`/`mpvOptions` were regenerated: 160 properties,
+  101 commands and 748 options, including `env`, `libplacebo-version`,
+  `sub-lines`, `dropped-files`, `disc-menu-active`, `discnav` and
+  `update-clipboard`; the removed `time-start` property is gone.
+- **Breaking (generated API):** `MpvOptions.hwdecExtraFrames` is now a
+  `MpvOption<String>` (`auto` or a number), because mpv 0.42 changed the
+  option from an integer to a choice. `Player` now passes `auto`, which sizes
+  the extra decoder frames from the VO's frame retention instead of always
+  keeping six.
+- `Player` sets `curl-enabled=no` explicitly: mpv 0.42 enables the libcurl
+  backend by default when built with FFmpeg 8.1.3, and the old network
+  behavior is kept unless an app opts in.
+- Named commands use the `_name` key introduced by client API 2.6 (`name`
+  remains accepted).
+- mpv 0.42 defaults `tls-verify=yes`; no code overrides it. `track-list` is
+  filtered by the selected edition and hides dependent tracks, and
+  `demuxer-hysteresis-bytes` now takes effect.
+- Optical-disc playback (CD, DVD-Video menus, DVD-Audio, Blu-ray/UHD HDMV)
+  is available with the GPL full bundle from `mpv_kit_libs`.
+
 ## 0.1.0-dev.9
 
 - Added: `defaultHwdecForBackend(os, apiToken)` (exported): the native D3D11

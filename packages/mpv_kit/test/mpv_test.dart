@@ -420,7 +420,7 @@ void main() {
       final zoneErrors = <Object>[];
       await guarded(zoneErrors, () async {
         // Fire-and-forget: nobody listens to the reply future.
-        mpv.commandAsync({'name': 'definitely-not-a-command'});
+        mpv.commandAsync({'_name': 'definitely-not-a-command'});
         await Future<void>.delayed(const Duration(milliseconds: 500));
       });
       expect(

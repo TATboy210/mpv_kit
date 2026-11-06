@@ -1,11 +1,11 @@
 # mpv_kit
 
-Flutter / Dart bindings for **libmpv v0.41.0-1115-gb2c255c13** (vendored
+Flutter / Dart bindings for **libmpv 0.42.0** (vendored
 under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.0-dev.9`). APIs may change.
+> Status: early development (`0.1.0-dev.10`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -28,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.0-dev.9
+  mpv_kit_video: ^0.1.0-dev.10
 ```
 
 ```dart
@@ -268,51 +268,66 @@ Vulkan backend behaves as before. Verification tiers and measurements are in
 * **Library not found:** `MpvLibraryNotFound` lists every candidate and
   why it failed; set `MPV_KIT_LIBMPV_PATH` to the full library path.
 
-## LGPL compliance
+## License and corresponding source
 
-Applications may be closed-source: libmpv and FFmpeg are distributed as
-LGPL-2.1-or-later builds and are **dynamically linked**.
+The Dart packages are MIT. The **released native bundle is GPL-3.0-or-later**:
+an application that ships it must be GPL-compatible and provide its own
+source. Closed-source applications can build the LGPL flavor themselves
+(`MPV_KIT_FLAVOR=lgpl`) and load it with `MPV_KIT_LIBMPV_PATH` or the
+`libmpv_bundle` user define.
 
-* **FFmpeg** 8.1.3 is built from the sha256-pinned release tarball by
-  [`native/build/ffmpeg.sh`](native/build/ffmpeg.sh) without
-  `--enable-gpl`, `--enable-nonfree` or `--enable-version3`. Its license
-  gate aborts the build unless `config.h` has `CONFIG_GPL`,
-  `CONFIG_NONFREE` and `CONFIG_VERSION3` all set to 0.
-* **libmpv** 0.41.0 is configured with `-Dgpl=false`.
+* **Why GPL:** CD-DA and DVD need libcdio (GPL-3.0+), libdvdnav/libdvdread/
+  libdvdcss (GPL-2.0+), and mpv gates them behind `-Dgpl=true`. Blu-ray/UHD
+  HDMV uses libbluray/libudfread (LGPL-2.1+) plus optional AACS/BD+ helpers
+  (libaacs/libbdplus) that are loaded at runtime.
+* **FFmpeg** 8.1.3 remains an LGPL build: it is built from the sha256-pinned
+  release tarball by [`native/build/ffmpeg.sh`](native/build/ffmpeg.sh)
+  without `--enable-gpl`, `--enable-nonfree` or `--enable-version3`.
+* **libmpv** 0.42.0 is configured with `-Dgpl=true` for the full flavor;
+  `MPV_KIT_FLAVOR=lgpl` keeps `-Dgpl=false` and omits the GPL disc libraries.
 * [`native/build/package.sh`](native/build/package.sh) collects libmpv and
-  its dependency closure, checks that libavcodec resolves from the LGPL
-  prefix (never a system copy), fails if any GPL-only library ended up in
-  the bundle (x264, x265, postproc, rubberband, vidstab, …), runs the ABI
-  audit on Windows, and writes a per-file sha256 `MANIFEST.txt`. Each bundle
-  ships `LICENSE.LGPL` and the mpv_kit patches it was built with.
+  its dependency closure, checks that libavcodec resolves from the prefix,
+  enforces the license contract of the selected flavor (the GPL ban applies
+  only to the LGPL flavor), runs the ABI audit on Windows, and writes a
+  per-file sha256 `MANIFEST.txt`. Each bundle ships `LICENSE.GPL`,
+  `LICENSE.LGPL`, the third-party licenses, `SOURCE.txt` and the patches.
 * **Relinking / replacing libmpv:** the libraries stay separate files next
   to the executable (Windows, Linux) or frameworks inside the app bundle
   (macOS). Users can replace them with their own build of the same ABI —
   rebuild from this repository, or point `MPV_KIT_LIBMPV_PATH` / the
   `libmpv_bundle` user define at another bundle.
-* **Corresponding source:** this repository — mpv 0.41.0 in `native/mpv`,
-  the patches in `native/patches`, the build scripts in `native/build`, the
-  pinned FFmpeg version and checksum in `ffmpeg.sh`, and the remaining
-  dependency setup in `.github/workflows/release.yml`.
+* **Corresponding source:** this repository — mpv 0.42.0 in `native/mpv`,
+  the patches in `native/patches`, the build scripts and dependency pins in
+  `native/build`, and the workflow setup. Release archives also carry
+  `sources-<tag>.tar.gz`; each bundle carries `SOURCE.txt` as the written
+  offer.
+* **Disc limits:** BD-J needs a JVM (not included); VCD has no `vcd://`
+  module (play `MPEGAV/*.DAT`); commercial Blu-ray decryption needs a
+  user-supplied AACS/BD+ key database; libdvdcss and AACS/BD+ distribution
+  may be restricted in some jurisdictions.
 
-See [NOTICE](NOTICE) and
-[ADR 0002](docs/adr/0002-lgpl-self-built-binaries.md). Dart and plugin code
-is MIT.
+See [NOTICE](NOTICE), [ADR 0002](docs/adr/0002-lgpl-self-built-binaries.md)
+for the historical LGPL decision, and
+[ADR 0007](docs/adr/0007-gpl-full-bundle.md) for the full-bundle switch.
+Dart and plugin code is MIT.
 
 ## mpv patches
 
-Applied on top of mpv 0.41.0 (`native/patches/`); the client API version is
-unchanged.
+Applied on top of mpv 0.42.0 (`native/patches/`); the client API version is 2.6.
 
 | Patch | Summary |
 |---|---|
-| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice` |
+| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice`; also makes `done_frame` return `bool` |
 | 0002 | `hwdec_vulkan`: pass the imported device's extensions to FFmpeg so Vulkan video decoding works |
 | 0003 | `libmpv_vk`: persistent libplacebo shader/pipeline cache in `--gpu-shader-cache-dir` |
-| 0004 | gpu-next (libplacebo's renderer) as a Vulkan render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER` |
-| 0005 | Report the active Vulkan renderer through `mpv_render_context_get_info` |
+| 0004 | gpu-next (libplacebo's renderer) as a Vulkan/D3D11 render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER`; reports the active renderer through `mpv_render_context_get_info` (old 0005 folded in) |
 | 0006 | Asynchronous stream bridge (`<mpv/stream_bridge.h>`): custom protocols answered asynchronously, used by `Mpv.registerStreamProtocol` |
-| 0007 | Audio device enumeration fixes: link the macOS helpers/frameworks the CoreAudio and AVFoundation outputs use without cocoa; keep WASAPI's COM objects valid when libmpv is destroyed on the client thread |
+| 0007 | Audio device fixes: CoreAudio NULL guards and WASAPI's playback COM lifetime when libmpv is destroyed on the client thread (the hotplug MTA half is upstream in 0.42) |
+| 0012 | Build against the Ubuntu 22.04 release container's libdrm 2.4.113 (0.42 requires 2.4.114) |
+
+Patches 0008, 0009 and 0010 were removed for 0.42.0: release tags ship
+`MPV_VERSION`, the render backports were upstreamed, and PR #17764 provides
+the D3D11 render API (client API 2.6).
 
 ## CI workflows
 
@@ -320,6 +335,6 @@ unchanged.
 |---|---|
 | `native-verify` | Builds the patched libmpv on all six targets, runs the Vulkan render smoke test, the ABI audit and the Dart tests (artifacts are not distributed) |
 | `flutter-plugin` | Compiles `mpv_kit_video` through the example app on Windows, Linux and macOS |
-| `release` | LGPL release bundles (FFmpeg from source, license-gated, packaged with a sha256 manifest); `v*` tags publish them with `SHA256SUMS` |
+| `release` | GPL-3.0+ full release bundles (mpv 0.42.0, FFmpeg from source, disc stack, sha256 manifest); `v*` tags publish them with `SHA256SUMS` and `sources-<tag>.tar.gz` |
 
 `native-verify` also runs the fault-injection golden (`video_renderer_fault_test`) in its native test jobs. Its `integration-test` job forces every backend of its platform in turn (`tools/backend_matrix.sh`), runs on Windows a negative leg that proves `MPV_KIT_REQUIRE_HWDEC` fails loudly on a host without zero-copy decode, and runs a 100-round opengl soak on the Linux runner (software llvmpipe, RSS only, one glibc malloc arena). Method, results and what stays unverified are in [docs/perf/fallback-uhd-regression.md](docs/perf/fallback-uhd-regression.md).
