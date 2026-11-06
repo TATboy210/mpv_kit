@@ -200,7 +200,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install toolchain (build tools only)
         run: |
-          brew install ninja pkgconf nasm cmake dylibbundler gpatch
+          # libaacs' parser needs bison >= 3 (%code); macOS ships bison 2.x.
+          brew install ninja pkgconf nasm cmake dylibbundler gpatch bison
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           python3 -m venv "$RUNNER_TEMP/py"
           "$RUNNER_TEMP/py/bin/pip" install 'meson==1.9.1' jinja2
           echo "$RUNNER_TEMP/py/bin" >> "$GITHUB_PATH"

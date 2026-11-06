@@ -122,6 +122,9 @@ autotools_build() {
   local name=$1
   shift
   (
+    # libaacs/libbdplus and libgcrypt use the legacy *-config scripts,
+    # which install into PREFIX/bin; make them discoverable by configure.
+    export PATH="$prefix/bin:$PATH"
     cd "$work/src/$name"
     if [ ! -x ./configure ]; then
       echo "$name: source archive has no configure script" >&2
@@ -316,7 +319,7 @@ license libplacebo LICENSE
 fetch libgpg-error https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.61.tar.bz2 \
   7a85413f2bc354f4f8aa832b718af122e48965e9e0eb9012ee659c13c6385c93
 autotools_build libgpg-error --disable-doc --disable-tests \
-  --disable-languages --disable-werror
+  --disable-languages --disable-werror --enable-install-gpg-error-config
 license libgpg-error COPYING COPYING.LIB
 
 fetch libgcrypt https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.4.tar.bz2 \
