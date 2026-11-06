@@ -42,7 +42,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            build-essential pkg-config python3-pip python3-jinja2 ninja-build \
+            build-essential pkg-config flex bison python3-pip python3-jinja2 ninja-build \
             nasm curl ca-certificates xz-utils bzip2 git patch patchelf binutils \
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
             libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
@@ -288,7 +288,7 @@ jobs:
         with:
           msystem: ${{ matrix.msystem }}
           update: true
-          install: make diffutils patch bzip2 xz
+          install: make diffutils patch bzip2 xz flex bison
           pacboy: >-
             toolchain:p meson:p ninja:p cmake:p pkgconf:p python-jinja:p
             vulkan-loader:p libiconv:p ntldd:p ${{ matrix.nasm }}

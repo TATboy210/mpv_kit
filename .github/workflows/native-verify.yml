@@ -49,7 +49,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils \
+            meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils flex bison \
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
             libass-dev libvulkan-dev libegl-dev libgl-dev \
@@ -589,7 +589,7 @@ jobs:
         # needs >=7.387.0 — build the pinned stack with deps.sh instead.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
+          sudo apt-get install -y --no-install-recommends             meson ninja-build pkg-config gcc cmake nasm python3-jinja2 curl xz-utils flex bison             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev             libavdevice-dev libswscale-dev libswresample-dev             libass-dev libvulkan-dev libegl-dev libgl-dev             libdrm-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev             mesa-vulkan-drivers vulkan-tools zlib1g-dev libepoxy-dev libegl-mesa0 libgl1-mesa-dri libgles2
       - uses: actions/cache@v4
         id: deps
         with:
@@ -637,7 +637,8 @@ jobs:
           # some runners, so upgrade or build the HEAD formula.
           brew install libplacebo || brew upgrade libplacebo || true
           if ! pkg-config --atleast-version=7.387.0 libplacebo; then
-            brew reinstall --HEAD libplacebo
+            brew uninstall --ignore-dependencies libplacebo || true
+            brew install --HEAD libplacebo
           fi
           pkg-config --modversion libplacebo
       - name: Build libmpv

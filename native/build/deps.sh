@@ -329,10 +329,15 @@ if [ "$os" = windows ]; then
   # MSYS2 CLANG64 cannot assemble libgcrypt's GAS sources; software AES is
   # plenty for AACS/BD+ key derivation.
   gcrypt_args+=(--disable-asm)
+  # libgpg-error builds a static-only archive on MinGW and libtool drops it
+  # from libgcrypt's shared link, so force the archive into the DLL.
+  LDFLAGS="-Wl,--whole-archive $nprefix/lib/libgpg-error.a -Wl,--no-whole-archive" \
+    autotools_build libgcrypt --disable-large-data-tests \
+      --disable-hmac-binary-check --disable-werror "${gcrypt_args[@]}"
+else
+  autotools_build libgcrypt --disable-large-data-tests \
+    --disable-hmac-binary-check --disable-werror
 fi
-autotools_build libgcrypt --disable-large-data-tests \
-  --disable-hmac-binary-check --disable-werror \
-  ${gcrypt_args[@]+"${gcrypt_args[@]}"}
 license libgcrypt COPYING COPYING.LIB
 
 fetch libaacs https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2 \
