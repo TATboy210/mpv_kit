@@ -148,6 +148,7 @@ final class Player {
       mpv,
       autoTuneDemuxer,
       userDecoderThreads: options.containsKey('vd-lavc-threads'),
+      userHwdecExtraFrames: options.containsKey('hwdec-extra-frames'),
     );
   }
 
@@ -161,6 +162,7 @@ final class Player {
     this.mpv,
     this._demuxerAutoTune, {
     bool userDecoderThreads = false,
+    bool userHwdecExtraFrames = false,
   }) {
     mpv.onSourceError = _reportSourceError;
     _bind('pause', paused, (v) => v == true);
@@ -267,7 +269,10 @@ final class Player {
       ..add(position)
       ..add(decodeWarning);
     _subs.add(mpv.events.listen(_onEvent));
-    _initDecoderThreadTune(userDecoderThreads);
+    _initFileTunes(
+      userDecoderThreads: userDecoderThreads,
+      userHwdecExtraFrames: userHwdecExtraFrames,
+    );
   }
 
   // --- UHD-01: 帧尺寸自适应的 demuxer 队列预算 ---------------------------
@@ -385,6 +390,8 @@ final class Player {
   /// 我们最后一次设置的线程数;null = 尚未设置(此时 mpv 默认是 0)。
   int? _appliedThreads;
   var _threadTune = false;
+  String? _appliedExtraFrames;
+  var _extraFramesTune = false;
 
   /// 在专用弱子客户端上注册 `on_preloaded` hook:文件已打开、轨道已知、
   /// 解码器尚未创建——`vd-lavc-threads` 只在解码器创建时读取,这是唯一
@@ -392,29 +399,46 @@ final class Player {
   /// [mpv] 上注册的 hook 互不混淆;弱客户端不延长核心寿命,随 [mpv]
   /// 一起销毁。用户以任何方式设过该选项(构造参数或已有核心上的非 0
   /// 值)则不注册。
-  void _initDecoderThreadTune(bool userSet) {
-    if (userSet || mpv.tryGetProperty('vd-lavc-threads') != 0) return;
+  /// 文件级默认调参：软解线程数 + 1080p 的 hwdec 额外帧。
+  ///
+  /// 两者都必须在 `on_preloaded`（解码器创建前）写入；用户显式设置过的
+  /// 项永不覆盖。只有一个可调项时也共用同一个弱客户端，避免多注册一个
+  /// hook 客户端。
+  void _initFileTunes({
+    required bool userDecoderThreads,
+    required bool userHwdecExtraFrames,
+  }) {
+    final tuneThreads =
+        !userDecoderThreads && mpv.tryGetProperty('vd-lavc-threads') == 0;
+    // mpv 0.42 的 `auto` 按 VO 队列推导 surface pool；1080p + 8 槽 ring
+    // 下比固定 2 帧多约 50 MiB Working Set（P0 实测）。旧版 libmpv 没有
+    // 该选项时 tryGetProperty 返回 null，不注册。
+    final tuneExtraFrames = !userHwdecExtraFrames &&
+        mpv.tryGetProperty('hwdec-extra-frames')?.toString() == 'auto';
+    if (!tuneThreads && !tuneExtraFrames) return;
     try {
-      final client = mpv.createClient('mpv_kit_decoder_threads', weak: true);
+      final client = mpv.createClient('mpv_kit_file_tunes', weak: true);
       client.hookAdd('on_preloaded');
       _subs.add(
         client.events.listen((e) {
           if (e is HookEvent) _onPreloaded(client, e);
         }),
       );
-      _threadTune = true;
+      _threadTune = tuneThreads;
+      _extraFramesTune = tuneExtraFrames;
     } on MpvException {
       // 无法创建客户端或 hook(旧 libmpv):不调参,行为同 dev.4。
     }
   }
 
+  /// 1080p 及以下固定 2 个额外 hwdec 帧；更高分辨率保留 mpv 的 `auto`。
+  static const _hwdecExtraFramesHd = 2;
+
   void _onPreloaded(Mpv client, HookEvent e) {
     try {
-      if (_disposed || !_threadTune || e.name != 'on_preloaded') return;
-      // 运行中被用户改过(既非默认 0 也非我们上次的值):永久让位。
-      final current = mpv.tryGetProperty('vd-lavc-threads');
-      if (current != 0 && current != _appliedThreads) {
-        _threadTune = false;
+      if (_disposed ||
+          (!_threadTune && !_extraFramesTune) ||
+          e.name != 'on_preloaded') {
         return;
       }
       var w = 0, h = 0;
@@ -423,14 +447,38 @@ final class Player {
         final tw = nodeInt(t['demux-w']) ?? 0, th = nodeInt(t['demux-h']) ?? 0;
         if (tw * th > w * h) (w, h) = (tw, th);
       }
-      final threads = decoderThreadsForTesting(
-        w,
-        h,
-        Platform.numberOfProcessors,
-      );
-      if (threads == null || threads == current) return;
-      mpv.setProperty('vd-lavc-threads', threads);
-      _appliedThreads = threads;
+      if (_threadTune) {
+        // 运行中被用户改过(既非默认 0 也非我们上次的值):永久让位。
+        final current = mpv.tryGetProperty('vd-lavc-threads');
+        if (current != 0 && current != _appliedThreads) {
+          _threadTune = false;
+        } else {
+          final threads = decoderThreadsForTesting(
+            w,
+            h,
+            Platform.numberOfProcessors,
+          );
+          if (threads != null && threads != current) {
+            mpv.setProperty('vd-lavc-threads', threads);
+            _appliedThreads = threads;
+          }
+        }
+      }
+      if (_extraFramesTune) {
+        final raw = mpv.tryGetProperty('hwdec-extra-frames');
+        final current = raw?.toString() == 'auto' ? null : raw?.toString();
+        if (current != null && current != _appliedExtraFrames) {
+          _extraFramesTune = false; // 运行中被用户改过
+        } else {
+          final target = w > 0 && h > 0 && w * h <= 1920 * 1088
+              ? '$_hwdecExtraFramesHd'
+              : 'auto';
+          if (target != raw?.toString()) {
+            mpv.setProperty('hwdec-extra-frames', target);
+            _appliedExtraFrames = target;
+          }
+        }
+      }
     } on Object {
       // 调参失败只跳过本文件;绝不能卡住加载。
     } finally {

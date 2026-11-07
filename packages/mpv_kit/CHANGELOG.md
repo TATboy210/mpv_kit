@@ -1,3 +1,13 @@
+## 0.1.1
+
+- Changed: at 1080p and below, `Player` now caps mpv 0.42's
+  `hwdec-extra-frames` to `2` instead of leaving it at `auto`. mpv 0.42 sizes
+  the hwdec surface pool from the VO queue; with the 8-slot Windows frame ring
+  that added about 50 MiB of working set at 1080p. Measured on Windows x64
+  (RTX 4060), full example app, local 1080p H.264, default hardware decode,
+  10 minutes: peak working set 294 -> 234 MiB. 4K/8K keep `auto`, and a value
+  supplied through `options` (or changed at runtime) is never overridden.
+
 ## 0.1.0-dev.10
 
 - Upgraded the bundled client API to **mpv 0.42.0** (client API 2.6).

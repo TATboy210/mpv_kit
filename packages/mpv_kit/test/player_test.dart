@@ -512,6 +512,41 @@ void main() {
       expect(p.mpv.tryGetProperty('vd-lavc-threads'), 2);
     });
 
+    test('1080p caps hwdec-extra-frames to 2; 4K restores auto', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      Future<void> untilExtraFrames(String want) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (DateTime.now().isBefore(deadline)) {
+          if ('${p.mpv.tryGetProperty('hwdec-extra-frames')}' == want) return;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        fail('hwdec-extra-frames never became $want '
+            '(got ${p.mpv.tryGetProperty('hwdec-extra-frames')})');
+      }
+
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      await untilExtraFrames('2');
+
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 3840);
+      await untilExtraFrames('auto');
+    });
+
+    test('a user hwdec-extra-frames option is never changed', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+        'hwdec-extra-frames': '1',
+      });
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      expect('${p.mpv.tryGetProperty('hwdec-extra-frames')}', '1');
+    });
+
     test('explicit user override stops auto-tune', () async {
       final p = Player(options: const {
         'vo': 'null', 'ao': 'null', 'idle': 'yes',
