@@ -1,40 +1,40 @@
 ---
 gsd_state_version: "1.0"
-milestone: v3.1
-milestone_name: 依赖内存、体积与 API 优化
-current_phase: 18
-current_phase_name: 基线与问题验证
-status: planning
-stopped_at: context exhaustion at 76% (2026-11-04)
-last_updated: "2026-11-04T03:40:53.324Z"
-last_activity: 2026-11-01
-last_activity_desc: v3.1 路线图已创建（Phase 18-22，20/20 需求已映射）
-state_head: d8f300999e6157299801cd33a9761c9e0ee6562f
+milestone: v0.1.1
+milestone_name: 简化与低内存（1080p <250MB）
+current_phase: 4
+current_phase_name: API/文档/CHANGELOG
+status: in_progress
+stopped_at: null
+last_updated: "2026-11-07T06:45:39Z"
+last_activity: 2026-11-07
+last_activity_desc: P4 完成：README/perf 文档/三包 CHANGELOG；一致性检查全绿；零新增 API
+state_head: 89761501b5eb82328932a52f72ef7b7c1a9f7d3f
 progress:
-  total_phases: 5
-  completed_phases: 0
+  total_phases: 6
+  completed_phases: 4
   total_plans: 0
   completed_plans: 0
-  percent: 0
+  percent: 67
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-01)
+See: .planning/PROJECT.md (updated 2026-11-07)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** Phase 18 — 基线与问题验证（v3.1 首个阶段，只测量，不改产品代码）
+**Current focus:** P4 — API/文档/CHANGELOG（已完成）；下一步 P5 发布 0.1.1
 
 ## Current Position
 
-Phase: 18 of 22 (基线与问题验证)
-Plan: — (尚未规划)
-Status: Ready to discuss / plan Phase 18
-Last activity: 2026-11-01 — v3.1 路线图已创建（Phase 18-22，20/20 需求已映射）
+Phase: P4 (5/6 phases; P0–P4 complete, P5 release remains)
+Plan: `.planning/v0.1.1/PLAN.md`（已批准）
+Status: Docs complete — 下一步 P5 发布；P0 硬门禁已通过，P3 strip 待发布 CI 验证
+Last activity: 2026-11-07 — README/perf 文档/三包 CHANGELOG 完成；一致性检查全绿；零新增 API
 
-Progress: [░░░░░░░░░░] 0% (0/5 phases)
+Progress: [████░░░░░░] 67% (4/6 phases)
 
 
 ## Performance Metrics
@@ -354,8 +354,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-04T03:40:53.272Z
-Stopped at: context exhaustion at 76% (2026-11-04)
+Last session: 2026-11-07T00:21:00.333Z
+Stopped at: context exhaustion at 75% (2026-11-07)
 Resume file: None
 Archive: .planning/milestones/v2.0-ROADMAP.md · v2.0-REQUIREMENTS.md · v2.0-phases/
 

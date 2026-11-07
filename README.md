@@ -11,7 +11,7 @@ textures on Windows, Linux and macOS.
 |---|---|
 | [`mpv_kit`](packages/mpv_kit) | Pure Dart FFI: the complete libmpv client API, typed events, `mpv_node` conversion, a typed high-level `Player`, typed `MpvOptions`, custom stream protocols served from Dart, and a catalog of every mpv property/command/option generated from mpv's docs |
 | [`mpv_kit_video`](packages/mpv_kit_video) | Flutter plugin: `MpvVideoController` + `MpvVideo` widget. mpv renders through Vulkan into images the compositor samples directly — D3D11 shared textures (Windows), GL memory objects (Linux), IOSurface via MoltenVK (macOS) — with a software fallback everywhere |
-| [`mpv_kit_libs`](packages/mpv_kit_libs) | Build hook that downloads and bundles a prebuilt LGPL libmpv for the target, verified by sha256 |
+| [`mpv_kit_libs`](packages/mpv_kit_libs) | Build hook that downloads and bundles a prebuilt libmpv for the target, verified by sha256. The released bundle is GPL-3.0+ full; self-builders can use `MPV_KIT_FLAVOR=lgpl` |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
@@ -230,6 +230,25 @@ a software format such as `nv12` means it was copied back. With mpv's default
 per frame (no CPU round trip). Windows only benefits on the D3D11 backend; the
 Vulkan backend behaves as before. Verification tiers and measurements are in
 [docs/perf/hwdec-zero-copy.md](docs/perf/hwdec-zero-copy.md).
+
+## Memory and bundle size (v0.1.1)
+
+`Player` caps mpv 0.42's `hwdec-extra-frames` to `2` at 1080p and below; 4K/8K
+keep `auto`, and a value passed through `options` is never changed. On Windows
+x64 (RTX 4060), the full example app, a local 1080p H.264 file and the default
+hardware decode path held a 10-minute Working Set peak of **234 MiB** (mean
+last 5 min 225.7 MiB) with the GPL-3.0+ full bundle. Before the cap the same
+run peaked at 294 MiB. The gate is 250 MiB.
+
+Linux/macOS 1080p memory is **not measured** (no real hardware here); do not
+infer it. The release packaging now strips Linux/macOS shared libraries at the
+bundle boundary; the 0.1.1 candidates carried 6.5–6.9 MiB (Linux) and ~1.1 MiB
+(macOS) of removable symbol/debug sections before that step. Method,
+attribution and residual unknowns:
+[docs/perf/2026-11-07-1080p-memory.md](docs/perf/2026-11-07-1080p-memory.md).
+
+Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
+10-minute gate does not exercise it.
 
 ## Troubleshooting
 

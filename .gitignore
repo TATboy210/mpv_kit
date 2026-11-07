@@ -7,6 +7,10 @@ native/out/
 !native/build/
 .ffmpeg-build/
 
+# Local CodeGraph index and one-off P0 measurement artifacts (not shipped).
+.codegraph/
+.planning/tmp/
+
 # Stale local libmpv DLLs (Oct 15, pre-rebase): superseded by the
 # mpv_kit_libs hook bundle — see README "Local libmpv for tests".
 bt/

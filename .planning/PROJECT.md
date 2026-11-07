@@ -2,24 +2,27 @@
 
 ## What This Is
 
-libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 经统一的 `RenderBackend` 生命周期接口把 mpv 画面零拷贝渲染到 Flutter 纹理（Windows D3D11 / Vulkan、Linux OpenGL / Vulkan、macOS MoltenVK→IOSurface，auto 回退链终点为软件渲染），`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 LGPL libmpv。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
+libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 经统一的 `RenderBackend` 生命周期接口把 mpv 画面零拷贝渲染到 Flutter 纹理（Windows D3D11 / Vulkan、Linux OpenGL / Vulkan、macOS MoltenVK→IOSurface，auto 回退链终点为软件渲染），`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 libmpv（默认 GPL-3.0+ full，自建可选 LGPL）。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
 
 ## Core Value
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
-## Current Milestone: v3.1 依赖内存、体积与 API 优化（0.1.0-dev.5）
+## Current Milestone: v0.1.1 简化与低内存（0.1.1）
 
-**Goal:** 在渲染生命周期与平台原生图形后端代码不变的前提下，先测量验证、再降低依赖栈（libmpv/FFmpeg/libplacebo 等）的运行内存与 bundle 体积，并以只增不破方式补充依赖功能 API，发布 0.1.0-dev.5。
+**Goal:** 在不破坏公共 API 与零拷贝渲染路径的前提下，先测量、后删除/合并冗余，降低 1080p 运行内存与 bundle 体积，发布 0.1.1。
 
 **Target features:**
-- 基线与问题验证：dev.4 各目标体积明细、4K/8K 30 分钟 RSS/commit、Dart 事件重复发射、上游泄漏修复核对（只测量）
-- Dart 层内存优化：模型值相等去重、软件解码线程上限、demuxer-donate-buffer 纳入预算、缺失上游修复 backport（均以基线证实为前提）
-- 构建体积优化：统一 strip、LTO/gc-sections、mpv cplugins/build-date 显式关闭、gzip -9、hook 清理旧 tag 缓存（FFmpeg filter 白名单延后为 SIZE-F1）
-- 只增不破 API：`demuxerCacheState`、`autoTuneDemuxer` 开关、`eventQueueOverflows`
-- 版本 0.1.0-dev.5、bundle 发布与 pin、CHANGELOG 与 docs/perf 对比报告
+- P0 基线：example + 本地 1080p + 默认硬解 10 分钟 Working Set、事件重复率、六目标体积（只测量）
+- P1 前端去冗：模型值相等/去重、昂贵状态懒观察、内部重复分配清理
+- P2 后端等价简化：release 剔除诊断探针、合并重复实现；仅按 P0 证据调整帧环
+- P3 构建体积：Linux/macOS strip 复核、LTO/gc-sections、六目标 ≤ dev.10
+- P4 API/文档/CHANGELOG：零新增 API，记录已知风险
+- P5 发布 0.1.1：发布前一次 CI、GitHub Release + pin、pub.dev（逐次批准）
 
-**Milestone constraints:** 不改 mpv_kit_video 原生渲染代码与 Windows shaderc/SPIRV-Cross/D3D11、libplacebo 图形选项、MoltenVK；保留 FFmpeg 网络协议；不禁用 decoder/demuxer/BSF；不用 `-Os`/`--enable-small`。
+**Hard gate:** example 应用 + 本地 1080p + 默认硬解 + 稳定播放 10 分钟的 Windows Working Set 必须 < 250 MB；超标不发布。
+
+**Milestone constraints:** 公共 API 只增不破；不改零拷贝/帧生命周期/纹理注册；保留 GPL full 光盘栈、FFmpeg 网络协议、decoder/demuxer/BSF 与图形后端；不 backport 未合并上游 PR；不做频繁 CI。详见 `.planning/v0.1.1/PLAN.md`。
 
 ## Current State (after v3.0, 2026-10-31)
 
@@ -37,7 +40,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 **未验证 / 已知限制：** 真实 Linux GPU（NVIDIA/AMD/Intel、Wayland、GL device loss）与真实 Apple GPU 无证据；GTX 960M 上 d3d11 有效丢帧约 3.5% 对 Vulkan 约 0.5%（原因未解释）；d3d11 在示例窗口被遮挡时 4K 偶有少量 VO 丢帧；d05 像素探针 0.0 / 第二控制器首帧停滞（RBE-01 人工项）仍未定位。
 
-**Next milestone:** v3.1 依赖内存、体积与 API 优化（见 Current Milestone）。
+**Next milestone:** v0.1.1 简化与低内存（见 Current Milestone；取代 v3.1）。
 
 ## Previous State (after v2.0 close-out, 2026-10-25)
 
@@ -176,7 +179,7 @@ unsettled: an unexplained soak abort was observed once and never reproduced.
 - **API**: 公共 API 冻结，不新增、不破坏。
 - **Change size**: 每项改动尽量小、可独立回滚；拒绝大范围重写。
 - **Platform**: 不做移动端与 web。
-- **License**: libmpv/FFmpeg 保持 LGPL，禁止 GPL/nonfree 依赖进入 bundle。
+- **License**: FFmpeg 保持 LGPL；默认发布 bundle 为 GPL-3.0+ full（ADR 0007），自建可用 `MPV_KIT_FLAVOR=lgpl`；禁止 nonfree 依赖进入 bundle。
 - **Verification**: 真实插件行为必须在 CI runner 上验证；mock channel 不能替代。
 - **Graphics (v3.0)**: mpv_kit 自己的 Windows 渲染链路不得经 ANGLE/EGL/WGL-GL（`pe_audit.py` CI 门禁）；新后端须可独立回滚，auto 链为 平台原生 → Vulkan → 软件。
 - **Release (v3.0)**: 发布 tag 只打在经两次门禁的候选上并需用户明确 go；pub.dev 发布需单独确认。
