@@ -100,13 +100,14 @@ typedef struct wasapi_state {
     struct ao_convert_fmt convert_format;
 
     change_notify change;
+    CO_MTA_USAGE_COOKIE hotplug_mta; // the hotplug instance keeps the MTA alive
 
-    // COM lifetime (mpv_kit). init/hotplug_init run on the core thread or a
-    // client thread, but libmpv destroys on the client thread after the core
-    // thread has exited. The MTA usage cookie keeps the MTA (and in-process
-    // servers such as mmdevapi) alive until this ao has released its
-    // objects, independent of any thread; CoUninitialize is only called on
-    // the thread whose CoInitializeEx succeeded.
+    // COM lifetime of the playback instance (mpv_kit). init/uninit run on
+    // the core thread, but libmpv destroys on the client thread after the
+    // core thread exited. The MTA usage cookie keeps the MTA (and
+    // in-process servers such as mmdevapi) alive until this ao released
+    // its objects; CoUninitialize only runs on the thread whose
+    // CoInitializeEx succeeded. hotplug_init keeps its own cookie above.
     CO_MTA_USAGE_COOKIE mta_cookie;
     DWORD com_thread;
 } wasapi_state;

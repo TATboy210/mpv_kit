@@ -1,0 +1,8 @@
+d05-ci-red run=41092363822 event=workflow_dispatch ref=ci/17-d05-red head_sha=9eb1ae1d9a706ce6ad1f48381e49c80aa8c79a31 (D-05 commit ca0c410 + one scratch commit adding packages/mpv_kit_video/test/d05_red_probe_test.dart, a deliberately failing test) run_conclusion=failure
+d05-ci-red job=124189258821 name="build (windows-2025, windows)" conclusion=failure load_error=no failing_test="D05-RED deliberate failure" summary="29 tests passed, 1 failed." step_error="Process completed with exit code 1."
+d05-ci-red job=124189258369 name="build (ubuntu-24.04, linux)" conclusion=failure load_error=no failing_test="D05-RED deliberate failure" summary="29 tests passed, 1 failed."
+d05-ci-red job=124189258850 name="build (macos-15, macos)" conclusion=failure load_error=no failing_test="D05-RED deliberate failure" summary="29 tests passed, 1 failed."
+d05-ci-key-lines windows Analyze plugin and example: "##[group]X .../packages/mpv_kit_video/test/d05_red_probe_test.dart: D05-RED deliberate failure (failed)"; "##[error]29 tests passed, 1 failed."; "##[error]Process completed with exit code 1."
+d05-ci-key-lines windows Locate/Analyze env: MPV_KIT_LIBMPV_PATH=D:/a/mpv_kit/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll (as printed by the runner log); no "could not be loaded" in any of the three job logs
+d05-ci-result PASS: libmpv loads on the Windows leg (29 tests ran, vs 7 passed + 1 load failure before) and a failing test now fails the Windows job; Linux and macOS go red the same way
+d05-ci-cleanup branch ci/17-d05-red deleted on origin and locally; origin heads: feat/mpv-master-upgrade, main, portable-release; scratch commit never reached feat; no tags pushed

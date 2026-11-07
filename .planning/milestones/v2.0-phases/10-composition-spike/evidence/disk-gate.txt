@@ -1,0 +1,36 @@
+# Disk gate for the Phase 10 3.47.8 Impeller smoke preparation.
+# Requirement: run BEFORE any long build (D-04 / threat T-10-07).
+# Command: df -B1 .   (repo root D:/mpv_kit, drive D:)
+# Captured: 2026-10-24T17:26Z
+
+status: ok
+avail_bytes: 8183160832
+threshold_bytes: 5905580032
+
+## Raw df output
+
+Filesystem        1B-blocks         Used  Available Use% Mounted on
+D:             326739423232 318556262400 8183160832  98% /d
+
+## Interpretation
+
+- Available 8,183,160,832 B (7.62 GiB) >= threshold 5,905,580,032 B (5.5 GiB).
+- status: ok — the smoke preparation may proceed.
+- No long build (>= 5.5 GiB headroom required) is attempted if this line
+  ever reads inconclusive.
+
+## Run gate (10-03 Task 1, before the smoke pair)
+# Captured: 2026-10-24T17:39:07Z
+# Command: df -B1 .   (repo root D:/mpv_kit, drive D:)
+run-gate: avail_bytes=8183009280 threshold_bytes=5905580032 status=ok
+
+Filesystem        1B-blocks         Used  Available Use% Mounted on
+D:             326739423232 318556418048 8183005184  98% /d
+
+## Run gate (10-05 Task 1, before the rerun pair)
+# Captured: 2026-10-25T04:10:01Z
+# Command: df -B1 .   (repo root D:/mpv_kit, drive D:)
+run-gate: avail_bytes=7818346496 threshold_bytes=5905580032 run_start_epoch=1792901401 status=ok
+
+Filesystem        1B-blocks         Used  Available Use% Mounted on
+D:             326739423232 318921076736 7818346496  98% /d

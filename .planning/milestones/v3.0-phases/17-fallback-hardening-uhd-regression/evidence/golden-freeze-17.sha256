@@ -1,0 +1,7 @@
+# Phase 17 re-freeze (17-01 decision=vk-flake choice=measure-split, user_reply=push=push-green-only+dispatch ver01=create-chain vkflake=measure-split uhd=lavfi+hevc-d3d11); supersedes golden-freeze-14-rcc.sha256 (which superseded golden-freeze-14.sha256).
+# Only native/tests/video_renderer_golden_vk.cc changed (vk-gpu-timeout judged as device wait + engine backoff, GOLDEN timing-info line); the other four lines are verbatim from golden-freeze-14-rcc.sha256.
+4dd9194e8a231774b002d32e0d8ce5c18c05eac243192ae656f44ee636c6d3a4 *native/tests/renderer_harness.h
+d6a33115ee93662b9effeb46f0fb3334778fbaadfa9b81ef637a0a64f49e2eab *native/tests/video_renderer_golden_sw.cc
+5c2cb3be36701ca06cddddde028a0e45a19c0fa38facbc03c1b8053baf9181c9 *native/tests/video_renderer_golden_vk.cc
+4aa10846a71202e2848b376854d3fdf896bbd28fdc3f2f45ada1fd6ff77a1f35 *native/tests/golden/sw.txt
+29267e0b04f297305e10dc33af7efba6916420b50564ec6f54d044333ca65dae *native/tests/golden/vk.txt

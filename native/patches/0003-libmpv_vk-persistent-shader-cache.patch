@@ -1,5 +1,5 @@
 diff --git a/video/out/vulkan/libmpv_vk.c b/video/out/vulkan/libmpv_vk.c
-index 88bbca2..897463b 100644
+index 3d9661f..8053670 100644
 --- a/video/out/vulkan/libmpv_vk.c
 +++ b/video/out/vulkan/libmpv_vk.c
 @@ -22,15 +22,42 @@
@@ -139,7 +139,7 @@ index 88bbca2..897463b 100644
  static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
  {
      ctx->priv = talloc_zero(NULL, struct priv);
-@@ -97,6 +211,9 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
+@@ -101,6 +215,9 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
      for (int i = 0; i < ip->num_extensions; i++)
          p->vk.imported_extensions[i] = talloc_strdup(p, ip->extensions[i]);
  
@@ -149,7 +149,7 @@ index 88bbca2..897463b 100644
      p->ra_ctx = talloc_zero(p, struct ra_ctx);
      p->ra_ctx->log = ctx->log;
      p->ra_ctx->global = ctx->global;
-@@ -229,7 +346,9 @@ static void destroy(struct libmpv_gpu_context *ctx)
+@@ -247,7 +364,9 @@ static void destroy(struct libmpv_gpu_context *ctx)
          p->ra_ctx->ra = NULL;
      }
      // Imported devices are not destroyed by libplacebo, only its wrapper.

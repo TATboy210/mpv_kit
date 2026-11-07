@@ -1,4 +1,4 @@
-/// libmpv 0.41 (client API 2.5) 原始 FFI 绑定 — 与 include/mpv/*.h 逐项对应。
+/// libmpv 0.42 (client API 2.6) 原始 FFI 绑定 — 与 include/mpv/*.h 逐项对应。
 ///
 /// Raw, hand-audited bindings for every exported libmpv symbol. Each
 /// declaration mirrors the C header verbatim so `tools/rea_abi_audit`

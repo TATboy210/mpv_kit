@@ -12,8 +12,15 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
+#include <exception>
 #include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "../src/drm_render_node.h"
 
 namespace mpv_kit {
 namespace {
@@ -30,14 +37,147 @@ std::vector<GlInterop::Image*> orphans;
 void FreeImages(const std::vector<GlInterop::Image*>& images) {
   for (GlInterop::Image* img : images) {
     if (img->texture) glDeleteTextures(1, &img->texture);
+    // OpenGL backend: the producer's export texture was deleted on its render
+    // thread already; the EGLImage (display-level, so any thread may destroy
+    // it) goes after the Flutter-side texture that was bound to it.
+    if (img->egl_image != EGL_NO_IMAGE_KHR)
+      eglDestroyImageKHR(img->egl_display, img->egl_image);
     if (img->memory) glDeleteMemoryObjectsEXT(1, &img->memory);
     if (img->fd >= 0) close(img->fd);  // never imported
     delete img;
   }
 }
 
-/// The same EGL display Flutter's engine renders on (see the engine's
-/// fl_opengl_manager.cc): EGL returns one handle per native display.
+/// Outcome of one throwaway-context attempt: the failing EGL call (null on
+/// success) and its eglGetError() value, read straight after the failure.
+struct ProbeAttempt {
+  const char* failed_call = nullptr;
+  EGLint error = EGL_SUCCESS;
+};
+
+/// Selects a GLES 2 config, creates a context and makes it current
+/// surfaceless on [display], for the calling thread. On success the context
+/// is returned through [out_ctx] and left current; on failure it is
+/// EGL_NO_CONTEXT. The same steps the engine's own context creation takes.
+ProbeAttempt TryProbeContext(EGLDisplay display, EGLContext* out_ctx) {
+  const EGLint config_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                                 EGL_NONE};
+  const EGLint ctx_attrs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+  ProbeAttempt attempt;
+  EGLConfig config = nullptr;
+  EGLint num = 0;
+  *out_ctx = EGL_NO_CONTEXT;
+  if (!eglChooseConfig(display, config_attrs, &config, 1, &num) || num <= 0) {
+    attempt.failed_call = "eglChooseConfig";
+    attempt.error = eglGetError();
+    return attempt;
+  }
+  EGLContext ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, ctx_attrs);
+  if (ctx == EGL_NO_CONTEXT) {
+    attempt.failed_call = "eglCreateContext";
+    attempt.error = eglGetError();
+    return attempt;
+  }
+  // Surfaceless: EGL_KHR_surfaceless_context, which the engine also needs.
+  if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
+    attempt.failed_call = "eglMakeCurrent";
+    attempt.error = eglGetError();
+    eglDestroyContext(display, ctx);
+    return attempt;
+  }
+  *out_ctx = ctx;
+  return attempt;
+}
+
+/// What the probe thread found; written there, read only after the join.
+struct GlProbeResult {
+  bool ok = false;
+  /// Empty on success. One line, no semicolons (the reason trail uses them
+  /// as field separators and SanitizeReasonField would rewrite them).
+  std::string reason;
+  std::vector<std::array<uint8_t, 16>> device_uuids;
+  std::array<uint8_t, 16> driver_uuid{};
+};
+
+/// The probe proper: runs on a thread of its own (see GlInterop::ProbeGl), so
+/// no context is current on entry and none needs restoring on exit. Creates
+/// a throwaway context on [display], reads the extension support and the GL
+/// device/driver UUIDs, and destroys the context again.
+GlProbeResult ProbeOnThisThread(EGLDisplay display) {
+  GlProbeResult result;
+  // eglInitialize on an initialized display is a no-op. Never terminate it:
+  // the handle is shared with Flutter's engine.
+  if (!eglInitialize(display, nullptr, nullptr)) {
+    result.reason = "no EGL display";
+    return result;
+  }
+  eglBindAPI(EGL_OPENGL_ES_API);
+  // Mirror the engine's context (ES 2 request; drivers return the highest
+  // compatible ES version) so extension support matches what populate sees.
+  EGLContext ctx = EGL_NO_CONTEXT;
+  const ProbeAttempt attempt = TryProbeContext(display, &ctx);
+  if (attempt.failed_call) {
+    result.reason = std::string("cannot create a probe EGL context: ") +
+                    attempt.failed_call + " failed (" +
+                    EglErrorText(attempt.error) + ")";
+    return result;
+  }
+  if (!epoxy_has_gl_extension("GL_EXT_memory_object") ||
+      !epoxy_has_gl_extension("GL_EXT_memory_object_fd")) {
+    result.reason = "GL lacks GL_EXT_memory_object_fd";
+  } else {
+    GLint n = 0;
+    glGetIntegerv(GL_NUM_DEVICE_UUIDS_EXT, &n);
+    for (GLint i = 0; i < n; i++) {
+      std::array<uint8_t, 16> uuid{};
+      glGetUnsignedBytei_vEXT(GL_DEVICE_UUID_EXT, static_cast<GLuint>(i),
+                              uuid.data());
+      result.device_uuids.push_back(uuid);
+    }
+    glGetUnsignedBytevEXT(GL_DRIVER_UUID_EXT, result.driver_uuid.data());
+    result.ok = !result.device_uuids.empty();
+    if (!result.ok) result.reason = "GL reports no device UUID";
+  }
+  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+  eglDestroyContext(display, ctx);
+  return result;
+}
+
+void ClearGlErrors() {
+  // Bounded: a lost context can report errors forever.
+  for (int i = 0; i < 16 && glGetError() != GL_NO_ERROR; i++) {
+  }
+}
+
+/// Raster thread, Flutter's context current: wraps the EGLImage of an
+/// OpenGL-backend image in a GL texture (once per image; the texture then
+/// follows the shared storage as the producer re-renders it). 0 on failure,
+/// logged once and not retried, like the memory-object import.
+uint32_t ImportEglImage(GlInterop::Image* img) {
+  if (img->failed) return 0;
+  ClearGlErrors();
+  glGenTextures(1, &img->texture);
+  glBindTexture(GL_TEXTURE_2D, img->texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, img->egl_image);
+  const bool ok = glGetError() == GL_NO_ERROR;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  if (!ok) {
+    glDeleteTextures(1, &img->texture);
+    img->texture = 0;
+    img->failed = true;
+    g_warning("mpv_kit: glEGLImageTargetTexture2DOES failed; video stays black");
+  }
+  return img->texture;
+}
+
+}  // namespace
+
+// See gl_interop.h. EGL returns one handle per native display, so this is
+// the display of the engine's fl_opengl_manager.cc.
 EGLDisplay FlutterEglDisplay() {
   GdkDisplay* display = gdk_display_get_default();
   if (!display) return EGL_NO_DISPLAY;
@@ -57,96 +197,77 @@ EGLDisplay FlutterEglDisplay() {
   return EGL_NO_DISPLAY;
 }
 
-/// Restores whatever EGL context the calling thread had current.
-class EglCurrentGuard {
- public:
-  EglCurrentGuard()
-      : api_(eglQueryAPI()),
-        display_(eglGetCurrentDisplay()),
-        draw_(eglGetCurrentSurface(EGL_DRAW)),
-        read_(eglGetCurrentSurface(EGL_READ)),
-        context_(eglGetCurrentContext()) {}
-  ~EglCurrentGuard() {
-    // The current context is tracked per client API: restore that first.
-    eglBindAPI(api_);
-    if (context_ != EGL_NO_CONTEXT) {
-      eglMakeCurrent(display_, draw_, read_, context_);
-    } else if (fallback_ != EGL_NO_DISPLAY) {
-      eglMakeCurrent(fallback_, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                     EGL_NO_CONTEXT);
-    }
+// The error's name and hexadecimal code (see gl_interop.h), so a reason line
+// identifies it even for codes missing from the table.
+std::string EglErrorText(EGLint error) {
+  const char* name = "EGL_UNKNOWN";
+  switch (error) {
+    case EGL_SUCCESS: name = "EGL_SUCCESS"; break;
+    case EGL_NOT_INITIALIZED: name = "EGL_NOT_INITIALIZED"; break;
+    case EGL_BAD_ACCESS: name = "EGL_BAD_ACCESS"; break;
+    case EGL_BAD_ALLOC: name = "EGL_BAD_ALLOC"; break;
+    case EGL_BAD_ATTRIBUTE: name = "EGL_BAD_ATTRIBUTE"; break;
+    case EGL_BAD_CONFIG: name = "EGL_BAD_CONFIG"; break;
+    case EGL_BAD_CONTEXT: name = "EGL_BAD_CONTEXT"; break;
+    case EGL_BAD_CURRENT_SURFACE: name = "EGL_BAD_CURRENT_SURFACE"; break;
+    case EGL_BAD_DISPLAY: name = "EGL_BAD_DISPLAY"; break;
+    case EGL_BAD_MATCH: name = "EGL_BAD_MATCH"; break;
+    case EGL_BAD_NATIVE_PIXMAP: name = "EGL_BAD_NATIVE_PIXMAP"; break;
+    case EGL_BAD_NATIVE_WINDOW: name = "EGL_BAD_NATIVE_WINDOW"; break;
+    case EGL_BAD_PARAMETER: name = "EGL_BAD_PARAMETER"; break;
+    case EGL_BAD_SURFACE: name = "EGL_BAD_SURFACE"; break;
+    case EGL_CONTEXT_LOST: name = "EGL_CONTEXT_LOST"; break;
+    default: break;
   }
-  void set_fallback(EGLDisplay d) { fallback_ = d; }
-
- private:
-  EGLenum api_;
-  EGLDisplay display_;
-  EGLSurface draw_, read_;
-  EGLContext context_;
-  EGLDisplay fallback_ = EGL_NO_DISPLAY;
-};
-
-void ClearGlErrors() {
-  // Bounded: a lost context can report errors forever.
-  for (int i = 0; i < 16 && glGetError() != GL_NO_ERROR; i++) {
-  }
+  char hex[16];
+  std::snprintf(hex, sizeof(hex), "0x%04x", static_cast<unsigned>(error));
+  return std::string(name) + " " + hex;
 }
-
-}  // namespace
 
 GlInterop::GlInterop(std::function<void()> frame_ready)
     : frame_ready_(std::move(frame_ready)) {
-  ProbeGl();
+  // Platform thread: the one place GDK may be used. The display handle is
+  // all the probe needs from it.
+  ProbeGl(FlutterEglDisplay());
 }
 
-void GlInterop::ProbeGl() {
-  EGLDisplay display = FlutterEglDisplay();
-  // eglInitialize on an initialized display is a no-op. Never terminate it:
-  // the handle is shared with Flutter's engine.
-  if (display == EGL_NO_DISPLAY || !eglInitialize(display, nullptr, nullptr)) {
+std::unique_ptr<RenderBackend> GlInterop::CreateBackend(const char* api) {
+  if (std::strcmp(api, "opengl") == 0) return CreateOpenGLBackend(this);
+  return nullptr;
+}
+
+// The probe runs on a short-lived thread of its own, never on the platform
+// thread. evidence/spike-flutter-linux.txt D-THREAD (native-verify run
+// 40627862148): on the platform thread, eglMakeCurrent of a fresh context
+// failed with EGL_BAD_ACCESS in 11 of 12 controllers of that job, while the
+// very same steps succeeded on a fresh thread. What
+// the platform thread has current (GDK/Flutter state) is not ours to reason
+// about, so the probe needs a thread that has nothing current. This is the
+// principle OpenGLBackend::RunBound already follows for its create-time EGL
+// work. The thread is always joined before this function returns, and the
+// result is copied into the members here, on the platform thread, only after
+// the join.
+void GlInterop::ProbeGl(EGLDisplay display) {
+  if (display == EGL_NO_DISPLAY) {
     gl_reason_ = "no EGL display";
     return;
   }
-  EglCurrentGuard guard;
-  guard.set_fallback(display);
-  eglBindAPI(EGL_OPENGL_ES_API);
-  // Mirror the engine's context (ES 2 request; drivers return the highest
-  // compatible ES version) so extension support matches what populate sees.
-  const EGLint config_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                                 EGL_NONE};
-  EGLConfig config = nullptr;
-  EGLint num = 0;
-  const EGLint ctx_attrs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-  EGLContext ctx = EGL_NO_CONTEXT;
-  if (eglChooseConfig(display, config_attrs, &config, 1, &num) && num > 0) {
-    ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, ctx_attrs);
-  }
-  // Surfaceless: EGL_KHR_surfaceless_context, which the engine also needs.
-  if (ctx == EGL_NO_CONTEXT ||
-      !eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
-    gl_reason_ = "cannot create a probe EGL context";
-    if (ctx != EGL_NO_CONTEXT) eglDestroyContext(display, ctx);
+  GlProbeResult result;
+  std::thread worker;
+  try {
+    worker = std::thread([display, &result] {
+      result = ProbeOnThisThread(display);
+      eglReleaseThread();  // drops this thread's EGL bookkeeping
+    });
+  } catch (const std::exception&) {
+    gl_reason_ = "cannot start the EGL probe thread";
     return;
   }
-
-  if (!epoxy_has_gl_extension("GL_EXT_memory_object") ||
-      !epoxy_has_gl_extension("GL_EXT_memory_object_fd")) {
-    gl_reason_ = "GL lacks GL_EXT_memory_object_fd";
-  } else {
-    GLint n = 0;
-    glGetIntegerv(GL_NUM_DEVICE_UUIDS_EXT, &n);
-    for (GLint i = 0; i < n; i++) {
-      std::array<uint8_t, 16> uuid{};
-      glGetUnsignedBytei_vEXT(GL_DEVICE_UUID_EXT, static_cast<GLuint>(i),
-                              uuid.data());
-      gl_device_uuids_.push_back(uuid);
-    }
-    glGetUnsignedBytevEXT(GL_DRIVER_UUID_EXT, gl_driver_uuid_.data());
-    gl_ok_ = !gl_device_uuids_.empty();
-    if (!gl_ok_) gl_reason_ = "GL reports no device UUID";
-  }
-  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-  eglDestroyContext(display, ctx);
+  worker.join();
+  gl_ok_ = result.ok;
+  gl_reason_ = std::move(result.reason);
+  gl_device_uuids_ = std::move(result.device_uuids);
+  gl_driver_uuid_ = result.driver_uuid;
 }
 
 std::vector<const char*> GlInterop::DeviceExtensions() const {
@@ -183,6 +304,50 @@ bool GlInterop::AcceptDevice(VkPhysicalDevice device) {
     return false;
   return ext_props.externalMemoryProperties.externalMemoryFeatures &
          VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
+}
+
+int GlInterop::OpenDrmRenderNode(VkPhysicalDevice device) {
+  // [device] is the physical device AcceptDevice selected by Flutter's GL
+  // device UUID, i.e. the GPU Flutter's EGL context runs on, so its render
+  // node is the one VA-API must decode on for dma-buf interop. llvmpipe,
+  // lavapipe and hosts without /dev/dri end in -1 below: mpv then gets no
+  // DRM_DISPLAY_V2 and its vaapi hwdec is skipped ("Could not create a VA
+  // display."), leaving copy/software decoding.
+  uint32_t count = 0;
+  if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr) !=
+      VK_SUCCESS)
+    return -1;
+  std::vector<VkExtensionProperties> extensions(count);
+  if (vkEnumerateDeviceExtensionProperties(device, nullptr, &count,
+                                           extensions.data()) < 0)
+    return -1;
+  const bool has_drm_properties = std::any_of(
+      extensions.begin(), extensions.begin() + count,
+      [](const VkExtensionProperties& e) {
+        return std::strcmp(e.extensionName,
+                           VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME) == 0;
+      });
+  if (!has_drm_properties) return -1;
+
+  VkPhysicalDeviceDrmPropertiesEXT drm{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT};
+  VkPhysicalDeviceProperties2 props{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &drm};
+  vkGetPhysicalDeviceProperties2(device, &props);
+  if (!drm.hasRender || drm.renderMajor < 0 || drm.renderMinor < 0) return -1;
+
+  // The reasons are not logged (no new log lines, ADR 0004): a missing node
+  // is the normal answer on hosted runners.
+  std::string why;
+  const std::string path = RenderNodePathForDevnum(
+      kDrmDirectory, static_cast<uint32_t>(drm.renderMajor),
+      static_cast<uint32_t>(drm.renderMinor), &why);
+  if (path.empty()) return -1;
+  return OpenRenderNode(path, &why);
+}
+
+void GlInterop::CloseDrmRenderNode(int fd) {
+  if (fd >= 0) close(fd);
 }
 
 bool GlInterop::CreateImage(VkPhysicalDevice pd, VkDevice dev, int width,
@@ -287,6 +452,7 @@ void GlInterop::Orphan() {
 
 uint32_t GlInterop::TextureFor(Image* img) {
   if (img->texture) return img->texture;
+  if (img->egl_image != EGL_NO_IMAGE_KHR) return ImportEglImage(img);
   if (img->failed || img->fd < 0) return 0;
   ClearGlErrors();
   glCreateMemoryObjectsEXT(1, &img->memory);

@@ -1,0 +1,65 @@
+# Phase 15 release.yml dispatch record. Backfilled 2026-10-28 from the completed workflow_dispatch run 40618740386 (sha b40cdff9262e32f884f4c71b31d3306a4fa37e49; nothing was dispatched for this backfill).
+# This run is at b40cdff, not at feat HEAD 091228a: the only diffs b40cdff..091228a are the native-verify.yml windows integration step, d3d11_backend.cpp WaitQuery flags, integration tests + libmpv_guard.dart and evidence notes, so the libmpv bundle and the linux release job are unchanged.
+# release_gate.sh was evaluated against the finished run (its dispatch step disabled in a scratch copy): RELEASE-GATE ok.
+sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 workflow=release.yml run=40618740386 conclusion=success jobs=macos (macos-15, macos-arm64):success,macos (macos-15-intel, macos-x64):success,linux (ubuntu-24.04-arm, linux-arm64):success,windows (windows-11-arm, CLANGARM64, windows-arm64):success,windows (windows-2025, CLANG64, windows-x64, nasm:p):success,linux (ubuntu-24.04, linux-x64):success,publish:skipped
+release_line target=linux-x64 line=packaged 17 libraries into /__w/mpv_kit/mpv_kit/dist/libmpv-linux-x64
+release_line target=linux-x64 line=##[notice]libmpv-linux-x64 requires GLIBC_2.35 and GLIBCXX_3.4.29
+release_line target=linux-x64 line=NEEDED libass.so.9
+release_line target=linux-x64 line=NEEDED libavcodec.so.62
+release_line target=linux-x64 line=NEEDED libavfilter.so.11
+release_line target=linux-x64 line=NEEDED libavformat.so.62
+release_line target=linux-x64 line=NEEDED libavutil.so.60
+release_line target=linux-x64 line=NEEDED libplacebo.so.360
+release_line target=linux-x64 line=NEEDED libswresample.so.6
+release_line target=linux-x64 line=NEEDED libswscale.so.9
+release_line target=linux-x64 line=NEEDED liblcms2.so.2
+release_line target=linux-x64 line=NEEDED libavdevice.so.62
+release_line target=linux-x64 line=NEEDED libm.so.6
+release_line target=linux-x64 line=NEEDED libuchardet.so.0
+release_line target=linux-x64 line=NEEDED libz.so.1
+release_line target=linux-x64 line=NEEDED libasound.so.2
+release_line target=linux-x64 line=NEEDED libpulse.so.0
+release_line target=linux-x64 line=NEEDED libdrm.so.2
+release_line target=linux-x64 line=NEEDED libdisplay-info.so.2
+release_line target=linux-x64 line=NEEDED libEGL.so.1
+release_line target=linux-x64 line=NEEDED libvulkan.so.1
+release_line target=linux-x64 line=NEEDED libva-drm.so.2
+release_line target=linux-x64 line=NEEDED libva.so.2
+release_line target=linux-x64 line=NEEDED libc.so.6
+release_line target=linux-x64 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.4" gl_renderer="llvmpipe (LLVM 15.0.7, 256 bits)" pixel=254,0,0
+release_line target=linux-arm64 line=packaged 17 libraries into /__w/mpv_kit/mpv_kit/dist/libmpv-linux-arm64
+release_line target=linux-arm64 line=##[notice]libmpv-linux-arm64 requires GLIBC_2.35 and GLIBCXX_3.4.29
+release_line target=linux-arm64 line=NEEDED libass.so.9
+release_line target=linux-arm64 line=NEEDED libavcodec.so.62
+release_line target=linux-arm64 line=NEEDED libavfilter.so.11
+release_line target=linux-arm64 line=NEEDED libavformat.so.62
+release_line target=linux-arm64 line=NEEDED libavutil.so.60
+release_line target=linux-arm64 line=NEEDED libplacebo.so.360
+release_line target=linux-arm64 line=NEEDED libswresample.so.6
+release_line target=linux-arm64 line=NEEDED libswscale.so.9
+release_line target=linux-arm64 line=NEEDED liblcms2.so.2
+release_line target=linux-arm64 line=NEEDED libavdevice.so.62
+release_line target=linux-arm64 line=NEEDED libm.so.6
+release_line target=linux-arm64 line=NEEDED libuchardet.so.0
+release_line target=linux-arm64 line=NEEDED libz.so.1
+release_line target=linux-arm64 line=NEEDED libasound.so.2
+release_line target=linux-arm64 line=NEEDED libpulse.so.0
+release_line target=linux-arm64 line=NEEDED libdrm.so.2
+release_line target=linux-arm64 line=NEEDED libdisplay-info.so.2
+release_line target=linux-arm64 line=NEEDED libEGL.so.1
+release_line target=linux-arm64 line=NEEDED libvulkan.so.1
+release_line target=linux-arm64 line=NEEDED libva-drm.so.2
+release_line target=linux-arm64 line=NEEDED libva.so.2
+release_line target=linux-arm64 line=NEEDED libc.so.6
+release_line target=linux-arm64 line=NEEDED ld-linux-aarch64.so.1
+release_line target=linux-arm64 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.4" gl_renderer="llvmpipe (LLVM 15.0.7, 128 bits)" pixel=254,0,0
+sha=e7bc162690be27c4ff16035af86d3928e44bbb35 workflow=release.yml run=40662838575 conclusion=success jobs=macos (macos-15, macos-arm64):success,windows (windows-11-arm, CLANGARM64, windows-arm64):success,linux (ubuntu-24.04-arm, linux-arm64):success,macos (macos-15-intel, macos-x64):success,windows (windows-2025, CLANG64, windows-x64, nasm:p):success,linux (ubuntu-24.04, linux-x64):success,publish:skipped
+# 15-07 Task 2: release.yml dispatched on the branch ref at HEAD e7bc162 (run 40662838575). release_gate.sh dispatched and the run was created, but its find_run step did not see it (clock skew between the local dispatched_at and GitHub createdAt, RUN_SHA is also lost in a subshell); the gate was therefore evaluated against the finished run with dispatch disabled in a scratch copy (/tmp), as for run 40618740386: RELEASE-GATE ok, record line above (sha filled in by hand).
+release_line target=linux-x64 line=packaged 17 libraries into /__w/mpv_kit/mpv_kit/dist/libmpv-linux-x64
+release_line target=linux-x64 line=##[notice]libmpv-linux-x64 requires GLIBC_2.35 and GLIBCXX_3.4.29
+release_line target=linux-x64 line=NEEDED libEGL.so.1
+release_line target=linux-x64 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.4" gl_renderer="llvmpipe (LLVM 15.0.7, 256 bits)" pixel=254,0,0
+release_line target=linux-arm64 line=packaged 17 libraries into /__w/mpv_kit/mpv_kit/dist/libmpv-linux-arm64
+release_line target=linux-arm64 line=##[notice]libmpv-linux-arm64 requires GLIBC_2.35 and GLIBCXX_3.4.29
+release_line target=linux-arm64 line=NEEDED libEGL.so.1
+release_line target=linux-arm64 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.4" gl_renderer="llvmpipe (LLVM 15.0.7, 128 bits)" pixel=254,0,0

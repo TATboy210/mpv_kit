@@ -18,8 +18,17 @@ cd "$work"
 
 tarball=ffmpeg-$FFMPEG_VERSION.tar.xz
 if [ ! -f "$tarball" ]; then
-  curl -fsSL --retry 3 -o "$tarball.part" "https://ffmpeg.org/releases/$tarball"
-  mv "$tarball.part" "$tarball"
+  # Same scheme as fetch() in deps.sh: plain --retry skips connection resets
+  # (curl exit 35), which failed release runs on ffmpeg.org; the sha256 pin
+  # below still decides whether the file is accepted.
+  for url in "https://ffmpeg.org/releases/$tarball" \
+    "https://www.ffmpeg.org/releases/$tarball"; do
+    if curl -fsSL --retry 5 --retry-all-errors -o "$tarball.part" "$url"; then
+      mv "$tarball.part" "$tarball"
+      break
+    fi
+  done
+  [ -f "$tarball" ] || { echo "ffmpeg: download failed" >&2; exit 1; }
 fi
 if command -v sha256sum >/dev/null; then
   actual=$(sha256sum "$tarball" | cut -d' ' -f1)
@@ -55,6 +64,17 @@ case "$(uname -s)" in
     # Distros ship libssl; OpenSSL 3 is compatible with an LGPL build.
     platform_args+=(--enable-openssl)
     ;;
+esac
+
+# Size: one section per function/object so the linker drops what nothing
+# references (shinchiro/mpv-winbuild-cmake links FFmpeg the same way). Exports
+# come from the libav*.v version scripts and stay; no code is recompiled
+# differently, so decode speed is unchanged. FFmpeg's configure appends every
+# --extra-cflags/--extra-ldflags.
+platform_args+=(--extra-cflags="-ffunction-sections -fdata-sections")
+case "$(uname -s)" in
+  Darwin) platform_args+=(--extra-ldflags=-Wl,-dead_strip) ;;
+  *) platform_args+=(--extra-ldflags=-Wl,--gc-sections) ;;
 esac
 
 # Headers installed by deps.sh (Vulkan, dav1d) take precedence over the

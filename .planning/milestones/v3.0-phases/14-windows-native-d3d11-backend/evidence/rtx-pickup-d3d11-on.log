@@ -1,0 +1,298 @@
+Resolving dependencies in `D:\mpv_kit`...
+Downloading packages...
+  _fe_analyzer_shared 103.0.0 (110.0.0 available)
+  analyzer 13.3.0 (14.6.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  crypto 3.0.7 (3.0.8 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  desktop_drop 0.7.1 (0.9.2 available)
+  frontend_server_client 4.1.0 (4.2.0 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  shelf 1.4.2 (1.4.3 available)
+  shelf_static 1.1.3 (1.2.0 available)
+  test 1.31.1 (1.33.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  test_core 0.6.18 (0.6.21 available)
+  vector_math 2.4.3 (2.4.4 available)
+  vm_service 15.3.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+Got dependencies in `D:\mpv_kit`!
+18 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching lib\main.dart on Windows in debug mode...
+Building Windows application...                                    14.9s
+✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+Syncing files to device Windows...                                  89ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on Windows is available at: http://127.0.0.1:55144/Iv613Dx_EMM=/
+The Flutter DevTools debugger and profiler on Windows is available at: http://127.0.0.1:55144/Iv613Dx_EMM=/devtools/?uri=ws://127.0.0.1:55144/Iv613Dx_EMM=/ws
+mpv_kit: MPV_KIT_VIDEO_API=d3d11 restricts rendering to that API
+mpv_kit_video: vulkan (d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11)
+mpv_kit_example: 0 dropped, avdiff=0.000012
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003680ms done=0.066958ms max_done=2.208200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.44ms max=16.31ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.004001ms done=0.005890ms max_done=0.039800ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.42ms max=10.97ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003959ms done=0.005448ms max_done=0.009900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.46ms max=13.67ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003988ms done=0.005679ms max_done=0.012100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.40ms max=12.46ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003973ms done=0.005498ms max_done=0.010000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.19ms max=16.63ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003935ms done=0.005584ms max_done=0.019300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.43ms max=15.97ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003914ms done=0.005716ms max_done=0.021200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.32ms max=15.00ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003929ms done=0.005532ms max_done=0.011700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.30ms max=15.80ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003961ms done=0.005639ms max_done=0.011400ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.44ms max=11.32ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.003908ms done=0.005519ms max_done=0.011600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.26ms max=16.20ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.004538ms done=0.842113ms max_done=4.504200ms
+mpv_kit: compositor pickup avg/over 120 frames: 5.68ms max=19.78ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005892ms done=3.261854ms max_done=4.537100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.87ms max=25.13ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006132ms done=3.394463ms max_done=4.783600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.78ms max=18.68ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005997ms done=3.661533ms max_done=4.991000ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.63ms max=24.76ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005710ms done=3.666828ms max_done=5.113700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.55ms max=23.74ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005880ms done=3.460812ms max_done=4.883100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.85ms max=17.27ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005976ms done=3.854616ms max_done=4.772800ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.67ms max=18.49ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006118ms done=3.536128ms max_done=5.228800ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.68ms max=18.57ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005901ms done=3.449274ms max_done=5.216200ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.76ms max=25.65ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006115ms done=3.701636ms max_done=4.799900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.54ms max=16.44ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005897ms done=3.631402ms max_done=4.889900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.61ms max=24.65ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005920ms done=3.757213ms max_done=5.041800ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.70ms max=23.61ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005828ms done=3.452614ms max_done=5.123800ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.73ms max=23.37ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005917ms done=3.360612ms max_done=4.756600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.90ms max=22.79ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006113ms done=3.444085ms max_done=4.705400ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.83ms max=18.44ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005946ms done=3.622752ms max_done=4.945600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.67ms max=21.04ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005863ms done=3.473517ms max_done=5.110700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.67ms max=19.30ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005688ms done=3.668953ms max_done=4.916300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.61ms max=17.53ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006293ms done=3.647546ms max_done=5.012000ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.54ms max=24.25ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005688ms done=3.692122ms max_done=4.862900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.57ms max=23.36ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006058ms done=3.649593ms max_done=4.914300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.57ms max=16.71ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006347ms done=3.563808ms max_done=5.119000ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.56ms max=16.91ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005853ms done=3.659599ms max_done=5.041600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.58ms max=19.74ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006089ms done=3.690398ms max_done=5.319500ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.45ms max=18.57ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006195ms done=3.674754ms max_done=4.801700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.64ms max=17.86ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005762ms done=3.591278ms max_done=4.919300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.48ms max=24.01ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005854ms done=3.607366ms max_done=4.951700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.59ms max=18.44ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006618ms done=3.769376ms max_done=5.284700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.49ms max=23.94ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005707ms done=2.367243ms max_done=4.775600ms
+mpv_kit: compositor pickup avg/over 120 frames: 6.92ms max=16.73ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005821ms done=3.455968ms max_done=4.856600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.73ms max=22.78ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006018ms done=3.669080ms max_done=4.885900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.65ms max=21.93ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005937ms done=3.239701ms max_done=4.831200ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.57ms max=18.04ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005672ms done=3.739672ms max_done=5.304200ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.56ms max=19.04ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005906ms done=3.483454ms max_done=4.762900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.57ms max=19.80ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005903ms done=3.493651ms max_done=5.134000ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.69ms max=18.26ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005747ms done=3.379489ms max_done=4.676100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.77ms max=18.46ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006265ms done=3.617148ms max_done=5.000100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.18ms max=24.66ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006100ms done=3.418336ms max_done=4.770700ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.61ms max=23.01ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006479ms done=3.556113ms max_done=4.838900ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.35ms max=19.71ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005830ms done=3.467618ms max_done=5.031100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.53ms max=22.57ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005690ms done=3.489681ms max_done=4.961300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.74ms max=20.54ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005877ms done=3.414993ms max_done=4.796300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.67ms max=18.98ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005864ms done=3.565202ms max_done=4.830300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.58ms max=17.85ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006138ms done=3.659823ms max_done=5.046300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.62ms max=22.97ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005688ms done=3.614393ms max_done=4.725000ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.68ms max=22.34ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005907ms done=3.712118ms max_done=4.895400ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.61ms max=20.26ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005647ms done=3.437899ms max_done=5.279200ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.83ms max=17.08ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005599ms done=3.626362ms max_done=4.850500ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.70ms max=22.45ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006227ms done=3.776207ms max_done=4.931100ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.74ms max=19.23ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006384ms done=3.596237ms max_done=4.837200ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.63ms max=18.01ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006514ms done=3.807334ms max_done=5.051400ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.50ms max=18.27ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005954ms done=3.647442ms max_done=4.955300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.57ms max=22.42ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.006044ms done=3.640073ms max_done=4.952300ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.61ms max=16.55ms backend=d3d11
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit_example: 12 dropped, avdiff=null
+mpv_kit: render waits avg/over 120 frames: prev=0.005706ms done=3.680278ms max_done=5.225600ms
+mpv_kit: compositor pickup avg/over 120 frames: 8.45ms max=18.69ms backend=d3d11
+Lost connection to device.

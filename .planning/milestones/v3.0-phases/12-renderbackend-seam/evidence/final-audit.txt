@@ -1,0 +1,8 @@
+# 12-12 Task 1 phase close-out audit (one line per item: <key>=ok|fail <note>); run 2026-10-26T23:45:14Z on HEAD f8d87150559546fb83606a9e331ad0d0bc4e22e7 (code tree identical to c3edb9e; f8d8715 and the audit commit change only .planning/ files)
+golden_freeze=ok sha256sum -c evidence/golden-freeze.sha256: 5/5 OK (renderer_harness.h, video_renderer_golden_sw.cc, video_renderer_golden_vk.cc, golden/sw.txt, golden/vk.txt)
+constants=ok tools/constants_audit.sh printed 'CONSTANTS ok', rc=0
+api_freeze=ok git diff --quiet 3a5f450 HEAD -- packages/mpv_kit/lib packages/mpv_kit/test/api_freeze_test.dart rc=0
+enum_line=ok 'enum MpvVideoBackend { vulkan, software }' occurs exactly 1 time in packages/mpv_kit_video/lib/src/video_controller.dart (and in no other source file under packages/; the only other hits are build/test_cache .dill artifacts, untracked)
+dart_surface=ok git diff --name-only 3a5f450 HEAD -- packages/mpv_kit_video/lib = video_controller.dart only; its 6 added non-comment lines declare no class/enum/typedef/extension/mixin and no public lower-case const/final (the one new constant is private: static const _gpuWireNames = {'d3d11', 'opengl', 'vulkan'})
+build_files=ok git diff --quiet 3a5f450 HEAD -- packages/mpv_kit_video/windows/CMakeLists.txt packages/mpv_kit_video/linux/CMakeLists.txt packages/mpv_kit_video/macos/Classes/shared_sources.cpp rc=0
+docs_env=ok MPV_KIT_VIDEO_API mentioned in README.md (2 lines: 162, 186), packages/mpv_kit_video/README.md (1: 65), docs/ARCHITECTURE.md (2: 151, 155), docs/adr/0004-render-backend-reporting.md (10); packages/mpv_kit_video/src/video_renderer.cc reads it (_dupenv_s line 77 on _WIN32, std::getenv line 82 otherwise)

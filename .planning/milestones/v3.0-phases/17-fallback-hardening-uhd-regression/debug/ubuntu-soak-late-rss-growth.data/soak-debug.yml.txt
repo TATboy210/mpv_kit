@@ -1,0 +1,137 @@
+# SCRATCH workflow of the debug session ubuntu-soak-late-rss-growth. Exists only
+# on the branch ci/17-debug-soak and is deleted with it; never merged.
+#
+# It re-runs the ubuntu "Backend soak" step of native-verify (VER-04) against the
+# libmpv artifact of the red run 40993938470 (same product sha aac870d, no
+# product file is changed on this branch) and adds measurements that the
+# product job does not have: runner CPU/memory facts, a /proc breakdown at every
+# soak checkpoint (example/integration_test/soak_debug_probe.dart) and a few
+# allocator experiments selected through the matrix `extra` variable.
+name: soak-debug
+
+on:
+  push:
+    branches: [ci/17-debug-soak]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN: '40993938470'
+
+jobs:
+  soak:
+    name: soak (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Wave 4: reliability of the candidate CI-only fix. The exact CI step
+          # environment plus MALLOC_ARENA_MAX=1, probe off: 10 jobs x 2 soaks.
+          - {name: fix-1, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-2, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-3, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-4, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-5, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-6, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-7, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-8, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-9, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fix-10, reps: 2, debug: 'off', extra: 'MALLOC_ARENA_MAX=1'}
+          # Same, after the real-plugin test and the backend matrix as in CI.
+          - {name: fixf-1, reps: 1, debug: 'off', faithful: 'yes', extra: 'MALLOC_ARENA_MAX=1'}
+          - {name: fixf-2, reps: 1, debug: 'off', faithful: 'yes', extra: 'MALLOC_ARENA_MAX=1'}
+          # Default environment, faithful prefix, probe off: the CI red rate.
+          - {name: basef-1, reps: 1, debug: 'off', faithful: 'yes'}
+          - {name: basef-2, reps: 1, debug: 'off', faithful: 'yes'}
+          - {name: basef-3, reps: 1, debug: 'off', faithful: 'yes'}
+          - {name: basef-4, reps: 1, debug: 'off', faithful: 'yes'}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Runner facts
+        shell: bash
+        run: |
+          set +e +o pipefail
+          echo "SOAK-ENV variant=${{ matrix.name }} extra=${{ matrix.extra }} reps=${{ matrix.reps }}"
+          echo "SOAK-ENV nproc=$(nproc) kernel=$(uname -r)"
+          lscpu | grep -E 'Model name|^CPU\(s\)|Thread|Socket|MHz|L2|L3|Hypervisor|Flags' | sed -E 's/Flags:.*(avx512[a-z_0-9]*).*/Flags: ...\1.../' | cut -c1-160 | sed 's/^/SOAK-ENV /'
+          free -m | sed 's/^/SOAK-ENV /'
+          cat /sys/fs/cgroup/cpu.max 2>/dev/null | sed 's/^/SOAK-ENV cpu.max /'
+          cat /proc/pressure/cpu 2>/dev/null | sed 's/^/SOAK-ENV psi-cpu /'
+          cat /proc/sys/vm/overcommit_memory | sed 's/^/SOAK-ENV overcommit /'
+          cat /sys/kernel/mm/transparent_hugepage/enabled | sed 's/^/SOAK-ENV thp /'
+          ldd --version | head -1 | sed 's/^/SOAK-ENV /'
+      - name: Linux build and runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev libepoxy-dev \
+            xvfb mesa-vulkan-drivers \
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev \
+            libass-dev libvulkan-dev libegl-dev libgl-dev \
+            libdrm-dev libx11-dev libwayland-dev libxkbcommon-dev zlib1g-dev \
+            libva-dev
+          dpkg -l | grep -E ' (libegl-mesa0|libgl1-mesa-dri|mesa-vulkan-drivers|libllvm[0-9]+|libglib2.0-0t64) ' | awk '{print "SOAK-ENV pkg " $2 " " $3}'
+      - uses: actions/download-artifact@v4
+        with:
+          name: libmpv-verify-linux-ubuntu-24.04
+          path: stage
+          run-id: ${{ env.SOURCE_RUN }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: hwdec-samples
+          path: example/integration_test/route_samples
+          run-id: ${{ env.SOURCE_RUN }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Faithful prefix (real-plugin test and backend matrix as in native-verify)
+        if: matrix.faithful == 'yes'
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          STAGED_LIBMPV: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+        run: |
+          libdir="$(cd "$(dirname "$STAGED_LIBMPV")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          (cd example && xvfb-run -a flutter test integration_test/real_plugin_test.dart -d linux) || echo "prefix real_plugin_test failed"
+          bash tools/backend_matrix.sh linux || echo "prefix backend_matrix failed"
+      - name: Backend soak repetitions
+        shell: bash
+        env:
+          MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/lib/libmpv.so.2
+          MPV_KIT_REQUIRE_LIBMPV: '1'
+          MPV_KIT_VIDEO_API: opengl
+          MPV_KIT_SOAK_MEMORY: rss
+          MPV_KIT_SOAK_DEBUG: ${{ matrix.debug == 'off' && '0' || '1' }}
+          MPV_KIT_SOAK_TRIM: ${{ matrix.trim == 'on' && '1' || '0' }}
+          EXTRA: ${{ matrix.extra }}
+        run: |
+          libdir="$(cd "$(dirname "$MPV_KIT_LIBMPV_PATH")" && pwd)"
+          export PATH="$libdir:$PATH"
+          export LD_LIBRARY_PATH="$libdir:${{ github.workspace }}/stage/deps${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          if [ -n "$EXTRA" ]; then export $EXTRA; fi
+          set +e
+          cd example
+          for i in $(seq 1 "${{ matrix.reps }}"); do
+            echo "SOAK-RUN variant=${{ matrix.name }} rep=$i start=$(date -u +%FT%T)Z loadavg=$(cut -d' ' -f1-3 /proc/loadavg)"
+            xvfb-run -a flutter test integration_test/backend_soak_test.dart -d linux > "$RUNNER_TEMP/soak_$i.log" 2>&1
+            code=$?
+            echo "SOAK-RUN variant=${{ matrix.name }} rep=$i exit=$code"
+            if [ "$code" -ne 0 ] && ! grep -q '^SOAK ' "$RUNNER_TEMP/soak_$i.log"; then tail -40 "$RUNNER_TEMP/soak_$i.log" | cut -c1-240; fi
+            grep -E '^(SOAK |SOAK-CHECKPOINT|SOAK-DEBUG|Expected:|  Actual:)' "$RUNNER_TEMP/soak_$i.log" | sed "s/^/[${{ matrix.name }} rep$i] /"
+          done
+          exit 0

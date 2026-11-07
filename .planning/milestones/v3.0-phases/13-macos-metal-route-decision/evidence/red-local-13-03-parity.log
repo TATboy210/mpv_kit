@@ -1,0 +1,7 @@
+ROUTE-PARITY self-test FAIL visible-identical: rc=1 line='ROUTE-PARITY FAIL not implemented'
+ROUTE-PARITY self-test FAIL black-vs-visible: rc=1 line='ROUTE-PARITY FAIL not implemented'
+ROUTE-PARITY self-test FAIL not-composited-both: rc=1 line='ROUTE-PARITY FAIL not implemented'
+ROUTE-PARITY self-test FAIL missing-final: rc=1 line='ROUTE-PARITY FAIL not implemented'
+ROUTE-PARITY self-test FAIL mean-delta: rc=1 line='ROUTE-PARITY FAIL not implemented'
+ROUTE-PARITY self-test FAIL indeterminate: rc=1 line='ROUTE-PARITY FAIL not implemented'
+exit=1

@@ -1,0 +1,7 @@
+decision=hwdec-defaults choice=adopt windows=vulkan,d3d11va,d3d11va-copy,auto-safe linux=vulkan,vaapi,auto-safe macos=videotoolbox,auto-safe other=auto-safe d3d11va_zero_copy=default at=2026-10-28T14:00:00Z reply=adopt
+decision=hwd05-scope choice=A at=2026-10-29T00:50:51Z reply=A
+decision=hwd02-acceptance choice=forced-d3d11 session=with-14-09 at=2026-10-29T03:29:51Z reply=forced-d3d11 + 与 14-09 合并
+note=rationale: community reports (mpv#17894 Vulkan hwdec blue screen on Intel Arc while D3D11VA works; mpv#14934; mpv#11739) show Vulkan Video depends on per-vendor drivers, and media-kit#1278/#296 ask for exactly the D3D11 zero-copy path; 14-11's switch decision needs 16-06's data, so forced-d3d11 comes first.
+decision=release-basis choice=B code_sha=ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72 head=15f61ff at=2026-10-29T03:29:51Z reply=先 B 解锁 RTX，再查 macOS
+note=HEAD 15f61ff (docs-only over ad5c54b) macOS videotoolbox screenshot check failed twice (native-verify run 40800969371 attempts 1 and 2; macos-route 40800969447 attempt 1, recovered on attempt 2); handed to a separate gsd-debug session. The test already uses exact seeks, so a non-precise seek is unlikely; leading hypotheses: a stale frame captured after the seek, or VM load (frameDrops 19/35). Local commit bd926b5 stays unpushed until resolved.
+decision=phase16-close choice=close sc3_wording=approve d3d11va_zero_copy_default=keep-no ticks=HWD-01,HWD-02(forced-d3d11),HWD-05(scope-A) partial=HWD-03(no Linux GPU) at=2026-10-29T06:09:24Z reply=批准新措辞/保持 no/关闭 Phase 16

@@ -142,6 +142,98 @@ List<File> installBundle(File archive, String expectedSha256, Directory dir) {
   return sharedLibrariesIn(dir);
 }
 
+/// Whether [dir] has a MANIFEST.txt and every shared library it lists
+/// directly under `lib/` exists (at least one must be listed).
+///
+/// Nested paths (`lib/x/y.so`) and non-library files are ignored, matching
+/// what [sharedLibrariesIn] reports.
+bool _hasAllManifestLibraries(Directory dir) {
+  final manifestFile = File('${dir.path}/MANIFEST.txt');
+  if (!manifestFile.existsSync()) return false;
+  final expected = [
+    for (final path in parseManifest(manifestFile.readAsStringSync()).keys)
+      if (path.startsWith('lib/') &&
+          !path.substring(4).contains('/') &&
+          isSharedLibrary(path.substring(4)))
+        path,
+  ];
+  return expected.isNotEmpty &&
+      expected.every((path) => File('${dir.path}/$path').existsSync());
+}
+
+/// Resolves the pinned release bundle for [target] from the build-hook
+/// [cache] directory and returns its shared libraries.
+///
+/// Cache layout (names shared with the hook): archive
+/// `libmpv-<target>.tar.gz`, extracted directory `<target>/` and the stamp
+/// `<target>.ok` holding the pinned sha256. [fetch] writes the release
+/// archive to the file it is given (the hook passes a download).
+Future<List<File>> resolvePinnedBundle({
+  required Directory cache,
+  required String target,
+  required String pinnedSha256,
+  required Future<void> Function(File archive) fetch,
+}) async {
+  final archive = File('${cache.path}/libmpv-$target.tar.gz');
+  final extracted = Directory('${cache.path}/$target');
+  final stamp = File('${cache.path}/$target.ok');
+  if (stamp.existsSync() && stamp.readAsStringSync() == pinnedSha256) {
+    // A cleaned cache can leave a valid stamp over a missing, empty or
+    // partial extraction (e.g. libmpv gone while one dependency remains).
+    // Trust the stamp only while every shared library the MANIFEST lists
+    // under lib/ is really there; otherwise fall through and reinstall (the
+    // archive is re-hashed against the pin before it is reused). Existence
+    // only: the files were verified when they were extracted.
+    if (_hasAllManifestLibraries(extracted)) {
+      return sharedLibrariesIn(extracted);
+    }
+  }
+  if (!archive.existsSync() ||
+      sha256Hex(archive.readAsBytesSync()) != pinnedSha256) {
+    await fetch(archive);
+  }
+  final libs = installBundle(archive, pinnedSha256, extracted);
+  if (libs.isEmpty) {
+    // No stamp is written, so the next build retries instead of trusting a
+    // bundle that would silently emit no libmpv.
+    throw BundleIntegrityException(
+      '${archive.path}: no shared libraries under lib/ after installation',
+    );
+  }
+  stamp.writeAsStringSync(pinnedSha256);
+  return libs;
+}
+
+/// Release tag directory names the hook creates under its shared output
+/// directory (`v0.1.0-dev.4`, `v1.2.3`); anything else there belongs to
+/// someone else (the hooks runner, `local-<target>/`) and is left alone.
+final _releaseTag = RegExp(r'^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$');
+
+/// Deletes the cached bundles of every release tag in [shared] except
+/// [keepTag] and returns the deleted directories.
+///
+/// Each bumped pin leaves its archive and extraction behind (dev.1..dev.4
+/// accumulated about 200 MB in one checkout). Call only after [keepTag]
+/// resolved successfully, so a failed install never loses the previous
+/// bundle. Deletion is best effort: a directory that cannot be removed
+/// (e.g. a file still open on Windows) is skipped and retried next build.
+List<Directory> pruneStaleBundles(Directory shared, String keepTag) {
+  if (!shared.existsSync()) return const [];
+  final deleted = <Directory>[];
+  for (final entry in shared.listSync(followLinks: false)) {
+    if (entry is! Directory) continue;
+    final name = entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    if (name == keepTag || !_releaseTag.hasMatch(name)) continue;
+    try {
+      entry.deleteSync(recursive: true);
+      deleted.add(entry);
+    } on FileSystemException {
+      // Best effort, see above.
+    }
+  }
+  return deleted;
+}
+
 /// Downloads [url] to [target] (honours HTTPS_PROXY/HTTP_PROXY/NO_PROXY).
 ///
 /// Writes to a uniquely named temporary file that is renamed into place.

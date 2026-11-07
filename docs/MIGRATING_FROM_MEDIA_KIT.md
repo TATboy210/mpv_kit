@@ -9,7 +9,7 @@ application like simple_player uses.
 
 | media_kit | mpv_kit |
 |---|---|
-| `MediaKit.ensureInitialized()` | not needed (libmpv is located by `mpv_kit_libs` / `MPV_KIT_LIBMPV_PATH`) |
+| `MediaKit.ensureInitialized()` | not needed (libmpv is located by `mpv_kit_libs` / `MPV_KIT_LIBMPV_PATH`; unlike media_kit's `LIBMPV_LIBRARY_PATH`, which silently falls back to the default library when its target fails to load, a failing `MPV_KIT_LIBMPV_PATH` or explicit `libraryPath` throws `MpvLibraryNotFound`) |
 | `Player(configuration: PlayerConfiguration(logLevel: …))` | `Player(options: {...})`, then `player.setLogLevel('warn')` |
 | `VideoController(player)` | `await MpvVideoController.create(player)` |
 | `Video(controller: c, controls: …)` | `MpvVideo(controller: c)` inside your own `Stack` for controls |

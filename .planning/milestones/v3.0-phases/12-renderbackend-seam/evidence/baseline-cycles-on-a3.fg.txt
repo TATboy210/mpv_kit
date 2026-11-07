@@ -1,0 +1,21 @@
+2026-10-26T11:04:47.940Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:04:50.286Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:04:52.526Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:04:54.720Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:04:56.906Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:04:59.074Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:01.263Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:03.429Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:05.628Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:07.831Z fg=TaskBarHero title="TaskBarHero" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:10.018Z fg=explorer title="Program Manager" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:12.205Z fg=explorer title="Program Manager" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T11:05:14.424Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,nowindow
+2026-10-26T11:05:16.666Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:18.863Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:21.040Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:23.225Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:25.434Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:27.602Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:29.778Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T11:05:31.956Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10

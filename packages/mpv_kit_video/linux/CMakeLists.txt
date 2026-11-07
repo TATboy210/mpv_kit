@@ -30,6 +30,7 @@ target_link_libraries(mpv_kit_volk PUBLIC ${CMAKE_DL_LIBS})
 add_library(${PLUGIN_NAME} SHARED
   "mpv_kit_video_plugin.cc"
   "gl_interop.cc"
+  "opengl_backend.cc"
   "${SHARED_SRC}/video_renderer.cc"
   "${SHARED_SRC}/vulkan_backend.cc"
 )

@@ -1,0 +1,58 @@
+host=MINGW64_NT-10.0-26300 mengyiyu002 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+cl=Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35229 for x64
+base=9cbc1e98355296f7edcac5a3fff4873d60d94249
+--- RED (swap_test tail check, renderer at base) ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100|GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=1 SWAP invariant scenario=fifo-repeat: probe line does not end with render=<ms>ms max_render=<ms>ms: mpv_kit: render waits avg/over 120 frames: prev=0.000052ms done=0.000043ms max_done=0.
+fault_test rc=0 GOLDEN ok scenarios=7|
+ALL rc=1
+red swap_test rc=1 failing=fifo-jitter,fifo-cap-drop-q2,fifo-cap-drop-q4,fifo-repeat
+--- GREEN run 1 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=999 backoff-ms=100 retry-ms=1099|GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+fault_test rc=0 GOLDEN ok scenarios=7|
+ALL rc=0
+--- GREEN run 2 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=999 backoff-ms=100 retry-ms=1100|GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+fault_test rc=0 GOLDEN ok scenarios=7|
+ALL rc=0
+--- golden-freeze-17 ---
+native/tests/renderer_harness.h: OK
+native/tests/video_renderer_golden_sw.cc: OK
+native/tests/video_renderer_golden_vk.cc: OK
+native/tests/golden/sw.txt: OK
+native/tests/golden/vk.txt: OK
+--- integration (debug plugin, asserts on) ---
+integration real_plugin_test=pass d3d11_backend_test=pass (rc 0/0)
+pubspec_porcelain=[]

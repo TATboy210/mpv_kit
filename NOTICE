@@ -2,12 +2,44 @@ mpv_kit licensing
 =================
 
 * packages/**, tools/**, example/**  — MIT (see LICENSE).
-* native/mpv/**  — mpv 0.41.0 source plus the mpv_kit patches in
-  native/patches/. mpv is GPLv2+, with most files available under
-  LGPLv2.1+ (see native/mpv/Copyright). mpv_kit's own additions to mpv
+
+* native/mpv/**  — mpv 0.42.0 source plus the mpv_kit patches in
+  native/patches/. mpv is GPLv2+; mpv_kit's own additions to mpv
   (render_vk.h is ISC like mpv's other public headers; libmpv_vk.c is
-  LGPLv2.1+).
-* Binaries distributed by mpv_kit are built with -Dgpl=false against an
-  LGPL FFmpeg and are dynamically linked, so applications using mpv_kit
-  are not subject to the GPL. The full corresponding source (mpv, patches,
-  build scripts, dependency versions) is this repository.
+  LGPLv2.1+; the stream bridge is LGPLv2.1+).
+
+* Binaries distributed by mpv_kit (v0.1.0-dev.10 and later) are built with
+  -Dgpl=true and include GPL-only components: libcdio/libcdio-paranoia
+  (GPL-3.0+), libdvdnav/libdvdread/libdvdcss (GPL-2.0+). The combined libmpv binary is
+  therefore distributed under **GPL-3.0-or-later**. An application that
+  ships this binary must be GPL-compatible and provide its own corresponding
+  source. The Dart packages themselves remain MIT.
+
+* The build scripts keep an LGPL flavor (`MPV_KIT_FLAVOR=lgpl`, which keeps
+  -Dgpl=false and omits the GPL disc libraries) for self-builders. The
+  release pipeline publishes only the GPL full flavor.
+
+* LGPL/license-compatible components in the full bundle: FFmpeg 8.1.3
+  (LGPL-2.1+), libbluray + libudfread (LGPL-2.1+), libaacs + libbdplus
+  (LGPL-2.1+), libgcrypt + libgpg-error (LGPL-2.1+), libplacebo (LGPL-2.1+),
+  libass and its text stack (ISC/BSD/MIT-style), and libcurl + nghttp2 +
+  mbedTLS + libxml2 (curl license / MIT / Apache-2.0 / MIT).
+
+* The Windows bundles additionally contain SPIRV-Cross (spirv-cross-c-shared)
+  and shaderc (shaderc_shared), plus the SPIRV-Tools, SPIRV-Headers and
+  glslang code linked into them. All are built from pinned source archives
+  by native/build/deps.sh; they are licensed under Apache-2.0 (SPIRV-Cross,
+  shaderc, SPIRV-Tools), an MIT-style license (SPIRV-Headers) or BSD/MIT-style
+  licenses (glslang). Their license texts are shipped in the bundle under
+  share/licenses/.
+
+* Corresponding source: this repository (mpv vendor, patches, build scripts)
+  plus the dependency URLs and sha256 pins in native/build/deps.sh. Release
+  archives carry `sources-<tag>.tar.gz`; each bundle carries `SOURCE.txt`
+  as the written offer. License texts are in `LICENSE.GPL`, `LICENSE.LGPL`
+  and the bundle's `share/licenses/` directory.
+
+* Legal note: libdvdcss (DVD CSS) and libaacs/libbdplus (AACS/BD+) are
+  included at the project owner's request. Their distribution or use may be
+  restricted in some jurisdictions; distributors are responsible for
+  compliance. Users must supply their own AACS/BD+ key database.

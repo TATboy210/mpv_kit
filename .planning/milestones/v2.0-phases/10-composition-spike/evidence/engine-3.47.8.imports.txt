@@ -1,0 +1,84 @@
+# Flutter 3.47.8 engine artifact — import table evidence
+
+Date (UTC): 2026-10-24
+Target: `D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll`
+sha256: `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170`
+Size: 46,636,544 bytes
+
+## Tools and commands
+
+Primary (`dumpbin`, MSVC 14.44.35229.0):
+
+```bash
+DUMPBIN="/d/vs community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/dumpbin.exe"
+MSYS_NO_PATHCONV=1 "$DUMPBIN" /dependents "$DLL"
+```
+
+Cross-check (in-repo, stdlib-only, never loads or executes the target):
+
+```bash
+python -I tools/rea_abi_audit/pe_audit.py "$DLL"
+# exports(mpv_*): 0  imports: 24
+# RESULT: PASS
+```
+
+String probes (ASCII and UTF-16LE):
+
+```bash
+grep -a -o -i -F "<name>" "$DLL" | wc -l
+python - "$DLL" "<name>" <<'PY'   # UTF-16LE count
+import sys
+d = open(sys.argv[1], 'rb').read()
+print(d.count(sys.argv[2].encode('utf-16-le')))
+PY
+```
+
+## Regular imports (24, verbatim from dumpbin)
+
+ADVAPI32.dll, IPHLPAPI.DLL, ole32.dll, OLEAUT32.dll, PSAPI.DLL, SHLWAPI.dll,
+RPCRT4.dll, WINMM.dll, WS2_32.dll, IMM32.dll, USER32.dll, OPENGL32.dll,
+bcrypt.dll, api-ms-win-core-path-l1-1-0.dll, ntdll.dll, GDI32.dll,
+KERNEL32.dll, CRYPT32.dll, UIAutomationCore.DLL, OLEACC.dll, PROPSYS.dll,
+dxgi.dll, d3d9.dll, api-ms-win-core-synch-l1-2-0.dll
+
+## Delay-load imports (2, verbatim from dumpbin)
+
+dwmapi.dll, dbghelp.dll
+
+## Per-name conclusions
+
+- `libEGL.dll: ABSENT` — not a regular import, not a delay-load import, and
+  absent as an ASCII string (0 hits) and as a UTF-16LE string (0 hits).
+- `libGLESv2.dll: ABSENT` — not a regular import, not a delay-load import,
+  absent as ASCII (0) and UTF-16LE (0).
+- `dxgi.dll: PRESENT` — regular import (also present as ASCII and UTF-16LE
+  strings).
+- `d3d11.dll: NOT IMPORTED (runtime-resolved by ANGLE rx::Renderer11)` —
+  absent from both import lists and from ASCII strings; present only once as a
+  UTF-16LE literal, consistent with `LoadLibrary(L"d3d11.dll")` at runtime.
+  Supporting strings: `Could not load D3D11 library` = 1,
+  `Could not retrieve D3D11CreateDevice address` = 1, `rx::Renderer11` = 13.
+- `OPENGL32.dll: PRESENT` — regular import (ASCII hits = 2).
+- `d3d9.dll: PRESENT` — regular import (ASCII = 1, UTF-16LE = 1).
+
+Relevant negative probes: `IDXGIKeyedMutex` = 0, `OpenSharedResource` = 0
+(both absent as ASCII; no evidence of a side-by-side ANGLE import naming
+these). `EGL_ANGLE_keyed_mutex` = 1 (present as an ASCII literal, i.e. the
+extension name string is compiled in).
+
+## What this means for fence / device-ownership work
+
+`ANGLE EGL/GLES: compiled into this PE`
+
+Concretely: ANGLE's EGL/GLES implementation is compiled into this PE. There is
+no side-by-side `libEGL.dll` / `libGLESv2.dll` to swap, inspect, or replace.
+Therefore the D3D11 interop synchronization semantics (fence, keyed mutex,
+device ownership) can only be explained from this PE plus ANGLE's public
+source; they cannot be isolated by "change one DLL and observe the
+difference". The workload implication is that the fence question is answered
+by decompiling the ANGLE paths inside `flutter_windows.dll` and correlating
+them with public ANGLE source, not by version-swapping an ANGLE binary.
+
+This settles the linkage question definitively (it was an inference in
+`10-RESEARCH.md` before the 3.47.8 delta). Fence and device-ownership
+semantics remain analysis work in Task 2 and Phase 11.

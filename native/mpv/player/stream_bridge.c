@@ -156,8 +156,11 @@ static int64_t bridge_seek(void *cookie, int64_t offset)
 {
     struct bridge_stream *s = cookie;
     int64_t pos = call_host(s->reg, s, MPV_KIT_STREAM_SEEK, NULL, offset, NULL);
-    return pos < 0 ? (pos == MPV_ERROR_UNSUPPORTED ? pos : MPV_ERROR_GENERIC)
-                   : pos;
+    if (pos < 0)
+        return pos == MPV_ERROR_UNSUPPORTED ? pos : MPV_ERROR_GENERIC;
+    // mpv assumes the stream is now at offset; a host that landed elsewhere
+    // (e.g. clamped to its size) would silently desynchronise reads.
+    return pos == offset ? pos : MPV_ERROR_GENERIC;
 }
 
 static int64_t bridge_size(void *cookie)
@@ -175,21 +178,26 @@ static void bridge_cancel(void *cookie)
     mp_mutex_unlock(&lock);
 }
 
-static void bridge_close(void *cookie)
+// Tells the host that its stream [id] is gone (no reply expected).
+static void notify_close(struct registration *reg, uint64_t id)
 {
-    struct bridge_stream *s = cookie;
-    struct registration *reg = s->reg;
     mp_mutex_lock(&lock);
     const bool notify = !reg->shutdown;
     if (notify)
         reg->calls++; // keeps shutdown from returning during the call
     mp_mutex_unlock(&lock);
     if (notify) {
-        reg->fn(reg->user_data, 0, MPV_KIT_STREAM_CLOSE, s->id, NULL, 0);
+        reg->fn(reg->user_data, 0, MPV_KIT_STREAM_CLOSE, id, NULL, 0);
         mp_mutex_lock(&lock);
         end_call(reg);
         mp_mutex_unlock(&lock);
     }
+}
+
+static void bridge_close(void *cookie)
+{
+    struct bridge_stream *s = cookie;
+    notify_close(s->reg, s->id);
     free(s);
 }
 
@@ -201,8 +209,12 @@ static int bridge_open(void *user_data, char *uri, mpv_stream_cb_info *info)
     if (id <= 0)
         return MPV_ERROR_LOADING_FAILED;
     struct bridge_stream *s = calloc(1, sizeof(*s));
-    if (!s)
-        return MPV_ERROR_NOMEM;
+    if (!s) {
+        // The host already opened its side: tell it, or the source leaks
+        // until shutdown.
+        notify_close(reg, (uint64_t)id);
+        return MPV_ERROR_LOADING_FAILED;
+    }
     s->reg = reg;
     s->id = (uint64_t)id;
     s->size = size;
