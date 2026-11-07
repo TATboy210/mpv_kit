@@ -141,8 +141,15 @@ autotools_build() {
     ./configure --prefix="$prefix" --libdir="$prefix/lib" \
       --disable-static --enable-shared --disable-dependency-tracking \
       --disable-nls "$@"
-    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-    make install
+    # Optional extra LIBS for the build/install phase only: configure's own
+    # link tests must not see them (see libgcrypt below).
+    local -a make_vars=()
+    if [ -n "${AUTOTOOLS_MAKE_LIBS:-}" ]; then
+      make_vars+=("LIBS=$AUTOTOOLS_MAKE_LIBS")
+    fi
+    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" \
+      ${make_vars[@]+"${make_vars[@]}"}
+    make install ${make_vars[@]+"${make_vars[@]}"}
   )
 }
 
@@ -333,19 +340,28 @@ license libgpg-error COPYING COPYING.LIB
 fetch libgcrypt https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.4.tar.bz2 \
   d77f68f48879510e79a2f65977ccc68981781ea0923e5bdffac2a193ea3d660e
 gcrypt_args=()
+gcrypt_libs=
 if [ "$os" = windows ]; then
   # MSYS2 CLANG64 cannot assemble libgcrypt's GAS sources; software AES is
   # plenty for AACS/BD+ key derivation.
   gcrypt_args+=(--disable-asm)
-  # libgpg-error builds a static-only archive on MinGW and libtool drops it
-  # from libgcrypt's shared link, so force the archive into the DLL.
-  LDFLAGS="-Wl,--whole-archive $nprefix/lib/libgpg-error.a -Wl,--no-whole-archive" \
-    autotools_build libgcrypt --disable-large-data-tests \
-      --disable-hmac-binary-check --disable-werror "${gcrypt_args[@]}"
-else
-  autotools_build libgcrypt --disable-large-data-tests \
-    --disable-hmac-binary-check --disable-werror
+  # libgpg-error builds a static-only archive on MinGW (its .la has no
+  # shared library_names), so libtool drops -lgpg-error from libgcrypt's
+  # shared link and ld.lld reports gpgrt_* as undefined. Passing the raw
+  # archive in LIBS bypasses libtool's .la handling; automake puts $(LIBS)
+  # after $(LIBADD), so the WinSock import library follows the archive.
+  # It must stay out of configure's link tests, hence AUTOTOOLS_MAKE_LIBS
+  # rather than LDFLAGS (a whole-archive there breaks every conftest link).
+  gcrypt_libs="$nprefix/lib/libgpg-error.a -lws2_32"
+elif [ "$os" = macos ] && [ "$(uname -m)" = arm64 ]; then
+  # libgcrypt's aarch64 GAS sources use ELF directives that Darwin's
+  # assembler rejects (GnuPG T5157); software AES is plenty for AACS/BD+.
+  gcrypt_args+=(--disable-asm)
 fi
+AUTOTOOLS_MAKE_LIBS="$gcrypt_libs" \
+  autotools_build libgcrypt --disable-large-data-tests \
+    --disable-hmac-binary-check --disable-werror \
+    ${gcrypt_args[@]+"${gcrypt_args[@]}"}
 license libgcrypt COPYING COPYING.LIB
 
 fetch libaacs https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2 \
@@ -386,12 +402,12 @@ fetch libdvdcss https://download.videolan.org/pub/videolan/libdvdcss/1.6.0/libdv
 meson_build libdvdcss -Denable_docs=false -Denable_examples=false
 license libdvdcss COPYING
 
-fetch libdvdread https://code.videolan.org/videolan/libdvdread/-/archive/v7.1.1/libdvdread-7.1.1.tar.bz2 \
+fetch libdvdread https://code.videolan.org/videolan/libdvdread/-/archive/7.1.1/libdvdread-7.1.1.tar.bz2 \
   6dec544f502d7af70c5a8f8f19a49ffe2daca60dbd8fc0b4ffe3597fa791c24c
 meson_build libdvdread -Denable_docs=false -Dlibdvdcss=enabled
 license libdvdread COPYING
 
-fetch libdvdnav https://code.videolan.org/videolan/libdvdnav/-/archive/v7.0.0/libdvdnav-7.0.0.tar.bz2 \
+fetch libdvdnav https://code.videolan.org/videolan/libdvdnav/-/archive/7.0.0/libdvdnav-7.0.0.tar.bz2 \
   1363cdfaf6e92c0b574579299b5480f5867fb32989451468a28f3f402ec48787
 meson_build libdvdnav -Denable_docs=false -Denable_examples=false
 license libdvdnav COPYING
