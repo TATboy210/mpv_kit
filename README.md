@@ -241,10 +241,11 @@ last 5 min 225.7 MiB) with the GPL-3.0+ full bundle. Before the cap the same
 run peaked at 294 MiB. The gate is 250 MiB.
 
 Linux/macOS 1080p memory is **not measured** (no real hardware here); do not
-infer it. The release packaging now strips Linux/macOS shared libraries at the
-bundle boundary; the 0.1.1 candidates carried 6.5–6.9 MiB (Linux) and ~1.1 MiB
-(macOS) of removable symbol/debug sections before that step. Method,
-attribution and residual unknowns:
+infer it. The release packaging strips Linux/macOS shared libraries at the
+bundle boundary: the P3 rebuild removed 6.5–6.8 MiB per Linux target and
+~0.47 MiB per macOS target (unpacked; compressed artifacts −2.8–2.9 MB and
+−0.1 MB). Windows was already stripped. Method, attribution and residual
+unknowns:
 [docs/perf/2026-11-07-1080p-memory.md](docs/perf/2026-11-07-1080p-memory.md).
 
 Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the

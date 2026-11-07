@@ -161,18 +161,22 @@ headless 对照显示 0.42 与 dev.9 的 demuxer/解码内存相同（338.4 vs 3
   本机无 clang/meson。
 - macOS `MetalVulkanBackend` 纯转发层：macOS-only，无真机验证。
 
-### P3 — 构建体积（已实现安全项，待发布 CI 验证）
+### P3 — 构建体积（已通过 P3 CI）
 
 - D4；六目标解包与压缩体积均 ≤ dev.10。
 - `pe_audit.py --forbid-gpl` / `--forbid-angle`、smoke、ABI 审计保持绿；不改网络/decoder/demuxer/BSF/图形后端。
 
-**已实现（待一次 release CI 重新打包确认）：**
+**已实现并通过 P3 CI（run `42348986527`，六目标全绿）：**
 - `package.sh` 在 Linux 打包边界执行 `strip --strip-unneeded lib/*.so*`；
   macOS 在 `codesign` 之前执行 `strip -x lib/*.dylib`。
-- 依据：P0 候选的 Linux bundle 仍带 6.5–6.9 MiB `.symtab`/`.debug_*`
-  （主要是 libgcrypt 5.2 MiB debug + libcdio/libaacs/libbdplus），
-  macOS ~1.1 MiB；Windows 已 strip（0）。
-- 预期：Linux 每目标 −6.5–6.9 MiB，macOS −~1.1 MiB。
+- 实测（解包 `lib/`，P0 → P3）：
+  linux-x64 46.89 → 40.38 MiB（−6.51）；linux-arm64 42.61 → 35.79（−6.82）；
+  macos-x64 42.88 → 42.41（−0.47）；macos-arm64 37.64 → 37.17（−0.47）；
+  windows-x64/arm64 不变。
+- 压缩 artifact：linux-x64 −2.83 MB、linux-arm64 −2.89 MB、
+  macos-x64/arm64 各 −0.10 MB。
+- Linux 的 `.symtab`/debug 已全部清除；macOS `strip -x` 保留 0.62 MiB
+  外部符号表（安全，dylib 链接需要）。
 - **未做 LTO**：需要完整构建与性能回归，风险/收益不匹配；留待 0.1.2。
 - Windows 的 `libaacs.dll`/`libaacs-0.dll` 等重复不是冗余：libbluray 通过
   bare name `dlopen`，`package.sh` 显式复制为别名；不删除。

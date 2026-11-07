@@ -4,8 +4,10 @@
   boundary (`strip --strip-unneeded` on Linux, `strip -x` before `codesign`
   on macOS). The 0.1.1 candidates still carried 6.5–6.9 MiB (Linux) and
   ~1.1 MiB (macOS) of removable symbol/debug sections; Windows was already
-  stripped. No library version, feature set or license change; the
-  GPL-3.0+ full bundle and the six-target contract are unchanged.
+  stripped. The P3 rebuild is 6.5–6.8 MiB (Linux) and ~0.47 MiB (macOS)
+  smaller unpacked; compressed artifacts shrank by 2.8–2.9 MB and ~0.1 MB.
+  No library version, feature set or license change; the GPL-3.0+ full
+  bundle and the six-target contract are unchanged.
 
 ## 0.1.0-dev.10
 

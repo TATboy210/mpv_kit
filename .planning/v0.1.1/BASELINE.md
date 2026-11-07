@@ -98,10 +98,14 @@ Compressed artifact sizes: windows-x64 26.75 MB, windows-arm64 24.89 MB,
 linux-x64 21.23 MB, linux-arm64 20.55 MB, macos-x64 19.41 MB,
 macos-arm64 17.77 MB.
 
-**Strip check (2026-11-07):** the Linux candidates still carry 6.5–6.9 MiB of
-`.symtab` / `.debug_*` (libgcrypt ~5.2 MiB debug, plus libcdio/libaacs/libbdplus),
-macOS ~1.1 MiB (libplacebo/libxml2/etc.), Windows 0. `package.sh` now strips at
-the packaging boundary (Linux `--strip-unneeded`, macOS `-x` before codesign).
+**Strip check (2026-11-07):** the pre-strip Linux candidates carried 6.5–6.9 MiB
+of `.symtab` / `.debug_*` (libgcrypt ~5.2 MiB debug, plus libcdio/libaacs/
+libbdplus), macOS ~1.1 MiB (libplacebo/libxml2/etc.), Windows 0. `package.sh`
+strips at the packaging boundary (Linux `--strip-unneeded`, macOS `-x` before
+codesign). **P3 rebuild (run `42348986527`):** linux-x64 46.89 → 40.38 MiB,
+linux-arm64 42.61 → 35.79, macos-x64 42.88 → 42.41, macos-arm64 37.64 → 37.17;
+Windows unchanged. Linux has no removable symbols left; macOS keeps ~0.62 MiB
+of external symbols needed by dylib linking.
 
 Notes:
 - GPL full disc/network stack is a user decision; `libgcrypt` (~6.3 MiB) and the

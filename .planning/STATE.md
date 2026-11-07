@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v0.1.1
 milestone_name: 简化与低内存（1080p <250MB）
-current_phase: 4
-current_phase_name: API/文档/CHANGELOG
+current_phase: 5
+current_phase_name: 发布 0.1.1
 status: in_progress
 stopped_at: null
-last_updated: "2026-11-07T06:45:39Z"
+last_updated: "2026-11-07T07:29:30Z"
 last_activity: 2026-11-07
-last_activity_desc: P4 完成：README/perf 文档/三包 CHANGELOG；一致性检查全绿；零新增 API
-state_head: 89761501b5eb82328932a52f72ef7b7c1a9f7d3f
+last_activity_desc: P3 CI 通过（run 42348986527）；六目标体积达标（Linux −6.5/−6.8 MiB）；P5 待发布
+state_head: 95e4a94a9d2dd8ec3a30f93a506dc8b53a635a5a
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 0
   completed_plans: 0
-  percent: 67
+  percent: 83
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-07)
 
 **Core value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
-**Current focus:** P4 — API/文档/CHANGELOG（已完成）；下一步 P5 发布 0.1.1
+**Current focus:** P5 — 发布 0.1.1（版本 bump、发布前 CI、GitHub Release + pin、pub.dev）
 
 ## Current Position
 
-Phase: P4 (5/6 phases; P0–P4 complete, P5 release remains)
+Phase: P5 (6/6 phases; P0–P4 complete, release remains)
 Plan: `.planning/v0.1.1/PLAN.md`（已批准）
-Status: Docs complete — 下一步 P5 发布；P0 硬门禁已通过，P3 strip 待发布 CI 验证
-Last activity: 2026-11-07 — README/perf 文档/三包 CHANGELOG 完成；一致性检查全绿；零新增 API
+Status: P3 CI green — 六目标体积达标；等待 P5 发布批准
+Last activity: 2026-11-07 — P3 CI 通过；Linux −6.5/−6.8 MiB、macOS −0.47 MiB；PR 17/17 全绿
 
-Progress: [████░░░░░░] 67% (4/6 phases)
+Progress: [█████░░░░░] 83% (5/6 phases)
 
 
 ## Performance Metrics
