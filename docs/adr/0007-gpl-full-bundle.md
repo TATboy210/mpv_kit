@@ -13,7 +13,7 @@ and VCD (DAT files only; mpv has no `vcd://` module).
 
 * mpv gates CD-DA (`cdda`), DVD-Video (`dvdnav`) and DVD-Audio (`dvda`)
   behind `-Dgpl=true` (`native/mpv/meson.build`).
-* The implementations are GPL: libcdio (GPL-3.0+),
+* The implementations are GPL: libcdio/libcdio-paranoia (GPL-3.0+),
   libdvdnav/libdvdread/libdvdcss (GPL-2.0+). There is no maintained
   permissive-licensed DVD navigation library; libbluray is LGPL but only
   handles Blu-ray.
@@ -24,8 +24,8 @@ and VCD (DAT files only; mpv has no `vcd://` module).
 ## Decision
 
 * The released native bundle is the **GPL-3.0-or-later full flavor**:
-  mpv is built with `-Dgpl=true` and links libcdio, libdvdnav, libdvdread,
-  libdvdcss, libbluray, libudfread, libaacs, libbdplus. FFmpeg stays LGPL;
+  mpv is built with `-Dgpl=true` and links libcdio/libcdio-paranoia,
+  libdvdnav, libdvdread, libdvdcss, libbluray, libudfread, libaacs, libbdplus. FFmpeg stays LGPL;
   the combined binary is GPLv3 because libcdio is GPLv3.
 * The Dart packages remain MIT. Applications that ship the bundle must be
   GPL-compatible and provide their corresponding source.

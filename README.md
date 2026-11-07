@@ -276,8 +276,9 @@ source. Closed-source applications can build the LGPL flavor themselves
 (`MPV_KIT_FLAVOR=lgpl`) and load it with `MPV_KIT_LIBMPV_PATH` or the
 `libmpv_bundle` user define.
 
-* **Why GPL:** CD-DA and DVD need libcdio (GPL-3.0+), libdvdnav/libdvdread/
-  libdvdcss (GPL-2.0+), and mpv gates them behind `-Dgpl=true`. Blu-ray/UHD
+* **Why GPL:** CD-DA and DVD need libcdio/libcdio-paranoia (GPL-3.0+),
+  libdvdnav/libdvdread/libdvdcss (GPL-2.0+), and mpv gates them behind
+  `-Dgpl=true`. Blu-ray/UHD
   HDMV uses libbluray/libudfread (LGPL-2.1+) plus optional AACS/BD+ helpers
   (libaacs/libbdplus) that are loaded at runtime.
 * **FFmpeg** 8.1.3 remains an LGPL build: it is built from the sha256-pinned

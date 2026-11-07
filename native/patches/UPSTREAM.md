@@ -84,6 +84,7 @@ runtime efficiency and stability in mpv_kit, not upstream acceptability.
 ## License
 
 0.1.0-dev.10 switches the distributed bundle to **GPL full**:
-`-Dgpl=true` plus libcdio/libdvdnav/libdvdread/libdvdcss for CD and DVD,
+`-Dgpl=true` plus libcdio/libcdio-paranoia/libdvdnav/libdvdread/libdvdcss
+for CD and DVD,
 and libbluray/libaacs/libbdplus for Blu-ray/UHD HDMV. See `NOTICE`,
 `docs/adr/0007-gpl-full-bundle.md` and `README.md`.

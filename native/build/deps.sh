@@ -36,6 +36,16 @@ case "$(uname -s)" in
   *) echo "unsupported host $(uname -s)" >&2; exit 1 ;;
 esac
 
+if [ "$os" = windows ]; then
+  # libtool's MinGW file-magic dependency check misclassifies the WinSock
+  # import library and drops -lws2_32 from every link; with -no-undefined
+  # libtool then silently falls back to a static-only library (observed for
+  # libgpg-error and libgcrypt), leaving their consumers with undefined
+  # gpgrt_*/gcry_*/WinSock symbols. pass_all keeps each -l dependency and
+  # produces real DLLs.
+  export lt_cv_deplibs_check_method=pass_all
+fi
+
 cmake_extra=()
 if [ "$os" = macos ]; then
   export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-12.0}
@@ -141,15 +151,8 @@ autotools_build() {
     ./configure --prefix="$prefix" --libdir="$prefix/lib" \
       --disable-static --enable-shared --disable-dependency-tracking \
       --disable-nls "$@"
-    # Optional extra LIBS for the build/install phase only: configure's own
-    # link tests must not see them (see libgcrypt below).
-    local -a make_vars=()
-    if [ -n "${AUTOTOOLS_MAKE_LIBS:-}" ]; then
-      make_vars+=("LIBS=$AUTOTOOLS_MAKE_LIBS")
-    fi
-    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" \
-      ${make_vars[@]+"${make_vars[@]}"}
-    make install ${make_vars[@]+"${make_vars[@]}"}
+    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+    make install
   )
 }
 
@@ -340,28 +343,18 @@ license libgpg-error COPYING COPYING.LIB
 fetch libgcrypt https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.4.tar.bz2 \
   d77f68f48879510e79a2f65977ccc68981781ea0923e5bdffac2a193ea3d660e
 gcrypt_args=()
-gcrypt_libs=
 if [ "$os" = windows ]; then
   # MSYS2 CLANG64 cannot assemble libgcrypt's GAS sources; software AES is
   # plenty for AACS/BD+ key derivation.
   gcrypt_args+=(--disable-asm)
-  # libgpg-error builds a static-only archive on MinGW (its .la has no
-  # shared library_names), so libtool drops -lgpg-error from libgcrypt's
-  # shared link and ld.lld reports gpgrt_* as undefined. Passing the raw
-  # archive in LIBS bypasses libtool's .la handling; automake puts $(LIBS)
-  # after $(LIBADD), so the WinSock import library follows the archive.
-  # It must stay out of configure's link tests, hence AUTOTOOLS_MAKE_LIBS
-  # rather than LDFLAGS (a whole-archive there breaks every conftest link).
-  gcrypt_libs="$nprefix/lib/libgpg-error.a -lws2_32"
 elif [ "$os" = macos ] && [ "$(uname -m)" = arm64 ]; then
   # libgcrypt's aarch64 GAS sources use ELF directives that Darwin's
   # assembler rejects (GnuPG T5157); software AES is plenty for AACS/BD+.
   gcrypt_args+=(--disable-asm)
 fi
-AUTOTOOLS_MAKE_LIBS="$gcrypt_libs" \
-  autotools_build libgcrypt --disable-large-data-tests \
-    --disable-hmac-binary-check --disable-werror \
-    ${gcrypt_args[@]+"${gcrypt_args[@]}"}
+autotools_build libgcrypt --disable-large-data-tests \
+  --disable-hmac-binary-check --disable-werror \
+  ${gcrypt_args[@]+"${gcrypt_args[@]}"}
 license libgcrypt COPYING COPYING.LIB
 
 fetch libaacs https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2 \
@@ -414,9 +407,27 @@ license libdvdnav COPYING
 
 fetch libcdio https://github.com/libcdio/libcdio/releases/download/2.3.0/libcdio-2.3.0.tar.bz2 \
   53e83d284667535a767fd2d31edad1a6701591960459df373a10f1f21e80a7ed
-autotools_build libcdio --disable-cxx --disable-cpp-progs \
-  --disable-example-progs --disable-vcd-info
+cdio_args=(--disable-cxx --disable-cpp-progs --disable-example-progs
+  --disable-vcd-info)
+if [ "$os" = windows ]; then
+  # clang links with ld.lld, which has no --version-script, but configure
+  # misdetects GNU ld and would add it to the DLL link.
+  cdio_args+=(--without-versioned-libs)
+fi
+autotools_build libcdio "${cdio_args[@]}"
 license libcdio COPYING
+
+# mpv's cdda option needs both libcdio and libcdio_paranoia.
+fetch libcdio-paranoia \
+  "https://github.com/libcdio/libcdio-paranoia/releases/download/release-10.2%2B2.0.2/libcdio-paranoia-10.2%2B2.0.2.tar.gz" \
+  99488b8b678f497cb2e2f4a1a9ab4a6329c7e2537a366d5e4fef47df52907ff6
+paranoia_args=(--disable-cxx --disable-cpp-progs --disable-example-progs
+  --disable-ld-version-script)
+if [ "$os" = windows ]; then
+  paranoia_args+=(--without-versioned-libs)
+fi
+autotools_build libcdio-paranoia "${paranoia_args[@]}"
+license libcdio-paranoia COPYING
 
 # --- HTTP/2 stream backend (curl, HTTP/2 only) -----------------------------
 fetch mbedtls https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2 \

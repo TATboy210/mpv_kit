@@ -9,8 +9,8 @@ mpv_kit licensing
   LGPLv2.1+; the stream bridge is LGPLv2.1+).
 
 * Binaries distributed by mpv_kit (v0.1.0-dev.10 and later) are built with
-  -Dgpl=true and include GPL-only components: libcdio (GPL-3.0+),
-  libdvdnav/libdvdread/libdvdcss (GPL-2.0+). The combined libmpv binary is
+  -Dgpl=true and include GPL-only components: libcdio/libcdio-paranoia
+  (GPL-3.0+), libdvdnav/libdvdread/libdvdcss (GPL-2.0+). The combined libmpv binary is
   therefore distributed under **GPL-3.0-or-later**. An application that
   ships this binary must be GPL-compatible and provide its own corresponding
   source. The Dart packages themselves remain MIT.
