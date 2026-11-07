@@ -98,6 +98,10 @@ case "$(uname -s)" in
       [ -n "$f" ] && cp -L "$f" "$out/lib/$(basename "$f")"
     done
     for f in "$out"/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f"; done
+    # FFmpeg and the autotools disc/crypto stack install with .symtab and
+    # debug sections; the P0 candidate carried ~6.5 MiB of them per target.
+    # --strip-unneeded keeps .dynsym and the dynamic sections intact.
+    strip --strip-unneeded "$out"/lib/*.so*
     ;;
   Darwin)
     require_prefix_avcodec "$(otool -L "$prefix/lib/libmpv.2.dylib")" "$prefix"
@@ -142,6 +146,10 @@ case "$(uname -s)" in
         exit 1
       fi
     done
+    # FFmpeg/libplacebo/libxml2 install with a local symbol table; the P0
+    # candidate carried ~1.1 MiB. -x strips local symbols only, keeping
+    # external symbols and the install names rewritten above.
+    strip -x "$out"/lib/*.dylib
     # install_name_tool invalidates signatures; arm64 refuses unsigned code.
     codesign --force --sign - "$out"/lib/*.dylib
     ;;

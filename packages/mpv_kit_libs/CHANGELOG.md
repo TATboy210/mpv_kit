@@ -1,3 +1,12 @@
+## 0.1.1
+
+- Packaging now strips Linux and macOS shared libraries at the bundle
+  boundary (`strip --strip-unneeded` on Linux, `strip -x` before `codesign`
+  on macOS). The 0.1.1 candidates still carried 6.5–6.9 MiB (Linux) and
+  ~1.1 MiB (macOS) of removable symbol/debug sections; Windows was already
+  stripped. No library version, feature set or license change; the
+  GPL-3.0+ full bundle and the six-target contract are unchanged.
+
 ## 0.1.0-dev.10
 
 - The released bundle is now the **GPL-3.0-or-later full flavor**: mpv 0.42.0,
