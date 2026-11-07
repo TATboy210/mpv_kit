@@ -421,10 +421,11 @@ license libcdio COPYING
 fetch libcdio-paranoia \
   "https://github.com/libcdio/libcdio-paranoia/releases/download/release-10.2%2B2.0.2/libcdio-paranoia-10.2%2B2.0.2.tar.gz" \
   99488b8b678f497cb2e2f4a1a9ab4a6329c7e2537a366d5e4fef47df52907ff6
-paranoia_args=(--disable-cxx --disable-cpp-progs --disable-example-progs
-  --disable-ld-version-script)
+paranoia_args=(--disable-cxx --disable-cpp-progs --disable-example-progs)
 if [ "$os" = windows ]; then
-  paranoia_args+=(--without-versioned-libs)
+  # Symbol versioning breaks on lld (no --version-script); elsewhere it
+  # must stay on so distro FFmpeg's @CDIO_PARANOIA_2 references resolve.
+  paranoia_args+=(--without-versioned-libs --disable-ld-version-script)
 fi
 autotools_build libcdio-paranoia "${paranoia_args[@]}"
 license libcdio-paranoia COPYING
