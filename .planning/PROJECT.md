@@ -8,7 +8,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
-## Current Milestone: v0.1.1 简化与低内存（0.1.1）
+## Last Milestone: v0.1.1 简化与低内存（shipped 2026-11-07）
 
 **Goal:** 在不破坏公共 API 与零拷贝渲染路径的前提下，先测量、后删除/合并冗余，降低 1080p 运行内存与 bundle 体积，发布 0.1.1。
 
@@ -40,7 +40,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 **未验证 / 已知限制：** 真实 Linux GPU（NVIDIA/AMD/Intel、Wayland、GL device loss）与真实 Apple GPU 无证据；GTX 960M 上 d3d11 有效丢帧约 3.5% 对 Vulkan 约 0.5%（原因未解释）；d3d11 在示例窗口被遮挡时 4K 偶有少量 VO 丢帧；d05 像素探针 0.0 / 第二控制器首帧停滞（RBE-01 人工项）仍未定位。
 
-**Next milestone:** v0.1.1 简化与低内存（见 Current Milestone；取代 v3.1）。
+**Next milestone:** TBD（v0.1.2 候选：原生分配模板去冗、LTO、mpv #15099 跟踪）。
 
 ## Previous State (after v2.0 close-out, 2026-10-25)
 

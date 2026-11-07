@@ -13,8 +13,8 @@ HDMV — plus the libcurl HTTP/2 backend.
 
 ```yaml
 dependencies:
-  mpv_kit: ^0.1.0-dev.10
-  mpv_kit_libs: ^0.1.0-dev.10
+  mpv_kit: ^0.1.1
+  mpv_kit_libs: ^0.1.1
 ```
 
 The package's build hook downloads the release bundle for the target

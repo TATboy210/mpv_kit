@@ -46,6 +46,10 @@ void main() {
 
   // --- mpv version mentions ---
   final readme = read('README.md');
+  // The project's own package version is not an mpv version.
+  final ownVersion = RegExp(r'^version:\s*(\S+)', multiLine: true)
+      .firstMatch(read('packages/mpv_kit/pubspec.yaml'))
+      ?.group(1);
   expectContains('mpv-version-readme-exact', readme, mpvVersion, 'README.md');
   expectContains('mpv-version-readme-base', readme, mpvUpToMinor, 'README.md');
   final architecture = read('docs/ARCHITECTURE.md');
@@ -59,8 +63,9 @@ void main() {
   final readmeHeader = readme.split(newline).take(30).join(newline);
   for (final m in mpvVersionPattern.allMatches(readmeHeader)) {
     final v = m.group(0)!;
-    // Skip mpv_kit's own package versions (`^0.1.0-dev.3`, `0.1.0-dev.3`):
-    // they continue with "-dev.", a scheme libmpv stamps never use.
+    // Skip mpv_kit's own package version (`^0.1.1`, `0.1.1`) and any
+    // version that continues with "-dev.", a scheme libmpv stamps never use.
+    if (v == ownVersion) continue;
     final end = m.end;
     if (readmeHeader.length >= end + 5 &&
         readmeHeader.substring(end, end + 5) == '-dev.') {

@@ -6,9 +6,9 @@
 - ✅ **v2.0 GPU-Next Optimization & Full-Rate UHD** — Phases 7-11 (closed 2026-10-25; 6/10 requirements delivered, 4 deferred)
 - ✅ **v3.0 统一渲染生命周期与平台原生图形后端** — Phases 12-17.1 (shipped 2026-10-31; 29/31 requirements delivered; GitHub Release v0.1.0-dev.4, pub.dev 0.1.0-dev.4)
 - ⛔ **v3.1 依赖内存、体积与 API 优化** — Phases 18-22（**已被 v0.1.1 取代，2026-11-07；不执行**；保留为历史）
-- 🚧 **v0.1.1 简化与低内存** — Phases P0-P5 (in progress, started 2026-11-07; 目标版本 0.1.1; 详见 `.planning/v0.1.1/PLAN.md`)
+- ✅ **v0.1.1 简化与低内存** — Phases P0-P5 (shipped 2026-11-07; GitHub Release `v0.1.1`; pub.dev 0.1.1; 详见 `.planning/v0.1.1/PLAN.md`)
 
-## 🚧 v0.1.1 简化与低内存
+## ✅ v0.1.1 简化与低内存（已发布 2026-11-07）
 
 **Milestone Goal:** 在不破坏现有公共 API 与零拷贝渲染路径的前提下，先测量、后删除/合并冗余，降低 1080p 运行内存与 bundle 体积，发布 0.1.1。
 
@@ -23,6 +23,8 @@
 - **P5 发布 0.1.1** — 发布前一次 CI、GitHub Release + pin、pub.dev（逐次批准）
 
 **Canonical plan:** `.planning/v0.1.1/PLAN.md`
+
+**Closeout:** 1080p example Working Set 294.1 → 234.0 MiB (gate 250); Linux bundles −6.5/−6.8 MiB, macOS −0.47 MiB; PR 17/17; tag release run `42353713357`; pin commit `55f2556`.
 
 ## Phases
 
