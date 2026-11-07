@@ -317,12 +317,7 @@ class OpenGLBackend final : public RenderBackend {
   std::string device_name() const override { return device_name_; }
   std::string RendererName(const MpvApi& api,
                            mpv_render_context* ctx) const override {
-    // Ask mpv which renderer it really built, as the Vulkan backend does
-    // (the parameter name is historical; it reports vo_gpu's renderer too).
-    const char* active = nullptr;
-    const int info = api.render_context_get_info(
-        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
-    return info >= 0 && active ? active : "unknown renderer";
+    return ActiveRendererName(api, ctx);
   }
 
   bool AllocTargets(int count, int width, int height, int keep_slot,

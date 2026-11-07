@@ -1,3 +1,8 @@
+## 0.1.1
+
+- Internal: the three identical backend `RendererName` implementations now
+  share `ActiveRendererName`. No API or rendering behavior change.
+
 ## 0.1.0-dev.10
 
 - Bundled libmpv moved to **mpv 0.42.0** (client API 2.6) and libplacebo

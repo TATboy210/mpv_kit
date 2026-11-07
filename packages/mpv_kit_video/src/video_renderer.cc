@@ -1,11 +1,20 @@
 #include "video_renderer.h"
 
+#include <mpv/render_vk.h>  // MPV_RENDER_PARAM_VULKAN_RENDERER
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 
 namespace mpv_kit {
+
+std::string ActiveRendererName(const MpvApi& api, mpv_render_context* ctx) {
+  const char* active = nullptr;
+  const int info = api.render_context_get_info(
+      ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+  return info >= 0 && active ? active : "unknown renderer";
+}
 
 // Reason grammar (docs/adr/0004-render-backend-reporting.md, Decision 3):
 //   reason = head *( "; " trail )

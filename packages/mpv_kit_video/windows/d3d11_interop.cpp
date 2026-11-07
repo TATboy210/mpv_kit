@@ -2,8 +2,6 @@
 
 #include "d3d11_backend.h"
 
-#include "d3d11_backend.h"
-
 #include <cstring>
 #include <cstdio>
 #include <string>

@@ -208,6 +208,12 @@ class VulkanInterop;  // vulkan_backend.h
 /// platform compositor through [interop] (vulkan_backend.cc).
 std::unique_ptr<RenderBackend> CreateVulkanBackend(VulkanInterop* interop);
 
+/// Asks mpv which renderer it actually built (gpu-next/gpu/...). A libmpv
+/// without the renderer parameter ignores it and always uses its default.
+/// The parameter name is historical; it reports vo_gpu's renderer too.
+/// Defined in video_renderer.cc so this header stays free of Vulkan headers.
+std::string ActiveRendererName(const MpvApi& api, mpv_render_context* ctx);
+
 /// Makes a driver/mpv-supplied string safe inside a reason field
 /// (docs/adr/0004-render-backend-reporting.md): `;` would split a trail and
 /// control characters would break the one-line form.

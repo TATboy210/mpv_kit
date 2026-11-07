@@ -257,12 +257,7 @@ class D3D11RenderBackend final : public RenderBackend {
   std::string device_name() const override { return device_name_; }
   std::string RendererName(const MpvApi& api,
                            mpv_render_context* ctx) const override {
-    // Ask mpv which renderer it really built: a libmpv without the renderer
-    // parameter ignores it and always uses its default.
-    const char* active = nullptr;
-    const int info = api.render_context_get_info(
-        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
-    return info >= 0 && active ? active : "unknown renderer";
+    return ActiveRendererName(api, ctx);
   }
 
   bool keeps_retired_front() const override { return true; }

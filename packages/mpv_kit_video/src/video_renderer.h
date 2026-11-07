@@ -55,8 +55,6 @@ struct Frame {
   void* release_context = nullptr;
 };
 
-class VulkanInterop;  // vulkan_backend.h
-
 /// Implemented per platform.
 class Interop {
  public:
