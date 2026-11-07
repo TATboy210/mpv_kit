@@ -23,7 +23,7 @@ D:\mpv_kit\
 │   └── mpv_kit_libs/              ← native-assets build hook:下载/校验 libmpv bundle
 │
 ├── native/                        ← C 层世界(补丁 + 构建 + 冒烟)
-│   ├── mpv/                       ← vendored mpv 0.41.0-1113 源码树 + 7 补丁(836+ 文件)
+│   ├── mpv/                       ← vendored mpv 0.42.0 源码树 + 7 补丁(905 文件)
 │   ├── patches/                   ← 7 个 .patch 存档 + UPSTREAM.md(上游关系台账)
 │   ├── build/                     ← build.sh / deps.sh / ffmpeg.sh / package.sh(LGPL 管线)
 │   ├── tests/                     ← render_vk_smoke.c、stream_bridge_test.c(C 冒烟)
@@ -151,7 +151,7 @@ MpvVideo widget              └──────────┬─────
 
 ---
 
-# 第二部分:mpv 源码树(0.41.0-1113,vendored 于 `native/mpv`)
+# 第二部分:mpv 源码树(0.42.0,vendored 于 `native/mpv`)
 
 ## 2.1 全模块地图(目录 → 文件数/代码行;★ = mpv_kit 补丁触碰)
 
@@ -373,7 +373,7 @@ video/out\
                                                            时 cfstr_get_cstr
                                                            NULL 调用修复
 ─────────────────────────────────────────────────────────────────────────────
-基线本身(0.41.0-1113)带来的 4K 收益(非补丁,随上游获得):
+基线本身(0.42.0,累积自 0.41.0 系列)带来的 4K 收益(非补丁,随上游获得):
   packet_pool GC / hwdec-extra-frames=auto / seek 等关键帧≤96 /
   demuxer-hysteresis-bytes / mkv seek 纠偏 / wasapi 重试修复 /
   display-sync 音频低通+自适应 slew / d3d11va 格式扩展
@@ -386,7 +386,7 @@ video/out\
    │
    │ Dart: Player.open(path)
    ▼
- mpv_kit (Dart)          mpv (C, 0.41.0-1113)                    GPU (RTX 4060)
+ mpv_kit (Dart)          mpv (C, 0.42.0)                         GPU (RTX 4060)
  ─────────────          ─────────────────────                   ──────────────
  stream_bridge?──┐
  (仅 Dart 流协议) │
@@ -428,7 +428,7 @@ video/out\
 
 ## 规模总结
 
-mpv_kit 自有代码 ≈ Dart 13.9k 行 + C++/ObjC 渲染桥 ≈ 1.5k 行 + 7 补丁 1.85k 行;
+mpv_kit 自有代码 ≈ Dart 13.9k 行 + C++/ObjC 渲染桥 ≈ 1.5k 行 + 7 补丁 ≈1.65k 增行;
 mpv 基线 ≈ 142k 行 C。mpv_kit 实际依赖并激活的渲染面 =
 `vo.c → vo_gpu_next.c → ra_pl.c → vulkan/{context,libmpv_vk}.c → hwdec_vulkan.c`,
 其余(vo_gpu/gl/d3d11/opengl、discnav、脚本引擎等)在 LGPL 构建里被显式禁用。

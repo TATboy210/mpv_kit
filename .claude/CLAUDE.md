@@ -4,7 +4,7 @@
 
 **mpv_kit**
 
-libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 通过 Vulkan 把 mpv 画面零拷贝渲染到 Flutter 纹理，`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 LGPL libmpv。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
+libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客户端 API 与高层 `Player`，`mpv_kit_video` 通过 Vulkan 把 mpv 画面零拷贝渲染到 Flutter 纹理，`mpv_kit_libs` 以构建钩子分发 sha256 校验过的 libmpv（默认 GPL-3.0+ full，自建可选 LGPL）。面向需要在 Windows、Linux、macOS 的 x64 与 arm64 上做高质量本地播放的 Flutter 应用。
 
 **Core Value:** 以尽可能小的源码改动，换取可验证的稳定性与 4K/8K UHD 长时间满帧播放能力——不崩溃、不泄漏、不积压。
 
@@ -14,7 +14,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - **API**: 公共 API 冻结，不新增、不破坏。
 - **Change size**: 每项改动尽量小、可独立回滚；拒绝大范围重写。
 - **Platform**: 不做移动端与 web。
-- **License**: libmpv/FFmpeg 保持 LGPL，禁止 GPL/nonfree 依赖进入 bundle。
+- **License**: FFmpeg 保持 LGPL 构建；默认发布 bundle 为 GPL-3.0+ full（ADR 0007），自建可用 `MPV_KIT_FLAVOR=lgpl`；禁止 nonfree 依赖进入 bundle。
 - **Verification**: 真实插件行为必须在 CI runner 上验证；mock channel 不能替代。
 
 <!-- GSD:project-end -->
@@ -38,7 +38,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 - Dart VM, plus the Flutter engine on the consumer side (`flutter: ">=3.38.0"` in `packages/mpv_kit_video/pubspec.yaml`).
 - CI pins `FLUTTER_VERSION: 3.47.6` in `.github/workflows/flutter-plugin.yml`.
-- Native runtime target: libmpv 0.41.0 (`native/mpv/MPV_VERSION`: `v0.41.0-1113-gfd9265a905`), client API 2.5, loaded into the process once by `MpvLibrary.open` (`packages/mpv_kit/lib/src/ffi/library.dart`).
+- Native runtime target: libmpv 0.42.0 (`native/mpv/MPV_VERSION`: `0.42.0`), client API 2.6, loaded into the process once by `MpvLibrary.open` (`packages/mpv_kit/lib/src/ffi/library.dart`).
 - Supported OS baselines (from `.github/workflows/release.yml` and `README.md`): Windows 10+ (UCRT), macOS 12+, Linux glibc 2.35+; x64 and arm64.
 - Dart `pub` with a single pub workspace: root `pubspec.yaml` lists `packages/mpv_kit`, `packages/mpv_kit_libs`, `packages/mpv_kit_video`, `example`. Each member sets `resolution: workspace`.
 - Lockfile: `pubspec.lock` present at the repo root, but listed in `.gitignore`; resolved versions are not committed.
@@ -49,8 +49,8 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - Flutter plugin API — `packages/mpv_kit_video/pubspec.yaml` declares Windows (`MpvKitVideoPluginCApi`), Linux (`MpvKitVideoPlugin`), macOS (`MpvKitVideoPlugin`).
 - `dart:ffi` — all libmpv calls in `packages/mpv_kit/lib/src/ffi/bindings.dart` (hand-written, 54 exported symbols, not ffigen-generated), event delivery via `NativeCallable.listener`.
 - Dart native assets — build hook in `packages/mpv_kit_libs/hook/build.dart` using `code_assets` 2.1.0 and `hooks` 2.2.0.
-- libmpv 0.41.0 (client API 2.5) with seven downstream patches in `native/patches/` (Vulkan VO backend, hwdec device extensions, persistent shader cache, gpu-next Vulkan backend, active-renderer report, asynchronous stream bridge, audio device enumeration fixes). Upstream notes in `native/patches/UPSTREAM.md`.
-- libplacebo 7.360.1, Vulkan-only build (`native/build/deps.sh`).
+- libmpv 0.42.0 (client API 2.6) with seven downstream patches in `native/patches/` (Vulkan VO backend, hwdec device extensions, persistent shader cache, gpu-next Vulkan backend and renderer report, asynchronous stream bridge, audio device enumeration fixes, libdrm 2.4.113 floor). Upstream notes in `native/patches/UPSTREAM.md`.
+- libplacebo 7.387.0, Vulkan-only build (`native/build/deps.sh`).
 - FFmpeg 8.1.3, LGPL build (`native/build/ffmpeg.sh`, pinned sha256).
 - `package:test` 1.31.1 — `packages/mpv_kit/test/` (8 files), `packages/mpv_kit_libs/test/bundle_test.dart`.
 - `flutter_test` — `packages/mpv_kit_video/test/` (`controller_channel_test.dart`, `video_controller_test.dart`).
@@ -71,7 +71,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - `lints` ^6.0.0 (6.1.0), `flutter_lints` ^6.0.0 (6.0.0), `test` ^1.25.0 (1.31.1).
 - `cupertino_icons` ^1.0.8 (1.0.9) — example only.
 - Vendored (not pub): Vulkan-Headers `vulkan-sdk-1.4.363.0` and volk same tag (`packages/mpv_kit_video/third_party/README.md`).
-- Native stack pinned in `native/build/deps.sh` and `native/build/ffmpeg.sh`: Vulkan headers/loader 1.4.363.0, MoltenVK 1.4.2 (macOS), libdisplay-info 0.2.0 (Linux), glslang 16.6.0, lcms2 2.19.1, libplacebo 7.360.1, fast_float 8.3.2, dav1d 1.5.4, freetype 2.14.3, fribidi 1.0.17, harfbuzz 14.6.0, libass 0.17.5, uchardet 0.0.8, FFmpeg 8.1.3.
+- Native stack pinned in `native/build/deps.sh` and `native/build/ffmpeg.sh`: Vulkan headers/loader 1.4.363.0, MoltenVK 1.4.2 (macOS), libdisplay-info 0.2.0 (Linux), glslang 16.6.0, lcms2 2.19.1, libplacebo 7.387.0, fast_float 8.3.2, dav1d 1.5.4, freetype 2.14.3, fribidi 1.0.17, harfbuzz 14.6.0, libass 0.17.5, uchardet 0.0.8, FFmpeg 8.1.3.
 
 ## Configuration
 
@@ -81,12 +81,12 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - `MPV_KIT_FORMAT_SAMPLES` — sample directory for the format matrix test (`packages/mpv_kit/test/format_matrix_test.dart`).
 - `MPV_KIT_EXAMPLE_AO`, `MPV_KIT_EXAMPLE_LOG` — example app only (`example/lib/main.dart`).
 - `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` — honored by bundle downloads (`packages/mpv_kit_libs/lib/src/bundle.dart`) and `tools/pin_bundles.dart`.
-- Bundle pins: `bundleTag = 'v0.1.0-dev.3'` plus per-target sha256 in `packages/mpv_kit_libs/lib/src/bundles.dart`.
+- Bundle pins: `bundleTag = 'v0.1.1'` plus per-target sha256 in `packages/mpv_kit_libs/lib/src/bundles.dart`.
 - No `.env` files exist in the repository (checked with a glob; no secrets files committed).
 - Workspace manifest `pubspec.yaml`; per-package manifests and `analysis_options.yaml`.
 - Native plugin builds: `packages/mpv_kit_video/windows/CMakeLists.txt`, `packages/mpv_kit_video/linux/CMakeLists.txt`, `packages/mpv_kit_video/macos/mpv_kit_video.podspec`.
-- Native libmpv build: `native/build/build.sh`, `deps.sh`, `ffmpeg.sh`, `package.sh`; Meson options are explicit to keep an LGPL-only bundle.
-- CI: `.github/workflows/flutter-plugin.yml` (plugin build/analyze/test on Linux/Windows/macOS), `.github/workflows/native-verify.yml` (libmpv build, ABI audit, smoke tests, Dart tests, sanitizers), `.github/workflows/release.yml` (six-target LGPL bundles published to GitHub Releases on `v*` tags).
+- Native libmpv build: `native/build/build.sh`, `deps.sh`, `ffmpeg.sh`, `package.sh`; Meson options are explicit and the packaging boundary enforces the selected flavor (`MPV_KIT_FLAVOR=gpl|lgpl`, default gpl).
+- CI: `.github/workflows/flutter-plugin.yml` (plugin build/analyze/test on Linux/Windows/macOS), `.github/workflows/native-verify.yml` (libmpv build, ABI audit, smoke tests, Dart tests, sanitizers), `.github/workflows/release.yml` (six-target GPL-3.0+ full bundles published to GitHub Releases on `v*` tags).
 
 ## Platform Requirements
 
@@ -306,7 +306,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - Depends on: GitHub release assets; no runtime code.
 - Purpose: buildable mpv source plus mpv_kit patches and upstream-tracking notes.
 - Location: `native/mpv/`, `native/patches/`, `native/tests/`
-- Contains: full mpv tree (963 tracked files), `UPSTREAM.md`, 7 patches, C smoke tests.
+- Contains: full mpv tree (905 tracked files), `UPSTREAM.md`, 7 patches, C smoke tests.
 - Depends on: nothing at runtime; only the release workflow builds it.
 
 ## Data Flow
@@ -377,7 +377,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - **Stream requests block mpv's demuxer thread:** a source that never completes a request stalls playback; every registered protocol is shut down before core destruction (`packages/mpv_kit/lib/src/core/stream_bridge.dart`, `mpv.dart:168`).
 - **Platform event marshalling:** native render events must reach the platform thread before the method channel — `PostMessage` (Windows), `g_idle_add` (Linux), `dispatch_async(main)` (macOS).
 - **Native asset bundling only:** `mpv_kit_libs` has no runtime Dart code; `mpv_kit` resolves the bundle by default library names via the OS loader (`docs/ARCHITECTURE.md:23-27`).
-- **Workspace resolution:** root `pubspec.yaml` lists all packages plus `example` under `workspace:`; each package uses `resolution: workspace` and versions are kept in lockstep (`0.1.0-dev.3`).
+- **Workspace resolution:** root `pubspec.yaml` lists all packages plus `example` under `workspace:`; each package uses `resolution: workspace` and versions are kept in lockstep (`0.1.1`).
 - **Dart/Flutter floor differs per package:** `mpv_kit` requires Dart `^3.8.0`; `mpv_kit_video` and `mpv_kit_libs` require Dart `^3.10.0` / Flutter `>=3.38.0` because of native assets (`packages/*/pubspec.yaml`).
 
 ## Anti-Patterns

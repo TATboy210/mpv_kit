@@ -17,7 +17,7 @@ last_mapped_at: 2026-10-27
 - C11. Used for the native tests (`native/tests/render_vk_smoke.c`, `native/tests/stream_bridge_test.c`) and the vendored `packages/mpv_kit_video/third_party/volk/volk.c`.
 - Bash. Used for the build and release tooling in `native/build/build.sh`, `deps.sh`, `ffmpeg.sh` and `package.sh`.
 - Python 3. Used for the ABI audit (`tools/rea_abi_audit/pe_audit.py`) and for Meson/Jinja2 in CI.
-- C (third-party). `native/mpv/` holds the upstream mpv tree at `v0.41.0-1115-gb2c255c13` (`native/mpv/MPV_VERSION`). It is patched by the files in `native/patches/` and is not mapped file by file.
+- C (third-party). `native/mpv/` holds the upstream mpv tree at `0.42.0` (`native/mpv/MPV_VERSION`). It is patched by the files in `native/patches/` and is not mapped file by file.
 
 ## Runtime
 
@@ -37,8 +37,8 @@ last_mapped_at: 2026-10-27
 - `dart:ffi`. Hand-written bindings live in `packages/mpv_kit/lib/src/ffi/bindings.dart`. Callbacks use `NativeCallable.listener`.
 - Flutter plugin API. Platform classes: `MpvKitVideoPluginCApi` (Windows) and `MpvKitVideoPlugin` (Linux and macOS).
 - Dart native assets build hook: `packages/mpv_kit_libs/hook/build.dart`.
-- libmpv with downstream patches (`native/patches/0001`–`0009`, notes in `native/patches/UPSTREAM.md`). The patches cover the Vulkan render backend, hwdec extensions, the shader cache, the gpu-next backend, the async stream bridge, audio device fixes, vendor integration and upstream backports.
-- libplacebo (Vulkan-only) and FFmpeg 8.1 as an LGPL build (`native/build/deps.sh`, `native/build/ffmpeg.sh`).
+- libmpv 0.42.0 with downstream patches (`native/patches/` 0001–0004, 0006, 0007, 0012; notes in `native/patches/UPSTREAM.md`). The patches cover the Vulkan render backend, hwdec extensions, the shader cache, the gpu-next backend and renderer report, the async stream bridge, audio device fixes and the libdrm 2.4.113 floor.
+- libplacebo 7.387.0 (Vulkan-only) and FFmpeg 8.1.3 as an LGPL build (`native/build/deps.sh`, `native/build/ffmpeg.sh`).
 - Vulkan: Vulkan-Headers and volk are vendored in `packages/mpv_kit_video/third_party/`.
 
 **Testing:**
@@ -75,7 +75,7 @@ last_mapped_at: 2026-10-27
 
 **Build:**
 - Root `pubspec.yaml` and per-package `pubspec.yaml`/`analysis_options.yaml`.
-- `packages/mpv_kit_libs/lib/src/bundles.dart` pins `bundleTag = 'v0.1.0-dev.3'` and a sha256 per target. Package versions are `0.1.0-dev.4`.
+- `packages/mpv_kit_libs/lib/src/bundles.dart` pins `bundleTag = 'v0.1.1'` and a sha256 per target. Package versions are `0.1.1`.
 - `native/build/*.sh`, `native/tests/meson.build`.
 
 ## Platform Requirements

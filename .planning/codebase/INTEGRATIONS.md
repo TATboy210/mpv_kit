@@ -56,7 +56,7 @@ last_mapped_at: 2026-10-27
 - GitHub Actions:
   - `.github/workflows/flutter-plugin.yml`: plugin build, analyze and test on Linux, Windows and macOS.
   - `.github/workflows/native-verify.yml`: libmpv build, ABI audit, smoke tests, Dart tests with an 80% coverage gate, and sanitizers.
-  - `.github/workflows/release.yml`: six-target LGPL bundles published when a `v*` tag is pushed.
+  - `.github/workflows/release.yml`: six-target GPL-3.0+ full bundles published when a `v*` tag is pushed.
 
 ## Environment Configuration
 

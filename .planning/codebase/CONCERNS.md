@@ -70,7 +70,7 @@ Sources: code in `packages/`, `native/tests/`, `native/patches/`, plus the open 
 **Bundle supply chain:**
 - Risk: libmpv binaries are downloaded at build time.
 - Files: `packages/mpv_kit_libs/lib/src/bundles.dart`, `packages/mpv_kit_libs/lib/src/bundle.dart`
-- Current mitigation: Per-target sha256 pins (`bundleTag`), a tar reader that rejects malformed archives (`tar.dart`), and the LGPL/ABI audit (`tools/rea_abi_audit/pe_audit.py`).
+- Current mitigation: Per-target sha256 pins (`bundleTag`), a tar reader that rejects malformed archives (`tar.dart`), and the flavor-aware ABI audit (`tools/rea_abi_audit/pe_audit.py`; the GPL ban applies only to the LGPL flavor).
 - Recommendations: Pins must be regenerated only through `tools/pin_bundles.dart`. Never hand-edit them.
 
 ## Performance Bottlenecks
@@ -123,7 +123,7 @@ Sources: code in `packages/`, `native/tests/`, `native/patches/`, plus the open 
 ## Dependencies at Risk
 
 **Patched vendored mpv (`native/mpv/`, third-party):**
-- Risk: Eight downstream patches totalling 2,164 lines (`native/patches/0001`-`0009`; 0005 is merged into 0004). The largest are 0004 gpu-next/renderer report (643 lines), 0001 Vulkan render backend (554) and 0006 asynchronous stream bridge (440). 0008 keeps `video/out/wayland_common.c` at a pre-refactor snapshot, marked "revisit before the next rebase". 0009 carries upstream backports.
+- Risk: Seven downstream patches totalling 2,259 file lines (`native/patches/` 0001–0004, 0006, 0007, 0012; 0005 is merged into 0004 and 0008–0010 were upstreamed). The largest are 0004 gpu-next/renderer report (771 lines), 0001 Vulkan render backend (575) and 0006 asynchronous stream bridge (439).
 - Impact: Every rebase means hand-rebasing the render API hunks. Drift breaks the byte-identical provenance gate (`tools/check_patches.sh`, `patch-drift` job).
 - Migration plan: Upstream the patches as tracked in `native/patches/UPSTREAM.md`. Drop backports once the base moves past them.
 

@@ -299,8 +299,9 @@ Platform sharing:
 
 `packages/mpv_kit_video/windows/d3d11_backend.cpp` is a `RenderBackend`
 (`wire_name()` is `d3d11`) that lets mpv render with its own D3D11 render
-API (patch 0010; gpu-next uses the D3D11 branch of patch 0004) with no
-Vulkan in the path and no ANGLE, EGL or Flutter device on mpv_kit's side.
+API (upstream since mpv 0.42.0, PR #17764; gpu-next uses the D3D11 branch
+of patch 0004) with no Vulkan in the path and no ANGLE, EGL or Flutter
+device on mpv_kit's side.
 Dart sees `MpvVideoBackend.vulkan` for it (ADR 0004: GPU zero-copy).
 
 * **Device.** One `ID3D11Device` per controller, created on Flutter's

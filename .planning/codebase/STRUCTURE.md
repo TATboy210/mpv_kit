@@ -58,7 +58,7 @@ mpv_kit/
 - Build: `windows/CMakeLists.txt`, `linux/CMakeLists.txt`, `macos/mpv_kit_video.podspec`
 
 **`native/mpv/`:**
-- Purpose: upstream mpv source (963 files, `MPV_VERSION`) — do not edit; change via `native/patches/`
+- Purpose: upstream mpv source (905 files, `MPV_VERSION`) — do not edit; change via `native/patches/`
 
 **`native/tests/`:**
 - Purpose: `render_vk_smoke.c`, `stream_bridge_test.c`, `renderer_harness.h` (fake libmpv), `video_renderer_golden_*.cc` + `golden/*.txt` (frozen), `video_renderer_affinity_test.cc`, `video_renderer_api_test.cc`, `video_renderer_sw_hold_front_test.cc`; declared in `meson.build`

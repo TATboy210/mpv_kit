@@ -25,7 +25,7 @@ last_mapped_at: 2026-10-27
                │                                 │ (handle + 9 render symbol addrs)
                ▼                                 ▼
 ┌──────────────────────────────┐  ┌─────────────────────────────────────┐
-│ libmpv (patched, LGPL)       │◄─┤ Platform plugins                    │
+│ libmpv (patched, GPL full)   │◄─┤ Platform plugins                    │
 │ delivered by mpv_kit_libs    │  │ windows/ linux/ macos/ (+ interop)  │
 │ `packages/mpv_kit_libs/hook/`│  ├─────────────────────────────────────┤
 │ built from `native/`         │  │ Shared C++ engine `src/`            │
@@ -119,7 +119,7 @@ last_mapped_at: 2026-10-27
 - No runtime Dart code in `mpv_kit_libs`
 
 **Vendored upstream:**
-- `native/mpv/`: full upstream mpv source tree (963 tracked files, version in `native/mpv/MPV_VERSION`), third-party, never edited directly; downstream changes live as patches in `native/patches/` (0001–0004, 0006–0009) tracked in `native/patches/UPSTREAM.md`, checked by `tools/check_patches.sh`. libplacebo backports in `native/deps/libplacebo/` with `SHA256SUMS`.
+- `native/mpv/`: full upstream mpv source tree (905 tracked files, version in `native/mpv/MPV_VERSION`), third-party, never edited directly; downstream changes live as patches in `native/patches/` (0001–0004, 0006, 0007, 0012) tracked in `native/patches/UPSTREAM.md`, checked by `tools/check_patches.sh`. The libplacebo backports under `native/deps/libplacebo/` were removed when the pin moved to 7.387.0.
 
 ## Data Flow
 
