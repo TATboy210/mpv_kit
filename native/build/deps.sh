@@ -127,9 +127,17 @@ autotools_build() {
     export PATH="$prefix/bin:$PATH"
     cd "$work/src/$name"
     if [ ! -x ./configure ]; then
-      echo "$name: source archive has no configure script" >&2
-      exit 1
+      # Git-archive tarballs (e.g. libdvdcss) omit the generated configure.
+      command -v autoreconf >/dev/null ||
+        { echo "$name: no configure and no autoreconf" >&2; exit 1; }
+      if [ -z "${LIBTOOLIZE:-}" ]; then
+        LIBTOOLIZE=$(command -v glibtoolize || command -v libtoolize || true)
+      fi
+      export LIBTOOLIZE
+      autoreconf -fi
     fi
+    [ -x ./configure ] ||
+      { echo "$name: autoreconf did not produce configure" >&2; exit 1; }
     ./configure --prefix="$prefix" --libdir="$prefix/lib" \
       --disable-static --enable-shared --disable-dependency-tracking \
       --disable-nls "$@"
@@ -375,7 +383,7 @@ license libbluray COPYING
 
 fetch libdvdcss https://download.videolan.org/pub/videolan/libdvdcss/1.6.0/libdvdcss-1.6.0.tar.xz \
   7ea556c846b7bfc32d47b41cae56d1863a6b6d5f706bb162778d6f298490977c
-autotools_build libdvdcss
+meson_build libdvdcss -Denable_docs=false -Denable_examples=false
 license libdvdcss COPYING
 
 fetch libdvdread https://code.videolan.org/videolan/libdvdread/-/archive/v7.1.1/libdvdread-7.1.1.tar.bz2 \

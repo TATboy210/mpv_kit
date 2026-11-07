@@ -42,7 +42,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            build-essential pkg-config flex bison python3-pip python3-jinja2 ninja-build \
+            build-essential pkg-config flex bison autoconf automake libtool python3-pip python3-jinja2 ninja-build \
             nasm curl ca-certificates xz-utils bzip2 git patch patchelf binutils \
             libssl-dev libva-dev libdrm-dev libasound2-dev libpulse-dev \
             libfontconfig-dev zlib1g-dev mesa-vulkan-drivers libvulkan1 \
@@ -201,8 +201,9 @@ jobs:
       - name: Install toolchain (build tools only)
         run: |
           # libaacs' parser needs bison >= 3 (%code); macOS ships bison 2.x.
-          brew install ninja pkgconf nasm cmake dylibbundler gpatch bison
+          brew install ninja pkgconf nasm cmake dylibbundler gpatch bison autoconf automake libtool
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix libtool)/bin" >> "$GITHUB_PATH"
           python3 -m venv "$RUNNER_TEMP/py"
           "$RUNNER_TEMP/py/bin/pip" install 'meson==1.9.1' jinja2
           echo "$RUNNER_TEMP/py/bin" >> "$GITHUB_PATH"
@@ -288,7 +289,7 @@ jobs:
         with:
           msystem: ${{ matrix.msystem }}
           update: true
-          install: make diffutils patch bzip2 xz flex bison
+          install: make diffutils patch bzip2 xz flex bison autoconf automake libtool
           pacboy: >-
             toolchain:p meson:p ninja:p cmake:p pkgconf:p python-jinja:p
             vulkan-loader:p libiconv:p ntldd:p ${{ matrix.nasm }}
