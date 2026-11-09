@@ -1,3 +1,10 @@
+## 0.1.2
+
+- Changed: `ffi` lower bound raised to `^2.2.0` (resolves with the current
+  `path`, `crypto`, `ffi`, `path_provider`, `file_picker`, `shared_preferences`,
+  `desktop_drop`, `cross_file`, `intl` and `logger` releases in one app; no
+  runtime dependency added, public API unchanged).
+
 ## 0.1.1
 
 - Changed: at 1080p and below, `Player` now caps mpv 0.42's

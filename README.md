@@ -5,7 +5,7 @@ under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.1`). APIs may change.
+> Status: early development (`0.1.2`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -28,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.1
+  mpv_kit_video: ^0.1.2
 ```
 
 ```dart
@@ -250,6 +250,23 @@ unknowns:
 
 Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
 10-minute gate does not exercise it.
+
+## Dependency compatibility (0.1.2)
+
+The three packages add no runtime dependency beyond `ffi`, `meta` and
+`crypto`. These packages resolve together with them in one Flutter app
+(checked by `dart run tools/check_deps.dart`, built in `example/`):
+
+| Package | Version | Notes |
+|---|---|---|
+| ffi / path / crypto | ^2.2.0 / ^1.9.1 / ^3.0.8 | |
+| path_provider | ^2.1.6 | Dart 3.10 |
+| file_picker | ^13.3.2 | Dart 3.10 |
+| shared_preferences | ^2.5.6 | needs Dart 3.11 / Flutter 3.41 in the app |
+| desktop_drop / cross_file | ^0.8.4 / ^0.3.5+4 | `DropTarget` hands out `XFile` |
+| intl / logger / i18n | ^0.20.3 / ^2.8.0 / ^4.2.6 | `i18n` is a build-time generator |
+| xdg_directories | ^1.1.0 | Linux only |
+| flutter_video_thumbnail_plus | ^1.0.7 | no Linux implementation |
 
 ## Troubleshooting
 

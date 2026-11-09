@@ -25,7 +25,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 
 ## Languages
 
-- Dart 3.8+ (`^3.8.0` in `packages/mpv_kit/pubspec.yaml`, `example/pubspec.yaml`, root `pubspec.yaml`) — FFI bindings, event loop, high-level `Player`, Flutter video output. `packages/mpv_kit_libs/pubspec.yaml` and `packages/mpv_kit_video/pubspec.yaml` require `^3.10.0` because the native-assets build hook needs Dart 3.10.
+- Dart 3.8+ (`^3.10.0` in `packages/mpv_kit/pubspec.yaml`, `example/pubspec.yaml`, root `pubspec.yaml`) — FFI bindings, event loop, high-level `Player`, Flutter video output. `packages/mpv_kit_libs/pubspec.yaml` and `packages/mpv_kit_video/pubspec.yaml` require `^3.10.0` because the native-assets build hook needs Dart 3.10.
 - Dart SDK resolved by the workspace lock: `>=3.11.0 <4.0.0` (`pubspec.lock`, `sdks` section).
 - C11 — native smoke tests (`native/tests/render_vk_smoke.c`, `native/tests/stream_bridge_test.c`) and vendored `volk` loader (`packages/mpv_kit_video/third_party/volk/volk.c`).
 - C++17 — Flutter plugin native code (`packages/mpv_kit_video/src/video_renderer.cc`, `vulkan_backend.cc`, `windows/mpv_kit_video_plugin.cpp`, `windows/d3d11_interop.cpp`, `linux/mpv_kit_video_plugin.cc`, `linux/gl_interop.cc`).
@@ -377,8 +377,8 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 - **Stream requests block mpv's demuxer thread:** a source that never completes a request stalls playback; every registered protocol is shut down before core destruction (`packages/mpv_kit/lib/src/core/stream_bridge.dart`, `mpv.dart:168`).
 - **Platform event marshalling:** native render events must reach the platform thread before the method channel — `PostMessage` (Windows), `g_idle_add` (Linux), `dispatch_async(main)` (macOS).
 - **Native asset bundling only:** `mpv_kit_libs` has no runtime Dart code; `mpv_kit` resolves the bundle by default library names via the OS loader (`docs/ARCHITECTURE.md:23-27`).
-- **Workspace resolution:** root `pubspec.yaml` lists all packages plus `example` under `workspace:`; each package uses `resolution: workspace` and versions are kept in lockstep (`0.1.1`).
-- **Dart/Flutter floor differs per package:** `mpv_kit` requires Dart `^3.8.0`; `mpv_kit_video` and `mpv_kit_libs` require Dart `^3.10.0` / Flutter `>=3.38.0` because of native assets (`packages/*/pubspec.yaml`).
+- **Workspace resolution:** root `pubspec.yaml` lists all packages plus `example` under `workspace:`; each package uses `resolution: workspace` and versions are kept in lockstep (`0.1.2`).
+- **Dart/Flutter floor differs per package:** `mpv_kit` requires Dart `^3.10.0`; `mpv_kit_video` and `mpv_kit_libs` require Dart `^3.10.0` / Flutter `>=3.38.0` because of native assets (`packages/*/pubspec.yaml`).
 
 ## Anti-Patterns
 

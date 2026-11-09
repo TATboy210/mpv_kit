@@ -1,3 +1,13 @@
+## 0.1.2
+
+- Changed: depends on `mpv_kit ^0.1.2` / `mpv_kit_libs ^0.1.2`. Verified to
+  resolve together with `path_provider ^2.1.6`, `file_picker ^13.3.2`,
+  `shared_preferences ^2.5.6` (needs Dart 3.11 / Flutter 3.41 in the app),
+  `desktop_drop ^0.8.4`, `path`, `cross_file`, `intl`, `logger`, `xdg_directories`
+  and `flutter_video_thumbnail_plus ^1.0.7` (no Linux support in that package).
+- Example: file_picker open dialog, last-file memory (shared_preferences) and
+  separator-safe file names in the drop notice.
+
 ## 0.1.1
 
 - Internal: the three identical backend `RendererName` implementations now

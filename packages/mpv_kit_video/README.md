@@ -22,7 +22,7 @@ targets are compiled and smoke-tested in CI.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.1
+  mpv_kit_video: ^0.1.2
 ```
 
 ```dart

@@ -1,3 +1,7 @@
+## 0.1.2
+
+- Changed: `crypto` lower bound raised to `^3.0.8`; no behavior change.
+
 ## 0.1.1
 
 - Packaging now strips Linux and macOS shared libraries at the bundle
