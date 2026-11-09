@@ -4,15 +4,23 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
+import 'package:nativeapi/nativeapi.dart' as na;
+import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'hud.dart';
+import 'resize_lab.dart';
 
 void main(List<String> args) {
   runApp(ExampleApp(initialPath: args.isNotEmpty ? args.first : null));
+  // Opt-in resize-drag frame timings (see resize_lab.dart).
+  if (Lab.metrics) ResizeMeter.instance.start();
 }
 
 class ExampleApp extends StatelessWidget {
@@ -63,10 +71,20 @@ class _PlayerPageState extends State<PlayerPage> {
   final hudEvents = HudEventLog();
   StreamSubscription<MpvVideoEvent>? videoEvents;
 
+  /// Set only in MPV_EXAMPLE_FRAMELESS=1 mode (see resize_lab.dart).
+  na.Window? labWindow;
+
   @override
   void initState() {
     super.initState();
     unawaited(_init());
+    if (Lab.frameless) {
+      // After the first frame the runner window is visible and findable.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final window = setUpFramelessWindow();
+        if (window != null && mounted) setState(() => labWindow = window);
+      });
+    }
   }
 
   Future<void> _init() async {
@@ -116,18 +134,38 @@ class _PlayerPageState extends State<PlayerPage> {
     });
   }
 
-  void _openDropped(List<dynamic> files) {
-    // desktop_drop hands us XFile-like objects with a .path.
+  /// Last opened file, restored on the next launch (shared_preferences).
+  static const _lastPathKey = 'last_path';
+
+  void _openDropped(List<XFile> files) {
     for (final f in files) {
-      final p = f.path as String;
-      if (isVideoPlayable(p)) {
-        path.text = p;
-        unawaited(player.open(p));
+      if (isVideoPlayable(f.path)) {
+        unawaited(_open(f.path));
         return;
       }
     }
-    final first = files.isEmpty ? '?' : (files.first.path as String);
-    showNotice('ignored non-video file: ${first.split('/').last}');
+    // p.basename handles both separators; split('/') broke on Windows.
+    final first = files.isEmpty ? '?' : p.basename(files.first.path);
+    showNotice('ignored non-video file: $first');
+  }
+
+  /// Opens [target] and remembers it for the next launch.
+  Future<void> _open(String target) async {
+    path.text = target;
+    await player.open(target);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastPathKey, target);
+  }
+
+  /// Native open-file dialog (file_picker), starting where the last file was.
+  Future<void> _pick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getString(_lastPathKey);
+    final picked = await FilePicker.pickFile(
+      initialDirectory: last == null ? null : p.dirname(last),
+    );
+    final pickedPath = picked?.path;
+    if (pickedPath != null) await _open(pickedPath);
   }
 
   @override
@@ -153,6 +191,7 @@ class _PlayerPageState extends State<PlayerPage> {
       },
       child: Scaffold(
         body: Column(children: [
+          if (labWindow case final window?) FramelessTitleBar(window: window),
           Expanded(
             child: DropTarget(
               onDragEntered: (_) => setState(() => dropHovering = true),
@@ -170,7 +209,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: ColoredBox(
                   color: Colors.black,
                   child: Stack(children: [
-                    if (v != null)
+                    if (v != null && Lab.videoMounted)
                       Positioned.fill(child: MpvVideo(controller: v)),
                     if (error != null)
                       Center(
@@ -187,7 +226,7 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
             ),
           ),
-          _Controls(player: player, path: path),
+          _Controls(player: player, path: path, onPick: _pick),
         ]),
       ),
     );
@@ -195,10 +234,15 @@ class _PlayerPageState extends State<PlayerPage> {
 }
 
 class _Controls extends StatelessWidget {
-  const _Controls({required this.player, required this.path});
+  const _Controls({
+    required this.player,
+    required this.path,
+    required this.onPick,
+  });
 
   final Player player;
   final TextEditingController path;
+  final VoidCallback onPick;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -219,6 +263,11 @@ class _Controls extends StatelessWidget {
             // the current value — 4 rebuilds/s is plenty smooth for a
             // seekbar and keeps the example copy-paste-safe.
             child: _PositionSlider(player: player),
+          ),
+          IconButton(
+            tooltip: 'Open file',
+            icon: const Icon(Icons.folder_open),
+            onPressed: onPick,
           ),
           SizedBox(
             width: 360,

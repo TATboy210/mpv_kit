@@ -68,6 +68,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Power-aware choice of the GPU (see ChooseGpuPreference).
   project.set_gpu_preference(ChooseGpuPreference());
 
+  // Resize lab switches (see lib/resize_lab.dart); unset = stock behavior.
+  //   MPV_EXAMPLE_THREADS=separate  unmerged platform/UI threads
+  //   MPV_EXAMPLE_RENDERER=skia     disable Impeller
+  wchar_t lab[16] = {0};
+  if (::GetEnvironmentVariableW(L"MPV_EXAMPLE_THREADS", lab, 16) > 0 &&
+      wcscmp(lab, L"separate") == 0) {
+    project.set_ui_thread_policy(flutter::UIThreadPolicy::RunOnSeparateThread);
+  }
+  lab[0] = 0;
+  if (::GetEnvironmentVariableW(L"MPV_EXAMPLE_RENDERER", lab, 16) > 0 &&
+      wcscmp(lab, L"skia") == 0) {
+    project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+  }
+
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
