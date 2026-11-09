@@ -1,0 +1,19 @@
+# 14-03 local ANGLE-ban evidence (synthetic PE samples from test_pe_audit.py --emit; red stays local)
+# host=MINGW64_NT-10.0-26300 python=Python 3.12.8 date=2026-10-27T08:19:08Z head=fe71846
+
+## sample=violation_import_libegl sha256=0d9770a7c75226f2307bd679b22f1f3265a6a8091be31497a9fb8c6413edf668
+$ python -I tools/rea_abi_audit/pe_audit.py build/phase14/angle-samples/violation_import_libegl.dll --forbid-angle
+exports(mpv_*): 0  imports: 1
+imports: libEGL.dll
+ANGLE IMPORT: libEGL.dll
+ANGLE REFERENCE: libegl.dll (ascii)
+RESULT: FAIL
+exit=1
+
+## sample=clean_kernel32 sha256=b00887ceb0e7e5f4acf93de615985b4c54a10c067257173bea927b9bc70a9918
+$ python -I tools/rea_abi_audit/pe_audit.py build/phase14/angle-samples/clean_kernel32.dll --forbid-angle
+exports(mpv_*): 0  imports: 1
+imports: kernel32.dll
+ANGLE-FREE build\phase14\angle-samples\clean_kernel32.dll
+RESULT: PASS
+exit=0

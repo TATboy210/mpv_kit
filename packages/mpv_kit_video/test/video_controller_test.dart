@@ -31,6 +31,15 @@ void main() {
     );
   });
 
+  test('MpvVideoBackend stays {vulkan, software} (API freeze)', () {
+    // Public API freeze (ADR 0004): new GPU APIs are reported through
+    // `vulkan` plus the reason string, never through new enum values.
+    expect(
+      MpvVideoBackend.values.map((b) => b.name).toList(),
+      ['vulkan', 'software'],
+    );
+  });
+
   test('no usable environment disables the default', () {
     expect(dir('windows', {}), isNull);
     expect(dir('linux', {'HOME': ''}), isNull);

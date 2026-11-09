@@ -1,0 +1,24 @@
+diff --git a/example/lib/main.dart b/example/lib/main.dart
+index 292c7d2..09410da 100644
+--- a/example/lib/main.dart
++++ b/example/lib/main.dart
+@@ -45,6 +45,9 @@ class _PlayerPageState extends State<PlayerPage> {
+     // MPV_KIT_EXAMPLE_AO=null: no audio device (automated runs; avoids the
+     // click a forcibly killed audio stream makes in the speakers).
+     'ao': ?Platform.environment['MPV_KIT_EXAMPLE_AO'],
++    // Measurement only (quick 261030-umq, never committed): forced hwdec, looping, decoder line.
++    'hwdec': ?Platform.environment['MPV_KIT_EXAMPLE_HWDEC'],
++    if (Platform.environment['MPV_KIT_EXAMPLE_LOOP'] == '1') 'loop-file': 'inf',
+     // MPV_KIT_EXAMPLE_LOG=<file>: verbose mpv log for diagnostics.
+     if (Platform.environment['MPV_KIT_EXAMPLE_LOG'] case final log?) ...{
+       'log-file': log,
+@@ -87,7 +90,8 @@ class _PlayerPageState extends State<PlayerPage> {
+   void _hudTick() {
+     // The debugPrint line doubles as a CI-friendly one-line summary.
+     debugPrint('mpv_kit_example: ${hud.sync['dropped']} dropped, '
+-        'avdiff=${hud.sync['avsync']}');
++        'avdiff=${hud.sync['avsync']} '
++        'hwdec=${hud.decode['hwdec']} dec-drop=${hud.sync['dec-drop']}');
+     if (!mounted) return;
+     setState(() => hud = HudSnapshot.capture(player, video));
+   }

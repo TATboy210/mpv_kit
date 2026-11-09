@@ -1,0 +1,73 @@
+# EXPLORATORY (not a golden, not committed as a test): scratch scenario 'scratch-fallback-after-resize'
+# renderer built from HEAD 2d639ab87f2ee38e37334971d7b8ae8dab88eba9 (publish-gate fix + AllocateRing fix applied)
+# scenario: latency 4 (ring 7), four 64x36 frames, FailCreate(6), SetSize(32,18) held in the fake, acquire, release, 4 more frames
+# source: build/golden-local/p1207/scratch/golden_vk_scratch.cc (gitignored); host: MINGW64_NT-10.0-26300 mengyiyu002 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+GOLDEN invariant scenario=scratch-fallback-after-resize: USE AFTER DESTROY serial=4
+GOLDEN invariant scenario=scratch-fallback-after-resize: USE AFTER DESTROY serial=4 (RetainFrame)
+  [scratch-fallback-after-resize] log: mpv_kit: shared-image allocation failed at ring 5, retried with a ring of 5
+GOLDEN mismatch scenario=scratch-fallback-after-resize line=0
+  expected: (no section)
+  actual:   58 line(s)
+  actual trace of [scratch-fallback-after-resize]:
+    start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+    create-attempts vulkan/gpu-next
+    create serial=1 64x36
+    create serial=2 64x36
+    create serial=3 64x36
+    create serial=4 64x36
+    create serial=5 64x36
+    create serial=6 64x36
+    create serial=7 64x36
+    event resize 64x36
+    render serial=1 64x36
+    acquire index=0 64x36 serial=1
+    render serial=2 64x36
+    acquire index=1 64x36 serial=2
+    render serial=3 64x36
+    acquire index=2 64x36 serial=3
+    render serial=4 64x36
+    acquire index=3 64x36 serial=4
+    destroy serial=1
+    destroy serial=2
+    destroy serial=3
+    destroy serial=5
+    destroy serial=6
+    destroy serial=7
+    create serial=8 32x18
+    create serial=9 32x18
+    create serial=10 32x18
+    create serial=11 32x18
+    create serial=12 32x18
+    create failed 32x18
+    destroy serial=8
+    destroy serial=9
+    destroy serial=10
+    destroy serial=11
+    destroy serial=12
+    destroy serial=4
+    create serial=13 32x18
+    create serial=14 32x18
+    create serial=15 32x18
+    create serial=16 32x18
+    create serial=17 32x18
+    event resize 32x18
+    render serial=13 32x18
+    acquire index=-2 64x36 serial=4 USE AFTER DESTROY
+    acquire index=0 32x18 serial=13
+    render serial=14 32x18
+    acquire index=1 32x18 serial=14
+    render serial=15 32x18
+    acquire index=2 32x18 serial=15
+    render serial=16 32x18
+    acquire index=3 32x18 serial=16
+    quiesce renders=8 skips=0 swaps=8
+    destroy serial=13
+    destroy serial=14
+    destroy serial=15
+    destroy serial=16
+    destroy serial=17
+    teardown frees=1 live-images=0
+GOLDEN mismatch scenario=vk-publish-gate line=0
+  expected: 24 line(s)
+  actual:   (scenario not run)
+# exit=1

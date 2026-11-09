@@ -170,6 +170,10 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
         MP_FATAL(ctx, "MPV_RENDER_PARAM_VULKAN_INIT_PARAMS missing or incomplete.\n");
         return MPV_ERROR_INVALID_PARAMETER;
     }
+    if (ip->num_extensions < 0 || (ip->num_extensions > 0 && !ip->extensions)) {
+        MP_FATAL(ctx, "Invalid extensions/num_extensions.\n");
+        return MPV_ERROR_INVALID_PARAMETER;
+    }
     if (!ip->lock_queue != !ip->unlock_queue) {
         MP_FATAL(ctx, "lock_queue and unlock_queue must be set together.\n");
         return MPV_ERROR_INVALID_PARAMETER;
@@ -231,11 +235,12 @@ static int init(struct libmpv_gpu_context *ctx, mpv_render_param *params)
 
 // Return the current target to the host (transition + signal) and drop the
 // wrapper. Destruction is deferred by libplacebo until the GPU is done.
-static void release_target(struct libmpv_gpu_context *ctx)
+// Returns false if the host semaphore will not be signalled.
+static bool release_target(struct libmpv_gpu_context *ctx)
 {
     struct priv *p = ctx->priv;
     if (!p->target)
-        return;
+        return true;
 
     bool ok = pl_vulkan_hold_ex(p->vk.gpu, pl_vulkan_hold_params(
         .tex = p->target,
@@ -251,6 +256,7 @@ static void release_target(struct libmpv_gpu_context *ctx)
 
     pl_tex_destroy(p->vk.gpu, &p->target);
     p->target_ra = (struct ra_tex) {0};
+    return ok;
 }
 
 static bool same_image(const mpv_vulkan_image *a, const mpv_vulkan_image *b)
@@ -274,12 +280,24 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
         MP_FATAL(ctx, "Render target lacks VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT.\n");
         return MPV_ERROR_INVALID_PARAMETER;
     }
+    // pl_vulkan_hold_ex() asserts a semaphore; reject instead of aborting.
+    if (!img->signal_semaphore) {
+        MP_FATAL(ctx, "Render target lacks a signal_semaphore.\n");
+        return MPV_ERROR_INVALID_PARAMETER;
+    }
 
     // vo_libmpv calls wrap_fbo() twice per frame (get_target_size, then
     // render) with a single done_frame(). Re-wrapping would wait on the host
     // semaphore twice, so reuse the pending wrapper for the same image.
     if (p->target) {
         if (same_image(&p->image, img)) {
+            // The wait side is already queued; take the hand-back from this
+            // call, so a wrapper left over from an aborted frame signals the
+            // value the host waits for now, not the stale one.
+            p->image.signal_semaphore = img->signal_semaphore;
+            p->image.signal_value = img->signal_value;
+            p->image.final_layout = img->final_layout;
+            p->image.queue_family = img->queue_family;
             *out = &p->target_ra;
             return 0;
         }
@@ -322,11 +340,11 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
     return 0;
 }
 
-static void done_frame(struct libmpv_gpu_context *ctx, bool ds)
+static bool done_frame(struct libmpv_gpu_context *ctx, bool ds)
 {
     // Submits pending work, transitions to final_layout and signals the host
     // semaphore once rendering completes.
-    release_target(ctx);
+    return release_target(ctx);
 }
 
 static void destroy(struct libmpv_gpu_context *ctx)

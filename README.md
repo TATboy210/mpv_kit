@@ -1,22 +1,24 @@
 # mpv_kit
 
-Flutter / Dart bindings for **libmpv 0.41.0** with a **Vulkan** render
+Flutter / Dart bindings for **libmpv 0.42.0** (vendored
+under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.0-dev.3`). APIs may change.
+> Status: early development (`0.1.2`). APIs may change.
 
 | Package | Purpose |
 |---|---|
 | [`mpv_kit`](packages/mpv_kit) | Pure Dart FFI: the complete libmpv client API, typed events, `mpv_node` conversion, a typed high-level `Player`, typed `MpvOptions`, custom stream protocols served from Dart, and a catalog of every mpv property/command/option generated from mpv's docs |
 | [`mpv_kit_video`](packages/mpv_kit_video) | Flutter plugin: `MpvVideoController` + `MpvVideo` widget. mpv renders through Vulkan into images the compositor samples directly — D3D11 shared textures (Windows), GL memory objects (Linux), IOSurface via MoltenVK (macOS) — with a software fallback everywhere |
-| [`mpv_kit_libs`](packages/mpv_kit_libs) | Build hook that downloads and bundles a prebuilt LGPL libmpv for the target, verified by sha256 |
+| [`mpv_kit_libs`](packages/mpv_kit_libs) | Build hook that downloads and bundles a prebuilt libmpv for the target, verified by sha256. The released bundle is GPL-3.0+ full; self-builders can use `MPV_KIT_FLAVOR=lgpl` |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
 together, and [docs/adr/](docs/adr) for the design decisions.
 
 Prebuilt libmpv runs on Windows 10+, macOS 12+ and Linux with glibc 2.35+
-(x64 and arm64). Coming from media_kit? See
+and libEGL.so.1 (libglvnd; x64 and arm64), plus libva.so.2 and libva-drm.so.2
+(VA-API; the bundle links them as host libraries). Coming from media_kit? See
 [docs/MIGRATING_FROM_MEDIA_KIT.md](docs/MIGRATING_FROM_MEDIA_KIT.md).
 
 ## Quick start
@@ -26,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.0-dev.3
+  mpv_kit_video: ^0.1.2
 ```
 
 ```dart
@@ -41,7 +43,7 @@ class VideoPage extends StatefulWidget {
 }
 
 class _VideoPageState extends State<VideoPage> {
-  final player = Player(); // vo=libmpv, hwdec=auto-safe, keep-open=yes
+  final player = Player(); // vo=libmpv, per-platform zero-copy hwdec, keep-open=yes
   MpvVideoController? video;
 
   @override
@@ -71,7 +73,41 @@ class _VideoPageState extends State<VideoPage> {
 ```
 
 Requirements: Dart 3.10 / Flutter 3.38 or newer (the build hook of
-`mpv_kit_libs` uses native assets).
+`mpv_kit_libs` uses native assets). All package `sdk:` constraints in this
+repository are pinned to the same floor and checked by
+`tools/check_consistency.dart`.
+
+### Dependency locking
+
+The workspace `pubspec.lock` is **committed**: CI and fresh clones resolve
+against the same pinned dependency set. Update it deliberately
+(`dart pub upgrade`) and commit it together with any `pubspec.yaml` change.
+
+### Local libmpv for tests and benches
+
+The tests need a real libmpv unless they are pure-Dart. Two supported ways:
+
+1. **Default — nothing to do.** `dart pub get`/`flutter pub get` triggers the
+   `mpv_kit_libs` build hook, which downloads the pinned, sha256-verified
+   libmpv bundle for your platform.
+2. **Explicit — `MPV_KIT_LIBMPV_PATH`.** Point it at a `libmpv-2.dll` /
+   `libmpv.so.2` (e.g. from the hook cache under
+   `.dart_tool/hooks_runner/shared/mpv_kit_libs/build/`) **and put that
+   directory on `PATH`** — on Windows the dependency DLLs must be reachable
+   or loading fails with `MpvLibraryNotFound` (an explicit path is never
+   fallen back from). Git Bash note: `PATH`
+   entries must use the POSIX form (`/d/mpv_kit/...`); a `D:/...` entry is
+   not converted and dependency resolution fails.
+
+Test-only environment variables (read by the integration tests, never by the library):
+
+- `MPV_KIT_REQUIRE_HWDEC=<method>` — the hardware-decode tests must reach that zero-copy `hwdec-current` (for example `d3d11va`) or they fail loudly instead of skipping.
+- `MPV_KIT_EXPECT_BACKEND=render|unavailable` — `texture_probe_test` asserts that the forced `MPV_KIT_VIDEO_API` backend either renders or is cleanly unavailable.
+- `MPV_KIT_SOAK_MEMORY=rss` — `backend_soak_test` asserts a flat RSS curve over 100 rounds.
+
+The old `bt/` directory of prebuilt DLLs was retired and removed from the
+repository (stale pre-rebase binaries without the working Vulkan render
+path, ~44 MB); use the hook bundle instead.
 
 The low-level client API is always available, standalone or as
 `player.mpv`:
@@ -89,15 +125,21 @@ to enable them explicitly.
 
 ### Locating libmpv
 
-`MpvLibrary.open()` tries, in order: an explicit `libraryPath`, the
-`MPV_KIT_LIBMPV_PATH` environment variable, then the platform default names
-(`libmpv-2.dll`; `@rpath/mpv.2.framework/mpv.2`, `libmpv.2.dylib`;
+`MpvLibrary.open()` is strict about libraries you name: an explicit
+`libraryPath` is tried alone; otherwise a non-empty `MPV_KIT_LIBMPV_PATH`
+environment variable is tried alone. If that library cannot be loaded (missing
+file, unresolved dependency DLL, incompatible client API) it throws
+`MpvLibraryNotFound` with the loader's reason and does **not** fall back to
+another copy. Only when neither is given are the platform default names tried
+in order (`libmpv-2.dll`; `@rpath/mpv.2.framework/mpv.2`, `libmpv.2.dylib`;
 `libmpv.so.2`), which resolve to the copy bundled by `mpv_kit_libs`. A local
 bundle can be supplied with the `libmpv_bundle` hook user define (see
 [mpv_kit_libs](packages/mpv_kit_libs/README.md)).
 
-> Until a `v*` release is pinned in
-> `packages/mpv_kit_libs/lib/src/bundles.dart`, the hook emits no assets;
+> The pinned release is `bundleTag` in
+> `packages/mpv_kit_libs/lib/src/bundles.dart`, and
+> `tools/pin_bundles.dart` rewrites it and the per-target sha256 from a
+> release's `SHA256SUMS`. For a libmpv that no published release contains yet,
 > use `libmpv_bundle` or `MPV_KIT_LIBMPV_PATH` with a bundle produced by the
 > `release` workflow.
 
@@ -117,31 +159,128 @@ Software is used whenever Vulkan 1.3, the platform interop extensions or a
 suitable GPU are missing, or both Vulkan renderers fail to initialise. After
 `create` returns:
 
-* `controller.backend` is `MpvVideoBackend.vulkan` or `.software`;
+* `controller.backend` is `MpvVideoBackend.vulkan` (the GPU zero-copy
+  path) or `.software` (CPU rendering). The enum is frozen; the real
+  graphics API is the first token of `controller.reason`;
 * `controller.reason` explains it, e.g. `vulkan (gpu-next) on <device>` or
-  `software (<why Vulkan was not used>)`. It is also printed once with
-  `debugPrint`.
+  `software (sw) on cpu; vulkan/gpu-next unavailable: <why>`. The format is
+  `<api> (<renderer>) on <device>` followed by one
+  `; <api>/<renderer> unavailable: <why>` per candidate that was ranked
+  before the winner ([ADR 0004](docs/adr/0004-render-backend-reporting.md)).
+  On macOS the GPU head also names the Vulkan implementation that carries the
+  rendering onto Metal, e.g. `vulkan (gpu-next) on <device> via MoltenVK`.
+  It is also printed once with `debugPrint`.
 
 The environment variable **`MPV_KIT_VIDEO_RENDERER`** (`auto`, `gpu-next`,
 `gpu`, `software`) takes precedence over the requested renderer, so driver
 problems in a shipped app can be diagnosed without code changes.
 
+On Windows, mpv can also render through its own Direct3D 11 API (native
+`d3d11` backend, own `ID3D11Device` on Flutter's adapter, no Vulkan): set
+`MPV_KIT_VIDEO_API=d3d11` to force it. `auto` tries, in order,
+`vulkan/gpu-next`, `d3d11/gpu-next`, `vulkan/gpu`, `d3d11/gpu`, then
+software. A machine with a usable Vulkan 1.3 device behaves as before; a
+machine without one (no driver, an old GPU) renders on `d3d11` instead of
+falling back to software. Phase 14 evaluated making D3D11 the first choice
+(D3D-08) and kept Vulkan first: on a GeForce GTX 960M, Vulkan dropped far
+fewer frames than D3D11 (see `docs/perf/d3d11-backend.md`).
+
+On Linux, mpv can also render through its upstream OpenGL render API (native
+`opengl` backend: a context of its own on Flutter's `EGLDisplay`, frames
+handed to Flutter as an `EGLImage`; it serves mpv's `gpu` renderer only, never
+`gpu-next`). `auto` tries `vulkan/gpu-next`, `opengl/gpu`, `vulkan/gpu`, then
+software, so a machine where Vulkan 1.3 is unusable renders on `opengl`
+instead of the CPU. `MPV_KIT_VIDEO_API=opengl` forces it.
+
+The native environment variable **`MPV_KIT_VIDEO_API`** forces one graphics
+API (`vulkan` or `software` everywhere, `d3d11` on Windows, `opengl` on
+Linux). It is strict: only that API is tried, there is
+no fallback to any other API (software included), and `create` throws
+`PlatformException(code: 'render_init')` when it cannot be used or does not
+match the selected renderer. Leave it unset in shipped apps; it exists for
+CI and diagnostics. See
+[ADR 0004](docs/adr/0004-render-backend-reporting.md).
+
 ## Hardware decoding defaults
 
-`Player()` sets `hwdec=auto-safe`: mpv picks a hardware decoder it
-considers safe for the platform (for example `d3d11va`, `videotoolbox`,
-VA-API, or Vulkan video where supported). Override at creation with
-`Player(options: {'hwdec': 'vulkan'})`, or at runtime with
-`player.setHardwareDecoding('no')` (applies to the next decoder). The
-decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
-`no` means software decoding).
+`Player()` sets a per-platform, zero-copy-first `hwdec` list
+([ADR 0006](docs/adr/0006-hwdec-defaults.md)):
+
+| Platform | Default `hwdec` | Zero-copy on | Falls back to |
+|---|---|---|---|
+| Windows | `vulkan,d3d11va,d3d11va-copy,auto-safe` | `vulkan` (Vulkan Video) on the Vulkan backend, `d3d11va` on the D3D11 backend | `d3d11va-copy`, then `auto-safe` |
+| Linux | `vulkan,vaapi,auto-safe` | `vulkan` (Vulkan Video) or `vaapi` (dma-buf; not verified on real hardware) | `vaapi-copy` inside `auto-safe`, then software |
+| macOS | `videotoolbox,auto-safe` | `videotoolbox` | `auto-safe`, then software |
+| Other | `auto-safe` | n/a | software |
+
+This is a behavior change from the old single list on every platform
+(`vulkan,d3d11va-copy,auto-safe`). mpv tries the entries in order. An entry
+without an interop on the active renderer is skipped (it never copies back),
+while `-copy` entries and `auto-safe` decode on their own device and copy the
+frames back to system memory, so they come last. Override the list at creation
+with `Player(options: {'hwdec': 'vulkan'})` (your value always wins), or at
+runtime with `player.setHardwareDecoding('no')` (applies to the next decoder).
+
+To tell zero-copy from a copy-back, read the decoder in use,
+`player.hwdecCurrent` (`hwdec-current`; null or `no` means software), together
+with `video-params/pixelformat` (`player.mpv.getProperty('video-params/pixelformat')`):
+a hardware format name such as `videotoolbox` means the frame stays on the GPU,
+a software format such as `nv12` means it was copied back. With mpv's default
+`d3d11va-zero-copy=no`, `hwdec-current=d3d11va` includes one GPU-memory copy
+per frame (no CPU round trip). Windows only benefits on the D3D11 backend; the
+Vulkan backend behaves as before. Verification tiers and measurements are in
+[docs/perf/hwdec-zero-copy.md](docs/perf/hwdec-zero-copy.md).
+
+## Memory and bundle size (v0.1.1)
+
+`Player` caps mpv 0.42's `hwdec-extra-frames` to `2` at 1080p and below; 4K/8K
+keep `auto`, and a value passed through `options` is never changed. On Windows
+x64 (RTX 4060), the full example app, a local 1080p H.264 file and the default
+hardware decode path held a 10-minute Working Set peak of **234 MiB** (mean
+last 5 min 225.7 MiB) with the GPL-3.0+ full bundle. Before the cap the same
+run peaked at 294 MiB. The gate is 250 MiB.
+
+Linux/macOS 1080p memory is **not measured** (no real hardware here); do not
+infer it. The release packaging strips Linux/macOS shared libraries at the
+bundle boundary: the P3 rebuild removed 6.5–6.8 MiB per Linux target and
+~0.47 MiB per macOS target (unpacked; compressed artifacts −2.8–2.9 MB and
+−0.1 MB). Windows was already stripped. Method, attribution and residual
+unknowns:
+[docs/perf/2026-11-07-1080p-memory.md](docs/perf/2026-11-07-1080p-memory.md).
+
+Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
+10-minute gate does not exercise it.
+
+## Dependency compatibility (0.1.2)
+
+The three packages add no runtime dependency beyond `ffi`, `meta` and
+`crypto`. These packages resolve together with them in one Flutter app
+(checked by `dart run tools/check_deps.dart`, built in `example/`):
+
+| Package | Version | Notes |
+|---|---|---|
+| ffi / path / crypto | ^2.2.0 / ^1.9.1 / ^3.0.8 | |
+| path_provider | ^2.1.6 | Dart 3.10 |
+| file_picker | ^13.3.2 | Dart 3.10 |
+| shared_preferences | ^2.5.6 | needs Dart 3.11 / Flutter 3.41 in the app |
+| desktop_drop / cross_file | ^0.8.4 / ^0.3.5+4 | `DropTarget` hands out `XFile` |
+| intl / logger / i18n | ^0.20.3 / ^2.8.0 / ^4.2.6 | `i18n` is a build-time generator |
+| xdg_directories | ^1.1.0 | Linux only |
+| flutter_video_thumbnail_plus | ^1.0.7 | no Linux implementation |
 
 ## Troubleshooting
 
-* **Which renderer is active?** `controller.backend` / `controller.reason`;
-  force one with `MPV_KIT_VIDEO_RENDERER`.
+* **Which renderer is active?** `controller.backend` / `controller.reason`
+  (the first token of `reason` is the graphics API); force a renderer with
+  `MPV_KIT_VIDEO_RENDERER`, or a graphics API, with no fallback, with
+  `MPV_KIT_VIDEO_API`. On Linux `opengl (gpu) on <GL_RENDERER>; vulkan/gpu-next
+  unavailable: <why>` means mpv renders through OpenGL and the Vulkan reason
+  is in the trail. The OpenGL backend is verified on Mesa llvmpipe only; real
+  GPU drivers and Wayland are not verified.
 * **Is hardware decoding active?** `player.hwdecCurrent.value` or
-  `player.mpv.getProperty('hwdec-current')`.
+  `player.mpv.getProperty('hwdec-current')`. Also check
+  `video-params/pixelformat`: a hardware format name means the frame stays on
+  the GPU, `nv12` and the like mean it was copied back.
 * **Dropped frames:** read mpv's statistics properties such as
   `frame-drop-count`, `decoder-frame-drop-count`, `vo-delayed-frame-count`,
   `estimated-vf-fps` and `display-fps` with `player.mpv.getProperty(...)` or
@@ -166,51 +305,67 @@ decoder actually in use is `player.hwdecCurrent` (`hwdec-current`; null or
 * **Library not found:** `MpvLibraryNotFound` lists every candidate and
   why it failed; set `MPV_KIT_LIBMPV_PATH` to the full library path.
 
-## LGPL compliance
+## License and corresponding source
 
-Applications may be closed-source: libmpv and FFmpeg are distributed as
-LGPL-2.1-or-later builds and are **dynamically linked**.
+The Dart packages are MIT. The **released native bundle is GPL-3.0-or-later**:
+an application that ships it must be GPL-compatible and provide its own
+source. Closed-source applications can build the LGPL flavor themselves
+(`MPV_KIT_FLAVOR=lgpl`) and load it with `MPV_KIT_LIBMPV_PATH` or the
+`libmpv_bundle` user define.
 
-* **FFmpeg** 8.1.3 is built from the sha256-pinned release tarball by
-  [`native/build/ffmpeg.sh`](native/build/ffmpeg.sh) without
-  `--enable-gpl`, `--enable-nonfree` or `--enable-version3`. Its license
-  gate aborts the build unless `config.h` has `CONFIG_GPL`,
-  `CONFIG_NONFREE` and `CONFIG_VERSION3` all set to 0.
-* **libmpv** 0.41.0 is configured with `-Dgpl=false`.
+* **Why GPL:** CD-DA and DVD need libcdio/libcdio-paranoia (GPL-3.0+),
+  libdvdnav/libdvdread/libdvdcss (GPL-2.0+), and mpv gates them behind
+  `-Dgpl=true`. Blu-ray/UHD
+  HDMV uses libbluray/libudfread (LGPL-2.1+) plus optional AACS/BD+ helpers
+  (libaacs/libbdplus) that are loaded at runtime.
+* **FFmpeg** 8.1.3 remains an LGPL build: it is built from the sha256-pinned
+  release tarball by [`native/build/ffmpeg.sh`](native/build/ffmpeg.sh)
+  without `--enable-gpl`, `--enable-nonfree` or `--enable-version3`.
+* **libmpv** 0.42.0 is configured with `-Dgpl=true` for the full flavor;
+  `MPV_KIT_FLAVOR=lgpl` keeps `-Dgpl=false` and omits the GPL disc libraries.
 * [`native/build/package.sh`](native/build/package.sh) collects libmpv and
-  its dependency closure, checks that libavcodec resolves from the LGPL
-  prefix (never a system copy), fails if any GPL-only library ended up in
-  the bundle (x264, x265, postproc, rubberband, vidstab, …), runs the ABI
-  audit on Windows, and writes a per-file sha256 `MANIFEST.txt`. Each bundle
-  ships `LICENSE.LGPL` and the mpv_kit patches it was built with.
+  its dependency closure, checks that libavcodec resolves from the prefix,
+  enforces the license contract of the selected flavor (the GPL ban applies
+  only to the LGPL flavor), runs the ABI audit on Windows, and writes a
+  per-file sha256 `MANIFEST.txt`. Each bundle ships `LICENSE.GPL`,
+  `LICENSE.LGPL`, the third-party licenses, `SOURCE.txt` and the patches.
 * **Relinking / replacing libmpv:** the libraries stay separate files next
   to the executable (Windows, Linux) or frameworks inside the app bundle
   (macOS). Users can replace them with their own build of the same ABI —
   rebuild from this repository, or point `MPV_KIT_LIBMPV_PATH` / the
   `libmpv_bundle` user define at another bundle.
-* **Corresponding source:** this repository — mpv 0.41.0 in `native/mpv`,
-  the patches in `native/patches`, the build scripts in `native/build`, the
-  pinned FFmpeg version and checksum in `ffmpeg.sh`, and the remaining
-  dependency setup in `.github/workflows/release.yml`.
+* **Corresponding source:** this repository — mpv 0.42.0 in `native/mpv`,
+  the patches in `native/patches`, the build scripts and dependency pins in
+  `native/build`, and the workflow setup. Release archives also carry
+  `sources-<tag>.tar.gz`; each bundle carries `SOURCE.txt` as the written
+  offer.
+* **Disc limits:** BD-J needs a JVM (not included); VCD has no `vcd://`
+  module (play `MPEGAV/*.DAT`); commercial Blu-ray decryption needs a
+  user-supplied AACS/BD+ key database; libdvdcss and AACS/BD+ distribution
+  may be restricted in some jurisdictions.
 
-See [NOTICE](NOTICE) and
-[ADR 0002](docs/adr/0002-lgpl-self-built-binaries.md). Dart and plugin code
-is MIT.
+See [NOTICE](NOTICE), [ADR 0002](docs/adr/0002-lgpl-self-built-binaries.md)
+for the historical LGPL decision, and
+[ADR 0007](docs/adr/0007-gpl-full-bundle.md) for the full-bundle switch.
+Dart and plugin code is MIT.
 
 ## mpv patches
 
-Applied on top of mpv 0.41.0 (`native/patches/`); the client API version is
-unchanged.
+Applied on top of mpv 0.42.0 (`native/patches/`); the client API version is 2.6.
 
 | Patch | Summary |
 |---|---|
-| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice` |
+| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice`; also makes `done_frame` return `bool` |
 | 0002 | `hwdec_vulkan`: pass the imported device's extensions to FFmpeg so Vulkan video decoding works |
 | 0003 | `libmpv_vk`: persistent libplacebo shader/pipeline cache in `--gpu-shader-cache-dir` |
-| 0004 | gpu-next (libplacebo's renderer) as a Vulkan render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER` |
-| 0005 | Report the active Vulkan renderer through `mpv_render_context_get_info` |
+| 0004 | gpu-next (libplacebo's renderer) as a Vulkan/D3D11 render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER`; reports the active renderer through `mpv_render_context_get_info` (old 0005 folded in) |
 | 0006 | Asynchronous stream bridge (`<mpv/stream_bridge.h>`): custom protocols answered asynchronously, used by `Mpv.registerStreamProtocol` |
-| 0007 | Audio device enumeration fixes: link the macOS helpers/frameworks the CoreAudio and AVFoundation outputs use without cocoa; keep WASAPI's COM objects valid when libmpv is destroyed on the client thread |
+| 0007 | Audio device fixes: CoreAudio NULL guards and WASAPI's playback COM lifetime when libmpv is destroyed on the client thread (the hotplug MTA half is upstream in 0.42) |
+| 0012 | Build against the Ubuntu 22.04 release container's libdrm 2.4.113 (0.42 requires 2.4.114) |
+
+Patches 0008, 0009 and 0010 were removed for 0.42.0: release tags ship
+`MPV_VERSION`, the render backports were upstreamed, and PR #17764 provides
+the D3D11 render API (client API 2.6).
 
 ## CI workflows
 
@@ -218,4 +373,6 @@ unchanged.
 |---|---|
 | `native-verify` | Builds the patched libmpv on all six targets, runs the Vulkan render smoke test, the ABI audit and the Dart tests (artifacts are not distributed) |
 | `flutter-plugin` | Compiles `mpv_kit_video` through the example app on Windows, Linux and macOS |
-| `release` | LGPL release bundles (FFmpeg from source, license-gated, packaged with a sha256 manifest); `v*` tags publish them with `SHA256SUMS` |
+| `release` | GPL-3.0+ full release bundles (mpv 0.42.0, FFmpeg from source, disc stack, sha256 manifest); `v*` tags publish them with `SHA256SUMS` and `sources-<tag>.tar.gz` |
+
+`native-verify` also runs the fault-injection golden (`video_renderer_fault_test`) in its native test jobs. Its `integration-test` job forces every backend of its platform in turn (`tools/backend_matrix.sh`), runs on Windows a negative leg that proves `MPV_KIT_REQUIRE_HWDEC` fails loudly on a host without zero-copy decode, and runs a 100-round opengl soak on the Linux runner (software llvmpipe, RSS only, one glibc malloc arena). Method, results and what stays unverified are in [docs/perf/fallback-uhd-regression.md](docs/perf/fallback-uhd-regression.md).

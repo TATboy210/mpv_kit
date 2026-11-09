@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-30T16:49:39Z",
+  "phase": "17.1",
+  "phase_name": "Close gap INT-1/INT-2: release and pin a libmpv bundle with the D3D11 and OpenGL backends",
+  "phase_dir": ".planning/phases/17.1-close-gap-int-1-int-2-release-and-pin-a-libmpv-bundle-with-t",
+  "plan": "17.1-03",
+  "task": 1,
+  "total_tasks": 7,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Phase 17 complete and verified (passed 4/4, approved SC1/SC4/VER-01/VER-04 wording); v3.0 milestone audit = tech_debt (INT-1/INT-2 stale bundle pin)", "status": "done", "commit": "a2c05d7"},
+    {"id": 2, "name": "Phase 17.1 inserted, researched, planned (7 plans, plan check passed after revision 1)", "status": "done", "commit": "7f858d3"},
+    {"id": 3, "name": "17.1-01 D-07 hook stale-stamp fix, test first (21 tests green)", "status": "done", "commit": "022f663"},
+    {"id": 4, "name": "17.1-02 D-05 flutter-plugin Windows leg loads libmpv + fails on test failure; hosted red proof run 41092363822 (all three build jobs failure, no 'could not be loaded'); ci/17-d05-red deleted", "status": "done", "commit": "99b09f9"}
+  ],
+  "remaining_tasks": [
+    {"id": 5, "name": "17.1-03 W2: gate tools, preflight, CHANGELOG/README, first push of feat (carries 9 unpushed commits), PR gate", "status": "not_started"},
+    {"id": 6, "name": "17.1-04 W3: release rehearsal dispatch on the branch ref, go/no-go checkpoint, git push --no-follow-tags origin refs/tags/v0.1.0-dev.4, verify the release", "status": "not_started"},
+    {"id": 7, "name": "17.1-05 W4: pin dev.4 from the tag run's SHA256SUMS, pinned-only CI cells (d3d11, opengl), disk floor 5804 MiB, PR gate; D-06 stop if macos-route parity red", "status": "not_started"},
+    {"id": 8, "name": "17.1-06 W5: RTX 4060 pinned-only check (start checkpoint)", "status": "not_started"},
+    {"id": 9, "name": "17.1-07 W6: close todo (Windows + Linux), audit update with D-04 sentence, final push; then Phase 17.1 verifier, then /gsd-complete-milestone v3.0", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    "17.1-04: go/no-go on the tag push and public GitHub release of v0.1.0-dev.4",
+    "17.1-06: reply start at the RTX 4060 (AC power, sleep/screen-off never, Steam closed, hands off, example window in front)",
+    "17.1-05: only if macos-route parity goes red after the pin (D-06)",
+    "Later: pub.dev publication of 0.1.0-dev.4 (D-04, separate approval); v3.0 tag decision at /gsd-complete-milestone",
+    "After v3.0: execute quick 261030-umq (renderer probe render=/describe/bind timing, 4-combo A/B; plan written, sample choice at its checkpoint)"
+  ],
+  "decisions": [
+    {"decision": "Close INT-1/INT-2 in Phase 17.1 before closing v3.0", "rationale": "Pinned bundle v0.1.0-dev.3 lacks the D3D11 and OpenGL backends", "phase": "17.1"},
+    {"decision": "Tag name v0.1.0-dev.4", "rationale": "User: 叫v0.1.0-dev.4即可", "phase": "17.1"},
+    {"decision": "D-04 no pub.dev; D-05 fix masked Windows failure; D-06 stop on red macos-route parity; D-07 fix hook stamp", "rationale": "User 2026-10-30", "phase": "17.1"},
+    {"decision": "Red push allowed only for ci/17-d05-red (done, deleted)", "rationale": "User 2026-10-31; push-authorization amendment 4685af7", "phase": "17.1"},
+    {"decision": "Renderer perf work (stable presentation texture, render= probe, zero-copy, MMCSS, deferred publish gate) goes after v3.0", "rationale": "Changes product code; v3.0 stays on the 17-04-measured product", "phase": "next milestone"}
+  ],
+  "uncommitted_files": [
+    " M .planning/config.json",
+    " M .planning/state.json",
+    "?? .planning/debug/",
+    "?? .planning/phases/17.1-close-gap-int-1-int-2-release-and-pin-a-libmpv-bundle-with-t/.gitkeep",
+    "?? .planning/quick/261030-umq-renderer-probe-render-timing-and-pickup-/",
+    "?? .planning/tmp/",
+    "?? .planning/ui-reviews/",
+    "?? engine_repo_embedder.cc"
+  ],
+  "next_action": "Dispatch gsd-executor (sonnet) for .planning/phases/17.1-close-gap-int-1-int-2-release-and-pin-a-libmpv-bundle-with-t/17.1-03-PLAN.md (first push of feat, PR gate), then 17.1-04..07 sequentially.",
+  "context_notes": "Host Windows MINGW64 (cwd D:/mpv_kit), RTX 4060, Flutter 3.47.8 /d/flutter, MSVC 14.44, gh authed. D: 10.8 GB free (user cleared space). origin feat = 6407ea0; 9 local commits unpushed (a2c05d7..99b09f9). Local tags v2.0 (annotated, matches v*) and pre-261029-rcc must never be pushed; tag push is exactly `git push --no-follow-tags origin refs/tags/v0.1.0-dev.4`. Pristine protected copies /tmp/gsd-bak/state.json.171-pre and config.json.171-pre. Executors: write LF (python -X utf8, newline='\\n'), check git diff for CRLF before committing."
+}

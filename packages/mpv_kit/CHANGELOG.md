@@ -1,3 +1,138 @@
+## 0.1.2
+
+- Changed: `ffi` lower bound raised to `^2.2.0` (resolves with the current
+  `path`, `crypto`, `ffi`, `path_provider`, `file_picker`, `shared_preferences`,
+  `desktop_drop`, `cross_file`, `intl` and `logger` releases in one app; no
+  runtime dependency added, public API unchanged).
+
+## 0.1.1
+
+- Changed: at 1080p and below, `Player` now caps mpv 0.42's
+  `hwdec-extra-frames` to `2` instead of leaving it at `auto`. mpv 0.42 sizes
+  the hwdec surface pool from the VO queue; with the 8-slot Windows frame ring
+  that added about 50 MiB of working set at 1080p. Measured on Windows x64
+  (RTX 4060), full example app, local 1080p H.264, default hardware decode,
+  10 minutes: peak working set 294 -> 234 MiB. 4K/8K keep `auto`, and a value
+  supplied through `options` (or changed at runtime) is never overridden.
+
+## 0.1.0-dev.10
+
+- Upgraded the bundled client API to **mpv 0.42.0** (client API 2.6).
+  `mpvProperties`/`mpvCommands`/`mpvOptions` were regenerated: 160 properties,
+  101 commands and 748 options, including `env`, `libplacebo-version`,
+  `sub-lines`, `dropped-files`, `disc-menu-active`, `discnav` and
+  `update-clipboard`; the removed `time-start` property is gone.
+- **Breaking (generated API):** `MpvOptions.hwdecExtraFrames` is now a
+  `MpvOption<String>` (`auto` or a number), because mpv 0.42 changed the
+  option from an integer to a choice. `Player` now passes `auto`, which sizes
+  the extra decoder frames from the VO's frame retention instead of always
+  keeping six.
+- `Player` sets `curl-enabled=no` explicitly: mpv 0.42 enables the libcurl
+  backend by default when built with FFmpeg 8.1.3, and the old network
+  behavior is kept unless an app opts in.
+- Named commands use the `_name` key introduced by client API 2.6 (`name`
+  remains accepted).
+- mpv 0.42 defaults `tls-verify=yes`; no code overrides it. `track-list` is
+  filtered by the selected edition and hides dependent tracks, and
+  `demuxer-hysteresis-bytes` now takes effect.
+- Optical-disc playback (CD, DVD-Video menus, DVD-Audio, Blu-ray/UHD HDMV)
+  is available with the GPL full bundle from `mpv_kit_libs`.
+
+## 0.1.0-dev.9
+
+- Added: `defaultHwdecForBackend(os, apiToken)` (exported): the native D3D11
+  render backend prunes the `vulkan` hwdec entry, whose probe can only fail
+  on a D3D11 render API; `MpvVideoController.create` applies it while the
+  core is idle and only when `hwdec` was not overridden.
+- Added: `StreamBridge.readTimeout` (30 s) bounds one `read`/`seek` answer;
+  a source that never replies no longer blocks mpv's demuxer thread forever
+  (the request is answered as failed and reported like other source errors).
+- Changed: `MpvVideo` never requests a render size above the video's own
+  pixel size (`capRenderSize`, default true), so a 1080p video in a 4K
+  window no longer allocates a 4K shared-image ring.
+
+## 0.1.0-dev.8
+
+- Fixed: the event drain is bounded (256 events or 2 ms per turn, continued
+  from a zero-duration timer) so a log flood cannot hold the isolate and
+  starve timers/platform channels; it still empties the queue to
+  `MPV_EVENT_NONE`.
+- Fixed: a reply event that cannot be decoded now completes its awaiting
+  future with `MpvException(operation: 'decode_event')` instead of leaving
+  `open`/`seek`/`screenshot` pending forever.
+- Changed: `Player` re-reads every bound property when mpv reports
+  `MPV_EVENT_QUEUE_OVERFLOW`, so state is current after dropped discrete
+  events. The `eventQueueOverflows` doc no longer mixes the event ring with
+  the separate log buffer.
+- Changed: `openPlaylist` submits all `loadfile ... append` commands before
+  awaiting their replies, so the playlist property is not reparsed once per
+  URL (O(N^2) in the drain). If one entry fails, the later ones are already
+  queued; the first error is still thrown. Synchronous `events`,
+  `MpvState.stream` and `observeProperty` listeners run inside the drain and
+  must not block (documented).
+
+## 0.1.0-dev.7
+
+- Version bump only; no API or behaviour changes in this package.
+
+## 0.1.0-dev.6
+
+- Changed: software decoding at 8K and above now uses at most 8 threads
+  (`vd-lavc-threads`), the same cap as 4K. mpv's automatic value is up to 16
+  frame threads, and each thread holds a full frame: measured on 8K HEVC
+  Main10 50 fps (16-thread x64, `hwdec=no`), peak RSS 3433 -> 2213 MiB
+  (-1.2 GiB) for about 8% less decode throughput (20.6 -> 18.9 s of video
+  decoded per 20 s). 12 threads was not a better trade: 525 MiB more for 2%
+  throughput. Values at 4K and below are unchanged, and a `vd-lavc-threads`
+  you set yourself is still never changed.
+
+## 0.1.0-dev.5
+
+- Added: `Player.demuxerCacheState` (`MpvDemuxerCacheState`,
+  `MpvSeekableRange`): bytes queued ahead and in total, buffered duration,
+  source read rate and seekable ranges from `demuxer-cache-state`. Observed
+  only from the first access; the parser never throws on malformed nodes.
+- Added: `Player.eventQueueOverflows`, fired when mpv's event queue for the
+  client overflowed (discrete events such as log messages were dropped;
+  property values and command replies are not lost).
+- Changed: software decoding uses at most 4 threads up to 1080p and 8 up to
+  4K (`vd-lavc-threads`, set per file before the decoder starts; 8K keeps
+  mpv's automatic count). Measured on a 16-thread x64: 1080p peak RSS
+  153 -> 82 MiB, 4K60 484 -> 303 MiB, both still decoding at well over
+  their frame rate. A `vd-lavc-threads` you set yourself is never changed.
+- Changed: the frame-size demuxer budget no longer goes below mpv's own
+  150 MiB default (640x360 got 21 MiB, which could starve readahead with
+  high-bitrate audio). Local files only fill a few MiB of it.
+- Added: `autoTuneDemuxer` parameter on `Player()` and `Player.wrap`
+  (default `true`, unchanged behaviour); `false` keeps the configured
+  `demuxer-max-bytes`/`demuxer-max-back-bytes` for every file.
+
+## 0.1.0-dev.4
+
+- Changed: `MpvLibrary.open` (and so `Mpv.create`/`Player` with `libraryPath`)
+  is strict about explicitly named libraries. An explicit `path`, else a
+  non-empty `MPV_KIT_LIBMPV_PATH`, is tried alone; if it fails to load
+  (missing file, unresolved dependency, incompatible client API) it throws
+  `MpvLibraryNotFound` carrying the loader's reason instead of silently
+  falling back to the next candidate (which ran the wrong libmpv). The
+  platform default names are only tried when neither is given. Signatures are
+  unchanged.
+- Fixed: disposing an `Mpv` while clients created from it were still alive
+  hung forever; `dispose()` now disposes those clients first.
+- Fixed: custom stream protocols always answer a claimed request: a source
+  whose `size` getter throws, or a URI that is not valid UTF-8, fails the
+  load instead of freezing it, and an opener that does not complete within
+  30 s fails with `loadingFailed` (a source arriving later is closed).
+- Changed: `Player` no longer hardware-decodes FFV1 by default
+  (`hwdec-codecs` excludes `ffv1`, mpv #18255); override it through
+  `options`.
+- Changed (behavior): `Player` now defaults `hwdec` to a per-platform,
+  zero-copy-first list instead of one shared list: Windows
+  `vulkan,d3d11va,d3d11va-copy,auto-safe`, Linux `vulkan,vaapi,auto-safe`,
+  macOS `videotoolbox,auto-safe`, other `auto-safe` (was
+  `vulkan,d3d11va-copy,auto-safe` everywhere). An explicit `hwdec` in `options`
+  still wins. See ADR 0006.
+
 ## 0.1.0-dev.3
 
 - No API changes; released together with mpv_kit_libs 0.1.0-dev.3.

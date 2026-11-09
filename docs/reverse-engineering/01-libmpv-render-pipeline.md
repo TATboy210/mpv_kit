@@ -66,7 +66,7 @@ same list `mppl_create_vulkan` requests, `vulkan/context.c:186`).
 
 | Aspect | media_kit 1.2.6 / video 2.0.1 | mpv_kit |
 |---|---|---|
-| libmpv | git snapshot 2023-09-24 | 0.41.0 + patch, built in CI |
+| libmpv | vendored v0.41.0-1113-gfd9265a905 | 0.41.0 + patch, built in CI |
 | Windows path | mpv GL → own ANGLE → D3D11, **per-frame `CopyResource`+`Flush`** (`angle_surface_manager.cc:59-67`), two ANGLE instances | Vulkan render into D3D11-shared image, no copy |
 | macOS path | CGL OpenGL (deprecated) + CVPixelBuffer | Vulkan (MoltenVK) into IOSurface |
 | Linux | system libmpv, GL/EGL | bundled libmpv, Vulkan → dma-buf |

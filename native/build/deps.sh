@@ -17,6 +17,8 @@
 set -euo pipefail
 
 prefix=${1:?usage: deps.sh PREFIX}
+# Resolved before anything changes directory.
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 mkdir -p "$prefix/lib/pkgconfig" "$prefix/include"
 prefix=$(cd "$prefix" && pwd)
 # Native Windows tools (meson, clang) need drive-letter paths (X:/...) in
@@ -33,6 +35,16 @@ case "$(uname -s)" in
   MINGW*|MSYS*) os=windows ;;
   *) echo "unsupported host $(uname -s)" >&2; exit 1 ;;
 esac
+
+if [ "$os" = windows ]; then
+  # libtool's MinGW file-magic dependency check misclassifies the WinSock
+  # import library and drops -lws2_32 from every link; with -no-undefined
+  # libtool then silently falls back to a static-only library (observed for
+  # libgpg-error and libgcrypt), leaving their consumers with undefined
+  # gpgrt_*/gcry_*/WinSock symbols. pass_all keeps each -l dependency and
+  # produces real DLLs.
+  export lt_cv_deplibs_check_method=pass_all
+fi
 
 cmake_extra=()
 if [ "$os" = macos ]; then
@@ -97,18 +109,50 @@ meson_build() {
   )
 }
 
+# cmake_dest=DIR cmake_build ...: installs into DIR instead of PREFIX (used
+# where only part of an install may reach PREFIX, see shaderc below).
 cmake_build() {
   local name=$1
   shift
   (
     cd "$work/src/$name"
     cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_PREFIX="${cmake_dest:-$prefix}" -DCMAKE_INSTALL_LIBDIR=lib \
       -DCMAKE_PREFIX_PATH="$prefix" -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       ${cmake_extra[@]+"${cmake_extra[@]}"} "$@"
     cmake --build build
     cmake --install build --strip
+  )
+}
+
+# autotools_build NAME [configure args...]: release tarballs ship configure.
+# --libdir is forced to PREFIX/lib so 64-bit Linux does not install to lib64.
+autotools_build() {
+  local name=$1
+  shift
+  (
+    # libaacs/libbdplus and libgcrypt use the legacy *-config scripts,
+    # which install into PREFIX/bin; make them discoverable by configure.
+    export PATH="$prefix/bin:$PATH"
+    cd "$work/src/$name"
+    if [ ! -x ./configure ]; then
+      # Git-archive tarballs (e.g. libdvdcss) omit the generated configure.
+      command -v autoreconf >/dev/null ||
+        { echo "$name: no configure and no autoreconf" >&2; exit 1; }
+      if [ -z "${LIBTOOLIZE:-}" ]; then
+        LIBTOOLIZE=$(command -v glibtoolize || command -v libtoolize || true)
+      fi
+      export LIBTOOLIZE
+      autoreconf -fi
+    fi
+    [ -x ./configure ] ||
+      { echo "$name: autoreconf did not produce configure" >&2; exit 1; }
+    ./configure --prefix="$prefix" --libdir="$prefix/lib" \
+      --disable-static --enable-shared --disable-dependency-tracking \
+      --disable-nls "$@"
+    make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+    make install
   )
 }
 
@@ -193,6 +237,60 @@ cmake_build glslang -DBUILD_SHARED_LIBS=OFF -DENABLE_OPT=OFF \
   -DGLSLANG_ENABLE_INSTALL=ON
 license glslang LICENSE.txt
 
+# --- Windows only: SPIR-V -> HLSL (SPIRV-Cross) and shaderc ----------------
+# mpv's D3D11 renderer (-Dd3d11) needs shaderc (GLSL -> SPIR-V) and
+# spirv-cross-c-shared (SPIR-V -> HLSL); libplacebo's pl_d3d11 needs only
+# spirv-cross-c-shared. Both are built from the pinned official sources,
+# never taken from MSYS2 packages (D3D-01). Linux and macOS skip this block.
+if [ "$os" = windows ]; then
+  # Shared C API library: the pkg-config name spirv-cross-c-shared is the one
+  # libplacebo and mpv look up, and only the shared build installs it. One
+  # extra DLL in the bundle (shipped with its license, audited like the rest).
+  fetch spirv-cross \
+    "https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721
+  cmake_build spirv-cross -DSPIRV_CROSS_SHARED=ON -DSPIRV_CROSS_STATIC=OFF \
+    -DSPIRV_CROSS_CLI=OFF -DSPIRV_CROSS_ENABLE_TESTS=OFF
+  license spirv-cross LICENSE
+
+  # shaderc is built against the glslang 16.6.0 sources fetched above (one
+  # glslang version in the bundle) and the SPIRV-Tools / SPIRV-Headers of the
+  # same Vulkan SDK (SPIRV-Tools equals shaderc's own DEPS pin ef96ed76).
+  # SPIRV-Tools is linked statically into shaderc_shared.
+  fetch spirv-headers \
+    "https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    5b3a0d099f5c7649e29c0938476c462e71d66ad89a0bde42fa1ba3eb476956c9
+  fetch spirv-tools \
+    "https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-$VK_SDK.tar.gz" \
+    e6c83a215538fbfd265ccf398d3877985055df1273dbed73912bd05307664688
+  fetch shaderc https://github.com/google/shaderc/archive/refs/tags/v2026.4.tar.gz \
+    f06ce5bcca94e5df7f34e115743597d0ad2e13c5fe9213c67dc8c76031241947
+  # shaderc's install step also installs the glslang, SPIRV-Tools and
+  # SPIRV-Headers it builds from source. It is staged first because that
+  # glslang (optimizer on) must not overwrite the one libplacebo links
+  # statically. Only shaderc's headers, import library, DLL and pkg-config
+  # file are copied into PREFIX.
+  shaderc_stage="$work/shaderc-stage"
+  rm -rf "$shaderc_stage"
+  cmake_dest="$shaderc_stage" cmake_build shaderc -DBUILD_SHARED_LIBS=OFF \
+    -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON \
+    -DSHADERC_SKIP_EXECUTABLES=ON -DSHADERC_SKIP_COPYRIGHT_CHECK=ON \
+    -DSHADERC_ENABLE_WERROR_COMPILE=OFF -DSPIRV_SKIP_EXECUTABLES=ON \
+    -DSHADERC_GLSLANG_DIR="$(cygpath -m "$work/src/glslang")" \
+    -DSHADERC_SPIRV_TOOLS_DIR="$(cygpath -m "$work/src/spirv-tools")" \
+    -DSHADERC_SPIRV_HEADERS_DIR="$(cygpath -m "$work/src/spirv-headers")"
+  mkdir -p "$prefix/bin" "$prefix/include/shaderc"
+  cp "$shaderc_stage"/include/shaderc/*.h* "$prefix/include/shaderc/"
+  cp "$shaderc_stage/lib/libshaderc_shared.dll.a" "$prefix/lib/"
+  cp "$shaderc_stage/bin/libshaderc_shared.dll" "$prefix/bin/"
+  # The staged shaderc.pc points at the staging directory.
+  sed "s|^prefix=.*|prefix=$prefix|" "$shaderc_stage/lib/pkgconfig/shaderc.pc" \
+    > "$prefix/lib/pkgconfig/shaderc.pc"
+  license shaderc LICENSE
+  license spirv-tools LICENSE
+  license spirv-headers LICENSE
+fi
+
 # --- Color management ---------------------------------------------------
 fetch lcms2 https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz \
   bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8
@@ -200,10 +298,12 @@ meson_build lcms2 -Djpeg=disabled -Dtiff=disabled -Dutils=false
 license lcms2 LICENSE
 
 # --- libplacebo ---------------------------------------------------------
-fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.1/libplacebo-v7.360.1.tar.gz \
-  14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39
-# Vulkan only: mpv_kit renders through the Vulkan render API (OpenGL and
-# D3D11 backends would only add size). Dolby Vision metadata is handled
+# mpv 0.42 requires >= 7.387.0. The 16 backports used with 7.360.1 were all
+# ancestors of 7.387.0 and have been removed (see native/patches/UPSTREAM.md).
+fetch libplacebo https://code.videolan.org/videolan/libplacebo/-/archive/v7.387.0/libplacebo-v7.387.0.tar.bz2 \
+  14ceeeb14d1c08fcdb1a782a06129da11f842c6fddbf3a43c1c4061406ad03d2
+# Vulkan everywhere, plus pl_d3d11 on Windows (mpv_kit's native D3D11 path;
+# an OpenGL backend would only add size). Dolby Vision metadata is handled
 # by libplacebo itself (libdovi is optional).
 # libplacebo finds glslang with find_library, which searches only the
 # -Dvulkan-sdk directory and not for every library: point both at PREFIX.
@@ -218,14 +318,144 @@ fetch fast_float https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.
 rm -rf "$work/src/libplacebo/3rdparty/fast_float"
 cp -r "$work/src/fast_float" "$work/src/libplacebo/3rdparty/fast_float"
 license fast_float LICENSE-MIT
+# pl_d3d11 renders through SPIRV-Cross plus the inbox d3dcompiler_47.dll.
+placebo_d3d11=disabled
+if [ "$os" = windows ]; then placebo_d3d11=enabled; fi
 meson_build libplacebo -Dprefer_static=true -Dvulkan-sdk="$nprefix" \
   -Dc_args="-I$nprefix/include" -Dcpp_args="-I$nprefix/include" \
   -Dvulkan=enabled -Dvk-proc-addr=enabled \
   -Dvulkan-registry="$nprefix/share/vulkan/registry/vk.xml" \
-  -Dopengl=disabled -Dd3d11=disabled -Dglslang=enabled -Dshaderc=disabled \
+  -Dopengl=disabled -Dd3d11=$placebo_d3d11 -Dglslang=enabled -Dshaderc=disabled \
   -Dlcms=enabled -Ddovi=enabled -Dlibdovi=disabled -Dunwind=disabled \
   -Dxxhash=disabled -Ddemos=false -Dtests=false -Dbench=false -Dfuzz=false
 license libplacebo LICENSE
+
+# --- Optical disc support (GPL full flavor) --------------------------------
+# mpv 0.42 gates CD and DVD behind -Dgpl; the 0.1.0-dev.10 bundle is GPL.
+# Blu-ray/UHD and its AACS/BD+ helpers are LGPL but dlopened by libbluray,
+# so they are copied explicitly by package.sh.
+fetch libgpg-error https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.61.tar.bz2 \
+  7a85413f2bc354f4f8aa832b718af122e48965e9e0eb9012ee659c13c6385c93
+autotools_build libgpg-error --disable-doc --disable-tests \
+  --disable-languages --disable-werror --enable-install-gpg-error-config
+license libgpg-error COPYING COPYING.LIB
+
+fetch libgcrypt https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.12.4.tar.bz2 \
+  d77f68f48879510e79a2f65977ccc68981781ea0923e5bdffac2a193ea3d660e
+gcrypt_args=()
+if [ "$os" = windows ]; then
+  # MSYS2 CLANG64 cannot assemble libgcrypt's GAS sources; software AES is
+  # plenty for AACS/BD+ key derivation.
+  gcrypt_args+=(--disable-asm)
+elif [ "$os" = macos ] && [ "$(uname -m)" = arm64 ]; then
+  # libgcrypt's aarch64 GAS sources use ELF directives that Darwin's
+  # assembler rejects (GnuPG T5157); software AES is plenty for AACS/BD+.
+  gcrypt_args+=(--disable-asm)
+fi
+autotools_build libgcrypt --disable-large-data-tests \
+  --disable-hmac-binary-check --disable-werror \
+  ${gcrypt_args[@]+"${gcrypt_args[@]}"}
+license libgcrypt COPYING COPYING.LIB
+
+fetch libaacs https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2 \
+  a88aa0ebe4c98a77f7aeffd92ab3ef64ac548c6b822e8248a8b926725bea0a39
+autotools_build libaacs --disable-werror
+license libaacs COPYING
+
+fetch libbdplus https://download.videolan.org/pub/videolan/libbdplus/0.2.0/libbdplus-0.2.0.tar.bz2 \
+  b93eea3eaef33d6e9155d2c34b068c505493aa5a4936e63274f4342ab0f40a58
+autotools_build libbdplus --disable-werror
+license libbdplus COPYING
+
+fetch libudfread https://download.videolan.org/pub/videolan/libudfread/libudfread-1.2.0.tar.xz \
+  bb477cbd4cfbfc7787d9d05b71ee5e70430f5cfebf1297497f7e83547958050f
+meson_build libudfread -Denable_examples=false
+license libudfread COPYING
+
+fetch libxml2 https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz \
+  98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821
+cmake_build libxml2 -DBUILD_SHARED_LIBS=ON \
+  -DLIBXML2_WITH_PYTHON=OFF -DLIBXML2_WITH_ICONV=OFF \
+  -DLIBXML2_WITH_HTTP=OFF -DLIBXML2_WITH_PROGRAMS=OFF \
+  -DLIBXML2_WITH_TESTS=OFF -DLIBXML2_WITH_ZLIB=OFF
+license libxml2 Copyright
+
+fetch libbluray https://code.videolan.org/videolan/libbluray/-/archive/1.5.1/libbluray-1.5.1.tar.bz2 \
+  0f415b559d7f074ba78db259f61c3c61458057263a0181aaafdee1856b0fb17f
+# HDMV menus only: no BD-J JAR (no JVM), no font stack (menus are bitmaps).
+# libaacs/libbdplus are dlopened at runtime; package.sh ships them.
+meson_build libbluray -Denable_docs=false -Denable_tools=false \
+  -Denable_devtools=false -Denable_examples=false -Dbdj_jar=disabled \
+  -Dfreetype=disabled -Dfontconfig=disabled -Dlibxml2=enabled \
+  -Dembed_udfread=false
+license libbluray COPYING
+
+fetch libdvdcss https://download.videolan.org/pub/videolan/libdvdcss/1.6.0/libdvdcss-1.6.0.tar.xz \
+  7ea556c846b7bfc32d47b41cae56d1863a6b6d5f706bb162778d6f298490977c
+meson_build libdvdcss -Denable_docs=false -Denable_examples=false
+license libdvdcss COPYING
+
+fetch libdvdread https://code.videolan.org/videolan/libdvdread/-/archive/7.1.1/libdvdread-7.1.1.tar.bz2 \
+  6dec544f502d7af70c5a8f8f19a49ffe2daca60dbd8fc0b4ffe3597fa791c24c
+meson_build libdvdread -Denable_docs=false -Dlibdvdcss=enabled
+license libdvdread COPYING
+
+fetch libdvdnav https://code.videolan.org/videolan/libdvdnav/-/archive/7.0.0/libdvdnav-7.0.0.tar.bz2 \
+  1363cdfaf6e92c0b574579299b5480f5867fb32989451468a28f3f402ec48787
+meson_build libdvdnav -Denable_docs=false -Denable_examples=false
+license libdvdnav COPYING
+
+fetch libcdio https://github.com/libcdio/libcdio/releases/download/2.3.0/libcdio-2.3.0.tar.bz2 \
+  53e83d284667535a767fd2d31edad1a6701591960459df373a10f1f21e80a7ed
+cdio_args=(--disable-cxx --disable-cpp-progs --disable-example-progs
+  --disable-vcd-info)
+if [ "$os" = windows ]; then
+  # clang links with ld.lld, which has no --version-script, but configure
+  # misdetects GNU ld and would add it to the DLL link.
+  cdio_args+=(--without-versioned-libs)
+fi
+autotools_build libcdio "${cdio_args[@]}"
+license libcdio COPYING
+
+# mpv's cdda option needs both libcdio and libcdio_paranoia.
+fetch libcdio-paranoia \
+  "https://github.com/libcdio/libcdio-paranoia/releases/download/release-10.2%2B2.0.2/libcdio-paranoia-10.2%2B2.0.2.tar.gz" \
+  99488b8b678f497cb2e2f4a1a9ab4a6329c7e2537a366d5e4fef47df52907ff6
+paranoia_args=(--disable-cxx --disable-cpp-progs --disable-example-progs)
+if [ "$os" = windows ]; then
+  # Symbol versioning breaks on lld (no --version-script); elsewhere it
+  # must stay on so distro FFmpeg's @CDIO_PARANOIA_2 references resolve.
+  paranoia_args+=(--without-versioned-libs --disable-ld-version-script)
+fi
+autotools_build libcdio-paranoia "${paranoia_args[@]}"
+license libcdio-paranoia COPYING
+
+# --- HTTP/2 stream backend (curl, HTTP/2 only) -----------------------------
+fetch mbedtls https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2 \
+  a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+cmake_build mbedtls -DBUILD_SHARED_LIBS=ON \
+  -DUSE_SHARED_MBEDTLS_LIBRARY=ON -DUSE_STATIC_MBEDTLS_LIBRARY=OFF \
+  -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF -DMBEDTLS_FATAL_WARNINGS=OFF
+license mbedtls LICENSE
+
+fetch nghttp2 https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.xz \
+  e05cb1388eaca3830aded4ccf20044b6e1ac1a61411dcca11b0437c4285c8bc2
+cmake_build nghttp2 -DENABLE_LIB_ONLY=ON -DENABLE_APP=OFF \
+  -DENABLE_EXAMPLES=OFF -DENABLE_TESTS=OFF -DENABLE_HPACK_TOOLS=OFF \
+  -DENABLE_STATIC_LIB=OFF -DENABLE_SHARED_LIB=ON
+license nghttp2 COPYING
+
+fetch curl https://curl.se/download/curl-8.23.0.tar.xz \
+  8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5
+cmake_build curl -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF \
+  -DBUILD_CURL_EXE=OFF -DCURL_USE_MBEDTLS=ON -DUSE_NGHTTP2=ON \
+  -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF -DUSE_LIBIDN2=OFF \
+  -DCURL_ZSTD=OFF -DCURL_BROTLI=OFF -DCURL_DISABLE_LDAP=ON \
+  -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON \
+  -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_IMAP=ON \
+  -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_TFTP=ON \
+  -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_MQTT=ON
+license curl COPYING
 
 # --- AV1 decoder ----------------------------------------------------------
 fetch dav1d https://downloads.videolan.org/pub/videolan/dav1d/1.5.4/dav1d-1.5.4.tar.xz \

@@ -1,0 +1,151 @@
+# 12-09 exploration (scratch, not a committed test): resize while the previous resize has no frame yet
+# sha=aad75dcafb2d73c2805ca81d4278d2ad5dbf8dc1 (product sources unchanged vs HEAD: yes)
+# host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 build=MSVC /W4 /WX (build/golden-local/p1209/build_scratch.bat) run=2026-10-26T20:18:10Z
+# scenario: latency 2, SetSize(64,36), 1 frame; SetRenderResults({-18}); SetSize(32,18) -> first 32x18 render fails;
+#           HoldRenders(true); SetSize(48,27); AcquireFront while the first 48x27 render is held
+# source (verbatim) follows the output
+
+start: vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU
+  create serial=1 64x36
+  create serial=2 64x36
+  create serial=3 64x36
+  create serial=4 64x36
+  create serial=5 64x36
+  event resize 64x36
+  render serial=1 64x36
+64x36 frame 1: acquire index=0 64x36 serial=1
+  destroy serial=2
+  destroy serial=3
+  destroy serial=4
+  destroy serial=5
+  create serial=6 32x18
+  create serial=7 32x18
+  create serial=8 32x18
+  create serial=9 32x18
+  create serial=10 32x18
+  event resize 32x18
+  render serial=6 32x18 err=-18
+  event render_error render: fake error -18
+after failed 32x18 render: acquire index=-2 64x36 serial=1
+  destroy serial=1
+  destroy serial=6
+  destroy serial=7
+  destroy serial=8
+  destroy serial=9
+  destroy serial=10
+  create serial=11 48x27
+  create serial=12 48x27
+  create serial=13 48x27
+  create serial=14 48x27
+  create serial=15 48x27
+  event resize 48x27
+  render serial=11 48x27
+during held 48x27 render: acquire index=-2 64x36 serial=1 USE AFTER DESTROY
+  event recovered 
+VIOLATION USE AFTER DESTROY serial=1 (RetainFrame)
+live-images=0
+log mpv_kit: frame render failed (1x): render: fake error -18
+log mpv_kit: rendering recovered after 1 failed frame(s)
+exit=1
+
+# ---- source: build/golden-local/p1209/scratch/explore_resize_after_failed_render.cc ----
+// Scratch exploration (12-09, not a committed test): a resize while the
+// previous resize has not produced a frame yet (the first new-size render
+// failed). Does AcquireFront hand out an image that AllocateRing already
+// destroyed?
+#include <cstdio>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "renderer_harness.h"
+
+namespace {
+using golden::Fake;
+using golden::FakeInterop;
+using golden::FakeVulkanInterop;
+using golden::Images;
+using mpv_kit::RendererChoice;
+using mpv_kit::VideoRenderer;
+
+std::mutex g_mu;
+std::vector<std::string> g_log;
+
+struct Rig {
+  explicit Rig(int latency) : interop(latency, false, nullptr, &vk) {
+    renderer = std::make_unique<VideoRenderer>(
+        golden::MakeApi(), golden::FakeHandle(), &interop,
+        [](const std::string& line) {
+          std::lock_guard<std::mutex> lock(g_mu);
+          g_log.push_back(line);
+        },
+        [](const char* kind, const std::string& msg) {
+          Fake().Note(std::string("event ") + kind + " " + msg);
+        });
+  }
+  FakeVulkanInterop vk;
+  FakeInterop interop;
+  std::unique_ptr<VideoRenderer> renderer;
+};
+
+void Acquire(Rig& rig, const char* when) {
+  const mpv_kit::Frame f = rig.renderer->AcquireFront();
+  const golden::FakeImage e = Images().Entry(f.platform);
+  std::printf("%s: acquire index=%d %dx%d serial=%d%s\n", when, f.index,
+              f.width, f.height, f.platform ? e.serial : 0,
+              f.platform && e.destroyed ? " USE AFTER DESTROY" : "");
+}
+
+void Sync() {
+  if (const uint64_t seq = Fake().Poke()) Fake().WaitPokeSeen(seq);
+  for (const std::string& l : Fake().DrainAsync()) std::printf("  %s\n", l.c_str());
+}
+}  // namespace
+
+int main() {
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  Fake().Reset();
+  Images().Reset();
+  int rc = 0;
+  {
+    Rig rig(2);
+    if (!rig.renderer->Start(RendererChoice::kGpuNext) ||
+        rig.renderer->backend() != mpv_kit::Backend::kVulkan) {
+      std::printf("SKIP: %s\n", rig.renderer->backend_reason().c_str());
+      return 77;
+    }
+    std::printf("start: %s\n", rig.renderer->backend_reason().c_str());
+    rig.renderer->SetSize(64, 36);
+    rig.interop.WaitFrameReady(1);
+    Sync();
+    Acquire(rig, "64x36 frame 1");
+    // The first render at the next size fails (mpv error), so no frame is
+    // published at 32x18.
+    Fake().SetRenderResults({-18});
+    const int renders = Fake().counters().renders;
+    rig.renderer->SetSize(32, 18);
+    Fake().WaitRenders(renders + 1);
+    Sync();
+    Acquire(rig, "after failed 32x18 render");
+    // Second resize before any 32x18 frame exists; hold its first render to
+    // observe the reallocated-but-unpublished window.
+    Fake().HoldRenders(true);
+    rig.renderer->SetSize(48, 27);
+    Fake().WaitRenderHeld();
+    for (const std::string& l : Fake().DrainAsync()) std::printf("  %s\n", l.c_str());
+    Acquire(rig, "during held 48x27 render");
+    Fake().HoldRenders(false);
+    std::this_thread::sleep_for(golden::Ms(100));
+    Sync();
+    Fake().SignalPending();
+  }
+  for (const std::string& v : Images().TakeViolations()) {
+    std::printf("VIOLATION %s\n", v.c_str());
+    rc = 1;
+  }
+  std::printf("live-images=%d\n", Images().live());
+  for (const std::string& l : g_log) std::printf("log %s\n", l.c_str());
+  return rc;
+}

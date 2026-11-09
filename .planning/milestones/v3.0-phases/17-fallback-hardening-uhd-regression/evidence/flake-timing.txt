@@ -1,0 +1,37 @@
+# vk-gpu-timeout split timing per hosted run (17-01, decision=vk-flake choice=measure-split). Lines are the raw 'GOLDEN timing-info' output of video_renderer_golden_vk; windows jobs skip the Vulkan golden (exit status 77). Later Phase 17 CI gates append their runs.
+# Reference: run 40679129407 measured a mixed retry-ms of 1396 on macos-15 against an expected 1100 (the failure this split addresses).
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1004 backoff-ms=135 retry-ms=1139
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=windows (windows-2025, CLANG64, x64) skipped
+run=40922504734 sha=a777f5c442c54d29d5c05b562c46bc2caa0e66ec job=windows (windows-11-arm, CLANGARM64, arm64) skipped
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1063 backoff-ms=103 retry-ms=1167
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=windows (windows-2025, CLANG64, x64) skipped
+run=40928914091 sha=6500cfbc3a212b4a222da5352e4f4c834a95170f job=windows (windows-11-arm, CLANGARM64, arm64) skipped
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1015 backoff-ms=152 retry-ms=1167
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=windows (windows-2025, CLANG64, x64) skipped
+run=40982220052 sha=02af05ad7cbdd89c32c8de0292eee010639192ab job=windows (windows-11-arm, CLANGARM64, arm64) skipped
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=169 retry-ms=1170
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=windows (windows-2025, CLANG64, x64) skipped
+run=40984192997 sha=50be7f000a310450481b7b0e3a5769c63b5cb916 job=windows (windows-11-arm, CLANGARM64, arm64) skipped
+run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1113 backoff-ms=164 retry-ms=1278
+run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=linux (ubuntu-24.04-arm) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+run=40989693698 sha=2296c9a01fa0e9c8e364800199b5651311813a84 job=linux (ubuntu-24.04) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100
+# 17-05 backfill: timing-info of runs gated earlier but not appended then (gh run view --log). Linux and sanitizer jobs print wait-ms=1000 backoff-ms=100 retry-ms=1100 in all of them; only the macos (macos-15) line is listed.
+run=40937808629 sha=6f6631c6884e22da12be2061f136afb3381a993d job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1016 backoff-ms=128 retry-ms=1144
+run=40991964430 sha=cbdab03f254b1c0a702c70cb200b5ac9ba9f5262 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1007 backoff-ms=167 retry-ms=1175
+run=41042057042 sha=8ec851b44b94a4c282c6a3c3d362f39ac2e1fef2 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1001 backoff-ms=117 retry-ms=1118
+run=41052501831 sha=db267073c7052e2480f6bd4fe33a70ca7716e010 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1067 backoff-ms=135 retry-ms=1203
+run=41056455257 sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 job=macos (macos-15) line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1003 backoff-ms=153 retry-ms=1156 (17-05 final gate)
+run=41056455257 sha=c4a71585d5c6fcc59ee81fd3e2afee7dbc236880 job=linux (ubuntu-24.04), linux (ubuntu-24.04-arm), sanitizers line=GOLDEN timing-info scenario=vk-gpu-timeout wait-ms=1000 backoff-ms=100 retry-ms=1100 (17-05 final gate)

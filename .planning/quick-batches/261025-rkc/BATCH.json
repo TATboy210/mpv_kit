@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "batch_id": "261025-rkc",
+  "created_at": "2026-10-25T11:50:48.227Z",
+  "options": {},
+  "base_revision": "4df1fd554547fe47124f86006c446fdd71e03bb4",
+  "items": [
+    {
+      "quick_id": "261025-rkd",
+      "client_id": null,
+      "description": "Fix 0006 stream bridge native bugs: in native/mpv/stream/stream_cb.c s_close() detach the cancel callback (mp_cancel_set_cb(p->cancel,NULL,NULL)) before close_fn to stop cancel-after-close UAF; in native/mpv/player/stream_bridge.c send MPV_KIT_STREAM_CLOSE and return MPV_ERROR_LOADING_FAILED when calloc fails after a successful open; make seek return MPV_ERROR_GENERIC when host pos != requested offset. Add tests first in native/tests/stream_bridge_test.c (cancel pending/begun READ, stop loop close-vs-cancel, SEEK UNSUPPORTED/unknown size, rejected OPEN, CLOSE exactly once). Fold diff back into native/patches/0006 so tools/check_patches.sh stays byte-identical; note in native/patches/UPSTREAM.md.",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "native/mpv/stream/stream_cb.c",
+        "native/mpv/player/stream_bridge.c",
+        "native/tests/stream_bridge_test.c",
+        "native/patches/0006-libmpv-asynchronous-stream-bridge.patch",
+        "native/patches/UPSTREAM.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "5b58792",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rke",
+      "client_id": null,
+      "description": "Propagate render target return failures and validate render_vk init params (patches 0001/0004): make libmpv_gpu_context_fns.done_frame return bool; libmpv_vk.c release_target() returns false when pl_vulkan_hold_ex fails; vo_gpu_next.c libmpv_render() and the gpu renderer path return MPV_ERROR_GENERIC on failure; in libmpv_vk.c init reject num_extensions<0 or NULL extensions with count>0, and reject VK_NULL_HANDLE signal_semaphore in wrap_fbo with MPV_ERROR_INVALID_PARAMETER; fix render_vk.h comment only (no struct layout change). Extend native/tests/render_vk_smoke.c. Fold diffs into owning patches, keep check_patches.sh green, note in UPSTREAM.md.",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "native/mpv/video/out/gpu/libmpv_gpu.h",
+        "native/mpv/video/out/gpu/libmpv_gpu.c",
+        "native/mpv/video/out/opengl/libmpv_gl.c",
+        "native/mpv/video/out/vulkan/libmpv_vk.c",
+        "native/mpv/video/out/vo_gpu_next.c",
+        "native/mpv/include/mpv/render_vk.h",
+        "packages/mpv_kit_video/src/include/mpv/render_vk.h",
+        "packages/mpv_kit_video/src/video_renderer.cc",
+        "packages/mpv_kit_video/src/vulkan_backend.h",
+        "packages/mpv_kit_video/src/vulkan_backend.cc",
+        "native/tests/render_vk_smoke.c",
+        "native/patches/0001-vo_libmpv-add-vulkan-render-backend.patch",
+        "native/patches/0004-libmpv-gpu-next-render-backend-and-renderer-report.patch",
+        "native/patches/UPSTREAM.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 1,
+      "commit": "ddbf2a8",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkf",
+      "client_id": null,
+      "description": "Fix gpu-next libmpv state bugs in vo_gpu_next.c (patch 0004): keep a copy of the host ICC blob (p->libmpv_icc) and re-apply it in update_icc_opts() when p->libmpv and no --icc-profile path is set instead of unloading; change libmpv_reset() to set p->want_seek_reset (matching VOCTRL_RESET); check for partially-initialised pl_color_adjustment reported on mpv PR #16818 and zero-init if present. Fold into 0004, keep check_patches.sh green, note in UPSTREAM.md.",
+      "status": "complete",
+      "depends_on": [
+        "261025-rke"
+      ],
+      "planned_files": [
+        "native/mpv/video/out/vo_gpu_next.c",
+        "native/patches/0004-libmpv-gpu-next-render-backend-and-renderer-report.patch",
+        "native/patches/UPSTREAM.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 4,
+      "commit": "13c130b",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkg",
+      "client_id": null,
+      "description": "Audio patch 0007 fixes: add NULL guards before CFRelease(uid) in native/mpv/audio/out/ao_coreaudio_utils.c ca_select_device and CFRelease(string) in ao_coreaudio_properties.c ca_get_str; align the ao_wasapi hotplug MTA-reference hunk with upstream mpv commit 4dfee616d0fd so the next rebase does not conflict. Fold into 0007, keep check_patches.sh green, note in UPSTREAM.md.",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "native/mpv/audio/out/ao_coreaudio_utils.c",
+        "native/mpv/audio/out/ao_coreaudio_properties.c",
+        "native/patches/0007-audio-out-fix-device-enumeration-crashes.patch",
+        "native/patches/UPSTREAM.md"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 2,
+      "commit": "ebf5a6e",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkh",
+      "client_id": null,
+      "description": "Fix unbalanced Vulkan queue-family ownership transfer on each shared image's first frame in packages/mpv_kit_video/src/video_renderer.cc (~line 569): always use VK_QUEUE_FAMILY_EXTERNAL for target.queue_family (with VK_IMAGE_LAYOUT_UNDEFINED on first use) so release-to-EXTERNAL and acquire-from-EXTERNAL pair up. Enable VK_LAYER_KHRONOS_validation in native/tests/render_vk_smoke.c when available and assert no sync/ownership errors. No header changes.",
+      "status": "complete",
+      "depends_on": [
+        "261025-rke"
+      ],
+      "planned_files": [
+        "packages/mpv_kit_video/src/video_renderer.cc",
+        "native/tests/render_vk_smoke.c"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 4,
+      "commit": "12b5009",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rki",
+      "client_id": null,
+      "description": "Fix Dart deadlock when the main Mpv is disposed while child clients from createClient are alive (packages/mpv_kit/lib/src/core/mpv.dart ~line 214): parent tracks children privately and disposes them (stream bridge shutdown + mpv_destroy) before terminateDestroy; child dispose removes itself from parent set. No public API change. Add a test in packages/mpv_kit/test with a bounded timeout.",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "packages/mpv_kit/lib/src/core/mpv.dart",
+        "packages/mpv_kit/test/mpv_test.dart",
+        "packages/mpv_kit/test/fixtures/dispose_with_children.dart"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "609c6e9",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkj",
+      "client_id": null,
+      "description": "Fix Dart stream bridge requests that may never be answered (packages/mpv_kit/lib/src/core/stream_bridge.dart ~lines 243, 280): decode URI with utf8.decode(allowMalformed: true) before begin; move source.size inside try; add finally per handler completing with loadingFailed and closing the source if not completed; add a named-constant Future.timeout on open/seek handlers completing with loadingFailed. No public API change. Add tests (throwing size getter, invalid UTF-8 URI, open timeout then loadfile continues).",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "packages/mpv_kit/lib/src/core/stream_bridge.dart",
+        "packages/mpv_kit/test/stream_bridge_test.dart"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "7962c3f",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkk",
+      "client_id": null,
+      "description": "Add native/patches/0009-upstream-backports.patch with upstream mpv cherry-picks applied via GNU patch -p1 onto native/mpv: 270367e8af7e (ta_talloc assert), 1f7ad6d31270 (vo_gpu_next remap queued frames on baked option change), b6cab8fa0cc1 (vo_gpu_next re-upload OSD only on change), 691a86bfb8d0 + 228e02c2cd5e (decoder init failure fallback), 5ce308b5730e (zimg scalers across dynamic HDR). Reconcile conflicts with 0004; update tools/check_patches.sh patch list if it enumerates patches; record shas in UPSTREAM.md and record explicitly-not-taken c1a7e4b42c4b and 6a262d11f637 with reasons.",
+      "status": "complete",
+      "depends_on": [
+        "261025-rke",
+        "261025-rkf"
+      ],
+      "planned_files": [
+        "native/mpv/ta/ta_talloc.h",
+        "native/mpv/video/out/vo_gpu_next.c",
+        "native/mpv/video/sws_utils.c",
+        "native/mpv/video/zimg.c",
+        "native/patches/0009-upstream-backports.patch",
+        "native/patches/UPSTREAM.md",
+        "tools/check_patches.sh"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 5,
+      "commit": "a2f7c0d",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkl",
+      "client_id": null,
+      "description": "Backport libplacebo fixes onto v7.360.1 in native/build/deps.sh: add native/deps/libplacebo/*.patch generated from upstream commits 1937beef3a 3330a515d6 de357dcdd8 b9484d2852 b6c62d4f04 d5a5b4abbe b1e1ea4f5e 3ef51741f8 2ba21c07c0 ca33bdacfd 13d0b79827 285d1cc8af f89d3224a2 c4e054a044 4aa872a15b 1532bf6893, applied in order with patch -p1 after unpack with pinned sha256; drop any that do not apply cleanly and record why; record in UPSTREAM.md the FFmpeg 9 prerequisites (libplacebo 409c9a8 + mpv 6a262d1, mpv issue #18588).",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "native/build/deps.sh",
+        "native/deps/libplacebo/",
+        "native/patches/UPSTREAM.md",
+        ".github/workflows/native-verify.yml",
+        ".github/workflows/release.yml"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 3,
+      "commit": "a7ba508",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261025-rkm",
+      "client_id": null,
+      "description": "Adjust gpu-next defaults from community issues without public API change: exclude ffv1 from hwdec-codecs (mpv #18255 Vulkan ffv1 DEVICE_LOST) and set hdr-compute-peak=no for >=7680-wide sources only when the user has not set it (mpv #17626), in whichever Dart location holds current default options (Player factory or MpvVideoController). Comment each with the issue number; add unit tests.",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [
+        "packages/mpv_kit/lib/src/player/player.dart",
+        "packages/mpv_kit/test/player_test.dart"
+      ],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "c126862",
+      "failure_reason": null
+    }
+  ]
+}

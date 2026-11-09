@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.source_files     = 'Classes/**/*'
   s.public_header_files = 'Classes/MpvKitVideoPlugin.h'
   s.dependency 'FlutterMacOS'
-  s.platform = :osx, '10.15'
+  s.platform = :osx, '12.0'
   s.frameworks = 'Metal', 'CoreVideo', 'IOSurface'
   # Shared renderer, mpv headers and vendored Vulkan headers/volk live next
   # to this directory in the package.

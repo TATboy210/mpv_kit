@@ -1,0 +1,34 @@
+# Patch 0010 (upstream D3D11 render API, PR #17764) - ABI comparison and hunk record
+# Upstream reference: mpv-player/mpv 4255130de4 (rebase-merged). Base b2c255c13 + 0001..0009 (0012 stacks on top, PATCH-DRIFT patches=10).
+#
+# SHA mapping (PR head -> master; patch-ids identical for every pair):
+sha_map f0b70a87c2 -> 5deaba46b (vo_gpu: fix dither quantization for > 31 bit depths)
+sha_map b96f286532 -> 0b3d2ab52 (ra_d3d11: set the rasterizer state for every draw)
+sha_map 2a97b84b39 -> b1b03bd34 (d3d11: move the live object report to the VO context)
+sha_map 69920fdcaf -> 4255130de4 (libmpv: add D3D11 render API backend)
+# Prerequisite upstream commits (NOT in the plan's 4; user decision 2026-10-27 option 1: include verbatim):
+prerequisite 44be29945 d3d11: move debug layer message printing to d3d11_helpers (b1b03bd34 calls mp_d3d11_report_live_objects introduced here)
+prerequisite d802fab36 d3d11: don't map fence messages by ID (touches the same d3d11_helpers.c region as 44be29945)
+order 44be29945 d802fab36 5deaba46b 0b3d2ab52 b1b03bd34 4255130de4, then one local commit: done_frame returns bool
+# Hunk / conflict record (cherry-pick -x on base+0001..0009)
+hunk file=video/out/d3d11/ra_d3d11.c commit=44be29945,0b3d2ab52,b1b03bd34 conflicted_with=none resolution=applied cleanly once prerequisites 44be29945 + d802fab36 are present (without them b1b03bd34 conflicts: base lacks the helper-side report)
+hunk file=video/out/d3d11/context.c commit=b1b03bd34 conflicted_with=none resolution=clean
+hunk file=video/out/gpu/d3d11_helpers.c commit=44be29945,d802fab36,b1b03bd34 conflicted_with=none resolution=clean
+hunk file=video/out/gpu/d3d11_helpers.h commit=44be29945 conflicted_with=none resolution=clean (file shows as modified in vendor tree; 15 paths, not 14, vs the plan's list)
+hunk file=video/out/gpu/error_diffusion.c commit=5deaba46b conflicted_with=none resolution=clean
+hunk file=video/out/gpu/video.c commit=5deaba46b conflicted_with=none resolution=clean
+hunk file=video/out/gpu/libmpv_gpu.c commit=4255130de4 conflicted_with=0001 resolution=auto-merged; context_backends[] gets the HAVE_D3D11 entry before HAVE_GL, 0001's vk entry kept
+hunk file=video/out/gpu/libmpv_gpu.h commit=4255130de4 conflicted_with=0001 resolution=kept 0001's libmpv_gpu_context_vk extern, added libmpv_gpu_context_d3d11 extern after it
+hunk file=meson.build commit=4255130de4 conflicted_with=0001,0006 resolution=kept 0001/0006 header list (render_vk.h block, stream_bridge.h), added include/mpv/render_d3d11.h in upstream position; libmpv_d3d11.c source hunk applied clean
+hunk file=DOCS/client-api-changes.rst commit=4255130de4 conflicted_with=0001 resolution=kept the mpv_kit block, added upstream's "mpv 0.42.0 / 2.6" entry below it
+hunk file=include/mpv/client.h commit=4255130de4 conflicted_with=none resolution=clean (MPV_CLIENT_API_VERSION 2.6)
+hunk file=include/mpv/render.h commit=4255130de4 conflicted_with=none resolution=clean
+hunk file=include/mpv/render_d3d11.h commit=4255130de4 conflicted_with=none resolution=new file
+hunk file=video/out/d3d11/libmpv_d3d11.c commit=4255130de4+local conflicted_with=none resolution=new file; only local adaptation: done_frame returns bool, `return true;` at the end (matches 0001/0004 signature)
+# ABI comparison against upstream 4255130de4 (files fetched with git show from a clone and, for render_d3d11.h, also gh api; cmp)
+render_d3d11.h identical
+client_api 2.6 identical
+render.h identical
+param D3D11_INIT_PARAMS=21
+param D3D11_FBO=22
+note render.h was changed in b2c255c13..4255130de4 only by 4255130de4, and the whole file is cmp-identical.

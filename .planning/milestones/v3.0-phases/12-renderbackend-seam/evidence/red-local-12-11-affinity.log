@@ -1,0 +1,25 @@
+# 12-11 Task 1 RED, local (user: "只在本地跑 golden 测试拿到红色结果作为证据，不推送")
+sha=41bfa894d7ef7951c6d484e00b90b90e52fa25de
+host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64
+tree_clean_for_sources=0 changed files under packages/ native/
+build=MSVC /W4 /WX /O2 (build/golden-local/p1211/build_all.bat red): BUILD OK
+date=2026-10-26T23:20:59Z
+
+## red/affinity_test.exe (exit code below)
+AFFINITY violation sw: render_context_report_swap on the raster thread (expected: render thread) (x11)
+AFFINITY violation sw: render_context_set_update_callback on the main thread (removal, expected: render thread) (x1)
+AFFINITY violation sw: render_context_free on the main thread (expected: render thread) (x1)
+AFFINITY violation vk: render_context_report_swap on the raster thread (expected: render thread) (x11)
+AFFINITY violation vk: render_context_set_update_callback on the main thread (removal, expected: render thread) (x1)
+AFFINITY violation vk: render_context_free on the main thread (expected: render thread) (x1)
+exit=1
+
+## all binaries on the same build
+affinity_test rc=1 AFFINITY violation sw: render_context_report_swap on the raster thread (expected: render thread) (x11)|AFFINITY violation sw: render_context_set_update_callback on the main thread (removal, expected: render thread) (x1)|AFFINITY violation sw: render_context_free on the main thread (expected: render thread) (x1)|AFFINITY violation vk: render_context_report_swap on the raster thread (expected: render thread) (x11)|AFFINITY violation vk: render_context_set_update_callback on the main thread (removal, expected: render thread) (x1)|AFFINITY violation vk: render_context_free on the main thread (expected: render thread) (x1)|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=1

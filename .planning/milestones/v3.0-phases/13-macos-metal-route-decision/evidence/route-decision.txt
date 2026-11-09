@@ -1,0 +1,4 @@
+decision=accept decided_at=2026-10-28T06:37:12Z
+sc2_pixel=proven
+hwd04=h264-8bit:zero-copy,hevc-8bit:zero-copy,hevc-10bit:zero-copy
+user_reply=accept

@@ -1,0 +1,13 @@
+# Phase 15 未验证清单。本阶段所有 Linux 证据来自托管 runner（xvfb + Mesa llvmpipe，软件 GL 与软件 Vulkan），项目没有 Linux GPU 硬件（STATE.md blocker）。
+# 格式：项目=… 状态=未验证 原因=… 能证明它的环境=…
+# 不在本清单中的内容：SC3 的满足方式（已由 15-04 的 decision=sc3-interpretation 定案，见 decisions.txt）。
+项目=NVIDIA 专有驱动（libglvnd EGL）上的 OpenGL 后端 状态=未验证 原因=CI 只有 Mesa llvmpipe；独立 EGL context、blit 到导出纹理、EGLImage 导入与 EGL fence 在 NVIDIA 上的行为没有任何观测 能证明它的环境=带 NVIDIA 显卡的 Linux 桌面（X11 与 Wayland 各一次）
+项目=AMD/Intel Mesa 硬件驱动上的 OpenGL 后端 状态=未验证 原因=llvmpipe 是软件光栅，EGLImage 的跨上下文可见性与 fence 语义在硬件驱动上可能不同 能证明它的环境=带 AMD 与 Intel 集显的 Linux 桌面
+项目=Mesa Xe2 的 EGLImage 黑帧（media-kit#1463 一类问题） 状态=未验证 原因=本设计用私有纹理 + glBlitFramebuffer 到独立导出纹理来规避，但只在 llvmpipe 上证明了该交接，没有在受影响的硬件上证明 能证明它的环境=Intel Xe2（Lunar Lake / Battlemage）Linux 机器
+项目=Wayland 上的 EGL 平台 状态=未验证 原因=runner 只有 xvfb（X11）；Flutter 在 Wayland 上用 eglGetPlatformDisplayEXT 的 Wayland 平台，本插件在该 EGLDisplay 上建 context 与 eglMakeCurrent 的行为未观测 能证明它的环境=Wayland 合成器会话（GNOME/KDE）
+项目=真实 X11 桌面上 libglvnd + GLX 与本插件 EGL context 的交互 状态=未验证 原因=xvfb 没有 GLX 驱动栈；D-THREAD 在 runner 上观测到平台线程 eglMakeCurrent 失败（EGL_BAD_ACCESS，GDK GL context 当前）而新线程成功，真实桌面上是否同样未知 能证明它的环境=带 GLX 的真实 X11 桌面会话
+项目=GL 设备丢失与 context 重置 状态=未验证 原因=OpenGL 后端不创建鲁棒 context，Wait 只以 1 s 超时报告 gpu_timeout，没有 device_lost 信号，也没有注入或真实触发过 能证明它的环境=可触发 GPU reset 的真实硬件，或带鲁棒 context 的后续实现
+项目=arm64 上的真实插件 OpenGL 路径 状态=未验证 原因=render_gl_smoke（gl 与 gles）在 ubuntu-24.04-arm 上通过，但真实插件的 integration test 只在 x64 runner 上运行 能证明它的环境=arm64 Linux 上的 flutter integration test（ARM 桌面或带 xvfb 的 arm runner）
+项目=Flutter Impeller 外部纹理原点（Linux） 状态=未验证 原因=D-FLUTTER-ORIGIN=top-left 来自对 Skia 路径的源码静态阅读（Impeller 路径未读）；实际方向只在 xvfb + Skia 的 toImage 探针上观测为 upright 能证明它的环境=Impeller 开启的真实 Linux 桌面
+项目=populate 中 EGLImage 导入失败的处理 状态=未验证 原因=导入失败目前只有 g_warning（STATE.md 延后项，本阶段未修复，也没有故障注入测试覆盖） 能证明它的环境=注入 glEGLImageTargetTexture2DOES 失败的 integration 测试（后续阶段）
+项目=日志中的原生诊断行 D-LOG 状态=未验证 原因=三次探针运行中没有任何一行 mpv_kit: 原生日志到期，只有 mpv_render_context_create 失败才记录，因此其格式与出现条件没有被真实行证明（D-LOG=unknown） 能证明它的环境=让 mpv_render_context_create 失败的故障注入运行

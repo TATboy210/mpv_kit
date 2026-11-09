@@ -3,7 +3,7 @@
 Status: accepted (2026-10-14)
 
 ## Decision
-* libmpv is built in CI from `native/mpv` (0.41.0 + `native/patches`) with
+* libmpv is built in CI from `native/mpv` (0.42.0 + `native/patches`) with
   `-Dgpl=false -Drubberband=disabled`, against an FFmpeg configured without
   `--enable-gpl`/`--enable-nonfree`, for windows-{x64,arm64},
   linux-{x64,arm64}, macos-{x64,arm64}.

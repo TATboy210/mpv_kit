@@ -3,7 +3,7 @@
 
 import 'catalog_types.dart';
 
-/// Properties documented in input.rst (153).
+/// Properties documented in input.rst (160).
 const mpvProperties = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'audio-speed-correction',
@@ -33,6 +33,11 @@ const mpvProperties = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'estimated-frame-number',
     'Number of current frame in current stream.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
+    'env',
+    'Read-only table of all the environment variables.',
     writable: false,
   ),
   MpvCatalogEntry('pid', 'Process-id of mpv.', writable: false),
@@ -126,7 +131,6 @@ const mpvProperties = <MpvCatalogEntry>[
     'Position in current file in seconds.',
     writable: true,
   ),
-  MpvCatalogEntry('time-start', 'Deprecated.', writable: false),
   MpvCatalogEntry(
     'time-remaining',
     'Remaining length of the file in seconds.',
@@ -158,6 +162,11 @@ const mpvProperties = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'current-edition',
     'Currently selected edition.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
+    'disc-menu-active',
+    'yes when the current optical-disc stream (DVD or Blu-ray) is showing an interactive menu (a DVD menu domain, or a visible Blu-ray menu overlay), and no otherwise.',
     writable: false,
   ),
   MpvCatalogEntry('chapters', 'Number of chapters.', writable: false),
@@ -417,6 +426,11 @@ const mpvProperties = <MpvCatalogEntry>[
     writable: false,
   ),
   MpvCatalogEntry(
+    'dropped-files',
+    'Information of the most recent drag-and-drop event mpv received.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
     'sub-ass-extradata',
     'The current ASS subtitle track\'s extradata.',
     writable: false,
@@ -454,6 +468,16 @@ const mpvProperties = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'secondary-sub-end',
     'Same as sub-end, but for the secondary subtitles.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
+    'sub-lines',
+    'The list of subtitle lines in memory.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
+    'secondary-sub-lines',
+    'Same as sub-lines, but for the secondary subtitles.',
     writable: false,
   ),
   MpvCatalogEntry(
@@ -636,6 +660,16 @@ const mpvProperties = <MpvCatalogEntry>[
     writable: false,
   ),
   MpvCatalogEntry(
+    'libplacebo-version',
+    'The contents of the PL_VERSION macro.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
+    'subrandr-version',
+    'The value of sbr_library_version() as a string in the format <major>.<minor>.<patch>, indicating the release version of the subrandr library at runtime.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
     'platform',
     'Returns a string describing what target platform mpv was built for.',
     writable: false,
@@ -647,7 +681,7 @@ const mpvProperties = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'file-local-options/<name>',
-    'Similar to options/<name>, but when setting an option through this property, the option is reset to its old value once the current file has stopped playing.',
+    'Similar to options/<name>, but when setting an option through this property, the option is marked as file-local, which causes it to reset to its old value once the current file has stopped playing.',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -682,13 +716,18 @@ const mpvProperties = <MpvCatalogEntry>[
     writable: false,
   ),
   MpvCatalogEntry(
+    'player-operation-mode',
+    'A read-only string of the current player operation mode, mirroring the --player-operation-mode option.',
+    writable: false,
+  ),
+  MpvCatalogEntry(
     'clock',
     'The current local time in hour:minutes format.',
     writable: false,
   ),
 ];
 
-/// Input commands documented in input.rst (99).
+/// Input commands documented in input.rst (101).
 const mpvCommands = <MpvCatalogEntry>[
   MpvCatalogEntry('seek', 'Change the playback position.'),
   MpvCatalogEntry(
@@ -911,6 +950,14 @@ const mpvCommands = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry('context-menu', 'Show context menu on the video window.'),
   MpvCatalogEntry(
+    'discnav',
+    'Send a navigation command to the optical-disc stream that is currently playing.',
+  ),
+  MpvCatalogEntry(
+    'update-clipboard',
+    'Update the clipboard content so that the clipboard property reflects up-to-date value.',
+  ),
+  MpvCatalogEntry(
     'event',
     'Name as the event (as returned by mpv_event_name()).',
   ),
@@ -962,7 +1009,7 @@ const mpvCommands = <MpvCatalogEntry>[
   ),
 ];
 
-/// Options documented in options.rst (711); every option is also a property.
+/// Options documented in options.rst (748); every option is also a property.
 const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'alang',
@@ -992,13 +1039,23 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'flatten-editions',
+    'Some container formats (such as HLS or MPEG-TS with multiple programs) expose multiple programs or rendition groups.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'show-dependent-tracks',
+    'Show dependent tracks in the track list (default: no).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'track-auto-selection',
     'Enable the default track auto-selection (default: yes).',
     writable: true,
   ),
   MpvCatalogEntry(
     'subs-with-matching-audio',
-    'When autoselecting a subtitle track, select it even if the selected audio stream matches you preferred subtitle language (default: yes).',
+    'When autoselecting a subtitle track, select it even if the selected audio stream matches your preferred subtitle language (default: yes).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -1048,6 +1105,11 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'playlist',
     'Play files according to a playlist file.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'playlist-inherit-options',
+    'Whether the per-file options of a playlist file are inherited by its items when the playlist file is resolved and expanded (default: no).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -1195,7 +1257,11 @@ const mpvOptions = <MpvCatalogEntry>[
     'If set to no, don\'t auto-load scripts from the scripts configuration subdirectory (usually ~/.config/mpv/scripts/).',
     writable: true,
   ),
-  MpvCatalogEntry('script', 'Load a Lua script.', writable: true),
+  MpvCatalogEntry(
+    'script',
+    'Load a script (Lua or JS) or a C plugin.',
+    writable: true,
+  ),
   MpvCatalogEntry('script-opt', 'Set options for scripts.', writable: true),
   MpvCatalogEntry(
     'merge-files',
@@ -1370,7 +1436,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'hwdec-extra-frames',
-    'Number of GPU frames hardware decoding should preallocate (default: see --list-options output).',
+    'Number of extra GPU frames hardware decoding should preallocate, on top of what the codec itself requires (default: auto).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -1792,6 +1858,11 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'secondary-sub-scale',
+    'Factor for the secondary subtitle font size.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'sub-scale-signs',
     'When set to yes, also apply --sub-scale to typesetting (or "signs").',
     writable: true,
@@ -1924,12 +1995,12 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'image-subs-hdr-peak',
-    'Controls the image subtitle diffuse white level in cd/m² (nits) for HDR output (default: sdr).',
+    'Controls the image subtitle diffuse white level in cd/m² (nits) for HDR videos (default: 1000).',
     writable: true,
   ),
   MpvCatalogEntry(
     'sub-hdr-peak',
-    'Controls the text subtitle and OSD diffuse white level in cd/m² (nits) for HDR output (default: sdr).',
+    'Controls the text subtitle and OSD diffuse white level in cd/m² (nits) for HDR output (default: auto).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2067,6 +2138,11 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'sub-margin-y-offset',
+    'Additional vertical offset added to the subtitle margin, in scaled pixels.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'sub-align-x',
     'Control to which corner of the screen text subtitles should be aligned to (default: center).',
     writable: true,
@@ -2195,7 +2271,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'drag-and-drop',
-    'Controls the default behavior of drag and drop on platforms that support this.',
+    'Controls the default built-in drag-and-drop behavior (--input-builtin-drag-and-drop).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2210,7 +2286,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'focus-on',
-    '(macOS only) Focus the video window and make it the front most window on specific events (default: open).',
+    '(X11 and macOS only) Focus the video window and make it the front most window on specific events (default: open).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2290,7 +2366,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'force-window-position',
-    'Forcefully move mpv\'s video output window to default location whenever there is a change in video parameters, video stream or file.',
+    'Controls whether the window is moved back to its initial position after an automatic resize due to video stream size changes (see --auto-window-resize).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2374,6 +2450,11 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'disc-menu',
+    'When set, opening dvd:// or bd:// boots into the disc\'s interactive menu instead of automatically playing the longest title (default: no).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'cdda-device',
     'Specify the CD device for CDDA playback.',
     writable: true,
@@ -2384,8 +2465,38 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'dvda-device',
+    'Specify the DVD-Audio device or .iso filename for dvda:// playback.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'dvda-page',
+    'Force the still picture page shown during DVD-Audio playback, instead of the page scheduled for the current playback position (default: -1, use the scheduled page).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'bluray-device',
     'Specify the Blu-ray disc location.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'bluray-region',
+    'Blu-ray player region code (default: auto).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'bluray-uo-restriction',
+    'How strictly to enforce the disc\'s User Operation prohibition masks (default: auto, which leaves libbluray\'s default of relaxed in place).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'bluray-min-title-length',
+    'Ignore Blu-ray titles (playlists) shorter than this when building the title list (default: 0, list every title).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'bluray-key-file',
+    'Path to a KEYDB.cfg unit key database, passed to libbluray for AACS decryption (default: unset, let libaacs use its own configured location).',
     writable: true,
   ),
   MpvCatalogEntry('cdda-speed', 'Set CD spin speed.', writable: true),
@@ -2410,6 +2521,11 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'dvd-speed',
     'Try to limit DVD speed (default: 0, no change).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'dvd-region',
+    'DVD player region code (default: auto).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2619,6 +2735,11 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'demuxer-hysteresis-bytes',
+    'Same as --demuxer-hysteresis-secs, but specifies the hysteresis in bytes of forward buffered data instead of seconds.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'prefetch-playlist',
     'Prefetch next playlist entry while playback of the current entry is ending (default: no).',
     writable: true,
@@ -2645,12 +2766,12 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'directory-filter-types',
-    'Media file types to filter when opening directory.',
+    'Media file types to filter when opening directories and archives.',
     writable: true,
   ),
   MpvCatalogEntry(
     'autocreate-playlist',
-    'When opening a local file, act as if the parent directory is opened and create a playlist automatically.',
+    'When opening a local regular file, act as if the parent directory is opened and create a playlist automatically.',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2691,6 +2812,11 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'input-builtin-dragging',
     'Enable the built-in window-dragging behavior (default: yes).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'input-builtin-drag-and-drop',
+    'Enable the built-in drag-and-drop behavior (default: yes).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -2945,6 +3071,11 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'osd-margin-y-offset',
+    'Additional vertical offset added to the OSD margin, in scaled pixels.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'osd-align-x',
     'Control to which corner of the screen OSD should be aligned to (default: left).',
     writable: true,
@@ -3161,7 +3292,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'zimg-scaler-chroma',
-    'Same as --zimg-scaler, for for chroma interpolation (default: bilinear).',
+    'Same as --zimg-scaler, for chroma interpolation (default: bilinear).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -3404,6 +3535,41 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'hls-bitrate',
     'If HLS streams are played, this option controls what streams are selected by default.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-enabled',
+    'Enable the libcurl-based network backend (default: yes).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-http-version',
+    'Select the maximum HTTP protocol version libcurl is allowed to negotiate.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-max-redirects',
+    'Maximum number of HTTP redirects to follow before reporting an error (default: 16).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-max-retries',
+    'Number of times a single seekable transfer may be transparently re-attempted after a recoverable error (timeout, connection drop, HTTP/2 stream reset, ...) before the stream gives up (default: 5).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-connect-timeout',
+    'TCP/TLS connect timeout in seconds (default: 30, range 0-600).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-buffer-size',
+    'Size of the per-stream producer-side ring buffer that decouples the network thread from the consumer (default: 4 MiB, minimum: 32 KiB).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'curl-max-request-size',
+    'For seekable streams, split the transfer into Range requests of at most this size (default: 0, i.e.',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -3692,7 +3858,7 @@ const mpvOptions = <MpvCatalogEntry>[
   ),
   MpvCatalogEntry(
     'wayland-edge-pixels-pointer',
-    'Defines the size of an edge border (default: 16) to initiate client side resize events in the wayland contexts with the mouse.',
+    'Defines the size of an edge border (default: 16) to initiate client side resize events in the wayland contexts with the mouse or tablet.',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -3708,6 +3874,11 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'wayland-present',
     'Enable the use of wayland\'s presentation time protocol for more accurate frame presentation if it is supported by the compositor (default: yes).',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'wayland-session',
+    'Set the wayland session name for window restoration (default: unset).',
     writable: true,
   ),
   MpvCatalogEntry(
@@ -3978,6 +4149,61 @@ const mpvOptions = <MpvCatalogEntry>[
     writable: true,
   ),
   MpvCatalogEntry(
+    'tone-mapping-knee-adaptation',
+    'Controls how strongly the knee point adapts to the source scene average brightness, relative to the target average in PQ space.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-knee-minimum',
+    'Sets the minimum knee point as a fraction of the PQ luminance range.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-knee-maximum',
+    'Sets the maximum knee point as a fraction of the PQ luminance range.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-knee-default',
+    'Sets the fallback knee point used when source scene average brightness metadata is unavailable.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-knee-offset',
+    'Sets the knee point offset for bt.2390.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-slope-tuning',
+    'Controls how the slope of the spline curve is adjusted based on the difference between source and target peaks.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-slope-offset',
+    'Controls the slope adjustment of the spline curve, together with --tone-mapping-slope-tuning.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-spline-contrast',
+    'Controls the contrast of the spline curve.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-reinhard-contrast',
+    'Sets the local contrast coefficient at the display peak for reinhard.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-linear-knee',
+    'Sets the knee point for the legacy mobius and gamma curves, which operate on linear light.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'tone-mapping-exposure',
+    'Sets the linear exposure or gain applied by the linear curve.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
     'tone-mapping-param',
     'Set tone mapping parameters.',
     writable: true,
@@ -4030,6 +4256,16 @@ const mpvOptions = <MpvCatalogEntry>[
   MpvCatalogEntry(
     'hdr-contrast-recovery',
     'Enables the HDR contrast recovery algorithm, which is to designed to enhance contrast of HDR video after tone mapping.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'hdr-mastering-clip',
+    'Controls soft clipping of source values above the mastering display\'s peak luminance when the mastering metadata is considered reliable.',
+    writable: true,
+  ),
+  MpvCatalogEntry(
+    'hdr-film-strength',
+    'Controls the strength of the film-like response during tone mapping.',
     writable: true,
   ),
   MpvCatalogEntry(

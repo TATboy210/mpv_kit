@@ -1,0 +1,875 @@
+// macOS route probe (Phase 13, MAC-02): the real plugin on a macOS runner,
+// measured through a pixel probe, in the HEAD tree and in the pre-Phase-12
+// tree (3a5f450) so the two readings can be compared.
+//
+// What it proves: which libmpv the app loaded (the hook bundle's
+// `@rpath/mpv.2.framework/mpv.2`), which backend and reason the controller
+// reports, and what a RepaintBoundary.toImage read of a paused lavfi
+// testsrc2 frame (640x360) shows. The hwdec section (13-04, HWD-04) then
+// opens generated samples with `hwdec=no` (reference) and
+// `hwdec=videotoolbox` (under test) and classifies the VideoToolbox path.
+//
+// How to run: CI runs it in `.github/workflows/macos-route.yml`
+// (`route-probe (macos-15)`). Locally on a Mac:
+//   cd example && flutter test integration_test/macos_route_test.dart -d macos
+//
+// Report lines (a label plus one line of JSON, keys in this order):
+//   ROUTE-IDENTITY {"tree","libmpv","attempts","backend","reason",
+//                   "defaultHwdec"}
+//   ROUTE-PIXEL {"tree","read","final","visibility","texture","control",
+//                "background","image"}
+//   ROUTE-FRAME {"tree","supported","captured","format","width","height",
+//                "nonBlackRatio","meanR","meanG","meanB"}
+//     (second channel: statistics of the IOSurface frame the plugin handed
+//     to Flutter, read through the plugin's diagnostic `debugFrameProbe`;
+//     statistics read after the probe is armed may be torn, so they only
+//     support a non-black / approximate call)
+//   ROUTE-SECTION {"tree","name","skipped"}   (a section that was not run)
+//   ROUTE-HWDEC-REF {"tree","sample","hwdecCurrent","pixelformat",
+//                    "screenshotPath","nonBlackRatio","valid",
+//                    "textureVisibility"}
+//   ROUTE-HWDEC-LOG {"sample","hwdec","line"}   (one per evidence line)
+//   ROUTE-HWDEC {"tree","sample","hwdec","outcome","gate","hwdecCurrent",
+//                "hwdecInterop","pixelformat","hwPixelformat","p010",
+//                "screenshot","screenshotPath","screenshotDiff",
+//                "failureEvidence","evidence","flutterFrame",
+//                "requestedHwdec"}
+//     (`hwdec` is "videotoolbox" (gate:true, asserted) or "default" (the
+//     Player's own list, gate:false, recorded only); `requestedHwdec` is
+//     only on the default line: the Player's list as option text, read when
+//     the session was created, before any file was loaded; `flutterFrame`
+//     is the toImage read of the mounted texture against the reference,
+//     recorded
+//     but never asserted: match | mismatch | blind)
+//     (hosted macos-15 is an Apple Silicon VM: this proves the interop chain
+//     CVPixelBuffer -> MTLTexture -> VkImage -> libplacebo, not Apple's
+//     media engine; real-hardware conclusions stay "not verified")
+//
+// The hwdec section's screenshot counts once a second capture of the same
+// paused frame agrees with it and is not black (routeStableCapture, at most
+// five captures 300 ms apart), because one `screenshot-raw` is not reliable on
+// the hosted macOS GPU. Every discarded capture prints
+//   ROUTE-NOTE screenshot: capture <n>/<max> ... ; taking another
+// Thresholds are unchanged: a truly black or wrong frame is the same on every
+// capture and still fails.
+//
+// Configuration goes through --dart-define only (environment variables do
+// not reliably reach a sandboxed app):
+//   MPV_KIT_ROUTE_TREE      head | pre12 (default head)
+//   MPV_KIT_ROUTE_SECTIONS  comma separated section names (default pixel)
+//
+// ONE Player and ONE controller per process. Phase 12 found that a second
+// controller created in the same process may never receive a presented frame
+// (todo 2026-10-27-diagnose-second-controller-first-frame-stall-in-resize-
+// front). The pixel section therefore runs first, and later sections reuse
+// the same session instead of creating their own.
+//
+// Printing is the report channel (same as real_plugin_test.dart):
+// ignore_for_file: avoid_print
+library;
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:mpv_kit_video/mpv_kit_video.dart';
+
+import 'macos_route_probe.dart';
+
+/// Which tree this run measures; only a label in the report lines.
+const _tree = String.fromEnvironment(
+  'MPV_KIT_ROUTE_TREE',
+  defaultValue: 'head',
+);
+
+/// Comma separated section names to run.
+const _sections = String.fromEnvironment(
+  'MPV_KIT_ROUTE_SECTIONS',
+  defaultValue: 'pixel,hwdec',
+);
+
+/// Sections this file knows.
+const _knownSections = {'pixel', 'hwdec'};
+
+/// Bound for every "wait until X" in the test (no unbounded awaits).
+const _readyTimeout = Duration(seconds: 30);
+
+/// Gap between the three pixel reads, so the compositor takes several
+/// frames between them and a late first composite shows up in read 3.
+const _readGap = Duration(seconds: 1);
+
+/// Number of pixel reads; the last one is the one parity compares.
+const _pixelReads = 3;
+
+/// The paused test source: 640x360 so the texture region of the probe tree
+/// shows its top-left quarter, identical in both trees.
+const _source = 'av://lavfi:testsrc2=size=640x360:rate=30:duration=30';
+
+/// Player options: no `hwdec` override, so [ROUTE-IDENTITY] reports the
+/// Player's default list (13-04 uses it for the default-list run).
+const _playerOptions = {
+  'vo': 'libmpv',
+  'keep-open': 'yes',
+  'idle': 'yes',
+  'terminal': 'no',
+  'ao': 'null',
+};
+
+/// Waits for the next real frame, bounded so a live binding without a frame
+/// source cannot hang the test (same helper as real_plugin_test.dart).
+Future<void> _nextFrame() => Future.any<void>([
+  WidgetsBinding.instance.endOfFrame,
+  Future<void>.delayed(const Duration(milliseconds: 100)),
+]);
+
+/// Keeps the compositor pulling frames for [duration].
+Future<void> _settleFor(Duration duration) async {
+  final end = DateTime.now().add(duration);
+  while (DateTime.now().isBefore(end)) {
+    await _nextFrame();
+  }
+}
+
+/// A hwdec property value as option text. mpv's `hwdec` is a string list and
+/// `List.toString()` would print brackets: Phase 13 fed that text back as the
+/// per-file option and "measured" a software default that never existed.
+/// Null (property unavailable) falls back to mpv's `auto-safe`.
+String _hwdecText(Object? value) => switch (value) {
+  final List<Object?> list => list.map((e) => '$e').join(','),
+  final String text when text.isNotEmpty => text,
+  _ => 'auto-safe',
+};
+
+/// The single Player / controller pair every section shares.
+final class _RouteSession {
+  const _RouteSession({
+    required this.player,
+    required this.controller,
+    required this.texture,
+    required this.boundaryKey,
+    required this.defaultHwdec,
+  });
+
+  final Player player;
+  final MpvVideoController controller;
+
+  /// The Player's own hwdec list as option text, read when the session was
+  /// created: no file has been loaded yet, so it is the configured default.
+  final String defaultHwdec;
+
+  /// The texture mounted in the probe tree; null shows nothing.
+  final ValueNotifier<int?> texture;
+  final GlobalKey boundaryKey;
+}
+
+/// One toImage read: the three regions plus the image size.
+final class _PixelRead {
+  const _PixelRead({
+    required this.texture,
+    required this.control,
+    required this.background,
+    required this.image,
+    this.textureBytes,
+  });
+
+  const _PixelRead.unsupported(this.image)
+    : texture = null,
+      control = null,
+      background = null,
+      textureBytes = null;
+
+  final RouteRegionStats? texture;
+  final RouteRegionStats? control;
+  final RouteRegionStats? background;
+
+  /// `WxH` of the captured image, or `none` when the read failed.
+  final String image;
+
+  /// Tightly packed RGBA bytes of the texture region (the hwdec section
+  /// compares them between the reference and the run under test).
+  final Uint8List? textureBytes;
+
+  String get visibility => routeVisibility(
+    texture: texture,
+    control: control,
+    background: background,
+  );
+}
+
+/// The probe tree: green background, the texture region, the red patch,
+/// all inside one RepaintBoundary of the logical probe size. Positioned
+/// children avoid the StackFit.expand pitfall of 12-02 (tight constraints
+/// stretching non-positioned children to the whole tree).
+Widget _probeTree(GlobalKey key, ValueNotifier<int?> texture) => Directionality(
+  textDirection: TextDirection.ltr,
+  child: Align(
+    alignment: Alignment.topLeft,
+    child: SizedBox(
+      width: routeProbeSize.width,
+      height: routeProbeSize.height,
+      child: RepaintBoundary(
+        key: key,
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: ColoredBox(color: routeProbeBackground),
+            ),
+            Positioned.fromRect(
+              rect: routeTextureRegion,
+              child: ValueListenableBuilder<int?>(
+                valueListenable: texture,
+                builder: (context, id, child) => id == null
+                    ? const SizedBox.shrink()
+                    : Texture(textureId: id),
+              ),
+            ),
+            Positioned.fromRect(
+              rect: routeControlRegion,
+              child: const ColoredBox(color: routeProbeControl),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+
+/// Reads the probe boundary through RenderRepaintBoundary.toImage (the
+/// channel 12-02 used) and computes the three region statistics. Any failure
+/// yields an unsupported read, which classifies as `indeterminate`.
+Future<_PixelRead> _readPixels(GlobalKey key) async {
+  try {
+    final boundary = key.currentContext?.findRenderObject();
+    if (boundary is! RenderRepaintBoundary) {
+      return const _PixelRead.unsupported('none');
+    }
+    final logical = boundary.size;
+    final image = await boundary.toImage();
+    try {
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (bytes == null) return const _PixelRead.unsupported('none');
+      // Same view slicing as 12-02 (the ByteData may be an offset view).
+      final data = bytes.buffer.asUint8List(
+        bytes.offsetInBytes,
+        bytes.lengthInBytes,
+      );
+      if (data.length < image.width * image.height * 4) {
+        return const _PixelRead.unsupported('none');
+      }
+      final sx = image.width / logical.width;
+      final sy = image.height / logical.height;
+      RouteRegionStats? stats(ui.Rect region) => routeRegionStats(
+        data,
+        width: image.width,
+        height: image.height,
+        region: region,
+        sx: sx,
+        sy: sy,
+      );
+      return _PixelRead(
+        texture: stats(routeTextureRegion),
+        control: stats(routeControlRegion),
+        background: stats(routeBackgroundRegion),
+        image: '${image.width}x${image.height}',
+        textureBytes: routeRgbaRegion(
+          data,
+          width: image.width,
+          height: image.height,
+          region: routeTextureRegion,
+          sx: sx,
+          sy: sy,
+        ),
+      );
+    } finally {
+      image.dispose();
+    }
+  } on Object catch (error) {
+    // A failed read is data: it prints as indeterminate with image=none.
+    print('ROUTE-NOTE toImage read failed: ${error.runtimeType}: $error');
+    return const _PixelRead.unsupported('none');
+  }
+}
+
+/// Prints the ROUTE-IDENTITY line for [session].
+void _printIdentity(_RouteSession session) {
+  final controller = session.controller;
+  print(
+    'ROUTE-IDENTITY ${jsonEncode({'tree': _tree, 'libmpv': MpvLibrary.resolvedPath, 'attempts': MpvLibrary.lastOpenAttempts, 'backend': controller.backend.name, 'reason': controller.reason, 'defaultHwdec': session.player.mpv.tryGetProperty('hwdec')})}',
+  );
+}
+
+/// The plugin's method channel; only the diagnostic method is used here.
+const _channel = MethodChannel('mpv_kit_video');
+
+/// Calls the plugin's `debugFrameProbe`. A missing method means the plugin of
+/// this tree has no frame probe: the line is printed (supported=false) and
+/// the test fails, because both trees must offer the second channel (HEAD
+/// carries it, the pre-Phase-12 tree gets tools/macos_frame_probe.patch).
+Future<Map<String, Object?>?> _frameProbe(
+  _RouteSession session, {
+  required bool arm,
+}) async {
+  try {
+    return await _channel.invokeMapMethod<String, Object?>('debugFrameProbe', {
+      'textureId': session.controller.textureId,
+      'arm': arm,
+    });
+  } on MissingPluginException {
+    print('ROUTE-FRAME ${jsonEncode(_frameRecord(methodMissing: true))}');
+    fail('debugFrameProbe is not implemented by the plugin of tree "$_tree"');
+  }
+}
+
+/// Rounds doubles to 4 decimals so the printed lines stay short.
+Object? _roundStat(Object? value) =>
+    value is double ? double.parse(value.toStringAsFixed(4)) : value;
+
+/// The ROUTE-FRAME record. `captured` means the plugin had kept a frame and
+/// could read it; `supported` is false when the method is missing or the
+/// kept frame has a pixel format the probe does not read.
+Map<String, Object?> _frameRecord({
+  Map<String, Object?>? stats,
+  bool methodMissing = false,
+}) {
+  final supported =
+      !methodMissing && (stats == null || stats['supported'] == true);
+  final captured = supported && stats != null;
+  Object? field(String key) => captured ? _roundStat(stats[key]) : null;
+  return {
+    'tree': _tree,
+    'supported': supported,
+    'captured': captured,
+    'format': field('format'),
+    'width': field('width'),
+    'height': field('height'),
+    'nonBlackRatio': field('nonBlackRatio'),
+    'meanR': field('meanR'),
+    'meanG': field('meanG'),
+    'meanB': field('meanB'),
+  };
+}
+
+/// Pixel section: opens the paused source, waits until the decoder and the
+/// renderer agree on 640x360, then reads the probe tree [_pixelReads] times,
+/// [_readGap] apart, printing one ROUTE-PIXEL line per read.
+Future<void> _pixelSection(_RouteSession session) async {
+  final controller = session.controller;
+  final player = session.player;
+  // Arm the second channel before the texture is mounted, so the plugin
+  // keeps the first frame the compositor takes and every one after it.
+  await _frameProbe(session, arm: true);
+  session.texture.value = controller.textureId;
+  await _nextFrame();
+
+  // Listen before requesting the size so the event cannot be missed. The
+  // future resolves to false on timeout or stream end instead of throwing,
+  // so an unawaited failure cannot surface as an unhandled async error.
+  final resized = controller.events
+      .any((e) => e.kind == MpvVideoEventKind.resize && e.message == '640x360')
+      .timeout(_readyTimeout, onTimeout: () => false);
+  await controller.setSize(
+    routeProbeSize.width.toInt(),
+    routeProbeSize.height.toInt(),
+  );
+  // Per-file hwdec option: software decode, and the Player's global hwdec
+  // stays untouched for the sections that follow.
+  await player.open(_source, play: false, options: {'hwdec': 'no'});
+
+  var paramsReady = false;
+  final deadline = DateTime.now().add(_readyTimeout);
+  while (DateTime.now().isBefore(deadline) && !paramsReady) {
+    await _nextFrame();
+    final vp = player.videoParams.value;
+    paramsReady = vp?.width == 640 && vp?.height == 360;
+  }
+  expect(
+    paramsReady,
+    isTrue,
+    reason: 'the decoder did not report 640x360 within $_readyTimeout',
+  );
+  expect(
+    await resized,
+    isTrue,
+    reason: 'no resize event "640x360" within $_readyTimeout',
+  );
+
+  _PixelRead? last;
+  for (var read = 1; read <= _pixelReads; read++) {
+    await _settleFor(_readGap);
+    final result = await _readPixels(session.boundaryKey);
+    last = result;
+    print(
+      'ROUTE-PIXEL ${jsonEncode({'tree': _tree, 'read': read, 'final': read == _pixelReads, 'visibility': result.visibility, 'texture': result.texture?.toJson(), 'control': result.control?.toJson(), 'background': result.background?.toJson(), 'image': result.image})}',
+    );
+  }
+  // Second channel: statistics of the frame the compositor holds now. They
+  // may be torn (armed reads are approximate), so the verdict script only
+  // uses robust non-black bounds.
+  final stats = await _frameProbe(session, arm: false);
+  print('ROUTE-FRAME ${jsonEncode(_frameRecord(stats: stats))}');
+  // A control or background that is not visible means the probe channel
+  // itself failed; that must never pass as a measurement.
+  expect(
+    last?.visibility,
+    isNot('indeterminate'),
+    reason: 'control patch or background not visible in the probe image',
+  );
+}
+
+// --- hwdec section ----------------------------------------------------------
+
+/// Asset directory the samples are bundled under (see pubspec.yaml).
+const _sampleAssetDir = 'integration_test/route_samples/';
+
+/// Samples of the hwdec section, in run order.
+const _samples = ['h264-8bit.mp4', 'hevc-8bit.mp4', 'hevc-10bit.mp4'];
+
+/// The sample that also runs once with the Player's default hwdec list
+/// (recorded, never gated).
+const _defaultListSample = 'h264-8bit.mp4';
+
+/// Evidence lines kept per run, so the public CI log stays short.
+const _maxEvidenceLines = 40;
+
+/// Longest evidence line printed (characters).
+const _maxEvidenceChars = 240;
+
+/// Time to keep the compositor pulling frames after the sample is ready, so
+/// the decoder and the renderer settle before properties and the screenshot
+/// are read.
+const _hwdecSettle = Duration(seconds: 1);
+
+/// Bound of one `screenshot-raw`; a timeout counts as "no screenshot".
+const _screenshotTimeout = Duration(seconds: 10);
+
+/// Time for the last log events to arrive after the screenshot.
+const _logSettle = Duration(milliseconds: 200);
+
+/// Control characters would break the one-line report format.
+final _controlChars = RegExp(r'[\x00-\x1f]');
+
+/// Collects the mpv log lines that explain what the hwdec path did.
+final class _Evidence {
+  /// Matching lines of the current run (at most [_maxEvidenceLines]).
+  final List<String> lines = [];
+
+  /// Failure-looking lines of the current run that did not come from the
+  /// screenshot module.
+  int failureEvidence = 0;
+
+  /// Whether mpv logged the software screenshot fallback in this run.
+  bool fellBack = false;
+
+  void reset() {
+    lines.clear();
+    failureEvidence = 0;
+    fellBack = false;
+  }
+
+  void onLog(LogMessageEvent event) {
+    final text = event.text.trim();
+    if (text.contains('Falling back to software screenshot')) fellBack = true;
+    final line = '${event.prefix}: $text';
+    if (!routeHwdecLogPattern.hasMatch(line)) return;
+    // The screenshot module's own lines say nothing about decoding, so they
+    // never count as failure evidence (the fallback message contains
+    // "falling back").
+    if (event.prefix != 'screenshot' &&
+        routeHwdecFailurePattern.hasMatch(line)) {
+      failureEvidence++;
+    }
+    if (lines.length >= _maxEvidenceLines) return;
+    final clean = line.replaceAll(_controlChars, ' ');
+    lines.add(
+      clean.length > _maxEvidenceChars
+          ? clean.substring(0, _maxEvidenceChars)
+          : clean,
+    );
+  }
+}
+
+/// Everything one sample run reads back.
+final class _HwdecRun {
+  const _HwdecRun({
+    required this.hwdecCurrent,
+    required this.hwdecInterop,
+    required this.pixelformat,
+    required this.hwPixelformat,
+    required this.screenshot,
+    required this.fellBack,
+    required this.failureEvidence,
+    required this.evidence,
+    required this.pixel,
+  });
+
+  final String? hwdecCurrent;
+  final String? hwdecInterop;
+  final String? pixelformat;
+  final String? hwPixelformat;
+  final RouteBgr0Frame? screenshot;
+  final bool fellBack;
+  final int failureEvidence;
+  final List<String> evidence;
+
+  /// The Flutter texture channel: a toImage read of the mounted texture
+  /// taken right after the screenshot.
+  final _PixelRead pixel;
+
+  /// `vo` (rendered by the VO), `sw-fallback` (CPU download) or `none`.
+  String get screenshotPath => screenshot == null
+      ? 'none'
+      : fellBack
+      ? 'sw-fallback'
+      : 'vo';
+
+  /// Share of non-black pixels of the screenshot, null without one.
+  double? get nonBlackRatio {
+    final shot = screenshot;
+    if (shot == null) return null;
+    return routeBgr0Stats(
+      shot.width,
+      shot.height,
+      shot.stride,
+      shot.data,
+    )?.nonBlackRatio;
+  }
+}
+
+/// A property as a string; null when unavailable.
+String? _stringProperty(Player player, String name) {
+  final value = player.mpv.tryGetProperty(name);
+  return value == null ? null : '$value';
+}
+
+/// Rounds an optional double to 4 decimals for the report.
+double? _round4Opt(double? value) =>
+    value == null ? null : double.parse(value.toStringAsFixed(4));
+
+/// Takes one `screenshot-raw` and returns it as a bgr0 frame; null when the
+/// screenshot is unavailable (a timeout or an error is data, not a failure).
+Future<RouteBgr0Frame?> _screenshot(Player player) async {
+  try {
+    final shot = await player.screenshot().timeout(_screenshotTimeout);
+    if (shot == null || shot.format != 'bgr0') return null;
+    return RouteBgr0Frame(
+      width: shot.width,
+      height: shot.height,
+      stride: shot.stride,
+      data: shot.data,
+    );
+  } on MpvException catch (error) {
+    print('ROUTE-NOTE screenshot failed: $error');
+  } on TimeoutException {
+    print('ROUTE-NOTE screenshot timed out after $_screenshotTimeout');
+  }
+  return null;
+}
+
+/// Opens [path] with the per-file option `hwdec=[hwdec]`, waits until the
+/// sample is decoded and rendered, and reads the markers and a screenshot.
+/// The per-file option leaves the Player's global hwdec alone, and a new
+/// file gets a fresh decoder, so an earlier run cannot leak into this one.
+Future<_HwdecRun> _runSample(
+  _RouteSession session,
+  _Evidence evidence,
+  String path,
+  String hwdec,
+) async {
+  final player = session.player;
+  evidence.reset();
+  // Subscribe before open so the restart event cannot be missed.
+  final restarted = Completer<void>();
+  final restartSub = player.mpv.events.listen((event) {
+    if (event is PlaybackRestartEvent && !restarted.isCompleted) {
+      restarted.complete();
+    }
+  });
+  try {
+    await player.open(path, play: false, options: {'hwdec': hwdec});
+    await restarted.future.timeout(_readyTimeout);
+  } on TimeoutException {
+    fail('no playback restart for $path (hwdec=$hwdec) in $_readyTimeout');
+  } finally {
+    await restartSub.cancel();
+  }
+
+  var ready = false;
+  final deadline = DateTime.now().add(_readyTimeout);
+  while (DateTime.now().isBefore(deadline) && !ready) {
+    await _nextFrame();
+    final vp = player.videoParams.value;
+    final current = _stringProperty(player, 'hwdec-current');
+    ready =
+        vp?.width == 640 &&
+        vp?.height == 360 &&
+        current != null &&
+        current.isNotEmpty;
+  }
+  expect(
+    ready,
+    isTrue,
+    reason:
+        '$path (hwdec=$hwdec): 640x360 video params and a non-empty '
+        'hwdec-current did not arrive within $_readyTimeout',
+  );
+  await _settleFor(_hwdecSettle);
+
+  final hwdecCurrent = _stringProperty(player, 'hwdec-current');
+  final hwdecInterop = _stringProperty(player, 'hwdec-interop');
+  final pixelformat = _stringProperty(player, 'video-params/pixelformat');
+  final hwPixelformat = _stringProperty(player, 'video-params/hw-pixelformat');
+
+  // One capture is not evidence on the macos-15 paravirtual GPU (see
+  // routeStableCapture): the frame counts once a second capture agrees.
+  final frame = await routeStableCapture(
+    () => _screenshot(player),
+    note: (message) => print('ROUTE-NOTE screenshot: $message'),
+  );
+  await Future<void>.delayed(_logSettle);
+  // The Flutter texture channel, recorded next to the screenshot. The frame
+  // is paused, so the compositor already shows what it will show.
+  await _nextFrame();
+  final pixel = await _readPixels(session.boundaryKey);
+
+  return _HwdecRun(
+    hwdecCurrent: hwdecCurrent,
+    hwdecInterop: hwdecInterop,
+    pixelformat: pixelformat,
+    hwPixelformat: hwPixelformat,
+    screenshot: frame,
+    fellBack: evidence.fellBack,
+    failureEvidence: evidence.failureEvidence,
+    evidence: List.of(evidence.lines),
+    pixel: pixel,
+  );
+}
+
+/// The `flutterFrame` verdict of [run] against its software [reference].
+String _flutterFrame(_HwdecRun reference, _HwdecRun run) {
+  final refBytes = reference.pixel.textureBytes;
+  final runBytes = run.pixel.textureBytes;
+  return routeFlutterFrame(
+    referenceVisibility: reference.pixel.visibility,
+    visibility: run.pixel.visibility,
+    regionDiff: refBytes == null || runBytes == null
+        ? null
+        : routeRgbaMeanAbsDiff(refBytes, runBytes),
+    nonBlackRatio: run.pixel.texture?.nonBlackRatio,
+  );
+}
+
+/// Builds the ROUTE-HWDEC line of [run] against its software [reference] and
+/// returns it with the outcome. [requested] is `videotoolbox` (gated) or
+/// `default` (recorded only).
+(String line, String outcome) _hwdecLine({
+  required String sample,
+  required String requested,
+  required _HwdecRun reference,
+  required bool referenceValid,
+  required _HwdecRun run,
+  String? requestedHwdec,
+}) {
+  final shot = run.screenshot;
+  final refFrame = reference.screenshot;
+  final check = routeScreenshotCheck(
+    fellBack: run.fellBack,
+    screenshot: shot,
+    reference: refFrame,
+  );
+  final diff = shot == null || refFrame == null
+      ? null
+      : routeBgr0MeanAbsDiff(shot, refFrame);
+  final outcome = routeHwdecOutcome(
+    requested: requested,
+    hwdecCurrent: run.hwdecCurrent,
+    pixelformat: run.pixelformat,
+    hwPixelformat: run.hwPixelformat,
+    screenshot: check,
+    failureEvidence: run.failureEvidence,
+    referenceValid: referenceValid,
+  );
+  final line =
+      'ROUTE-HWDEC ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdec': requested, 'outcome': outcome, 'gate': requested == 'videotoolbox', 'hwdecCurrent': run.hwdecCurrent, 'hwdecInterop': run.hwdecInterop, 'pixelformat': run.pixelformat, 'hwPixelformat': run.hwPixelformat, 'p010': run.hwPixelformat == 'p010', 'screenshot': check.name, 'screenshotPath': run.screenshotPath, 'screenshotDiff': _round4Opt(diff), 'failureEvidence': run.failureEvidence, 'evidence': run.evidence.length, 'flutterFrame': _flutterFrame(reference, run), 'requestedHwdec': ?requestedHwdec})}';
+  return (line, outcome);
+}
+
+/// Prints the evidence lines of [run] as ROUTE-HWDEC-LOG lines.
+void _printEvidence(String sample, String requested, _HwdecRun run) {
+  for (final line in run.evidence) {
+    print(
+      'ROUTE-HWDEC-LOG ${jsonEncode({'sample': sample, 'hwdec': requested, 'line': line})}',
+    );
+  }
+}
+
+/// hwdec section: for every sample, a software reference run and a
+/// `hwdec=videotoolbox` run on the shared Player and controller, classified
+/// by [routeHwdecOutcome]. Prints the report lines and asserts that every
+/// gated outcome is allowed.
+Future<void> _hwdecSection(_RouteSession session) async {
+  final player = session.player;
+  final temp = Directory.systemTemp.createTempSync('mpv_kit_route_');
+  final evidence = _Evidence();
+  final logSub = player.logs.listen(evidence.onLog);
+  var gatedLines = 0;
+  try {
+    player.setLogLevel('v');
+    // The Player's own default list, captured when the session was created
+    // (before any file was loaded); used for the recorded default-list run.
+    final defaultHwdec = session.defaultHwdec;
+    // The samples are app assets (the example app is sandboxed and cannot
+    // read the workspace); copy them into the container's temp directory.
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    final assets = manifest.listAssets().toSet();
+    for (final name in _samples) {
+      final key = '$_sampleAssetDir$name';
+      if (!assets.contains(key)) {
+        fail(
+          'asset $key is missing; the "Generate route samples" step of '
+          'macos-route.yml creates it before the build',
+        );
+      }
+      final bytes = await rootBundle.load(key);
+      final file = File('${temp.path}/$name')
+        ..writeAsBytesSync(
+          bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+        );
+      final sample = name.replaceAll('.mp4', '');
+
+      // Reference: software decoding through the same renderer.
+      final ref = await _runSample(session, evidence, file.path, 'no');
+      final refNonBlack = ref.nonBlackRatio;
+      final refValid =
+          ref.hwdecCurrent == 'no' &&
+          refNonBlack != null &&
+          refNonBlack >= routeMinNonBlackRatio;
+      print(
+        'ROUTE-HWDEC-REF ${jsonEncode({'tree': _tree, 'sample': sample, 'hwdecCurrent': ref.hwdecCurrent, 'pixelformat': ref.pixelformat, 'screenshotPath': ref.screenshotPath, 'nonBlackRatio': _round4Opt(refNonBlack), 'valid': refValid, 'textureVisibility': ref.pixel.visibility})}',
+      );
+
+      // Under test: VideoToolbox.
+      final run = await _runSample(
+        session,
+        evidence,
+        file.path,
+        'videotoolbox',
+      );
+      _printEvidence(sample, 'videotoolbox', run);
+      final (line, outcome) = _hwdecLine(
+        sample: sample,
+        requested: 'videotoolbox',
+        reference: ref,
+        referenceValid: refValid,
+        run: run,
+      );
+      print(line);
+      gatedLines++;
+      expect(routeGatedOutcomesAllowed, contains(outcome), reason: line);
+
+      // Recorded only: what the Player's default hwdec list ends up with.
+      if (name == _defaultListSample) {
+        final defaults = await _runSample(
+          session,
+          evidence,
+          file.path,
+          defaultHwdec,
+        );
+        _printEvidence(sample, 'default', defaults);
+        // The value fed to mpv is option text, never a list's toString.
+        expect(
+          defaultHwdec,
+          isNot(contains('[')),
+          reason: 'the default hwdec list must be plain option text',
+        );
+        print(
+          _hwdecLine(
+            sample: sample,
+            requested: 'default',
+            reference: ref,
+            referenceValid: refValid,
+            run: defaults,
+            requestedHwdec: defaultHwdec,
+          ).$1,
+        );
+      }
+    }
+    // Guards against a silently skipped sample.
+    expect(
+      gatedLines,
+      _samples.length,
+      reason: 'every sample must print one gated ROUTE-HWDEC line',
+    );
+  } finally {
+    await logSub.cancel();
+    temp.deleteSync(recursive: true);
+  }
+}
+
+void main() {
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+
+  testWidgets('macOS route probe', (tester) async {
+    if (_tree != 'head' && _tree != 'pre12') {
+      fail('MPV_KIT_ROUTE_TREE must be head or pre12, got "$_tree"');
+    }
+    final sections = _sections.split(',').map((s) => s.trim()).toSet();
+    final unknown = sections.difference(_knownSections);
+    if (unknown.isNotEmpty || sections.isEmpty) {
+      fail('unknown MPV_KIT_ROUTE_SECTIONS "$_sections": $unknown');
+    }
+
+    // Pumped before runAsync: a tree pumped inside it is not reliably
+    // composed (same note as real_plugin_test.dart).
+    final texture = ValueNotifier<int?>(null);
+    final boundaryKey = GlobalKey();
+    await tester.pumpWidget(_probeTree(boundaryKey, texture));
+
+    await tester.runAsync(() async {
+      final player = Player(options: _playerOptions);
+      MpvVideoController? controller;
+      try {
+        controller = await MpvVideoController.create(player);
+        final session = _RouteSession(
+          player: player,
+          controller: controller,
+          texture: texture,
+          boundaryKey: boundaryKey,
+          // Captured before any loadfile, at the ROUTE-IDENTITY moment.
+          defaultHwdec: _hwdecText(player.mpv.tryGetProperty('hwdec')),
+        );
+        _printIdentity(session);
+        expect(
+          MpvLibrary.resolvedPath,
+          routeBundleLibrary,
+          reason:
+              'the probe must measure the hook bundle libmpv; attempts: '
+              '${MpvLibrary.lastOpenAttempts}',
+        );
+        if (sections.contains('pixel')) await _pixelSection(session);
+        // The hwdec section reuses the pixel section's session: one
+        // controller per process (see the header).
+        if (sections.contains('hwdec')) {
+          await _hwdecSection(session);
+        } else {
+          print(
+            'ROUTE-SECTION ${jsonEncode({'tree': _tree, 'name': 'hwdec', 'skipped': 'not-requested'})}',
+          );
+        }
+      } finally {
+        // One teardown for every section: unmount, let the compositor drop
+        // the texture, then controller before player (dispose-order rule).
+        texture.value = null;
+        await _nextFrame();
+        await controller?.dispose();
+        await player.dispose();
+      }
+    });
+  }, skip: !Platform.isMacOS);
+}

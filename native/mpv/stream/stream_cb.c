@@ -48,6 +48,11 @@ static int64_t get_size(stream_t *s)
 static void s_close(stream_t *s)
 {
     struct priv *p = s->priv;
+    // p->cancel outlives close_fn (it is freed with the stream), so a cancel
+    // arriving in between would call cancel_fn on a closed cookie. Detaching
+    // takes the cancel lock, which also waits out a callback in progress.
+    if (p->cancel)
+        mp_cancel_set_cb(p->cancel, NULL, NULL);
     p->info.close_fn(p->info.cookie);
 }
 

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:mpv_kit/mpv_kit.dart';
+import 'package:mpv_kit/src/player/hwdec_defaults.dart';
 import 'package:test/test.dart';
 
 const _lavfi = 'av://lavfi:testsrc2=size=320x240:rate=30:duration=2';
@@ -45,6 +46,15 @@ File _writeSilentWav(String path, {int seconds = 3}) {
   tag(36, 'data');
   b.setUint32(40, dataBytes, Endian.little);
   return File(path)..writeAsBytesSync(b.buffer.asUint8List());
+}
+
+bool get _libmpvMissing {
+  try {
+    MpvLibrary.open();
+    return false;
+  } on Object {
+    return true;
+  }
 }
 
 void main() {
@@ -206,6 +216,39 @@ void main() {
     expect(info.videoCodec, isNotNull);
   });
 
+  test('demuxerCacheState is observed lazily and reports the queue', () async {
+    // Not bound before the first read: reading it registers one more state.
+    final before = player.stateStreamsForTesting.length;
+    final state = player.demuxerCacheState;
+    expect(player.stateStreamsForTesting.length, before + 1);
+    expect(state.value, isNull);
+    await player.open(_lavfi);
+    final s = await _until(state, (s) => s != null && s.totalBytes > 0);
+    expect(s!.forwardBytes, lessThanOrEqualTo(s.totalBytes));
+  });
+
+  test('eventQueueOverflows fires when the client stops draining', () async {
+    // Each script message to ourselves is one queued client-message event;
+    // the synchronous loop never yields, so this isolate cannot drain the
+    // 1000-entry client queue and mpv reports an overflow afterwards. (Log
+    // messages do not work here: mpv pulls them from a separate buffer.)
+    final overflow = player.eventQueueOverflows.first.timeout(
+      const Duration(seconds: 10),
+    );
+    final self = player.mpv.clientName;
+    var rejected = false;
+    for (var i = 0; i < 1100 && !rejected; i++) {
+      try {
+        player.mpv.command(['script-message-to', self, 'flood']);
+      } on MpvException {
+        // A choked queue refuses further client messages: it is full.
+        rejected = true;
+      }
+    }
+    expect(rejected, isTrue, reason: 'the queue never filled up');
+    await overflow;
+  });
+
   test('logs stream delivers messages at the requested level', () async {
     player.setLogLevel('v');
     final first = player.logs.first.timeout(const Duration(seconds: 10));
@@ -232,6 +275,363 @@ void main() {
     expect(p.mpv.isDisposed, isTrue);
     await p.dispose(); // idempotent
   });
+
+  test('throwing dispose hook still destroys the core and closes all '
+      'streams', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    // A failing assertion must not leak the native core — and with it the
+    // wakeup listener that keeps the isolate alive — for the rest of the run.
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    final sentinel = StateError('dispose hook exploded');
+    Future<void> hook() async => throw sentinel;
+    final positionDone = Completer<void>();
+    final decodeWarningDone = Completer<void>();
+    p.position.stream.listen((_) {}, onDone: positionDone.complete);
+    p.decodeWarning.stream.listen((_) {}, onDone: decodeWarningDone.complete);
+    p.addDisposeHook(hook);
+    // The hook error is surfaced unchanged...
+    await expectLater(p.dispose(), throwsA(same(sentinel)));
+    // ...but every teardown step still ran.
+    expect(p.mpv.isDisposed, isTrue);
+    await positionDone.future.timeout(const Duration(seconds: 5));
+    await decodeWarningDone.future.timeout(const Duration(seconds: 5));
+    await p.dispose(); // a second dispose is harmless
+  });
+
+  test('concurrent dispose runs teardown once and shares the outcome',
+      () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    var hookRuns = 0;
+    p.addDisposeHook(() async {
+      hookRuns++;
+      // A slow stage: the second caller must wait for it, not return early.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    final f1 = p.dispose();
+    final f2 = p.dispose();
+    await f2.timeout(const Duration(seconds: 5));
+    // The second caller shares the teardown: by the time it completes, the
+    // whole teardown (including the slow hook) has run.
+    expect(hookRuns, 1);
+    expect(p.mpv.isDisposed, isTrue);
+    await f1.timeout(const Duration(seconds: 5));
+    expect(p.mpv.isDisposed, isTrue);
+    await p.dispose(); // cached future replays harmlessly
+  });
+
+  test('concurrent dispose surfaces the same error to both callers', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    final sentinel = StateError('dispose hook exploded');
+    p.addDisposeHook(() async => throw sentinel);
+    final f1 = p.dispose();
+    final f2 = p.dispose();
+    await expectLater(f1, throwsA(same(sentinel)));
+    await expectLater(f2, throwsA(same(sentinel)));
+  });
+
+  test('reentrant dispose from a hook does not deadlock', () async {
+    final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+    addTearDown(() {
+      if (!p.mpv.isDisposed) p.mpv.dispose();
+    });
+    var hookRuns = 0;
+    p.addDisposeHook(() async {
+      hookRuns++;
+      unawaited(p.dispose()); // must return immediately, not await itself
+    });
+    await p.dispose().timeout(const Duration(seconds: 5));
+    expect(hookRuns, 1);
+    expect(p.mpv.isDisposed, isTrue);
+  });
+
+  test('audioDevices first read after dispose is already closed', () async {
+    final trackedStreams = player.stateStreamsForTesting.length;
+    await player.dispose();
+    final devices = player.audioDevices;
+    final done = Completer<void>();
+    devices.stream.listen((_) {}, onDone: done.complete);
+    await done.future.timeout(const Duration(seconds: 5));
+    expect(devices.value, isEmpty);
+    expect(player.mpv.isDisposed, isTrue);
+    // The lazy state must stay outside _states: a first post-dispose read
+    // must not register a new stream or start audio-device hotplug monitoring.
+    expect(player.stateStreamsForTesting.length, trackedStreams);
+  });
+
+  group('demuxer queue budget formula', () {
+    // frameBytes = w*h*1.5; fwd = min(400MiB, 64*f), giant frame
+    // (>=32MiB) caps fwd at 256MiB, fwd >= 150MiB;
+    // back = clamp(fwd/4, 32MiB, 100MiB).
+    final mib = 1024 * 1024;
+    test('matrix across tiers', () {
+      int? f(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.fwd;
+      int? b(int w, int h) => Player.demuxerQueueBudgetForTesting(w, h)?.back;
+      // 640x360: 64*f = 21.1MiB -> raised to the 150MiB floor (mpv's own
+      // default); back 37.5MiB.
+      expect(f(640, 360), 150 * mib);
+      expect(b(640, 360), 150 * mib ~/ 4);
+      // 1280x720: 64*f = 84.4MiB -> floor as well.
+      expect(f(1280, 720), 150 * mib);
+      // 1080p: frame 2.9756MiB -> 190.4MiB fwd; back 47.6MiB.
+      expect(f(1920, 1080), (1920 * 1080 * 1.5 * 64).round());
+      expect(b(1920, 1080), ((1920 * 1080 * 1.5 * 64) / 4).round());
+      // 4K: 64*f = 796MiB -> capped at 400MiB (v1-identical); back 100MiB.
+      expect(f(3840, 2160), 400 * mib);
+      expect(b(3840, 2160), 100 * mib);
+      // 8K: giant clause -> 256MiB fwd; back 64MiB.
+      expect(f(7680, 4320), 256 * mib);
+      expect(b(7680, 4320), 64 * mib);
+      // Just under the giant threshold stays at the 400MiB cap.
+      expect(f(4096, 2304), 400 * mib);
+    });
+
+    test('decoder threads: 4 up to 1080p, 8 above', () {
+      int? t(int w, int h, [int cores = 16]) =>
+          Player.decoderThreadsForTesting(w, h, cores);
+      expect(t(1280, 720), 4);
+      expect(t(1920, 1080), 4);
+      expect(t(1920, 1088), 4);
+      expect(t(2560, 1440), 8);
+      expect(t(3840, 2160), 8);
+      expect(t(2160, 3840), 8); // portrait 4K
+      expect(t(4096, 2304), 8);
+      expect(t(7680, 4320), 8); // 8K: capped, see the doc comment
+      expect(t(8192, 4320), 8);
+      // Never above mpv's own auto value (cores + 1, max 16).
+      expect(t(3840, 2160, 2), 3);
+      expect(t(1920, 1080, 2), 3);
+      expect(t(7680, 4320, 2), 3);
+      expect(t(0, 1080), isNull);
+    });
+
+    test('degenerate dimensions return null (no tune)', () {
+      expect(Player.demuxerQueueBudgetForTesting(0, 0), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(1920, 0), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(0, 1080), isNull);
+      expect(Player.demuxerQueueBudgetForTesting(-1, 100), isNull);
+    });
+  });
+
+  group('demuxer queue auto-tune (real libmpv)', () {
+    test('auto-tune applies and retunes across resolutions', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      Future<void> untilBudget(int expected) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (DateTime.now().isBefore(deadline)) {
+          if (p.mpv.tryGetProperty('demuxer-max-bytes') == expected) return;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        fail('demuxer-max-bytes never became $expected '
+            '(got ${p.mpv.tryGetProperty('demuxer-max-bytes')})');
+      }
+
+      await p.open('av://lavfi:testsrc2=size=640x360:rate=30:duration=8');
+      await untilBudget(150 * 1024 * 1024);
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-back-bytes'),
+        150 * 1024 * 1024 ~/ 4,
+      );
+
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await untilBudget((1920 * 1080 * 1.5 * 64).round());
+    });
+
+    test('autoTuneDemuxer: false keeps the configured budget', () async {
+      final p = Player(
+        options: const {'vo': 'null', 'ao': 'null', 'idle': 'yes'},
+        autoTuneDemuxer: false,
+      );
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=640x360:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(p.mpv.tryGetProperty('demuxer-max-bytes'), 400 * 1024 * 1024);
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-back-bytes'),
+        100 * 1024 * 1024,
+      );
+    });
+
+    test('decoder threads follow the frame size of each file', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      final cores = Platform.numberOfProcessors;
+      await p.open('av://lavfi:testsrc2=size=1280x720:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(1280, 720, cores),
+      );
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 3840);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(3840, 2160, cores),
+      );
+      // 8K keeps the same cap (dev.6: frame threads are the dominant,
+      // controllable memory term for 8K software decode).
+      await p.open('av://lavfi:testsrc2=size=7680x4320:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(
+        p.mpv.tryGetProperty('vd-lavc-threads'),
+        Player.decoderThreadsForTesting(7680, 4320, cores),
+      );
+    });
+
+    test('a user vd-lavc-threads option is never changed', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes', 'vd-lavc-threads': '0',
+      });
+      addTearDown(p.dispose);
+      await p.open(_lavfi);
+      await _until(p.videoParams, (v) => v != null);
+      expect(p.mpv.tryGetProperty('vd-lavc-threads'), 0);
+    });
+
+    test('a runtime vd-lavc-threads change stops the tuning', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      p.mpv.setProperty('vd-lavc-threads', 2);
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v != null);
+      expect(p.mpv.tryGetProperty('vd-lavc-threads'), 2);
+    });
+
+    test('1080p caps hwdec-extra-frames to 2; 4K restores auto', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      Future<void> untilExtraFrames(String want) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (DateTime.now().isBefore(deadline)) {
+          if ('${p.mpv.tryGetProperty('hwdec-extra-frames')}' == want) return;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        fail('hwdec-extra-frames never became $want '
+            '(got ${p.mpv.tryGetProperty('hwdec-extra-frames')})');
+      }
+
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      await untilExtraFrames('2');
+
+      await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 3840);
+      await untilExtraFrames('auto');
+    });
+
+    test('a user hwdec-extra-frames option is never changed', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+        'hwdec-extra-frames': '1',
+      });
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=1920x1080:rate=30:duration=8');
+      await _until(p.videoParams, (v) => v != null);
+      expect('${p.mpv.tryGetProperty('hwdec-extra-frames')}', '1');
+    });
+
+    test('explicit user override stops auto-tune', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'idle': 'yes',
+      });
+      addTearDown(p.dispose);
+      p.mpv.setProperty('demuxer-max-bytes', 777 * 1024 * 1024);
+      await p.open('av://lavfi:testsrc2=size=1280x720:rate=30:duration=8');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      expect(
+        p.mpv.tryGetProperty('demuxer-max-bytes'),
+        777 * 1024 * 1024,
+        reason: 'the user value must survive a resolution change',
+      );
+    });
+  }, skip: _libmpvMissing ? 'libmpv not available' : null);
+
+  group('community gpu-next defaults (real libmpv)', () {
+    // Compares against the running libmpv's own default, so an mpv upgrade
+    // that changes the list fails here instead of silently losing hwdec.
+    test('default hwdec-codecs is the mpv default list without ffv1 '
+        '(mpv #18255)', () async {
+      final raw = Mpv.create(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(raw.dispose);
+      final mpvDefault =
+          (raw.getPropertyString('hwdec-codecs') ?? '').split(',');
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      final codecs =
+          (p.mpv.getPropertyString('hwdec-codecs') ?? '').split(',');
+      expect(codecs, isNot(contains('ffv1')));
+      expect(
+        codecs,
+        mpvDefault.where((c) => c != 'ffv1').toList(),
+        reason: 'resync the Player hwdec-codecs default with hwdec_conf '
+            'in native/mpv/video/decode/vd_lavc.c',
+      );
+    });
+
+    test('an explicit hwdec-codecs option overrides the default', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hwdec-codecs': 'all',
+      });
+      addTearDown(p.dispose);
+      expect(p.mpv.getPropertyString('hwdec-codecs'), 'all');
+    });
+
+    // mpv reports `hwdec` as a string list; join it back to option text.
+    String hwdecText(Object? v) => v is List ? v.join(',') : '$v';
+
+    test('hwdec default is the per-platform list (HWD-01, ADR 0006)',
+        () async {
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      expect(hwdecText(p.mpv.getProperty('hwdec')), platformDefaultHwdec());
+    });
+
+    test('hwdec default yields to an explicit user hwdec option', () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hwdec': 'no',
+      });
+      addTearDown(p.dispose);
+      expect(p.mpv.getProperty('hwdec'), anyOf('no', ['no']));
+    });
+
+    // A 7680x16 source exercises the width condition without 8K frames.
+    test('a 7680-wide source plays with hdr-compute-peak=no by default '
+        '(mpv #17626)', () async {
+      final p = Player(options: const {'vo': 'null', 'ao': 'null'});
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=7680x16:rate=30:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(p.mpv.getPropertyString('hdr-compute-peak'), 'no');
+    });
+
+    test('an explicit hdr-compute-peak option survives a 7680-wide source',
+        () async {
+      final p = Player(options: const {
+        'vo': 'null', 'ao': 'null', 'hdr-compute-peak': 'auto',
+      });
+      addTearDown(p.dispose);
+      await p.open('av://lavfi:testsrc2=size=7680x16:rate=30:duration=2');
+      await _until(p.videoParams, (v) => v?.width == 7680);
+      expect(p.mpv.getPropertyString('hdr-compute-peak'), 'auto');
+    });
+  }, skip: _libmpvMissing ? 'libmpv not available' : null);
 
   test('catalog is generated from mpv docs', () {
     expect(mpvCommands.map((e) => e.name), contains('loadfile'));

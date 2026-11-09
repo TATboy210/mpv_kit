@@ -2,7 +2,12 @@
 //
 // Method channel "mpv_kit_video" (same contract as Windows):
 //   create  {symbols: List<int>, handle: int, renderer: String}
-//           -> {textureId: int, backend: "vulkan"|"software", reason: String}
+//           -> {textureId: int, backend: "d3d11"|"opengl"|"vulkan"|"software",
+//               reason: String}
+//           backend is the winning backend's own wire name
+//           (VideoRenderer::wire_name(), ADR 0004 Decision 2). When no
+//           backend works: error render_init / "no usable render backend",
+//           details: String, the reason trails (why each candidate failed).
 //   setSize {textureId: int, width: int, height: int}
 //   setIccProfile {textureId: int, profile: Uint8List} (empty: clear)
 //   dispose {textureId: int}
@@ -320,7 +325,10 @@ class Plugin {
           PostEvent(raw->channel, raw->texture_id.load(), kind, msg);
         });
     if (!raw->renderer->Start(choice)) {
-      Error(call, "render_init", "no usable render backend");
+      // The trails say why every candidate was unavailable.
+      g_autoptr(FlValue) details =
+          fl_value_new_string(raw->renderer->backend_reason().c_str());
+      Error(call, "render_init", "no usable render backend", details);
       return;
     }
 
@@ -346,13 +354,12 @@ class Plugin {
     raw->texture_id = id;
     instances_[id] = st;
 
-    std::string reason = raw->renderer->backend_reason();
-    if (!vk && raw->interop->gl_reason()[0])
-      reason += std::string(": ") + raw->interop->gl_reason();
+    // The GL probe failure is already a trail (GlInterop::interopReason).
+    const std::string& reason = raw->renderer->backend_reason();
     g_autoptr(FlValue) out = fl_value_new_map();
     fl_value_set_string_take(out, "textureId", fl_value_new_int(id));
     fl_value_set_string_take(out, "backend",
-                             fl_value_new_string(vk ? "vulkan" : "software"));
+                             fl_value_new_string(raw->renderer->wire_name()));
     fl_value_set_string_take(out, "reason", fl_value_new_string(reason.c_str()));
     fl_method_call_respond_success(call, out, nullptr);
   }
@@ -389,8 +396,11 @@ class Plugin {
         hold);
   }
 
-  static void Error(FlMethodCall* call, const char* code, const char* msg) {
-    fl_method_call_respond_error(call, code, msg, nullptr, nullptr);
+  // [details] (may be null) is borrowed: fl_method_call_respond_error takes
+  // its own reference.
+  static void Error(FlMethodCall* call, const char* code, const char* msg,
+                    FlValue* details = nullptr) {
+    fl_method_call_respond_error(call, code, msg, details, nullptr);
   }
 
   FlTextureRegistrar* textures_;

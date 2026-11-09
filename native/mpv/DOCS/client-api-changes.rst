@@ -32,12 +32,16 @@ API changes
 
 ::
 
- --- mpv_kit (patch on 0.41.0, API version unchanged) ---
+ --- mpv_kit (patch on 0.42.0, API version unchanged) ---
         - add <mpv/render_vk.h> and MPV_RENDER_API_TYPE_VULKAN: a Vulkan
           backend for the render API importing a host-owned VkDevice.
           Detect at compile time via MPV_RENDER_API_TYPE_VULKAN, at run
           time mpv_render_context_create() returns
           MPV_ERROR_NOT_IMPLEMENTED when the backend is unavailable.
+ --- mpv 0.42.0 ---
+ 2.6    - add MPV_RENDER_API_TYPE_D3D11 render API backend, along with
+          MPV_RENDER_PARAM_D3D11_INIT_PARAMS and MPV_RENDER_PARAM_D3D11_FBO,
+          and a new render_d3d11.h header.
  --- mpv 0.40.0 ---
  2.5    - Deprecate MPV_RENDER_PARAM_AMBIENT_LIGHT. no replacement.
  --- mpv 0.39.0 ---

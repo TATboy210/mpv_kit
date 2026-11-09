@@ -1,7 +1,7 @@
 # mpv_kit
 
-Complete, low-overhead Dart FFI bindings for **libmpv 0.41** (client API
-2.5): every exported client API function, `mpv_node` conversion, an
+Complete, low-overhead Dart FFI bindings for **libmpv 0.42** (client API
+2.6): every exported client API function, `mpv_node` conversion, an
 isolate-safe event loop and a typed high-level `Player`. Pure Dart — works
 in Flutter apps and in command-line programs.
 
