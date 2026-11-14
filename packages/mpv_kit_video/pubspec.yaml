@@ -3,7 +3,7 @@ description: >-
   Flutter video output for mpv_kit: zero-copy Vulkan rendering into Flutter
   textures (D3D11 shared textures on Windows, GL memory objects on Linux,
   IOSurface on macOS) with a software fallback.
-version: 0.1.2
+version: 0.1.3
 repository: https://github.com/TATboy210/mpv_kit
 issue_tracker: https://github.com/TATboy210/mpv_kit/issues
 topics: [mpv, video, vulkan, player]

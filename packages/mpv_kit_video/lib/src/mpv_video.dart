@@ -37,6 +37,8 @@ class MpvVideo extends StatefulWidget {
   /// any other upscale of an already-rendered frame, but cheaper).
   final bool capRenderSize;
 
+  /// 创建内部状态对象：渲染循环、resize 去抖与控制器对接都在
+  /// [_MpvVideoState] 中实现。
   @override
   State<MpvVideo> createState() => _MpvVideoState();
 }
@@ -131,6 +133,8 @@ class _MpvVideoState extends State<MpvVideo> {
     });
   }
 
+  /// 构建视频表面：读取设备像素比与显示器刷新率并同步给控制器
+  /// （未变化的刷新率不触发任何 FFI 调用），再挂载平台纹理组件。
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);

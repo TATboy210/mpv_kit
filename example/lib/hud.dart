@@ -10,7 +10,7 @@
 // snapshots without a Player.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:mpv_kit_video/mpv_kit_video.dart';
 
 /// Graphics APIs ADR 0004 allows at the start of a controller reason.
@@ -174,18 +174,23 @@ final class HudEvent {
   bool get isError => kind == 'deviceLost' || kind == 'renderError';
 }
 
-/// Bounded ring of the most recent controller events.
+/// 最近控制器事件的有界环形日志（HUD 调试面板用）。
 final class HudEventLog {
-  HudEventLog([this.capacity = 8]) : _items = <HudEvent>[];
+  /// [capacity] 是环容量（默认 8）：超过后丢弃最旧的事件。
+  HudEventLog([int capacity = 8])
+    : _capacity = capacity,
+      _items = <HudEvent>[];
 
-  final int capacity;
+  final int _capacity;
   final List<HudEvent> _items;
 
   List<HudEvent> get items => List.unmodifiable(_items);
 
   void add(String kind, [String message = '']) {
     _items.add(HudEvent(DateTime.now(), kind, message));
-    if (_items.length > capacity) _items.removeRange(0, _items.length - capacity);
+    if (_items.length > _capacity) {
+      _items.removeRange(0, _items.length - _capacity);
+    }
   }
 }
 

@@ -1,3 +1,15 @@
+## 0.1.3
+
+- Validated on Dart 3.14.0 / Flutter 3.50.0; no runtime changes. The example
+  app migrated off the deprecated `package:flutter/material.dart` to
+  `package:material_ui` (Flutter 3.50 ecosystem split).
+- Example cleanup: removed 8 unused dependencies (`cupertino_icons`,
+  `path_provider`, `crypto`, `flutter_video_thumbnail_plus`,
+  `xdg_directories`, `intl`, `logger`, `i18n`) verified unreferenced by
+  grep across the whole example; `HudEventLog.capacity` became private.
+  `Player.addSubtitle` was audited and kept: it is the only subtitle-load
+  entry point (no plural variant), so removing it would drop functionality.
+
 ## 0.1.2
 
 - Changed: depends on `mpv_kit ^0.1.2` / `mpv_kit_libs ^0.1.2`. Verified to

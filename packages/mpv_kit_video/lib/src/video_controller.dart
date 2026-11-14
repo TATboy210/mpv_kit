@@ -113,6 +113,7 @@ final class MpvVideoEvent {
   /// for [MpvVideoEventKind.renderError]. May be empty.
   final String message;
 
+  /// 调试输出：`MpvVideoEvent(事件类型: 消息)`。
   @override
   String toString() => message.isEmpty
       ? 'MpvVideoEvent(${kind.name})'
