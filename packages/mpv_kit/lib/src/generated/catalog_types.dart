@@ -15,6 +15,7 @@ final class MpvCatalogEntry {
   /// options; not meaningful for commands.
   final bool writable;
 
+  /// 调试输出：直接给出 mpv 侧名称。
   @override
   String toString() => name;
 }

@@ -1,3 +1,33 @@
+## 0.1.3
+
+- Fixed: `Player`/`Mpv` creation no longer hard-fails on libmpv builds whose
+  option semantics differ from mpv 0.42. mpv 0.42 changed
+  `hwdec-extra-frames` from an integer to a choice (`auto`); on older
+  binaries that value is rejected with `MPV_ERROR_OPTION_ERROR` and the
+  whole player creation aborted (51 tests failed in this configuration).
+  A new compat table (`Mpv._optionValueCompat`) maps such values to their
+  semantically equivalent predecessors (`auto` -> `6`), recorded in
+  `Mpv.compatOptionFallbacks` for diagnostics and consumed by the
+  hwdec-extra-frames auto-tune. Unknown values still fail loudly, so
+  typos in user options are not masked.
+- Fixed (Windows): loading libmpv by explicit path (`path:` argument or
+  `MPV_KIT_LIBMPV_PATH`) failed with Win32 error 126 whenever dependency
+  DLLs lived next to the target (Dart's `DynamicLibrary.open` does not use
+  `LOAD_WITH_ALTERED_SEARCH_PATH`). The directory is now prepended to the
+  process `PATH` before loading, so the bundle's dependency closure
+  (avcodec-62.dll etc.) resolves.
+- Added: mpv 0.42's D3D11 render constants (`MPV_RENDER_PARAM_D3D11_INIT_PARAMS`
+  (21), `MPV_RENDER_PARAM_D3D11_FBO` (22) and `MPV_RENDER_API_TYPE_D3D11`)
+  in `bindings.dart`, audited against `render_d3d11.h` with REA. The current
+  native-window composition path does not use them; they unblock a future
+  direct render-API backend.
+- Tests: stream-bridge tests now skip (instead of fail) on stock libmpv
+  builds without mpv_kit patch 0006; the hwdec auto-tune test accepts the
+  compat-equivalent value on older binaries.
+- Validated on Dart 3.14.0 / Flutter 3.50.0 with `ffi` 2.2.0, `hooks` 2.2.0,
+  `code_assets` 2.2.0 and `lints` 6.1.0; the SDK constraint stays `^3.10.0`
+  (`hooks` 2.x floor).
+
 ## 0.1.2
 
 - Changed: `ffi` lower bound raised to `^2.2.0` (resolves with the current

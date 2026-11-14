@@ -533,7 +533,10 @@ void main() {
 
       await p.open('av://lavfi:testsrc2=size=3840x2160:rate=1:duration=2');
       await _until(p.videoParams, (v) => v?.width == 3840);
-      await untilExtraFrames('auto');
+      // 4K 恢复“auto”：旧版 libmpv 上 Mpv 兼容层把 auto 退回数字 6，
+      // 语义等价，两者都算恢复（见 Mpv._optionValueCompat）。
+      final autoValue = p.mpv.compatOptionFallbacks['hwdec-extra-frames'] ?? 'auto';
+      await untilExtraFrames(autoValue);
     });
 
     test('a user hwdec-extra-frames option is never changed', () async {

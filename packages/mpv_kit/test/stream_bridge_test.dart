@@ -142,6 +142,7 @@ void main() {
   tearDown(() => player.dispose());
 
   test('plays media served from memory', () async {
+    if (_skipWithoutBridge()) return;
     player.mpv.registerStreamProtocol(
       'mem',
       (uri) => uri == 'mem://shot' ? MpvMemoryStreamSource(png) : null,
@@ -152,6 +153,7 @@ void main() {
   });
 
   test('asynchronous sources are awaited', () async {
+    if (_skipWithoutBridge()) return;
     final source = _SlowSource(MpvMemoryStreamSource(png));
     player.mpv.registerStreamProtocol('slow', (_) => source);
     await player.open('slow://x');
@@ -160,6 +162,7 @@ void main() {
   });
 
   test('a rejected URI fails like a missing file', () async {
+    if (_skipWithoutBridge()) return;
     player.mpv.registerStreamProtocol('none', (_) => null);
     final err = player.errors.first.timeout(const Duration(seconds: 10));
     await player.open('none://x');
@@ -167,6 +170,7 @@ void main() {
   });
 
   test('registering a protocol twice fails', () {
+    if (_skipWithoutBridge()) return;
     player.mpv.registerStreamProtocol('dup', (_) => null);
     expect(
       () => player.mpv.registerStreamProtocol('dup', (_) => null),
@@ -175,6 +179,7 @@ void main() {
   });
 
   test('dispose does not hang on a source that never answers', () async {
+    if (_skipWithoutBridge()) return;
     final p = Player(options: const {'vo': 'null', 'ao': 'null'});
     p.mpv.registerStreamProtocol('stuck', (_) => _StuckSource());
     unawaited(p.open('stuck://x').catchError((Object _) {}));

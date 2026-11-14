@@ -77,8 +77,26 @@ final class Mpv {
           // feature compiled out — reports optionNotFound. The feature is
           // absent, so there is nothing to set: keep the rest and continue
           // (same contract as secureDefaults above).
-          if (err.error != MpvError.optionNotFound) rethrow;
-          _recordIgnoredOption(mpv, e.key, err);
+          if (err.error == MpvError.optionNotFound) {
+            _recordIgnoredOption(mpv, e.key, err);
+            continue;
+          }
+          // optionError 意味着“选项存在、值不合法”——典型场景是 mpv 0.42
+          // 改了取值语义，旧版二进制不认新值（MPV_ERROR_OPTION_ERROR）。
+          // 按 [_optionValueCompat] 退回语义等价的旧值；旧值也失败则视为
+          // 该特性缺失，记录后继续（不得让整个 Player 创建硬失败）。
+          final fallback = _optionValueCompat[e.key]?[e.value];
+          if (fallback == null) rethrow;
+          try {
+            mpv.setOptionString(e.key, fallback);
+            mpv.compatOptionFallbacks[e.key] = fallback;
+          } on MpvException catch (fallbackErr) {
+            if (fallbackErr.error != MpvError.optionNotFound &&
+                fallbackErr.error != MpvError.optionError) {
+              rethrow;
+            }
+            _recordIgnoredOption(mpv, e.key, fallbackErr);
+          }
         }
       }
       if (initialize) mpv.initialize();
@@ -97,6 +115,20 @@ final class Mpv {
     'input-default-bindings': 'no',
     'input-vo-keyboard': 'no',
     'osc': 'no',
+  };
+
+  /// mpv 0.42 选项语义变化的兼容表：`选项名 -> {新值 -> 语义等价旧值}`。
+  ///
+  /// 0.42 起部分选项的取值语义变化（见 mpv `DOCS/interface-changes.rst`），
+  /// 旧版 libmpv 对新值报 `optionError`（选项存在、值不合法）。这里把
+  /// 新值映射回旧值，保证同一份代码在 0.41/0.42 二进制上都可用：
+  ///
+  /// - `hwdec-extra-frames=auto`：0.42 把该选项从“软解缓冲总帧数”改为
+  ///   “解码器额外帧数”，并新增 `auto`（按 VO 帧保留推导；不开插帧时
+  ///   恒为 6，见 `video/decode/vd_lavc.c` 的 `OPT_CHOICE`）。旧版是纯
+  ///   int，语义上 `auto ≈ 6`（Player 文档同此结论）。
+  static const _optionValueCompat = <String, Map<String, String>>{
+    'hwdec-extra-frames': {'auto': '6'},
   };
 
   /// 底层绑定表（高级用法：直接调用未封装的符号）。
@@ -666,6 +698,12 @@ final class Mpv {
   /// tolerance that keeps newer-mpv options compatible must not hide typos).
   @visibleForTesting
   final List<String> ignoredOptionsForTesting = [];
+
+  /// 创建时因 mpv 版本语义差异回退的选项：`选项名 -> 实际生效的旧值`。
+  ///
+  /// 见 [_optionValueCompat]。诊断与下游逻辑（如 Player 的 auto-tune）
+  /// 用它判断“本构建上 auto 的实际取值”；空 Map 表示未发生任何回退。
+  final Map<String, String> compatOptionFallbacks = {};
 
   /// `mpv_error_string`。纯查找,dispose 后仍然可用（IN-02）。
   String errorString(int code) => readUtf8(bindings.errorString(code));

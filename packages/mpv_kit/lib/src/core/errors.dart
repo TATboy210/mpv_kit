@@ -17,6 +17,7 @@ final class MpvException implements Exception {
   /// 对应的强类型错误枚举。
   MpvError get error => MpvError.fromCode(code);
 
+  /// 调试输出：`MpvException(错误名 @ 操作): 消息`。
   @override
   String toString() =>
       'MpvException(${error.name}${operation == null ? '' : ' @ $operation'}): '

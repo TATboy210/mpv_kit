@@ -43,6 +43,7 @@ const _baseline = <Type, Set<String>>{
     'command',
     'commandAsync',
     'commandString',
+    'compatOptionFallbacks',
     'createClient',
     'deleteProperty',
     'dispose',

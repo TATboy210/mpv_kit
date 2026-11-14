@@ -5,6 +5,8 @@ import 'dart:developer' as developer;
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
+
 import 'bindings.dart';
 
 /// 加载 libmpv 失败时抛出。
@@ -17,6 +19,7 @@ final class MpvLibraryNotFound implements Exception {
   /// 尝试过的路径/名称及各自的失败原因。
   final Map<String, String> attempts;
 
+  /// 调试输出：列出全部尝试过的候选与各自失败原因。
   @override
   String toString() =>
       'MpvLibraryNotFound: libmpv could not be loaded.\n'
@@ -106,6 +109,14 @@ abstract final class MpvLibrary {
         : defaultNames;
     final attempts = <String, String>{};
     for (final candidate in candidates) {
+      // Windows：Dart 的 DynamicLibrary.open 不带 LOAD_WITH_ALTERED_SEARCH_
+      // PATH，显式路径加载时依赖 DLL 的搜索范围不含被加载库自身目录
+      // （bundle 目录里的 avcodec-62.dll 等会解析不到，报错误 126）。把
+      // 该目录前置进进程 PATH，让默认搜索顺序覆盖 bundle 的依赖闭包。
+      // 仅对文件路径生效；裸名（默认解析）本来就由 OS 在 PATH 上找。
+      if (Platform.isWindows && candidate.contains(Platform.pathSeparator)) {
+        _prependWindowsSearchPath(File(candidate).parent.path);
+      }
       try {
         final bindings = MpvBindings(DynamicLibrary.open(candidate));
         _checkApiVersion(bindings);
@@ -143,9 +154,33 @@ abstract final class MpvLibrary {
     }
   }
 
-  /// 已加载库的 client API 版本，形如 (2, 5)。
+  /// 已加载库的 client API 版本，形如 (2, 6)。
   static (int major, int minor) apiVersion(MpvBindings b) {
     final v = b.clientApiVersion();
     return (v >> 16, v & 0xffff);
   }
+}
+
+/// 把 [dir] 前置进进程 `PATH`（仅 Windows 调用）。
+///
+/// Dart 的 `DynamicLibrary.open` 在 Windows 上使用不带
+/// `LOAD_WITH_ALTERED_SEARCH_PATH` 的 `LoadLibraryW`：被加载 DLL 自身
+/// 目录不在依赖搜索范围内，显式路径指向 bundle 目录时，同目录的
+/// avcodec-62.dll 等依赖解析不到，报 Win32 错误 126。`LoadLibraryW` 的
+/// 默认搜索顺序包含 PATH，把 bundle 目录前置进 PATH 即可让整个依赖
+/// 闭包可解析。已在最前则跳过，避免每次 open 都拼接一次 PATH。
+void _prependWindowsSearchPath(String dir) {
+  final k32 = DynamicLibrary.open('kernel32.dll');
+  final setEnv =
+      k32.lookupFunction<
+        Int32 Function(Pointer<Utf16>, Pointer<Utf16>),
+        int Function(Pointer<Utf16>, Pointer<Utf16>)
+      >('SetEnvironmentVariableW');
+  final current = Platform.environment['PATH'] ?? '';
+  if (current.toLowerCase().startsWith(dir.toLowerCase())) return;
+  using((a) {
+    final name = 'PATH'.toNativeUtf16(allocator: a);
+    final value = '$dir;$current'.toNativeUtf16(allocator: a);
+    setEnv(name, value);
+  });
 }

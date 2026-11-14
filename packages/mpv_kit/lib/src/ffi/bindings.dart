@@ -120,6 +120,20 @@ abstract final class MpvEventId {
 }
 
 /// `mpv_render_param_type` 取值。
+/// `MPV_RENDER_API_TYPE_*`：`MPV_RENDER_PARAM_API_TYPE` 的取值（字符串）。
+abstract final class MpvRenderApiType {
+  /// `MPV_RENDER_API_TYPE_OPENGL`：OpenGL 渲染目标。
+  static const opengl = 'opengl';
+
+  /// `MPV_RENDER_API_TYPE_SW`：软件渲染目标。
+  static const sw = 'sw';
+
+  /// `MPV_RENDER_API_TYPE_D3D11`（mpv 0.42 新增）：Direct3D 11 渲染目标，
+  /// 见 `render_d3d11.h`。
+  static const d3d11 = 'd3d11';
+}
+
+/// `mpv_render_param_type` 取值。
 abstract final class MpvRenderParamType {
   /// `MPV_RENDER_PARAM_INVALID` (0).
   static const invalid = 0;
@@ -183,6 +197,14 @@ abstract final class MpvRenderParamType {
 
   /// `MPV_RENDER_PARAM_SW_POINTER` (20).
   static const swPointer = 20;
+
+  /// `MPV_RENDER_PARAM_D3D11_INIT_PARAMS` (21, mpv 0.42 新增)：传入
+  /// `mpv_d3d11_init_params`（设备与上下文指针），见 `render_d3d11.h`。
+  static const d3d11InitParams = 21;
+
+  /// `MPV_RENDER_PARAM_D3D11_FBO` (22, mpv 0.42 新增)：传入
+  /// `mpv_d3d11_fbo`（渲染目标纹理），见 `render_d3d11.h`。
+  static const d3d11Fbo = 22;
 }
 
 // ---------------------------------------------------------------------------

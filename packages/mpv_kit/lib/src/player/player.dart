@@ -393,6 +393,12 @@ final class Player {
   String? _appliedExtraFrames;
   var _extraFramesTune = false;
 
+  /// 本构建上 `hwdec-extra-frames` 的 “auto” 实际取值：0.42 是字符串
+  /// `auto`；旧版二进制退回数字 `6`（见 Mpv._optionValueCompat），两者
+  /// 语义等价。auto-tune 以它判断“当前仍是 auto 状态”。
+  String get _extraFramesAutoValue =>
+      mpv.compatOptionFallbacks['hwdec-extra-frames'] ?? 'auto';
+
   /// 在专用弱子客户端上注册 `on_preloaded` hook:文件已打开、轨道已知、
   /// 解码器尚未创建——`vd-lavc-threads` 只在解码器创建时读取,这是唯一
   /// 能按本文件尺寸生效的时机。独立客户端让本 hook 与用户自己在
@@ -412,9 +418,11 @@ final class Player {
         !userDecoderThreads && mpv.tryGetProperty('vd-lavc-threads') == 0;
     // mpv 0.42 的 `auto` 按 VO 队列推导 surface pool；1080p + 8 槽 ring
     // 下比固定 2 帧多约 50 MiB Working Set（P0 实测）。旧版 libmpv 没有
-    // 该选项时 tryGetProperty 返回 null，不注册。
+    // 该选项时 tryGetProperty 返回 null，不注册；退回值（6）语义上等价
+    // 于 auto，同样注册调参。
     final tuneExtraFrames = !userHwdecExtraFrames &&
-        mpv.tryGetProperty('hwdec-extra-frames')?.toString() == 'auto';
+        mpv.tryGetProperty('hwdec-extra-frames')?.toString() ==
+            _extraFramesAutoValue;
     if (!tuneThreads && !tuneExtraFrames) return;
     try {
       final client = mpv.createClient('mpv_kit_file_tunes', weak: true);
@@ -466,13 +474,15 @@ final class Player {
       }
       if (_extraFramesTune) {
         final raw = mpv.tryGetProperty('hwdec-extra-frames');
-        final current = raw?.toString() == 'auto' ? null : raw?.toString();
+        final current = raw?.toString() == _extraFramesAutoValue
+            ? null
+            : raw?.toString();
         if (current != null && current != _appliedExtraFrames) {
           _extraFramesTune = false; // 运行中被用户改过
         } else {
           final target = w > 0 && h > 0 && w * h <= 1920 * 1088
               ? '$_hwdecExtraFramesHd'
-              : 'auto';
+              : _extraFramesAutoValue;
           if (target != raw?.toString()) {
             mpv.setProperty('hwdec-extra-frames', target);
             _appliedExtraFrames = target;
