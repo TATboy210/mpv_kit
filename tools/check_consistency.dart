@@ -40,7 +40,6 @@ void main() {
       read('native/mpv/MPV_VERSION').trim(); // v0.41.0-1113-gfd9265a905
   final mpvBase =
       mpvVersion.startsWith('v') ? mpvVersion.substring(1) : mpvVersion;
-  final mpvShort = mpvBase.split('-g').first; // 0.41.0-1113
   final mpvUpToMinor =
       mpvBase.split('-').first; // 0.41.0
 

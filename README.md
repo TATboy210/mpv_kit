@@ -5,7 +5,7 @@ under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.2`). APIs may change.
+> Status: early development (`0.1.3`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -28,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.2
+  mpv_kit_video: ^0.1.3
 ```
 
 ```dart
@@ -73,8 +73,9 @@ class _VideoPageState extends State<VideoPage> {
 ```
 
 Requirements: Dart 3.10 / Flutter 3.38 or newer (the build hook of
-`mpv_kit_libs` uses native assets). All package `sdk:` constraints in this
-repository are pinned to the same floor and checked by
+`mpv_kit_libs` uses native assets; `hooks` 2.x pins the Dart 3.10 floor).
+Validated on Dart 3.14.0 / Flutter 3.50.0. All package `sdk:` constraints
+in this repository are pinned to the same floor and checked by
 `tools/check_consistency.dart`.
 
 ### Dependency locking
@@ -251,7 +252,7 @@ unknowns:
 Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
 10-minute gate does not exercise it.
 
-## Dependency compatibility (0.1.2)
+## Dependency compatibility (0.1.3)
 
 The three packages add no runtime dependency beyond `ffi`, `meta` and
 `crypto`. These packages resolve together with them in one Flutter app
@@ -260,13 +261,9 @@ The three packages add no runtime dependency beyond `ffi`, `meta` and
 | Package | Version | Notes |
 |---|---|---|
 | ffi / path / crypto | ^2.2.0 / ^1.9.1 / ^3.0.8 | |
-| path_provider | ^2.1.6 | Dart 3.10 |
-| file_picker | ^13.3.2 | Dart 3.10 |
+| file_picker | ^13.3.3 | Dart 3.10 |
 | shared_preferences | ^2.5.6 | needs Dart 3.11 / Flutter 3.41 in the app |
-| desktop_drop / cross_file | ^0.8.4 / ^0.3.5+4 | `DropTarget` hands out `XFile` |
-| intl / logger / i18n | ^0.20.3 / ^2.8.0 / ^4.2.6 | `i18n` is a build-time generator |
-| xdg_directories | ^1.1.0 | Linux only |
-| flutter_video_thumbnail_plus | ^1.0.7 | no Linux implementation |
+| desktop_drop / cross_file | ^0.8.4 / ^0.3.5+5 | `DropTarget` hands out `XFile` |
 
 ## Troubleshooting
 

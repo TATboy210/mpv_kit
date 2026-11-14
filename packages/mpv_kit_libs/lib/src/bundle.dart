@@ -14,6 +14,7 @@ final class BundleIntegrityException implements Exception {
 
   final String message;
 
+  /// 调试输出：`BundleIntegrityException: 原因`。
   @override
   String toString() => 'BundleIntegrityException: $message';
 }

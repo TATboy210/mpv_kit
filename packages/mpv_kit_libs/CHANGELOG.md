@@ -1,3 +1,10 @@
+## 0.1.3
+
+- Dependency refresh for Dart 3.14.0: `code_assets` ^2.2.0, `hooks` ^2.2.0.
+  The build hook uses only `targetOS.name`/`targetArchitecture.name` plus
+  `CodeAsset`/`DynamicLoadingBundled`, none of which changed in the 2.2.0
+  API break. No bundle pin changes.
+
 ## 0.1.2
 
 - Changed: `crypto` lower bound raised to `^3.0.8`; no behavior change.

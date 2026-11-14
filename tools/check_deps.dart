@@ -7,20 +7,17 @@
 import 'dart:io';
 
 /// Package -> lowest verified version (the one the example resolves).
+/// (0.1.3 dropped the example's unused deps — `path_provider`, `crypto`,
+/// `flutter_video_thumbnail_plus`, `xdg_directories`, `intl`, `logger` and
+/// `i18n` — so the compatibility matrix shrinks to what actually resolves.)
 const _verified = <String, String>{
-  'path_provider': '2.1.6',
-  'file_picker': '13.3.2',
+  'file_picker': '13.3.3',
   'shared_preferences': '2.5.6',
   'desktop_drop': '0.8.4',
   'path': '1.9.1',
   'crypto': '3.0.8',
   'ffi': '2.2.0',
-  'flutter_video_thumbnail_plus': '1.0.7',
-  'i18n': '4.2.6',
-  'xdg_directories': '1.1.0',
-  'cross_file': '0.3.5+4',
-  'intl': '0.20.3',
-  'logger': '2.8.0',
+  'cross_file': '0.3.5+5',
 };
 
 /// Compares dotted versions; a `+build` suffix is compared last.
