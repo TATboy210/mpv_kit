@@ -1,0 +1,39 @@
+# Phase 15 plan 15-02 hosted-CI record. Raw lines are quoted exactly; format is the one the plan verify greps expect.
+# Backfilled 2026-10-28 from the COMPLETED milestone runs of PR #1 at feat HEAD 091228a (native-verify 40627862148, flutter-plugin 40627862039). The gates were evaluated by this phase's unmodified tools/ci_gate.sh against the cached logs of those runs (nothing was dispatched, rerun or pushed). The first two sha= lines are the gate's own record lines.
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify.yml run=40627862148 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=flutter-plugin.yml run=40627862039 conclusion=success
+plan=15-02 task=1 ci-gate=pass sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify run=40627862148 conclusion=success (CI-GATE ok: linux + sanitizers jobs success; RENDER_GL ok gl and gles; RENDER_GL ext api=gl; RENDER_GL handoff api=gl|gles flip_y=0|1 on ubuntu-24.04)
+render_gl_handoff platform=x64 line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=x64 line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=x64 line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=arm64 line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=arm64 line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=arm64 line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=sanitizers line=RENDER_GL ext api=gl egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gl flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gl flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+render_gl_handoff platform=sanitizers line=RENDER_GL ext api=gles egl="EGL_KHR_surfaceless_context,EGL_KHR_image_base,EGL_KHR_gl_texture_2D_image,EGL_KHR_fence_sync,EGL_KHR_wait_sync,EGL_EXT_create_context_robustness" consumer_oes_egl_image=yes gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4"
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gles flip_y=0 image=ok sync=ok import=ok row0=red last=blue fbo_row0=red fbo_last=blue
+render_gl_handoff platform=sanitizers line=RENDER_GL handoff api=gles flip_y=1 image=ok sync=ok import=ok row0=blue last=red fbo_row0=blue fbo_last=red
+plan=15-02 task=2 ci-gate=pending sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 note=the hard-assertion change to native/tests/render_gl_smoke.c (RENDER_GL handoff ok api=<variant>) is committed but has not run on CI yet; it needs one more native-verify run. Gate to run after pushing: ci_gate.sh --jobs-success ^linux --jobs-success ^sanitizers --log ^linux \(ubuntu-24\.04\) RENDER_GL handoff ok api=gl
+# 2026-10-28 hard-assertion CI pass: native-verify run 40632866758 at sha 893b34f133de42bbf79bb3f54ce98e78a4eb60f9 (conclusion=success; linux x64, linux arm64 and sanitizers jobs success), which contains the 52b8a56 render_gl_smoke hard-assertion change. Raw lines from `gh run view 40632866758 --log | grep -E 'RENDER_GL (handoff ok|ok) '` (log timestamp prefix stripped). Nothing was dispatched, rerun or pushed for this record.
+sha=893b34f133de42bbf79bb3f54ce98e78a4eb60f9 workflow=native-verify.yml run=40632866758 conclusion=success
+render_gl_ok platform=x64 run=40632866758 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl_ok platform=x64 run=40632866758 line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl_hard platform=x64 run=40632866758 line=RENDER_GL handoff ok api=gl
+render_gl_hard platform=x64 run=40632866758 line=RENDER_GL handoff ok api=gles
+render_gl_ok platform=arm64 run=40632866758 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 128 bits)" pixel=254,0,0
+render_gl_ok platform=arm64 run=40632866758 line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 128 bits)" pixel=254,0,0
+render_gl_hard platform=arm64 run=40632866758 line=RENDER_GL handoff ok api=gl
+render_gl_hard platform=arm64 run=40632866758 line=RENDER_GL handoff ok api=gles
+render_gl_ok platform=sanitizers run=40632866758 line=RENDER_GL ok api=gl renderer=gpu gl_version="4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl_ok platform=sanitizers run=40632866758 line=RENDER_GL ok api=gles renderer=gpu gl_version="OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4" gl_renderer="llvmpipe (LLVM 20.1.2, 256 bits)" pixel=254,0,0
+render_gl_hard platform=sanitizers run=40632866758 line=RENDER_GL handoff ok api=gl
+render_gl_hard platform=sanitizers run=40632866758 line=RENDER_GL handoff ok api=gles
+plan=15-02 task=2 ci-gate=pass sha=893b34f133de42bbf79bb3f54ce98e78a4eb60f9 workflow=native-verify run=40632866758 conclusion=success (supersedes the ci-gate=pending line above: linux (ubuntu-24.04), linux (ubuntu-24.04-arm) and sanitizers jobs success; `RENDER_GL handoff ok api=gl` and `api=gles` present on all three; `RENDER_GL ok api=gl|gles ... pixel=254,0,0` still present, llvmpipe only)

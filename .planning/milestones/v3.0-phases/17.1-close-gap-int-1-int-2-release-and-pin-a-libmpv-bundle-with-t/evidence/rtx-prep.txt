@@ -1,0 +1,8 @@
+sha=95c2b6d10f33d2e9036508dc844cd3cbfe2df051
+bundle_tag=v0.1.0-dev.4
+pin_windows_x64=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254
+device_name=NVIDIA GeForce RTX 4060 Laptop GPU
+expect_reason_d3d11=d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11
+expect_reason_vulkan=vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU
+flutter=Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git
+gpu=NVIDIA GeForce RTX 4060 Laptop GPU, 617.42

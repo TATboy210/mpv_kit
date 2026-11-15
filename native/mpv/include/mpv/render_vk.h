@@ -68,6 +68,13 @@ extern "C" {
  * Also valid for mpv_render_context_get_info(): data is a const char**
  * that receives the active renderer ("gpu-next", "gpu" or "sw"). The string
  * is static. Builds without this extension return MPV_ERROR_NOT_IMPLEMENTED.
+ *
+ * mpv_kit builds for Windows also accept this parameter with
+ * MPV_RENDER_API_TYPE_D3D11 (render_d3d11.h): "gpu-next" runs libplacebo's
+ * pl_d3d11 on the host's ID3D11Device, "gpu" is the upstream ra_d3d11
+ * renderer, and get_info reports the active one in the same way. It is the
+ * same parameter, with the same value and name; the D3D11 backend adds no
+ * parameter of its own.
  */
 #define MPV_RENDER_PARAM_VULKAN_RENDERER    ((mpv_render_param_type)0x6d6b0003)
 
@@ -112,7 +119,10 @@ typedef struct mpv_vulkan_init_params {
  * call, so the host may destroy it once signal_semaphore has been reached.
  *
  * Semaphores may be binary (value ignored, use 0) or timeline (value used).
- * VK_NULL_HANDLE disables the corresponding wait/signal.
+ * wait_semaphore may be VK_NULL_HANDLE (no wait). signal_semaphore is
+ * required: rendering fails with MPV_ERROR_INVALID_PARAMETER without one.
+ * It is signalled only when mpv_render_context_render() succeeds; on failure
+ * the host must not wait for signal_value.
  */
 typedef struct mpv_vulkan_image {
     VkImage image;

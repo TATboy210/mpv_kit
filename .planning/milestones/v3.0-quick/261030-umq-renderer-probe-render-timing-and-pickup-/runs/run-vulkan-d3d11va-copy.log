@@ -1,0 +1,276 @@
+mpv_kit_example: GPU preference high-performance (AC power, battery saver off)
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+mpv_kit: compositor adapter "NVIDIA GeForce RTX 4060 Laptop GPU" luid=00000000:0000F70D
+mpv_kit: MPV_KIT_VIDEO_API=vulkan restricts rendering to that API
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+mpv_kit_example: 0 dropped, avdiff=0.000012 hwdec=vulkan dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000007495836876703077 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016742ms done=0.032137ms max_done=0.639700ms superseded=0 repeated=0 queued=0 render=16.255598ms max_render=22.749300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.08ms max=10.46ms backend=vulkan describes=120 describe=0.003ms max_describe=0.020ms handle_changes=120 binds=119 bind=0.503ms max_bind=4.020ms
+mpv_kit_example: 0 dropped, avdiff=0.000005602501417678596 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000032994968822142035 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016652ms done=0.748896ms max_done=13.037800ms superseded=0 repeated=0 queued=1 render=15.628641ms max_render=25.291500ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.09ms max=8.69ms backend=vulkan describes=120 describe=0.004ms max_describe=0.022ms handle_changes=120 binds=120 bind=0.555ms max_bind=3.547ms
+mpv_kit_example: 0 dropped, avdiff=0.000006200396823086152 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005801799884075365 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.017123ms done=0.040037ms max_done=2.062100ms superseded=0 repeated=0 queued=0 render=16.488457ms max_render=27.318300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.42ms max=14.56ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.563ms max_bind=1.295ms
+mpv_kit_example: 0 dropped, avdiff=0.0000063996952923695005 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000062889739199101236 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014624ms done=0.023158ms max_done=0.041200ms superseded=0 repeated=0 queued=1 render=16.508763ms max_render=17.689700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.30ms max=15.85ms backend=vulkan describes=120 describe=0.006ms max_describe=0.254ms handle_changes=120 binds=120 bind=0.522ms max_bind=1.800ms
+mpv_kit_example: 0 dropped, avdiff=0.000004495287700245765 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006798292237486514 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016955ms done=0.049988ms max_done=2.945400ms superseded=0 repeated=0 queued=2 render=16.377261ms max_render=28.255200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.42ms max=14.85ms backend=vulkan describes=120 describe=0.005ms max_describe=0.049ms handle_changes=120 binds=120 bind=0.651ms max_bind=4.886ms
+mpv_kit_example: 0 dropped, avdiff=0.000003598444590358074 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000003698093824722193 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.013231ms done=0.065341ms max_done=2.830200ms superseded=0 repeated=0 queued=0 render=16.467504ms max_render=28.506800ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.93ms max=15.94ms backend=vulkan describes=120 describe=0.004ms max_describe=0.072ms handle_changes=120 binds=120 bind=0.483ms max_bind=1.366ms
+mpv_kit_example: 0 dropped, avdiff=0.000004096690763510935 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006997590706325774 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014344ms done=0.023586ms max_done=0.041100ms superseded=0 repeated=0 queued=2 render=16.495597ms max_render=17.986400ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.28ms max=14.79ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.565ms max_bind=1.748ms
+mpv_kit_example: 0 dropped, avdiff=0.000005691078519054482 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006001098360519652 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014335ms done=0.023037ms max_done=0.034400ms superseded=0 repeated=0 queued=2 render=16.524343ms max_render=17.935500ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.48ms max=14.35ms backend=vulkan describes=120 describe=0.006ms max_describe=0.234ms handle_changes=120 binds=120 bind=0.503ms max_bind=1.753ms
+mpv_kit_example: 0 dropped, avdiff=0.000006897941462191692 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006089675442411124 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015278ms done=0.022994ms max_done=0.045000ms superseded=0 repeated=0 queued=0 render=16.515852ms max_render=18.552200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.58ms max=14.31ms backend=vulkan describes=120 describe=0.004ms max_describe=0.066ms handle_changes=120 binds=120 bind=0.506ms max_bind=1.273ms
+mpv_kit_example: 0 dropped, avdiff=0.000005403202941123286 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000027016014613190364 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015348ms done=0.100523ms max_done=3.697600ms superseded=0 repeated=0 queued=2 render=16.384070ms max_render=30.011400ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.64ms max=12.66ms backend=vulkan describes=120 describe=0.004ms max_describe=0.015ms handle_changes=120 binds=120 bind=0.497ms max_bind=1.308ms
+mpv_kit_example: 0 dropped, avdiff=0.000007296538396484031 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006288973912083051 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015932ms done=0.023665ms max_done=0.109600ms superseded=0 repeated=0 queued=2 render=16.487650ms max_render=18.406600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.24ms max=11.80ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.532ms max_bind=1.497ms
+mpv_kit_example: 0 dropped, avdiff=0.000006499344518906547 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000008304102882605857 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016057ms done=0.072791ms max_done=2.963300ms superseded=0 repeated=0 queued=0 render=16.427132ms max_render=28.995200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.38ms max=15.52ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.575ms max_bind=1.706ms
+mpv_kit_example: 0 dropped, avdiff=0.000004096690750965415 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004096690750521326 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014390ms done=0.051838ms max_done=2.657800ms superseded=0 repeated=0 queued=0 render=16.444238ms max_render=29.632100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.72ms max=15.84ms backend=vulkan describes=120 describe=0.003ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.472ms max_bind=1.196ms
+mpv_kit_example: 0 dropped, avdiff=0.0000063996952832101606 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006200396818700771 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014286ms done=0.022837ms max_done=0.040100ms superseded=0 repeated=0 queued=0 render=16.472932ms max_render=18.027000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.70ms max=14.99ms backend=vulkan describes=120 describe=0.003ms max_describe=0.018ms handle_changes=120 binds=120 bind=0.493ms max_bind=1.647ms
+mpv_kit_example: 0 dropped, avdiff=0.000006399695287817586 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000008503401350501427 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015869ms done=0.050698ms max_done=2.467600ms superseded=0 repeated=0 queued=4 render=16.495752ms max_render=28.194200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.32ms max=12.35ms backend=vulkan describes=120 describe=0.004ms max_describe=0.117ms handle_changes=120 binds=120 bind=0.501ms max_bind=1.927ms
+mpv_kit_example: 0 dropped, avdiff=0.000004594936922119874 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000003299496872499752 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014344ms done=0.022244ms max_done=0.032500ms superseded=0 repeated=0 queued=0 render=16.484731ms max_render=18.416600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.90ms max=15.35ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.523ms max_bind=1.391ms
+mpv_kit_example: 0 dropped, avdiff=0.0000050046060017794325 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006288973913026741 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016323ms done=0.023362ms max_done=0.041900ms superseded=0 repeated=0 queued=0 render=16.509909ms max_render=19.631900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.12ms max=7.59ms backend=vulkan describes=120 describe=0.003ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.510ms max_bind=1.247ms
+mpv_kit_example: 0 dropped, avdiff=0.000005491780035449256 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005104255237142752 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014818ms done=0.057578ms max_done=4.058900ms superseded=0 repeated=0 queued=0 render=16.472971ms max_render=28.332900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.17ms max=11.17ms backend=vulkan describes=120 describe=0.003ms max_describe=0.019ms handle_changes=120 binds=120 bind=0.539ms max_bind=3.797ms
+mpv_kit_example: 0 dropped, avdiff=0.000006399695289149854 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014927ms done=0.081658ms max_done=3.619600ms superseded=0 repeated=0 queued=1 render=16.256513ms max_render=17.936600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.14ms max=13.55ms backend=vulkan describes=120 describe=0.003ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.575ms max_bind=6.499ms
+mpv_kit_example: 0 dropped, avdiff=0.0000075954861114002625 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000066986429991255925 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016490ms done=0.054645ms max_done=3.764600ms superseded=0 repeated=0 queued=1 render=16.481071ms max_render=31.936100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.11ms max=8.83ms backend=vulkan describes=120 describe=0.005ms max_describe=0.096ms handle_changes=120 binds=120 bind=0.554ms max_bind=3.330ms
+mpv_kit_example: 0 dropped, avdiff=0.00000560250141740104 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006300046058282938 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016786ms done=0.048234ms max_done=2.998700ms superseded=0 repeated=0 queued=0 render=16.431418ms max_render=27.607900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.34ms max=12.99ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.546ms max_bind=1.516ms
+mpv_kit_example: 0 dropped, avdiff=0.0000054032029448980445 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004594936930557569 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016631ms done=0.022938ms max_done=0.040100ms superseded=0 repeated=0 queued=0 render=16.489716ms max_render=18.173600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.09ms max=8.32ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.569ms max_bind=1.839ms
+mpv_kit_example: 0 dropped, avdiff=0.000007196889169169829 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005104255245358402 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015970ms done=0.023738ms max_done=0.038000ms superseded=0 repeated=0 queued=0 render=16.501962ms max_render=18.034700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.14ms max=12.79ms backend=vulkan describes=120 describe=0.004ms max_describe=0.014ms handle_changes=120 binds=120 bind=0.541ms max_bind=1.145ms
+mpv_kit_example: 0 dropped, avdiff=0.0000067982922362097575 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000032994968873767405 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.013788ms done=0.024089ms max_done=0.039800ms superseded=0 repeated=0 queued=0 render=16.534599ms max_render=18.222300ms
+mpv_kit: compositor pickup avg/over 120 frames: 5.05ms max=16.48ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.516ms max_bind=1.407ms
+mpv_kit_example: 0 dropped, avdiff=0.000004196339998208121 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006089675457066068 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014755ms done=0.023335ms max_done=0.037700ms superseded=0 repeated=0 queued=3 render=16.522712ms max_render=17.903200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.47ms max=15.32ms backend=vulkan describes=120 describe=0.005ms max_describe=0.112ms handle_changes=120 binds=120 bind=0.496ms max_bind=1.556ms
+mpv_kit_example: 0 dropped, avdiff=0.000005801799890736703 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000071968891767193455 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016609ms done=0.060157ms max_done=2.277100ms superseded=0 repeated=0 queued=0 render=16.428067ms max_render=27.283200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.35ms max=14.21ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.522ms max_bind=1.301ms
+mpv_kit_example: 0 dropped, avdiff=0.0000067982922380416255 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000007396187635122509 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014882ms done=0.023601ms max_done=0.037200ms superseded=0 repeated=0 queued=1 render=16.491374ms max_render=17.942800ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.60ms max=14.14ms backend=vulkan describes=120 describe=0.004ms max_describe=0.044ms handle_changes=120 binds=120 bind=0.513ms max_bind=1.469ms
+mpv_kit_example: 0 dropped, avdiff=0.000004606009059493488 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004805307530275638 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016788ms done=0.023428ms max_done=0.036700ms superseded=0 repeated=0 queued=0 render=16.492434ms max_render=17.825700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.46ms max=8.48ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.470ms max_bind=1.085ms
+mpv_kit_example: 0 dropped, avdiff=0.0000050046060003361426 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005403202935405638 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016752ms done=0.022336ms max_done=0.031200ms superseded=0 repeated=0 queued=3 render=16.499320ms max_render=18.072500ms
+mpv_kit: compositor pickup avg/over 120 frames: 3.98ms max=12.11ms backend=vulkan describes=120 describe=0.004ms max_describe=0.060ms handle_changes=120 binds=120 bind=0.541ms max_bind=1.779ms
+mpv_kit_example: 0 dropped, avdiff=0.0000059014491118336565 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004805307529776037 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.017794ms done=0.049137ms max_done=3.131000ms superseded=0 repeated=0 queued=0 render=16.480959ms max_render=27.608100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.42ms max=15.38ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.530ms max_bind=1.558ms
+mpv_kit_example: 0 dropped, avdiff=0.0000060010983481406655 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000050046059988373415 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015271ms done=0.084062ms max_done=3.754600ms superseded=0 repeated=0 queued=2 render=16.410851ms max_render=29.058400ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.44ms max=13.48ms backend=vulkan describes=120 describe=0.004ms max_describe=0.071ms handle_changes=120 binds=120 bind=0.510ms max_bind=1.527ms
+mpv_kit_example: 0 dropped, avdiff=0.000006200396814759479 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006200396816591347 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016919ms done=0.023119ms max_done=0.041000ms superseded=0 repeated=0 queued=2 render=16.499842ms max_render=18.122500ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.41ms max=14.15ms backend=vulkan describes=120 describe=0.004ms max_describe=0.036ms handle_changes=120 binds=120 bind=0.510ms max_bind=1.603ms
+mpv_kit_example: 0 dropped, avdiff=0.00000590144911150059 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000030005491691853514 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016497ms done=0.023253ms max_done=0.048200ms superseded=0 repeated=0 queued=1 render=16.523123ms max_render=18.029000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.08ms max=13.65ms backend=vulkan describes=120 describe=0.004ms max_describe=0.020ms handle_changes=120 binds=120 bind=0.526ms max_bind=1.328ms
+mpv_kit_example: 0 dropped, avdiff=0.000007097239927589261 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006399695284931006 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016362ms done=0.084589ms max_done=4.201500ms superseded=0 repeated=0 queued=1 render=16.400566ms max_render=29.581000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.37ms max=14.38ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.549ms max_bind=4.863ms
+mpv_kit_example: 0 dropped, avdiff=0.0000072965383979828324 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006698642990410342 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015794ms done=0.051201ms max_done=3.365000ms superseded=0 repeated=0 queued=0 render=16.484462ms max_render=28.768300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.39ms max=14.80ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.520ms max_bind=1.219ms
+mpv_kit_example: 0 dropped, avdiff=0.000005801799873583757 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006897941455419332 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015580ms done=0.023504ms max_done=0.048700ms superseded=0 repeated=0 queued=0 render=16.500192ms max_render=18.084000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.31ms max=9.07ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.481ms max_bind=1.241ms
+mpv_kit_example: 0 dropped, avdiff=0.000004594936921731296 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000037977430498159492 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.017176ms done=0.087192ms max_done=3.937300ms superseded=0 repeated=0 queued=3 render=16.250815ms max_render=18.228100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.14ms max=12.43ms backend=vulkan describes=120 describe=0.004ms max_describe=0.108ms handle_changes=120 binds=120 bind=0.522ms max_bind=1.934ms
+mpv_kit_example: 0 dropped, avdiff=0.0 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006499344529731221 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016485ms done=0.044651ms max_done=2.683200ms superseded=0 repeated=0 queued=0 render=16.439018ms max_render=27.391100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.34ms max=12.77ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.515ms max_bind=1.211ms
+mpv_kit_example: 0 dropped, avdiff=0.000004495287698635941 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004495287698413897 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015664ms done=0.050338ms max_done=3.346800ms superseded=0 repeated=0 queued=2 render=16.431212ms max_render=27.310300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.26ms max=11.86ms backend=vulkan describes=120 describe=0.004ms max_describe=0.018ms handle_changes=120 binds=120 bind=0.543ms max_bind=1.451ms
+mpv_kit_example: 0 dropped, avdiff=0.00000449528769569385 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005602501414347927 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016973ms done=0.044063ms max_done=2.515100ms superseded=0 repeated=0 queued=0 render=16.465912ms max_render=27.748600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.10ms max=7.21ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.556ms max_bind=2.053ms
+mpv_kit_example: 0 dropped, avdiff=0.0000033991461141358315 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.00000500460600549868 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016037ms done=0.063913ms max_done=4.863600ms superseded=0 repeated=0 queued=2 render=16.474405ms max_render=27.934800ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.33ms max=13.43ms backend=vulkan describes=120 describe=0.004ms max_describe=0.108ms handle_changes=120 binds=120 bind=0.532ms max_bind=1.540ms
+mpv_kit_example: 0 dropped, avdiff=0.0000067982922354881126 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006300046064444675 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015296ms done=0.023707ms max_done=0.040200ms superseded=0 repeated=0 queued=0 render=16.510714ms max_render=17.986300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.47ms max=14.69ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.513ms max_bind=1.173ms
+mpv_kit_example: 0 dropped, avdiff=0.000006100747594606215 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000003997041529424372 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.013013ms done=0.023328ms max_done=0.049600ms superseded=0 repeated=0 queued=0 render=16.556054ms max_render=17.575100ms
+mpv_kit: compositor pickup avg/over 120 frames: 5.17ms max=15.96ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.515ms max_bind=1.389ms
+mpv_kit_example: 0 dropped, avdiff=0.000006288973927182084 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006798292237819581 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016304ms done=0.062634ms max_done=2.446000ms superseded=0 repeated=0 queued=3 render=16.417272ms max_render=28.262300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.30ms max=14.72ms backend=vulkan describes=120 describe=0.004ms max_describe=0.070ms handle_changes=120 binds=120 bind=0.527ms max_bind=2.195ms
+mpv_kit_example: 0 dropped, avdiff=0.000007296538410750397 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004295989233349395 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015303ms done=0.024270ms max_done=0.060400ms superseded=0 repeated=0 queued=0 render=16.507623ms max_render=18.615100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.41ms max=14.25ms backend=vulkan describes=120 describe=0.004ms max_describe=0.013ms handle_changes=120 binds=120 bind=0.517ms max_bind=1.264ms
+mpv_kit_example: 0 dropped, avdiff=0.0000035984445787007324 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000035984445762582418 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015986ms done=0.057452ms max_done=4.086600ms superseded=0 repeated=0 queued=0 render=16.416679ms max_render=28.136600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.45ms max=14.34ms backend=vulkan describes=120 describe=0.003ms max_describe=0.010ms handle_changes=120 binds=120 bind=0.506ms max_bind=1.314ms
+mpv_kit_example: 0 dropped, avdiff=0.00001959768281140084 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000036095167134653217 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016203ms done=0.053756ms max_done=3.566300ms superseded=0 repeated=0 queued=0 render=16.480266ms max_render=28.397300ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.35ms max=13.71ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.541ms max_bind=1.254ms
+mpv_kit_example: 0 dropped, avdiff=0.000004694586159426084 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005801799880356118 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015823ms done=0.023377ms max_done=0.059300ms superseded=0 repeated=0 queued=0 render=16.485733ms max_render=17.946600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.23ms max=12.74ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.541ms max_bind=1.668ms
+mpv_kit_example: 0 dropped, avdiff=0.000006200396817090947 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000007794784570636093 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016047ms done=0.023244ms max_done=0.049200ms superseded=0 repeated=0 queued=1 render=16.513154ms max_render=17.947100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.17ms max=10.96ms backend=vulkan describes=120 describe=0.004ms max_describe=0.020ms handle_changes=120 binds=120 bind=0.520ms max_bind=1.217ms
+mpv_kit_example: 0 dropped, avdiff=0.000004196339986717312 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.00000719688916439587 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015544ms done=0.023622ms max_done=0.065100ms superseded=0 repeated=0 queued=2 render=16.520754ms max_render=17.866900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.73ms max=14.59ms backend=vulkan describes=120 describe=0.004ms max_describe=0.085ms handle_changes=120 binds=120 bind=0.501ms max_bind=1.405ms
+mpv_kit_example: 0 dropped, avdiff=0.000006399695285930207 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006001098344643463 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016018ms done=0.078236ms max_done=2.362100ms superseded=0 repeated=0 queued=1 render=16.452366ms max_render=27.628700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.26ms max=14.23ms backend=vulkan describes=120 describe=0.003ms max_describe=0.016ms handle_changes=120 binds=120 bind=0.531ms max_bind=1.249ms
+mpv_kit_example: 0 dropped, avdiff=0.000007196889161176223 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000007695135337715264 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016487ms done=0.093412ms max_done=3.043100ms superseded=0 repeated=0 queued=2 render=16.431580ms max_render=27.628500ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.16ms max=13.16ms backend=vulkan describes=120 describe=0.004ms max_describe=0.059ms handle_changes=120 binds=120 bind=0.543ms max_bind=1.351ms
+mpv_kit_example: 0 dropped, avdiff=0.00000679829222377526 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006499344519961259 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014268ms done=0.082187ms max_done=4.093700ms superseded=0 repeated=0 queued=2 render=16.430349ms max_render=28.818900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.55ms max=16.22ms backend=vulkan describes=120 describe=0.004ms max_describe=0.055ms handle_changes=120 binds=120 bind=0.540ms max_bind=1.455ms
+mpv_kit_example: 0 dropped, avdiff=0.000005104255235310884 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004096690749078036 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016230ms done=0.051971ms max_done=3.488800ms superseded=0 repeated=0 queued=0 render=16.477842ms max_render=27.147200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.28ms max=14.48ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.489ms max_bind=1.490ms
+mpv_kit_example: 0 dropped, avdiff=0.00000610074757989576 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006399695282655049 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016668ms done=0.023182ms max_done=0.035400ms superseded=0 repeated=0 queued=0 render=16.507460ms max_render=18.060500ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.35ms max=13.93ms backend=vulkan describes=120 describe=0.003ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.483ms max_bind=1.080ms
+mpv_kit_example: 0 dropped, avdiff=0.000006698642989133585 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000027016014738576177 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015841ms done=0.150162ms max_done=4.481600ms superseded=0 repeated=0 queued=1 render=16.191807ms max_render=28.882700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.36ms max=14.36ms backend=vulkan describes=120 describe=0.006ms max_describe=0.295ms handle_changes=120 binds=120 bind=0.538ms max_bind=1.236ms
+mpv_kit_example: 0 dropped, avdiff=0.00000569107851511319 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006001098356134271 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016120ms done=0.040296ms max_done=2.087200ms superseded=0 repeated=0 queued=0 render=16.492925ms max_render=27.167200ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.31ms max=13.00ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.496ms max_bind=1.286ms
+mpv_kit_example: 0 dropped, avdiff=0.000006997590702939593 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006100747588388966 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014031ms done=0.034776ms max_done=1.392100ms superseded=0 repeated=0 queued=1 render=16.506460ms max_render=28.698900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.22ms max=12.13ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.570ms max_bind=7.047ms
+mpv_kit_example: 0 dropped, avdiff=0.000008603050592859152 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005801799884019854 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016513ms done=0.058883ms max_done=4.173800ms superseded=0 repeated=0 queued=0 render=16.464567ms max_render=28.220100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.39ms max=15.26ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.535ms max_bind=2.084ms
+mpv_kit_example: 0 dropped, avdiff=0.0000074958368735944525 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006798292236487313 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015117ms done=0.022655ms max_done=0.037400ms superseded=0 repeated=0 queued=2 render=16.516472ms max_render=18.015600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.36ms max=14.66ms backend=vulkan describes=120 describe=0.004ms max_describe=0.024ms handle_changes=120 binds=120 bind=0.539ms max_bind=1.539ms
+mpv_kit_example: 0 dropped, avdiff=0.000006798292237431003 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006001098360353119 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.013598ms done=0.023621ms max_done=0.050400ms superseded=0 repeated=0 queued=0 render=16.522672ms max_render=17.999700ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.86ms max=16.30ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.510ms max_bind=1.239ms
+mpv_kit_example: 0 dropped, avdiff=0.000006499344534061091 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006798292237597536 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015528ms done=0.023531ms max_done=0.059300ms superseded=0 repeated=0 queued=0 render=16.456562ms max_render=18.204100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.93ms max=16.86ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.502ms max_bind=1.304ms
+mpv_kit_example: 0 dropped, avdiff=0.000003100198415650901 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005403202951947961 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.017267ms done=0.023069ms max_done=0.039900ms superseded=0 repeated=0 queued=0 render=16.498290ms max_render=18.128900ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.29ms max=7.87ms backend=vulkan describes=120 describe=0.003ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.508ms max_bind=1.111ms
+mpv_kit_example: 0 dropped, avdiff=0.000004295989234681663 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004406710591042806 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.013677ms done=0.049252ms max_done=3.167800ms superseded=0 repeated=0 queued=0 render=16.489487ms max_render=27.622000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.49ms max=13.91ms backend=vulkan describes=120 describe=0.004ms max_describe=0.011ms handle_changes=120 binds=120 bind=0.539ms max_bind=1.473ms
+mpv_kit_example: 0 dropped, avdiff=0.000004805307528277236 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000004495287691475003 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016028ms done=0.032962ms max_done=1.194200ms superseded=0 repeated=0 queued=0 render=16.497058ms max_render=25.706600ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.18ms max=12.55ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.542ms max_bind=1.160ms
+mpv_kit_example: 0 dropped, avdiff=0.000006001098344921019 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000005602501407020455 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.014870ms done=0.043544ms max_done=2.444200ms superseded=0 repeated=0 queued=0 render=16.484730ms max_render=27.322100ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.46ms max=13.84ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.554ms max_bind=1.395ms
+mpv_kit_example: 0 dropped, avdiff=0.000006598993753881288 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.0000067097151268402655 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.015380ms done=0.052644ms max_done=3.493900ms superseded=0 repeated=0 queued=0 render=16.467238ms max_render=27.954000ms
+mpv_kit: compositor pickup avg/over 120 frames: 4.61ms max=17.57ms backend=vulkan describes=120 describe=0.004ms max_describe=0.012ms handle_changes=120 binds=120 bind=0.542ms max_bind=1.696ms
+mpv_kit_example: 0 dropped, avdiff=0.000007396187633346152 hwdec=d3d11va-copy dec-drop=0
+mpv_kit_example: 0 dropped, avdiff=0.000006510416657279361 hwdec=d3d11va-copy dec-drop=0
+mpv_kit: render waits avg/over 120 frames: prev=0.016824ms done=0.026018ms max_done=0.053200ms superseded=0 repeated=0 queued=0 render=16.462753ms max_render=18.306900ms

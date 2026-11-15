@@ -1,0 +1,103 @@
+host: MINGW64_NT-10.0-26300 x86_64; MSVC toolset 14.44, cl 19.44.35229 (x64)
+--- RED (swap_test against HEAD 4be7678) ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=1 SWAP invariant scenario=idle-no-stall: frame 2 published with swaps=1 renders=2: its swap was not reported at publish|SWAP invariant scenario=fallback-newest-wins: expected exactly the log line 'mpv_kit: shared-image allocation failed at ring 6, retried with a ring of 5', got 0 allocation line(s), 0 matching|
+red swap_test rc=1 failing=swap-at-publish-sw,swap-at-publish-gpu,fifo-jitter,fifo-cap-drop-q2,fifo-cap-drop-q4,fifo-repeat,idle-no-stall,fallback-newest-wins
+--- GOLDEN ---
+scenario=vk-publish-gate runs=1 extra=1
+scenario=vk-reasons runs=0 extra=0
+scenario=vk-ring-q2 runs=1 extra=1
+scenario=vk-ring-q4 runs=1 extra=1
+scenario=vk-gpu-timeout runs=1 extra=1
+scenario=vk-ring-fallback runs=2 extra=0
+scenario=vk-retire-on-resize runs=2 extra=2
+scenario=vk-teardown-while-retired runs=2 extra=2
+scenario=vk-fallback-after-resize runs=3 extra=1
+scenario=vk-retire-twice runs=3 extra=3
+golden_check vk.txt=PASS vk_fallback.txt=PASS vk_retire_twice.txt=PASS
+--- GREEN run 1 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+ALL rc=0
+--- GREEN run 2 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+ALL rc=0
+--- GREEN run 3 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+ALL rc=0
+--- freeze check (vk.txt untouched) ---
+native/tests/renderer_harness.h: OK
+native/tests/video_renderer_golden_sw.cc: OK
+native/tests/video_renderer_golden_vk.cc: OK
+native/tests/golden/sw.txt: OK
+native/tests/golden/vk.txt: OK
+--- FINAL (candidate vk.txt) ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+ALL rc=0
+--- FINAL ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=10|
+ALL rc=0

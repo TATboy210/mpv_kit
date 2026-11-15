@@ -1,0 +1,109 @@
+# Golden traces of MPV_KIT_VIDEO_API (video_renderer_api_test), the native
+# switch that forces one graphics API
+# (docs/adr/0004-render-backend-reporting.md, Decision 4).
+#
+# One [scenario] section per scenario; each line is compared exactly.
+# Blank lines and lines starting with '#' are ignored. The test binary only
+# reads this file. Expectations were derived from ADR 0004 and the
+# 12-10 plan; they change only in reviewed commits.
+#
+# Line vocabulary (one block per VideoRenderer::Start):
+#   start ok backend=<b> reason="<r>"   Start() true, backend(), backend_reason()
+#   start=false reason="<r>"            Start() false and backend_reason()
+#                                       (trails only: no head)
+#   create-attempts <api>[,...]|none    render_context_create calls of this Start
+#   vulkan-devices-seen=<n>             Vulkan devices the fake interop accepted
+#                                       (0: no Vulkan device was initialised)
+#   log <line>|none                     every line Start logged, in order
+#   first-after-second <start line>     the first renderer, re-read after the
+#                                       second Start
+#   teardown frees=<n>                  render_context_free calls by destruction
+#
+# api-vulkan needs a Vulkan 1.3 device; without one only that section is
+# skipped (`API vk scenarios skipped: <why>`). <device> is the GPU's name.
+
+[api-unset]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform has no Vulkan interop; vulkan/gpu unavailable: platform has no Vulkan interop"
+create-attempts sw
+log none
+teardown frees=1
+
+[api-empty]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform has no Vulkan interop; vulkan/gpu unavailable: platform has no Vulkan interop"
+create-attempts sw
+log none
+teardown frees=1
+
+[api-software]
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software"
+create-attempts sw
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=software restricts rendering to that API
+teardown frees=1
+
+[api-vulkan]
+# Vulkan wins, as it would without the switch.
+start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+create-attempts vulkan/gpu-next
+log mpv_kit: MPV_KIT_VIDEO_API=vulkan restricts rendering to that API
+teardown frees=1
+# Every Vulkan create fails: no software create, no "falling back" line.
+start=false reason="vulkan/gpu-next unavailable: mpv_render_context_create: fake error -18; vulkan/gpu unavailable: mpv_render_context_create: fake error -18; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=vulkan"
+create-attempts vulkan/gpu-next,vulkan/gpu
+log mpv_kit: MPV_KIT_VIDEO_API=vulkan restricts rendering to that API
+log mpv_kit: gpu-next unavailable: fake error -18
+log mpv_kit: gpu unavailable: fake error -18
+teardown frees=0
+
+[api-vulkan-unavailable]
+start=false reason="vulkan/gpu-next unavailable: platform has no Vulkan interop; vulkan/gpu unavailable: platform has no Vulkan interop; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=vulkan"
+create-attempts none
+log mpv_kit: MPV_KIT_VIDEO_API=vulkan restricts rendering to that API
+teardown frees=0
+
+[api-unknown]
+start=false reason="vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=d3d11; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=d3d11"
+create-attempts none
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=d3d11 restricts rendering to that API
+teardown frees=0
+
+[api-case]
+start=false reason="vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=??????; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=??????; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=??????"
+create-attempts none
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=?????? restricts rendering to that API
+teardown frees=0
+
+[api-overlong]
+start=false reason="vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=vulkanvulkanvulk; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=vulkanvulkanvulk; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=vulkanvulkanvulk"
+create-attempts none
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=vulkanvulkanvulk restricts rendering to that API
+teardown frees=0
+
+[api-renderer-intersection]
+# renderer software + vulkan
+start=false reason="software/sw unavailable: excluded by MPV_KIT_VIDEO_API=vulkan"
+create-attempts none
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=vulkan restricts rendering to that API
+teardown frees=0
+# renderer gpu-next + software: software/sw is only gpu-next's fallback
+start=false reason="vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; software/sw unavailable: excluded by MPV_KIT_VIDEO_API=software"
+create-attempts none
+vulkan-devices-seen=0
+log mpv_kit: MPV_KIT_VIDEO_API=software restricts rendering to that API
+teardown frees=0
+
+[api-reread]
+# first renderer, MPV_KIT_VIDEO_API=software
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software"
+create-attempts sw
+log mpv_kit: MPV_KIT_VIDEO_API=software restricts rendering to that API
+# second renderer, variable removed
+start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: platform has no Vulkan interop; vulkan/gpu unavailable: platform has no Vulkan interop"
+create-attempts sw
+log none
+first-after-second start ok backend=software reason="software (sw) on cpu; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=software; vulkan/gpu unavailable: excluded by MPV_KIT_VIDEO_API=software"
+teardown frees=2

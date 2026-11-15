@@ -1,0 +1,28 @@
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=native-verify.yml run=40465908724 conclusion=success
+sha=8103bebfde1031b5a68ba000989448fce9407654 workflow=flutter-plugin.yml run=40465908799 conclusion=success
+# note: the first native-verify line above has an empty conclusion because the first gate invocation read it while the linux (ubuntu-24.04) job was still running (gh run watch returned early); ci_gate.sh now polls status until completed. The repeated lines are further gate invocations on the same finished runs (a transient gh log download EOF, then a ci_gate.sh --log loop bug fixed in this plan). No workflow was rerun: attempt 1 only, both runs concluded success.
+# 13-03 deferral (user decision 2026-10-27): all hosted-CI gating is deferred until every phase is done. Plan 13-03 Tasks 1 and 2 were committed locally (3fcac3d route probe workflow + HEAD probe; parity script + pre12 worktree step) and NOT pushed. No workflow was dispatched or polled. The ci_gate.sh invocations of Task 1 (ROUTE-IDENTITY bundle, via MoltenVK reason, ROUTE-PIXEL final read) and Task 2 (ROUTE-PARITY self-test, pre12 identity, ROUTE-PARITY ok) remain open; see 13-03-SUMMARY.md deferred_ci_gates.
+# 13-03 deferral, Task 3 (user decision 2026-10-27): the IOSurface frame probe (plugin debugFrameProbe, tools/macos_frame_probe.patch, ROUTE-FRAME / ROUTE-FRAME-PARITY / ROUTE-SC2) is committed locally and NOT pushed. Local checks passed (14-case self-test, git apply --reverse --check on HEAD, git apply --check on a 3a5f450 worktree, example analyze, check_matrix, golden-freeze, constants audit). Still open: the route-probe job with ROUTE-FRAME lines of both trees, ROUTE-SC2, and the `unarmed run=` INTEGRATION / INTEGRATION-SOAK lines of integration-test (macos) on the same SHA.
+# 13-04 deferral (user decision 2026-10-27): deferred (CI deferral 2026-10-27). Plan 13-04 Tasks 1 and 2 are committed locally (4305699 hwdec probe + sample generation, b1ccb4b RED tests, 78a67d5 GREEN classification) and NOT pushed. No workflow was dispatched or polled. The ci_gate.sh invocations of both tasks (ROUTE-SAMPLES, ROUTE-HWDEC-REF, ROUTE-HWDEC for three samples, default-list line, flutterFrame, pre12 hwdec skip line, ROUTE-PARITY) remain open; see 13-04-SUMMARY.md deferred_ci_gates. The plan's push precondition (push-authorization.txt, 13-03 ROUTE-PARITY run) is superseded by the CI deferral: nothing is pushed.
+# 13-05 deferral (user decision 2026-10-27): final full gate (native-verify, flutter-plugin, macos-route with --jobs-success '.') not run; nothing pushed, dispatched or polled. Task 1 documentation exists only locally. See 13-05-SUMMARY.md deferred_ci_gates.
+# ---- Milestone CI backfill 2026-10-28 (replaces the deferral notes above; they stay as history) ----
+# The gates below were evaluated by the unmodified ci_gate.sh of this phase against the COMPLETED runs of PR #1 at feat HEAD 091228a (a gh shim served the cached logs of the finished runs; nothing was dispatched, rerun or pushed).
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=native-verify.yml run=40627862148 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=flutter-plugin.yml run=40627862039 conclusion=success
+sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 workflow=macos-route.yml run=40627862041 conclusion=success
+gate plan=13-03 task=1 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok runs=native-verify:40627862148,flutter-plugin:40627862039,macos-route:40627862041
+gate plan=13-03 task=2 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok runs=native-verify:40627862148,flutter-plugin:40627862039,macos-route:40627862041
+gate plan=13-03 task=3 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok runs=native-verify:40627862148,flutter-plugin:40627862039,macos-route:40627862041
+gate plan=13-04 task=1 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok runs=native-verify:40627862148,flutter-plugin:40627862039,macos-route:40627862041
+gate plan=13-04 task=2 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok runs=native-verify:40627862148,flutter-plugin:40627862039,macos-route:40627862041
+gate plan=13-05 task=2 sha=091228abd70b22fbe2f425fdd1efb75eb8cfcb54 result=CI-GATE-ok workflows=native-verify,flutter-plugin,macos-route jobs-success='.' (every job success)
+# earlier macos-route runs for the run-to-run comparison (13-05): run=40617697853 sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 conclusion=success; run=40616234145 sha=943f0be6f9a74c2150b1e1d8dde05b37c1bdce20 conclusion=success. ROUTE-* lines of all three are in route-runs.txt.
+# note: native-verify runs 40616234093 (943f0be) and 40617697855 (b40cdff) failed for unrelated reasons (Linux render_gl_smoke / bind test, Windows integration libmpv shadowing; see phases 14 and 15 evidence); their macos-route sibling runs were green.

@@ -1,0 +1,37 @@
+# RED local run for code review CR-01 (12-12 follow-up)
+# sha=2b15969941bcab778c046f713d4876342620ad2c host=MINGW64_NT-10.0-26300 mengyiyu002 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+# tree: 0 modified tracked files under packages/ native/
+# date=2026-10-27T03:01:59Z
+# build: MSVC cl /O2 /W4 /WX (build/cr01-local/build_all.bat)
+BUILD OK
+## ./red/sw_hold_front_test.exe
+  [sw-hold-retire-twice] acquire index=0 64x36 frame=1
+  [sw-hold-retire-twice] acquire index=-2 64x36 frame=1
+  [sw-hold-retire-twice] read index=-2 64x36 frame=1 alive (32x18 renders failing)
+HOLD invariant scenario=sw-hold-retire-twice: USE AFTER FREE: frame index=-2 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)
+  [sw-hold-retire-twice] acquire index=0 48x27 frame=2
+  [sw-hold-retire-twice] log: mpv_kit: frame render failed (1x): render: fake error -20
+  [sw-hold-retire-twice] log: mpv_kit: frame render failed (2x): render: fake error -20
+  [sw-hold-retire-twice] log: mpv_kit: frame render failed (4x): render: fake error -20
+  [sw-hold-retire-twice] log: mpv_kit: rendering recovered after 5 failed frame(s)
+  [sw-hold-rapid-resize] acquire index=0 64x36 frame=1
+  [sw-hold-rapid-resize] read index=0 64x36 frame=1 alive (32x18 reallocated, its first render held)
+  [sw-hold-rapid-resize] read index=0 64x36 frame=1 alive (32x18 frame published, not acquired)
+HOLD invariant scenario=sw-hold-rapid-resize: USE AFTER FREE: frame index=0 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)
+  [sw-hold-rapid-resize] acquire index=0 48x27 frame=3
+  [sw-hold-retired-front-rapid-resize] acquire index=0 64x36 frame=1
+  [sw-hold-retired-front-rapid-resize] acquire index=-2 64x36 frame=1
+  [sw-hold-retired-front-rapid-resize] read index=-2 64x36 frame=1 alive (32x18 frame published, not acquired)
+HOLD invariant scenario=sw-hold-retired-front-rapid-resize: USE AFTER FREE: frame index=-2 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)
+  [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3
+exit=1
+## run_all.sh red (all binaries)
+sw_hold_front_test rc=1 HOLD invariant scenario=sw-hold-retire-twice: USE AFTER FREE: frame index=-2 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)|HOLD invariant scenario=sw-hold-rapid-resize: USE AFTER FREE: frame index=0 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)|HOLD invariant scenario=sw-hold-retired-front-rapid-resize: USE AFTER FREE: frame index=-2 64x36 handed out by the last AcquireFront() was freed before the next AcquireFront() (48x27 reallocated, its first render held)|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=1

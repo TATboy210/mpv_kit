@@ -1,0 +1,4 @@
+gate run=dryrun result=FAIL desktop=locked ac=yes disk_free_repo_mib=10087 stray_example=0 heavy_gpu=none native_equal=yes at=2026-10-30T21:35:27.175Z
+run=dryrun2 attempt=1 start=2026-10-30T21:35:30.249Z end=2026-10-30T21:35:35.343Z exit=0 log=rtx-dryrun2.log vram=rtx-dryrun2.vram.csv standby_during=none forensics=none
+csv_rows=4
+csv_first=2026-10-30T21:35:31.821Z,,,1794.5,none,,

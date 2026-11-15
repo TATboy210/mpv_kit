@@ -3,7 +3,10 @@ library;
 
 import 'dart:ffi';
 
+import 'package:meta/meta.dart';
+
 import '../ffi/bindings.dart';
+import 'event_decode_hook.dart';
 import 'node.dart';
 
 /// 所有 mpv 事件的基类；对 [MpvEventId] 每个取值都有对应子类。
@@ -16,59 +19,84 @@ sealed class MpvEventData {
   /// 事件携带的 mpv 错误码（>=0 为成功）。
   final int error;
 
-  /// 从 libmpv 拥有的事件指针解码（指针仅在下次 wait_event 前有效，故立即深拷贝）。
+  /// 从 libmpv 拥有的事件指针解码（指针仅在下次 wait_event 前有效，故立即深拷贝；
+  /// 即便如 screenshot-raw 的大字节数组也必须在此拷贝：延迟到监听器读取时
+  /// 该内存已归还 mpv）。
   static MpvEventData decode(Pointer<MpvEvent> p) {
+    final injected = debugEventDecodeFailure;
+    if (injected != null) {
+      final failure = injected(p);
+      if (failure != null) throw failure;
+    }
     final e = p.ref;
     final ud = e.replyUserdata;
     final err = e.error;
     final data = e.data;
-    return switch (e.eventId) {
-      MpvEventId.shutdown => ShutdownEvent(ud, err),
-      MpvEventId.logMessage => _log(data.cast(), ud, err),
-      MpvEventId.getPropertyReply => GetPropertyReplyEvent(
-        ud,
-        err,
-        _prop(data.cast()).$1,
-        _prop(data.cast()).$2,
-      ),
-      MpvEventId.setPropertyReply => SetPropertyReplyEvent(ud, err),
-      MpvEventId.commandReply => CommandReplyEvent(
-        ud,
-        err,
-        data == nullptr ? null : readNode(data.cast<MpvEventCommand>().cast()),
-      ),
-      MpvEventId.startFile => StartFileEvent(
-        ud,
-        err,
-        data.cast<MpvEventStartFile>().ref.playlistEntryId,
-      ),
-      MpvEventId.endFile => _endFile(data.cast(), ud, err),
-      MpvEventId.fileLoaded => FileLoadedEvent(ud, err),
-      MpvEventId.idle => IdleEvent(ud, err),
-      MpvEventId.tick => TickEvent(ud, err),
-      MpvEventId.clientMessage => _clientMessage(data.cast(), ud, err),
-      MpvEventId.videoReconfig => VideoReconfigEvent(ud, err),
-      MpvEventId.audioReconfig => AudioReconfigEvent(ud, err),
-      MpvEventId.seek => SeekEvent(ud, err),
-      MpvEventId.playbackRestart => PlaybackRestartEvent(ud, err),
-      MpvEventId.propertyChange => PropertyChangeEvent(
-        ud,
-        err,
-        _prop(data.cast()).$1,
-        _prop(data.cast()).$2,
-      ),
-      MpvEventId.queueOverflow => QueueOverflowEvent(ud, err),
-      MpvEventId.hook => HookEvent(
-        ud,
-        err,
-        readUtf8(data.cast<MpvEventHook>().ref.name),
-        data.cast<MpvEventHook>().ref.id,
-      ),
-      final id => UnknownEvent(ud, err, id),
-    };
+    switch (e.eventId) {
+      case MpvEventId.shutdown:
+        return ShutdownEvent(ud, err);
+      case MpvEventId.logMessage:
+        return _log(data.cast(), ud, err);
+      case MpvEventId.getPropertyReply:
+        // 单次解码（PERF-01）：name/value 来自同一次 _prop。
+        final (name, value) = _prop(data.cast());
+        return GetPropertyReplyEvent(ud, err, name, value);
+      case MpvEventId.setPropertyReply:
+        return SetPropertyReplyEvent(ud, err);
+      case MpvEventId.commandReply:
+        return CommandReplyEvent(
+          ud,
+          err,
+          data == nullptr ? null : readNode(data.cast<MpvEventCommand>().cast()),
+        );
+      case MpvEventId.startFile:
+        return StartFileEvent(
+          ud,
+          err,
+          data.cast<MpvEventStartFile>().ref.playlistEntryId,
+        );
+      case MpvEventId.endFile:
+        return _endFile(data.cast(), ud, err);
+      case MpvEventId.fileLoaded:
+        return FileLoadedEvent(ud, err);
+      case MpvEventId.idle:
+        return IdleEvent(ud, err);
+      case MpvEventId.tick:
+        return TickEvent(ud, err);
+      case MpvEventId.clientMessage:
+        return _clientMessage(data.cast(), ud, err);
+      case MpvEventId.videoReconfig:
+        return VideoReconfigEvent(ud, err);
+      case MpvEventId.audioReconfig:
+        return AudioReconfigEvent(ud, err);
+      case MpvEventId.seek:
+        return SeekEvent(ud, err);
+      case MpvEventId.playbackRestart:
+        return PlaybackRestartEvent(ud, err);
+      case MpvEventId.propertyChange:
+        // 单次解码（PERF-01）：time-pos 热路径,每事件最多 60 次。
+        final (name, value) = _prop(data.cast());
+        return PropertyChangeEvent(ud, err, name, value);
+      case MpvEventId.queueOverflow:
+        return QueueOverflowEvent(ud, err);
+      case MpvEventId.hook:
+        return HookEvent(
+          ud,
+          err,
+          readUtf8(data.cast<MpvEventHook>().ref.name),
+          data.cast<MpvEventHook>().ref.id,
+        );
+      default:
+        return UnknownEvent(ud, err, e.eventId);
+    }
   }
 
+  /// `_prop` 的调用次数（测试接缝：证明 PERF-01 的单次解码）。
+  @visibleForTesting
+  static int propDecodesForTesting = 0;
+
   static (String, Object?) _prop(Pointer<MpvEventProperty> p) {
+    propDecodesForTesting++;
     final ref = p.ref;
     // 仅以 MPV_FORMAT_NODE 订阅，因此 data 指向 mpv_node；NONE 表示属性不可用
     final value = ref.format == MpvFormat.node

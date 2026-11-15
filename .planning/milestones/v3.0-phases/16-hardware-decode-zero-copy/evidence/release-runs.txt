@@ -1,0 +1,8 @@
+sha=15f61ffec45b6e459eb381aeab6dc9d341734786 workflow=release.yml run=40812562348 conclusion=success jobs=windows (windows-11-arm, CLANGARM64, windows-arm64):success,linux (ubuntu-24.04, linux-x64):success,windows (windows-2025, CLANG64, windows-x64, nasm:p):success,linux (ubuntu-24.04-arm, linux-arm64):success,macos (macos-15, macos-arm64):success,macos (macos-15-intel, macos-x64):success,publish:skipped
+note=dispatch #1 run=40812528780 (headSha 15f61ff) was created by a first background invocation of release_gate.sh whose completion was misreported; it was CANCELLED by the executor ~20 s after creation (conclusion=cancelled, no jobs judged). Dispatch #2 run=40812562348 is the single judged release run.
+release_run=40812562348
+release_sha=15f61ffec45b6e459eb381aeab6dc9d341734786
+code_sha=ad5c54b5dc8bfa69500d4dada6c59e8cb9ef0c72 (15f61ff is a docs-only descendant; decision=release-basis choice=B)
+release_gate=RELEASE-GATE ok (linux/windows/macos x6 success, publish skipped; HAVE_VAAPI_DRM, HAVE_DMABUF_INTEROP_GL x64+arm64, HAVE_D3D_HWACCEL, ANGLE-FREE, NEEDED libva-drm.so.2)
+manifest=ok (sha256sum -c MANIFEST.txt on build/phase16/libmpv-rtx, artifact libmpv-windows-x64, 0 failures) checked=2026-10-29T03:50:18Z
+libmpv_dll=build/phase16/libmpv-rtx/lib/libmpv-2.dll sha256=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c

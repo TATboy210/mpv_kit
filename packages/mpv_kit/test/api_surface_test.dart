@@ -80,7 +80,7 @@ void main() {
         throwsA(isA<MpvException>()),
       );
       await expectLater(
-        mpv.commandAsync({'name': 'no-such-command'}).result,
+        mpv.commandAsync({'_name': 'no-such-command'}).result,
         throwsA(isA<MpvException>()),
       );
       await expectLater(

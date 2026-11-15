@@ -1,0 +1,112 @@
+host=MINGW64_NT-10.0-26300 3.6.7-fb42d713.x86_64 cl 19.44.35229 (MSVC toolset 14.44.35207) x64 flags=/W4 /WX /std:c++17 /O2 asserts on (no NDEBUG), vcvars_ver=14.44
+--- RED (instrumentation only, pre-fix) ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=1 SWAP invariant scenario=superseded-alternate: after the barrier swaps=119 renders=120|  [superseded-alternate] log: mpv_kit: render waits avg/over 120 frames: prev=0.000032ms done=0.000036ms max_done=0.000100ms superseded=59|
+ALL rc=1
+red swap_test rc=1 SWAP invariant scenario=swap-at-publish-sw: frame 2 published with swaps=1 renders=2: its swap was not reported at publish
+--- GREEN (fix) run 1 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=4|
+ALL rc=0
+--- GREEN (fix) run 2 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=4|
+ALL rc=0
+--- GREEN (fix) run 3 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+swap_test rc=0 SWAP ok scenarios=4|
+ALL rc=0
+native/tests/renderer_harness.h: OK
+native/tests/video_renderer_golden_sw.cc: OK
+native/tests/video_renderer_golden_vk.cc: OK
+native/tests/golden/sw.txt: OK
+native/tests/golden/vk.txt: OK
+--- REDUCED SCOPE (user decision 2026-10-29: instrumentation only, swap behaviour unchanged; swap-at-publish kept in build/nwm/fix.patch) ---
+native test renamed video_renderer_superseded_test (scenarios superseded-alternate, superseded-none); the swap-at-publish scenarios stay in build/nwm/video_renderer_swap_test.cc
+--- INSTRUMENTATION run 1 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+superseded_test rc=0 SUPERSEDED ok scenarios=2|
+ALL rc=0
+--- INSTRUMENTATION run 2 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+superseded_test rc=0 SUPERSEDED ok scenarios=2|
+ALL rc=0
+--- INSTRUMENTATION run 3 ---
+sw_hold_front_test rc=0   [sw-hold-retired-front-rapid-resize] acquire index=0 48x27 frame=3|HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+superseded_test rc=0 SUPERSEDED ok scenarios=2|
+ALL rc=0
+native/tests/renderer_harness.h: OK
+native/tests/video_renderer_golden_sw.cc: OK
+native/tests/video_renderer_golden_vk.cc: OK
+native/tests/golden/sw.txt: OK
+native/tests/golden/vk.txt: OK

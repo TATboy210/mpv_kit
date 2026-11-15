@@ -1,0 +1,17 @@
+# 15-04 Task 3 GREEN, local MSVC run (Windows MINGW64, RTX 4060, no libmpv): build/phase15/goldens/build_all.bat (cl /W4 /WX) + run_all.sh.
+# sha=a654348+video_renderer.cc RunBound change; date=2026-10-27. Hosted runs: deferred (CI deferral 2026-10-27).
+sw_hold_front_test rc=0 HOLD ok scenarios=3|
+affinity_test rc=0 AFFINITY ok sw|AFFINITY ok vk|
+api_test rc=0 API vk scenarios ok|GOLDEN ok scenarios=10|
+chain_test rc=0 GOLDEN ok scenarios=5|
+linux_chain_test rc=0 GOLDEN ok scenarios=10|LINUX-CHAIN ok|
+bind_test rc=0 BIND ok|
+golden_sw rc=0 GOLDEN ok scenarios=12|
+golden_vk rc=0 GOLDEN ok scenarios=8|
+golden_vk_fallback rc=0 GOLDEN ok scenarios=1|
+golden_vk_retire_twice rc=0 GOLDEN ok scenarios=1|
+golden_sw_retire_twice rc=0 GOLDEN ok scenarios=1|
+ALL rc=0
+bind_test repeated 20x: rc=0 each; affinity_test repeated 5x: rc=0 each
+golden-freeze-14 manifest: 5 OK; constants_audit: CONSTANTS ok; RunBound( count in video_renderer.cc: 2
+flutter analyze --fatal-infos (example, packages/mpv_kit_video): clean; flutter test packages/mpv_kit_video: 25 passed; check_consistency: all invariants hold; flutter build windows --debug (example): built

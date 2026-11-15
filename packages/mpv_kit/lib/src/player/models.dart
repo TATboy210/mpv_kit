@@ -266,6 +266,180 @@ final class MpvAudioDevice {
   String toString() => 'MpvAudioDevice($name: $description)';
 }
 
+/// One seekable range of the demuxer cache (a `seekable-ranges` entry of
+/// `demuxer-cache-state`): seeking inside it needs no new read from the
+/// source.
+final class MpvSeekableRange {
+  /// Creates a range from [start] to [end].
+  const MpvSeekableRange({required this.start, required this.end});
+
+  /// Start of the cached range.
+  final Duration start;
+
+  /// End of the cached range.
+  final Duration end;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MpvSeekableRange && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+
+  @override
+  String toString() => 'MpvSeekableRange($start..$end)';
+}
+
+/// Demuxer cache state (`demuxer-cache-state`): how much is buffered ahead,
+/// how many bytes the packet queue holds and which ranges are seekable.
+///
+/// Optional fields are null when mpv leaves the key out (no value yet, or
+/// not applicable such as [fileCacheBytes] without `cache-on-disk`).
+final class MpvDemuxerCacheState {
+  /// Creates a cache state; [seekableRanges] defaults to none.
+  const MpvDemuxerCacheState({
+    this.cacheEnd,
+    this.readerPts,
+    this.cacheDuration,
+    this.forwardBytes = 0,
+    this.totalBytes = 0,
+    this.fileCacheBytes,
+    this.rawInputRate,
+    this.eof = false,
+    this.underrun = false,
+    this.idle = false,
+    this.bofCached = false,
+    this.eofCached = false,
+    this.seekableRanges = const [],
+  });
+
+  /// mpv itself caps `seekable-ranges` at 10 (`MAX_SEEK_RANGES`); the node
+  /// is still external input, so keep at most this many.
+  static const maxSeekableRanges = 64;
+
+  /// Parses a `demuxer-cache-state` node; null for anything but a map
+  /// (the property is unavailable while no file is loaded).
+  ///
+  /// Never throws: missing keys, wrong types, negative byte counts and
+  /// non-finite times become null/0, and inverted ranges are dropped.
+  static MpvDemuxerCacheState? fromNode(Object? v) {
+    // Any map: readNode yields Map<String, Object?>, hand-built ones may not.
+    if (v is! Map<Object?, Object?>) return null;
+    final ranges = <MpvSeekableRange>[
+      if (v['seekable-ranges'] case final List<Object?> list)
+        for (final r in list.take(maxSeekableRanges))
+          if (r case {'start': final Object? s, 'end': final Object? e})
+            if ((_finiteDuration(s), _finiteDuration(e)) case (
+              final start?,
+              final end?,
+            ) when end >= start)
+              MpvSeekableRange(start: start, end: end),
+    ]..sort((a, b) => a.start.compareTo(b.start));
+    return MpvDemuxerCacheState(
+      cacheEnd: _finiteDuration(v['cache-end']),
+      readerPts: _finiteDuration(v['reader-pts']),
+      cacheDuration: _finiteDuration(v['cache-duration']),
+      forwardBytes: _nonNegativeInt(v['fw-bytes']) ?? 0,
+      totalBytes: _nonNegativeInt(v['total-bytes']) ?? 0,
+      fileCacheBytes: _nonNegativeInt(v['file-cache-bytes']),
+      rawInputRate: _nonNegativeInt(v['raw-input-rate']),
+      eof: v['eof'] == true,
+      underrun: v['underrun'] == true,
+      idle: v['idle'] == true,
+      bofCached: v['bof-cached'] == true,
+      eofCached: v['eof-cached'] == true,
+      seekableRanges: List.unmodifiable(ranges),
+    );
+  }
+
+  /// Timestamp of the end of the cached data (`cache-end`).
+  final Duration? cacheEnd;
+
+  /// Timestamp the decoder has read up to (`reader-pts`).
+  final Duration? readerPts;
+
+  /// Buffered duration ahead of [readerPts] (`cache-duration`).
+  final Duration? cacheDuration;
+
+  /// Bytes of packets queued ahead of the reader (`fw-bytes`).
+  final int forwardBytes;
+
+  /// Bytes held by the packet queue, forward and back (`total-bytes`).
+  final int totalBytes;
+
+  /// Bytes written to the disk cache (`file-cache-bytes`), when enabled.
+  final int? fileCacheBytes;
+
+  /// Estimated source read rate in bytes per second (`raw-input-rate`).
+  final int? rawInputRate;
+
+  /// Whether the demuxer reached the end of the file (`eof`).
+  final bool eof;
+
+  /// Whether the reader ran out of data (`underrun`).
+  final bool underrun;
+
+  /// Whether the demuxer is not reading ahead right now (`idle`).
+  final bool idle;
+
+  /// Whether the start of the file is cached (`bof-cached`).
+  final bool bofCached;
+
+  /// Whether the end of the file is cached (`eof-cached`).
+  final bool eofCached;
+
+  /// Seekable cached ranges, sorted by start (`seekable-ranges`).
+  final List<MpvSeekableRange> seekableRanges;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MpvDemuxerCacheState &&
+      other.cacheEnd == cacheEnd &&
+      other.readerPts == readerPts &&
+      other.cacheDuration == cacheDuration &&
+      other.forwardBytes == forwardBytes &&
+      other.totalBytes == totalBytes &&
+      other.fileCacheBytes == fileCacheBytes &&
+      other.rawInputRate == rawInputRate &&
+      other.eof == eof &&
+      other.underrun == underrun &&
+      other.idle == idle &&
+      other.bofCached == bofCached &&
+      other.eofCached == eofCached &&
+      _sameRanges(other.seekableRanges, seekableRanges);
+
+  @override
+  int get hashCode => Object.hash(
+    cacheEnd,
+    readerPts,
+    cacheDuration,
+    forwardBytes,
+    totalBytes,
+    fileCacheBytes,
+    rawInputRate,
+    eof,
+    underrun,
+    idle,
+    bofCached,
+    eofCached,
+    Object.hashAll(seekableRanges),
+  );
+
+  @override
+  String toString() =>
+      'MpvDemuxerCacheState(ahead: $cacheDuration, '
+      'fw: $forwardBytes B, total: $totalBytes B, '
+      'ranges: ${seekableRanges.length})';
+
+  static bool _sameRanges(List<MpvSeekableRange> a, List<MpvSeekableRange> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+}
+
 /// 循环方式：`loop-file` / `loop-playlist` 的组合（对应 media_kit 的
 /// `PlaylistMode.single` / `loop` / `none`）。
 enum MpvLoopMode {
@@ -305,6 +479,17 @@ int? _int(Object? v) => switch (v) {
 /// 秒（double）→ Duration。
 Duration? _duration(Object? v) => switch (v) {
   final num n => Duration(microseconds: (n * 1e6).round()),
+  _ => null,
+};
+
+/// 有限秒数 → Duration；NaN/inf（`round()` 会抛错）返回 null。
+Duration? _finiteDuration(Object? v) =>
+    v is num && v.isFinite ? _duration(v) : null;
+
+/// 非负整数；负数（只可能来自损坏的 node）与 NaN/inf 返回 null。
+int? _nonNegativeInt(Object? v) => switch (v) {
+  final int i when i >= 0 => i,
+  final double d when d.isFinite && d >= 0 => d.round(),
   _ => null,
 };
 

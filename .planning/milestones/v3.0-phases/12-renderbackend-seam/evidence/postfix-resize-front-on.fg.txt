@@ -1,0 +1,27 @@
+2026-10-26T19:42:12.890Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:15.240Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:17.403Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:19.569Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:21.749Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:23.930Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:26.086Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:28.247Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:30.413Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:32.578Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:34.731Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=absent
+2026-10-26T19:42:36.890Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=TaskBarHero+UnityCrashHandler64 example=running,nowindow
+2026-10-26T19:42:39.087Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:41.297Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:43.464Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:45.626Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:47.777Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:49.958Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:52.114Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:54.310Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:56.471Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:42:58.633Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:43:00.812Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:43:02.980Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:43:05.136Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:43:07.303Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-26T19:43:09.460Z fg=mpv_kit_example title="mpv_kit_example" games=TaskBarHero+UnityCrashHandler64 example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10

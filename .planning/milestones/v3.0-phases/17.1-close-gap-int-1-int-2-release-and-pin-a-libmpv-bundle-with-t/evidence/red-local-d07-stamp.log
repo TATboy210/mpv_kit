@@ -1,0 +1,82 @@
+RED-D07 step=stale-stamp head=7f858d36729f07d3b3d1fdd29d3e6ea49594df9a semantics=hook-72-84-verbatim exit=1
+Running build hooks...Running build hooks...00:00 +0: loading test/bundle_test.dart
+00:00 +0: readTar extracts regular files and skips directories
+00:00 +1: readTar rejects parent-directory traversal
+00:00 +2: readTar rejects absolute paths
+00:00 +3: readTar rejects symlinks
+00:00 +4: readTar detects corrupted headers
+00:00 +5: installBundle installs a pinned, manifest-consistent bundle
+00:00 +6: installBundle rejects an archive whose hash does not match the pin
+00:00 +7: installBundle rejects a file that differs from the manifest
+00:00 +8: installBundle rejects files missing from the manifest
+00:00 +9: installBundle rejects a bundle without manifest
+00:00 +10: local bundle directory only shared libraries are emitted
+00:00 +11: local bundle directory verifyDirectory accepts a matching manifest
+00:00 +12: local bundle directory verifyDirectory rejects a modified file
+00:00 +13: installBundle replaces an existing extraction atomically
+00:00 +14: resolvePinnedBundle reuses a matching stamp with libraries
+00:00 +15: resolvePinnedBundle reinstalls when the extracted directory is gone
+00:00 +15 -1: resolvePinnedBundle reinstalls when the extracted directory is gone [E]
+  Expected: non-empty
+    Actual: []
+  
+  package:matcher              expect
+  test\bundle_test.dart 302:7  main.<fn>.<fn>
+  
+00:00 +15 -1: resolvePinnedBundle reinstalls when lib/ is empty
+00:00 +15 -2: resolvePinnedBundle reinstalls when lib/ is empty [E]
+  Expected: non-empty
+    Actual: []
+  
+  package:matcher              expect
+  test\bundle_test.dart 315:7  main.<fn>.<fn>
+  
+00:00 +15 -2: resolvePinnedBundle downloads when the cached archive does not match the pin
+00:00 +16 -2: bundleTarget covers the six release targets only
+00:00 +17 -2: parseManifest accepts sha256sum and shasum output
+00:00 +18 -2: Some tests failed.
+
+Failing tests:
+  test/bundle_test.dart: resolvePinnedBundle reinstalls when lib/ is empty
+  test/bundle_test.dart: resolvePinnedBundle reinstalls when the extracted directory is gone
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.
+
+RED-D07 step=empty-bundle head=7f858d36729f07d3b3d1fdd29d3e6ea49594df9a semantics=hook-72-84-verbatim+stamp-fix exit=1
+Running build hooks...Running build hooks...00:00 +0: loading test/bundle_test.dart
+00:00 +0: readTar extracts regular files and skips directories
+00:00 +1: readTar rejects parent-directory traversal
+00:00 +2: readTar rejects absolute paths
+00:00 +3: readTar rejects symlinks
+00:00 +4: readTar detects corrupted headers
+00:00 +5: installBundle installs a pinned, manifest-consistent bundle
+00:00 +6: installBundle rejects an archive whose hash does not match the pin
+00:00 +7: installBundle rejects a file that differs from the manifest
+00:00 +8: installBundle rejects files missing from the manifest
+00:00 +9: installBundle rejects a bundle without manifest
+00:00 +10: local bundle directory only shared libraries are emitted
+00:00 +11: local bundle directory verifyDirectory accepts a matching manifest
+00:00 +12: local bundle directory verifyDirectory rejects a modified file
+00:00 +13: installBundle replaces an existing extraction atomically
+00:00 +14: resolvePinnedBundle reuses a matching stamp with libraries
+00:00 +15: resolvePinnedBundle reinstalls when the extracted directory is gone
+00:00 +16: resolvePinnedBundle reinstalls when lib/ is empty
+00:00 +17: resolvePinnedBundle downloads when the cached archive does not match the pin
+00:00 +18: resolvePinnedBundle fails loudly when the bundle has no shared libraries
+00:00 +18 -1: resolvePinnedBundle fails loudly when the bundle has no shared libraries [E]
+  Expected: throws <Instance of 'BundleIntegrityException'> with `message`: contains 'no shared libraries'
+    Actual: <Instance of 'Future<List<File>>'>
+     Which: emitted []
+  
+  test\bundle_test.dart 344:7  main.<fn>.<fn>
+  
+00:00 +18 -1: bundleTarget covers the six release targets only
+00:00 +19 -1: parseManifest accepts sha256sum and shasum output
+00:00 +20 -1: Some tests failed.
+
+Failing tests:
+  test/bundle_test.dart: resolvePinnedBundle fails loudly when the bundle has no shared libraries
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.

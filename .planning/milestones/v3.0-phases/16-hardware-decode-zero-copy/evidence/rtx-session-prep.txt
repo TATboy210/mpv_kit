@@ -1,0 +1,121 @@
+# RTX 4060 combined session prep: 16-06 Task 2 + 14-09 Task 1/2
+# Written at prep time. NO RTX run has been started. Run everything from Git Bash at the repo root
+# D:/mpv_kit unless a step says cd example. Serial only: one run ends before the next starts.
+
+## Provenance (already recorded in the ledgers)
+release_run=40812562348 (release.yml on feat/mpv-master-upgrade, headSha 15f61ff, code sha ad5c54b, publish skipped, all six targets success)
+manifest=ok (sha256sum -c MANIFEST.txt, 0 failures)
+bundle (16)=build/phase16/libmpv-rtx    bundle (14)=build/phase14/libmpv-rtx (identical copy; MANIFEST re-checked)
+libmpv-2.dll sha256=e63ccc2a6d89f431206654b81f125d69c28c656f66da319412e9b278b8ed9d3c
+samples: build/phase16/samples/{h264-8bit,hevc-8bit,hevc-10bit}.mp4 (hwdec-samples) and build/phase16/samples-uhd/hevc-10bit-2160p.mp4 (hwdec-samples-uhd), from native-verify run 40798831729
+ledgers: 16 -> .planning/phases/16-hardware-decode-zero-copy/evidence/rtx4060-hwdec-runs.txt ; 14 -> .planning/phases/14-windows-native-d3d11-backend/evidence/rtx4060-runs.txt
+D: free at prep: 7.1 GB (plan minimum 5.5 GB before EVERY run)
+
+## Session conditions (user, before anything starts)
+1. Windows desktop unlocked; no LockApp/LogonUI in the foreground; screen must not sleep for the ~90 minutes.
+2. The example window visible and never obscured or minimised for the whole of every run (do not use the machine).
+3. No other GPU workloads (games, browsers with video, other Flutter/mpv apps); close Steam games.
+4. D: free space >= 5.5 GB (check before each run).
+5. Flutter SDK is /d/flutter/bin/flutter (3.47.8); Git Bash PATH entries in POSIX form.
+
+## Per-run gate (do before EVERY run below; any failure -> do not start the run, record gate=FAIL and stop)
+  df -h /d | tail -1                                   # avail >= 5.5G
+  tasklist | grep -i -E "mpv_kit_example|flutter_tester" # none (no stray example)
+  nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader   # low (<~10 %); no other GPU process
+  # desktop unlocked + foreground window is not LockApp/LogonUI (same check as the 12-08 gate in final-runs.txt)
+  Record one line per run in the matching ledger: gate run=<name> result=<pass|FAIL> at=<UTC> disk_free=<..> gpu_util=<..>
+  Rule (both plans): never rerun until green, never shorten, a failed or interrupted run is recorded with its cause and handed to the user.
+
+## Setup (once, at session start)
+  cd D:/mpv_kit
+  # (1) temporary hooks user_defines so the executable dir carries the artifact's consistent DLL closure
+  #     (same reason as native-verify's windows step; without it the pinned v0.1.0-dev.3 bundle's same-name DLLs shadow it).
+  #     16-06 step 4 requires this; applying it to 14-09 too is a deviation from 14-09's PATH-only text, recorded in the 14 ledger as
+  #     `note=hooks user_defines used (shared session)`.
+  printf '\nhooks:\n  user_defines:\n    mpv_kit_libs:\n      libmpv_bundle: %s\n' "$(cygpath -m "$PWD/build/phase16/libmpv-rtx")" >> pubspec.yaml
+  # (2) samples as app assets (gitignored)
+  mkdir -p example/integration_test/route_samples
+  cp build/phase16/samples/*.mp4 build/phase16/samples-uhd/*.mp4 example/integration_test/route_samples/
+  # (3) environment shared by every run
+  export LIB="$PWD/build/phase16/libmpv-rtx/lib"
+  export MPV_KIT_LIBMPV_PATH="$LIB/libmpv-2.dll"
+  export MPV_KIT_REQUIRE_LIBMPV=1
+  export PATH="$LIB:$PATH"                 # POSIX form (/d/... ), bundle lib first
+  export FLUTTER=/d/flutter/bin/flutter
+  export E16=.planning/phases/16-hardware-decode-zero-copy/evidence
+  export E14=.planning/phases/14-windows-native-d3d11-backend/evidence
+  # MPV_KIT_LIBMPV_PATH is a POSIX path here; if flutter test cannot load it, use "$(cygpath -m "$MPV_KIT_LIBMPV_PATH")".
+  # Before the first run: confirm git status --short pubspec.yaml shows the temporary change and nothing else changed.
+
+## Order of runs (serial)   est. wall time includes the incremental Windows build (first build ~8-12 min extra)
+  A. 16-06 (a) d3d11 forced              ~10 min  (first run pays the cold build)
+  B. 16-06 (b) d3d11 + zero-copy=yes     ~5 min
+  C. 16-06 (c) auto chain (Vulkan first) ~5 min
+  D. 14-09 T1 (a) fence path             ~5 min
+  E. 14-09 T1 (b) query path             ~5 min
+  F. 14-09 T2.1 4K rendered 600 s        ~14 min   (background; > 10 min tool limit)
+  G. 14-09 T2.2 D-05 Impeller on         ~4 min
+  H. 14-09 T2.2 D-05 Impeller off        ~4 min
+  I. 14-09 T2.3 pickup Impeller on       ~4 min    (timeout 150, 140 s source)
+  J. 14-09 T2.3 pickup Impeller off      ~4 min
+  Total about 60-75 min plus gates.  16-06 runs A-C first: they are Phase 16's only blocking evidence; 14-09 follows.
+  If a run fails, stop that plan's sequence per its plan text (16-06 step 8: stop; 14-09 Task 1 step 3: stop).
+
+## 16-06 Task 2 (cd example for all three)
+  cd D:/mpv_kit/example
+  # (a)
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_HWDEC_SAMPLES=h264-8bit.mp4,hevc-8bit.mp4,hevc-10bit.mp4,hevc-10bit-2160p.mp4 \
+    $FLUTTER test integration_test/hwdec_zero_copy_test.dart -d windows 2>&1 | tee "../$E16/rtx-hwdec-d3d11.log"; echo "exit=${PIPESTATUS[0]}"
+  # (b)
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_HWDEC_ZERO_COPY=yes MPV_KIT_HWDEC_SAMPLES=h264-8bit.mp4,hevc-8bit.mp4,hevc-10bit.mp4,hevc-10bit-2160p.mp4 \
+    $FLUTTER test integration_test/hwdec_zero_copy_test.dart -d windows 2>&1 | tee "../$E16/rtx-hwdec-d3d11-zero-copy-yes.log"; echo "exit=${PIPESTATUS[0]}"
+  # (c) auto chain: do NOT set MPV_KIT_VIDEO_API (information only)
+  MPV_KIT_HWDEC_SAMPLES=h264-8bit.mp4,hevc-8bit.mp4,hevc-10bit.mp4,hevc-10bit-2160p.mp4 \
+    $FLUTTER test integration_test/hwdec_zero_copy_test.dart -d windows 2>&1 | tee "../$E16/rtx-hwdec-auto.log"; echo "exit=${PIPESTATUS[0]}"
+  Expected (a), 4K sample, first-frame AND end lines (HWDEC {"schema":"hwdec-1","test":"hwdec_zero_copy","sample":"hevc-10bit-2160p",...}):
+    "api":"d3d11","hwdecCurrent":"d3d11va","pixelformat":"d3d11","hwPixelformat":"p010","d3d11vaZeroCopy":false,"outcome":"zero-copy","zeroCopy":true
+    reason ends like: d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU
+  Expected HWDEC-RUN: "sample":"hevc-10bit-2160p","api":"d3d11", three frameChecks all "screenshot":"match", "playedToEnd":true,"hwdecStable":true,"deviceLost":0
+  640x360 samples: api d3d11, outcome zero-copy expected for the default list (record whatever the lines say; not a pass criterion beyond the test's own assertions).
+  (b): d3d11vaZeroCopy:true in the HWDEC lines; data only (compare zero-copy lines). (c): Vulkan backend expected, hwdec by Vulkan list; information only.
+  Ledger lines after the runs (16 ledger): run=<d3d11|d3d11-zero-copy-yes|auto> result=<pass|fail> exit=<code>; hwd02 sample=hevc-10bit-2160p ...; rtx sample=...; compare zero-copy item=...; auto sample=... (exact formats in 16-06 Task 2 step 6).
+  Stop rule: any non-zero test, any HWDEC not d3d11va+d3d11+p010+zero-copy, any screenshot not match (including software-fallback): write the raw lines, stop, report blocking. Do not edit the classifier table.
+
+## 14-09 Task 1 (cd example)
+  cd D:/mpv_kit/example
+  # bundle: same release run; 14-09 text says build/phase14/libmpv-rtx (identical copy exists). The shared env above points at the phase16 copy; equal bytes.
+  # (a) fence path (default)
+  MPV_KIT_VIDEO_API=d3d11 $FLUTTER test integration_test/d3d11_backend_test.dart -d windows 2>&1 | tee "../$E14/rtx-d3d11-backend.log"; echo "exit=${PIPESTATUS[0]}"
+  # (b) query path
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_D3D11_SYNC=query $FLUTTER test integration_test/d3d11_backend_test.dart -d windows 2>&1 | tee "../$E14/rtx-d3d11-backend-query.log"; echo "exit=${PIPESTATUS[0]}"
+  Expected: D3D11-BACKEND {...,"reason":"d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 ...", ...}; (b) line has "syncEnv":"query"; probes red/blue >=95 %, resize no black flicker, no device_lost/render_error/gpu_timeout.
+  Ledger (14): run=<d3d11-fence|d3d11-query> result=<pass|fail> reason="..." line=<D3D11-BACKEND JSON>; 2 pass lines needed; failure -> stop.
+
+## 14-09 Task 2 (cd example; exact 12-04/12-08 commands + MPV_KIT_VIDEO_API=d3d11)
+  # 2.1 real rendered 4K, 600 s, default Impeller switch. Run in background (exceeds 10 min tool timeout); poll the log.
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_BENCH_RENDER=1 MPV_KIT_BENCH_SIZE=3840x2160 MPV_KIT_BENCH_SECONDS=600 MPV_KIT_BENCH_LABEL=4k-rendered-d3d11 \
+    $FLUTTER test integration_test/uhd_endurance_test.dart -d windows 2>&1 | tee "../$E14/rtx-uhd4k-rendered-d3d11.log"
+  Expected: BENCH line contains "rendered":true; compare items vs Phase 12 final-runs.txt run=uhd4k-rendered (frameDropCountFinal=0 decoderFrameDropCountFinal=0 voDelayedFrameCountMax=0 avsyncPeakAbs=1.62e-05 renderErrors=0 deviceLost=false) as same|better|worse.
+  # 2.2 D-05 (use ABSOLUTE trace paths: flutter test runs inside example/; a repo-relative path failed in Phase 12)
+  R=D:/mpv_kit
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_SMOKE_TRACE="$R/$E14/rtx-d05-d3d11-on.trace" $FLUTTER test integration_test/impeller_smoke_test.dart -d windows --enable-impeller    2>&1 | tee "../$E14/rtx-d05-d3d11-on.log"
+  MPV_KIT_VIDEO_API=d3d11 MPV_KIT_SMOKE_TRACE="$R/$E14/rtx-d05-d3d11-off.trace" $FLUTTER test integration_test/impeller_smoke_test.dart -d windows --no-enable-impeller 2>&1 | tee "../$E14/rtx-d05-d3d11-off.log"
+  Phase 12 reference (final-runs.txt): d05-on and d05-off both result=failed reason=pixelProbe-nonBlack-not-met (soak rounds 100 complete, renderErrors 0); verdict=no-new-failure means d3d11 is not worse than that.
+  Impeller identity rule (12-04): "Using the Impeller rendering backend" count >=1 for on, 0 for off (identity comes from the engine log of the flutter run in 2.3).
+  # 2.3 pickup latency, window visible, 150 s timeout, 140 s 4K60 lavfi source
+  MPV_KIT_VIDEO_API=d3d11 timeout 150 $FLUTTER run -d windows --enable-impeller    --dart-entrypoint-args 'av://lavfi:testsrc2=size=3840x2160:rate=60:duration=140[out0]' 2>&1 | tee "../$E14/rtx-pickup-d3d11-on.log"
+  MPV_KIT_VIDEO_API=d3d11 timeout 150 $FLUTTER run -d windows --no-enable-impeller --dart-entrypoint-args 'av://lavfi:testsrc2=size=3840x2160:rate=60:duration=140[out0]' 2>&1 | tee "../$E14/rtx-pickup-d3d11-off.log"
+  After each flutter run: confirm no mpv_kit_example / flutter process remains (tasklist), kill strays only if they are this run's.
+  Stats: >=5 "compositor pickup avg/over 120 frames" lines per log; write pickup/waits lines in the 14 ledger (formats in 14-09 Task 2 step 3).
+  Then write docs/perf/d3d11-backend.md (14-09 Task 2 step 4); isolation period stays 4, no parameter change.
+
+## After the session
+  cd D:/mpv_kit && git checkout -- pubspec.yaml && git status --short pubspec.yaml   # must print nothing
+  rm -f example/integration_test/route_samples/*.mp4   # optional, gitignored
+  df -h /d | tail -1
+  Commit evidence by explicit path only; never stage .planning/config.json, .planning/state.json, .planning/tmp/, .planning/ui-reviews/, engine_repo_embedder.cc, .planning/debug/.
+
+## Known caveats to carry into the session
+- HEAD 15f61ff's macOS videotoolbox screenshot check is red in CI (handed to a separate gsd-debug session); it does not affect Windows runs.
+- Bundle is built from 15f61ff (code == ad5c54b). The macOS failure does not change the windows-x64 artifact.
+- 16-06 Task 2 step 9 / 14-09 commits: bd926b5 and later commits stay LOCAL until the macOS issue is resolved (user decision).

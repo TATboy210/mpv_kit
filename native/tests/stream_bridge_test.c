@@ -5,7 +5,11 @@
 //     a separate host thread answers every request (mpv_kit_stream_begin +
 //     mpv_kit_stream_complete), like a Dart isolate would. Playback must
 //     reach MPV_EVENT_END_FILE with reason EOF and no error.
-//  2. "pending://" never answers. While mpv's demuxer thread is blocked on
+//     Every successful OPEN must be followed by exactly one CLOSE.
+//  2. A host that rejects OPEN (id <= 0) makes the load fail cleanly.
+//  3. loadfile + immediate stop, repeated: the stop cancel races the stream
+//     close (the cancel-after-close use-after-free shows up under ASan).
+//  4. "pending://" never answers. While mpv's demuxer thread is blocked on
 //     the OPEN request, mpv_kit_stream_shutdown() must release it (load
 //     fails cleanly), request_fn must never run afterwards, and stale
 //     request ids must be ignored.
@@ -143,7 +147,7 @@ static int64_t stream_pos[MAX_STREAMS];   // indexed by host stream id
 static bool stream_open[MAX_STREAMS];
 static uint64_t next_stream = 1;
 static int opens, reads;
-static volatile int closes;  // observed in a debugger only
+static int closes;
 static int64_t bytes_served;
 
 static void mem_request(void *user_data, uint64_t request, int op,
@@ -288,10 +292,41 @@ static int wait_end_file(mpv_handle *mpv, double timeout_s,
     return -1;
 }
 
+// Waits for the next START_FILE (playback of the entry has begun, so a later
+// stop is guaranteed to end it with END_FILE).
+static int wait_start_file(mpv_handle *mpv, double timeout_s)
+{
+    const int64_t deadline = mpv_get_time_us(mpv) + (int64_t)(timeout_s * 1e6);
+    while (mpv_get_time_us(mpv) < deadline) {
+        mpv_event *ev = mpv_wait_event(mpv, 0.25);
+        if (ev->event_id == MPV_EVENT_LOG_MESSAGE) {
+            mpv_event_log_message *m = ev->data;
+            fprintf(stderr, "  mpv[%s] %s: %s", m->level, m->prefix, m->text);
+        }
+        if (ev->event_id == MPV_EVENT_START_FILE)
+            return 0;
+        if (ev->event_id == MPV_EVENT_SHUTDOWN)
+            return -1;
+    }
+    return -1;
+}
+
 static int loadfile(mpv_handle *mpv, const char *url)
 {
     const char *cmd[] = { "loadfile", url, NULL };
     return mpv_command(mpv, cmd);
+}
+
+// Waits until every opened membridge stream was closed (the CLOSE request can
+// trail END_FILE slightly); returns whether opens == closes.
+static bool closes_balanced(void)
+{
+    bool balanced = false;
+    mutex_lock(&host_lock);
+    for (int i = 0; i < 50 && !(balanced = opens == closes); i++)
+        cond_wait_ms(&host_cond, &host_lock, 100);
+    mutex_unlock(&host_lock);
+    return balanced;
 }
 
 int main(void)
@@ -349,8 +384,50 @@ int main(void)
              mpv_error_string(ef.error));
     if (!loaded || o < 1 || r < 1 || served <= 44)
         FAIL("membridge stream was not actually played");
+    if (!closes_balanced())
+        FAIL("membridge: %d open(s) but %d close(s)", opens, closes);
 
-    // --- 2. shutdown while a request is pending ----------------------------
+    // --- 2. host rejects OPEN ----------------------------------------------
+    // mem_request only accepts membridge:// URIs; answer() replies id -1.
+    step("rejected OPEN fails the load");
+    uint64_t rej_reg = 0;
+    if ((err = mpv_kit_stream_add(mpv, "rejectbridge", mem_request, NULL, &rej_reg)) < 0)
+        FAIL("mpv_kit_stream_add(rejectbridge): %s", mpv_error_string(err));
+    if ((err = loadfile(mpv, "rejectbridge://x.wav")) < 0)
+        FAIL("loadfile: %s", mpv_error_string(err));
+    if (wait_end_file(mpv, 20.0, &ef, &loaded) < 0)
+        FAIL("timeout waiting for END_FILE (rejectbridge)");
+    if (ef.reason != MPV_END_FILE_REASON_ERROR || loaded)
+        FAIL("rejected open should fail, got reason %d loaded %d", (int)ef.reason, (int)loaded);
+    if (!closes_balanced())
+        FAIL("rejected open: %d open(s) but %d close(s)", opens, closes);
+
+    // --- 3. stop races the stream close ------------------------------------
+    step("loadfile + stop loop");
+    const char *stop_cmd[] = { "stop", NULL };
+    // Host stream ids are never recycled (MAX_STREAMS caps them), so keep the
+    // loop short enough to leave ids for the playbacks that follow.
+    for (int i = 0; i < 10; i++) {
+        if ((err = loadfile(mpv, "membridge://stop.wav")) < 0)
+            FAIL("loadfile: %s", mpv_error_string(err));
+        // A stop processed before the entry starts would clear the playlist
+        // without any END_FILE; start first, then stop while it opens/reads.
+        if (wait_start_file(mpv, 20.0) < 0)
+            FAIL("timeout waiting for START_FILE (stop loop %d)", i);
+        if ((err = mpv_command(mpv, stop_cmd)) < 0)
+            FAIL("stop: %s", mpv_error_string(err));
+        if (wait_end_file(mpv, 20.0, &ef, &loaded) < 0)
+            FAIL("timeout waiting for END_FILE (stop loop %d)", i);
+    }
+    if (!closes_balanced())
+        FAIL("stop loop: %d open(s) but %d close(s)", opens, closes);
+    mutex_lock(&host_lock);
+    const int used = opens;
+    mutex_unlock(&host_lock);
+    if (used > MAX_STREAMS - 4)
+        FAIL("stop loop used %d of %d host stream ids", used, MAX_STREAMS - 1);
+
+    // --- 4. shutdown while a request is pending ----------------------------
     step("register pending");
     uint64_t pend_reg = 0;
     if ((err = mpv_kit_stream_add(mpv, "pending", pending_request_fn, NULL, &pend_reg)) < 0)
@@ -417,6 +494,7 @@ int main(void)
     mutex_unlock(&host_lock);
     thread_join(host);
     mpv_kit_stream_shutdown(mem_reg);
+    mpv_kit_stream_shutdown(rej_reg);
     mpv_terminate_destroy(mpv);
     cond_destroy(&host_cond);
     mutex_destroy(&host_lock);

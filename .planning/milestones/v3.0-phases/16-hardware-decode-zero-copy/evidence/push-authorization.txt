@@ -1,0 +1,4 @@
+push_authorized=yes scope=push-green-only remote=origin branch=feat/mpv-master-upgrade force_push=no red_commits=none release_dispatch=yes ci_mode=live granted_at=2026-10-28T13:47:26Z head_at_grant=42996d3d2ae6d887e268468637dbc97a2bbae2b6
+user_reply=push-green-only+dispatch
+red_evidence=local-only (deliberately red commits are never pushed; spike code is written green by construction)
+note=gates run during execution

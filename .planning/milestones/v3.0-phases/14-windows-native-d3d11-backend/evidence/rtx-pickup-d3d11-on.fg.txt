@@ -1,0 +1,74 @@
+2026-10-29T05:46:25.000Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:27.065Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:29.066Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:31.103Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:33.107Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:35.112Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:37.117Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:39.129Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:41.151Z fg=WindowsTerminal example=absent
+2026-10-29T05:46:43.187Z fg=WindowsTerminal example=running nowindow
+2026-10-29T05:46:45.243Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:47.267Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:49.295Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:51.312Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:53.329Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:55.345Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:57.373Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:46:59.391Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:01.418Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:03.439Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:05.455Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:07.493Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:09.510Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:11.532Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:13.560Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:15.571Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:17.592Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:19.599Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:21.633Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:23.661Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:25.673Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:27.685Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:29.712Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:31.750Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:33.766Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:35.783Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:37.811Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:39.817Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:41.850Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:43.867Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:45.883Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:47.900Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:49.915Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:51.951Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:53.974Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:55.993Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:47:58.012Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:00.028Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:02.049Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:04.077Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:06.092Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:08.112Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:10.127Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:12.161Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:14.166Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:16.182Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:18.211Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:20.231Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:22.240Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:24.277Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:26.283Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:28.299Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:30.332Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:32.359Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:34.377Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:36.383Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:38.408Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:40.432Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:42.455Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:44.468Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:46.494Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:48.511Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:50.532Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10
+2026-10-29T05:48:52.551Z fg=mpv_kit_example example=running visible=True iconic=False rect=1280x720@10,10

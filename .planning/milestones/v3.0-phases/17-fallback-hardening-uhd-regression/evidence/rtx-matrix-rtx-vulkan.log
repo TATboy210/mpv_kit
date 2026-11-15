@@ -1,0 +1,34 @@
+2026-10-30T08:00:00.764Z Resolving dependencies in `D:\mpv_kit`...
+2026-10-30T08:00:00.905Z Downloading packages...
+2026-10-30T08:00:00.953Z   _fe_analyzer_shared 103.0.0 (110.0.0 available)
+2026-10-30T08:00:00.981Z   analyzer 13.3.0 (14.6.0 available)
+2026-10-30T08:00:01.017Z   cross_file 0.3.5+5 (0.4.0 available)
+2026-10-30T08:00:01.049Z   crypto 3.0.7 (3.0.8 available)
+2026-10-30T08:00:01.077Z   cupertino_icons 1.0.9 (2.0.0 available)
+2026-10-30T08:00:01.115Z   desktop_drop 0.7.1 (0.9.2 available)
+2026-10-30T08:00:01.142Z   frontend_server_client 4.1.0 (4.2.0 available)
+2026-10-30T08:00:01.170Z   http_multi_server 3.2.2 (3.2.3 available)
+2026-10-30T08:00:01.207Z   material_color_utilities 0.13.0 (0.13.1 available)
+2026-10-30T08:00:01.239Z   package_config 2.2.0 (3.0.0 available)
+2026-10-30T08:00:01.268Z   shelf 1.4.2 (1.4.3 available)
+2026-10-30T08:00:01.294Z   shelf_static 1.1.3 (1.2.0 available)
+2026-10-30T08:00:01.321Z   test 1.31.1 (1.33.0 available)
+2026-10-30T08:00:01.350Z   test_api 0.7.12 (0.7.15 available)
+2026-10-30T08:00:01.380Z   test_core 0.6.18 (0.6.21 available)
+2026-10-30T08:00:01.414Z   vector_math 2.4.3 (2.4.4 available)
+2026-10-30T08:00:01.474Z   vm_service 15.3.0 (15.4.0 available)
+2026-10-30T08:00:01.502Z   web 1.1.1 (1.1.2 available)
+2026-10-30T08:00:01.528Z Got dependencies in `D:\mpv_kit`!
+2026-10-30T08:00:01.555Z 18 packages have newer versions incompatible with dependency constraints.
+2026-10-30T08:00:01.583Z Try `flutter pub outdated` for more information.
+2026-10-30T08:00:01.612Z 00:00 +0: loading D:/mpv_kit/example/integration_test/texture_probe_test.dart
+2026-10-30T08:00:23.323Z Building Windows application...                                    21.6s
+2026-10-30T08:00:23.355Z ✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+2026-10-30T08:00:25.384Z 00:00 +0: texture probe: mounted pixels and orientation
+2026-10-30T08:00:25.888Z mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+2026-10-30T08:00:26.549Z HWDEC {"schema":"hwdec-1","test":"texture_probe","sample":"lavfi","at":"first-frame","api":"vulkan","requested":"no","hwdecCurrent":"no","hwdecInterop":"vulkan","pixelformat":"yuv420p","hwPixelformat":null,"d3d11vaZeroCopy":false,"outcome":"software","zeroCopy":false,"reason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU"}
+2026-10-30T08:00:26.971Z PROBE {"api":"vulkan","reason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU","supported":true,"nonBlackRatio":1.0,"orientation":"upright","afterResizeNonBlackRatio":1.0,"afterResizeOrientation":"upright","textureId":1517305459248,"renderErrors":0,"events":["resize"]}
+2026-10-30T08:00:27.123Z mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+2026-10-30T08:00:27.163Z SECOND-CONTROLLER {"first":"vulkan","second":"vulkan","secondReason":"vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU"}
+2026-10-30T08:00:27.211Z 00:01 +1: (tearDownAll)
+2026-10-30T08:00:27.246Z 00:01 +1: All tests passed!

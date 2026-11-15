@@ -1,0 +1,3831 @@
+PROGRAM: flutter_windows.dll
+IMAGE_BASE: 0x180000000
+EXECUTABLE: /D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll
+SYMBOL_COUNT: 684430
+
+=== TARGET: FlutterWindowsTextureRegistrar::RegisterTexture ===
+FOUND: 8
+FUNC: name=flutter::FlutterWindowsTextureRegistrar::RegisterTexture
+  MATCHED_FRAGMENT: FlutterWindowsTextureRegistrar::RegisterTexture
+  ENTRY_VA: 0x18001b24c
+  ENTRY_RVA: 0x1b24c
+  SIZE_BYTES: 646
+  CALLERS: (none)
+  CALLEES: __security_check_cookie; flutter::ExternalTextureD3d::ExternalTextureD3d; flutter::ExternalTexturePixelBuffer::ExternalTexturePixelBuffer; flutter::FlutterWindowsTextureRegistrar::EmplaceTexture; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; operator_new; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    long64 __thiscall
+    flutter::FlutterWindowsTextureRegistrar::RegisterTexture
+              (FlutterWindowsTextureRegistrar *this,FlutterDesktopTextureInfo *param_1)
+    
+    {
+      int *piVar1;
+      FlutterDesktopGpuSurfaceType FVar2;
+      longlong lVar3;
+      _func___cdecl_FlutterDesktopGpuSurfaceDescriptor_ptr_ulong64_ulong64_void_ptr *p_Var4;
+      Manager *pMVar5;
+      code *pcVar6;
+      bool bVar7;
+      char *pcVar8;
+      unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_> uVar9;
+      long64 lVar10;
+      void *pvVar11;
+      longlong lVar12;
+      _func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *p_Var13;
+      undefined1 auStackY_188 [32];
+      ExternalTextureD3d *local_158;
+      ExternalTexturePixelBuffer *local_150;
+      LogMessage local_148;
+      ulonglong local_40;
+      
+      local_40 = __security_cookie ^ (ulonglong)auStackY_188;
+      lVar12 = *(longlong *)&this->gl_;
+      lVar10 = -1;
+      if (lVar12 == 0) goto LAB_18001b3e0;
+      if (param_1->type == kFlutterDesktopGpuSurfaceTexture) {
+        p_Var13 = (param_1->field1_0x8).pixel_buffer_config.callback;
+        if (((_func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *)0xb < p_Var13) &&
+           (FVar2 = (param_1->field1_0x8).gpu_surface_config.type,
+           FVar2 - kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle < 2)) {
+          if ((p_Var13 < (_func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *)0x18)
+             || (p_Var4 = (param_1->field1_0x8).gpu_surface_config.callback,
+                p_Var4 == (_func___cdecl_FlutterDesktopGpuSurfaceDescriptor_ptr_ulong64_ulong64_void_ptr
+                           *)0x0)) {
+            bVar7 = fml::ShouldCreateLogMessage(2);
+            if (!bVar7) goto LAB_18001b3e0;
+            fml::LogMessage::LogMessage
+                      (&local_148,2,
+                       "../../../flutter/shell/platform/windows/flutter_windows_texture_registrar.cc",
+                       0x32,(char *)0x0);
+            pcVar8 = "Invalid GPU surface descriptor callback.";
+            goto LAB_18001b35f;
+          }
+          if (p_Var13 < (_func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *)0x20) {
+            pvVar11 = (void *)0x0;
+          }
+          else {
+            pvVar11 = (param_1->field1_0x8).gpu_surface_config.user_data;
+          }
+          pMVar5 = (this->engine_->egl_manager_)._Mypair._Myval2;
+          local_158 = operator_new(0x50);
+          lVar3 = *(longlong *)&(this->gl_).field_0x8;
+          if (lVar3 == 0) {
+            local_148.stream_._Stringbuffer._padding_ = 0;
+          }
+          else {
+            LOCK();
+            piVar1 = (int *)(lVar3 + 8);
+            *piVar1 = *piVar1 + 1;
+            UNLOCK();
+            lVar12 = *(longlong *)&this->gl_;
+            local_148.stream_._Stringbuffer._padding_ = *(longlong *)&(this->gl_).field_0x8;
+          }
+          local_148.stream_._0_8_ = lVar12;
+          ExternalTextureD3d::ExternalTextureD3d
+                    (local_158,FVar2,p_Var4,pvVar11,pMVar5,
+                     (shared_ptr<flutter::egl::ProcTable> *)&local_148);
+          uVar9._Mypair._Myval2 =
+               (_Compressed_pair<std::default_delete<flutter::ExternalTexture>,flutter::ExternalTexture_*,1>
+                )&local_158;
+    LAB_18001b3d5:
+          lVar10 = EmplaceTexture(this,uVar9);
+          goto LAB_18001b3e0;
+        }
+    LAB_18001b31e:
+        bVar7 = fml::ShouldCreateLogMessage(2);
+        if (!bVar7) goto LAB_18001b3e0;
+        fml::LogMessage::LogMessage
+                  (&local_148,2,
+                   "../../../flutter/shell/platform/windows/flutter_windows_texture_registrar.cc",0x3c,
+                   (char *)0x0);
+        pcVar8 = "Attempted to register texture of unsupport type.";
+      }
+      else {
+        if (param_1->type != kFlutterDesktopPixelBufferTexture) goto LAB_18001b31e;
+        p_Var13 = (param_1->field1_0x8).pixel_buffer_config.callback;
+        if (p_Var13 != (_func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *)0x0) {
+          local_150 = operator_new(0x30);
+          lVar3 = *(longlong *)&(this->gl_).field_0x8;
+          if (lVar3 == 0) {
+            local_148.stream_._Stringbuffer._padding_ = 0;
+          }
+          else {
+            LOCK();
+            piVar1 = (int *)(lVar3 + 8);
+            *piVar1 = *piVar1 + 1;
+            UNLOCK();
+            lVar12 = *(longlong *)&this->gl_;
+            local_148.stream_._Stringbuffer._padding_ = *(longlong *)&(this->gl_).field_0x8;
+            p_Var13 = (param_1->field1_0x8).pixel_buffer_config.callback;
+          }
+          local_148.stream_._0_8_ = lVar12;
+          ExternalTexturePixelBuffer::ExternalTexturePixelBuffer
+                    (local_150,p_Var13,(param_1->field1_0x8).pixel_buffer_config.user_data,
+                     (shared_ptr<flutter::egl::ProcTable> *)&local_148);
+          uVar9._Mypair._Myval2 =
+               (_Compressed_pair<std::default_delete<flutter::ExternalTexture>,flutter::ExternalTexture_*,1>
+                )&local_150;
+          goto LAB_18001b3d5;
+        }
+        bVar7 = fml::ShouldCreateLogMessage(2);
+        if (!bVar7) goto LAB_18001b3e0;
+        fml::LogMessage::LogMessage
+                  (&local_148,2,
+                   "../../../flutter/shell/platform/windows/flutter_windows_texture_registrar.cc",0x22,
+                   (char *)0x0);
+        pcVar8 = "Invalid pixel buffer texture callback.";
+      }
+    LAB_18001b35f:
+      std::operator<<<std::char_traits<char>_>
+                ((basic_ostream<char,std::char_traits<char>_> *)&local_148,pcVar8);
+      fml::LogMessage::~LogMessage(&local_148);
+    LAB_18001b3e0:
+      if (__security_cookie == (local_40 ^ (ulonglong)auStackY_188)) {
+        return lVar10;
+      }
+      pcVar6 = (code *)swi(3);
+      lVar10 = (*pcVar6)(local_40 ^ (ulonglong)auStackY_188);
+      return lVar10;
+    }
+    
+
+FUNC: name=flutter::EmbedderEngine::RegisterTexture
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x1800dd090
+  ENTRY_RVA: 0xdd090
+  SIZE_BYTES: 267
+  CALLERS: FlutterEngineRegisterExternalTexture
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; flutter::EmbedderExternalTextureResolver::ResolveExternalTexture; flutter::PlatformView::RegisterTexture; flutter::Shell::GetPlatformView; fml::RefCountedThreadSafe<fml::internal::WeakPtrFlag>::Release; operator_new
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "GrBackendApi": Some values do not have unique names */
+    /* WARNING: Enum "BlendEquationSupport": Some values do not have unique names */
+    /* WARNING: Enum "GrAccessPattern": Some values do not have unique names */
+    /* WARNING: Enum "SkColorType": Some values do not have unique names */
+    
+    bool __thiscall flutter::EmbedderEngine::RegisterTexture(EmbedderEngine *this,long64 param_1)
+    
+    {
+      Shell *this_00;
+      code *pcVar1;
+      undefined1 uVar2;
+      undefined1 auStack_88 [40];
+      longlong local_60;
+      undefined1 local_58 [8];
+      undefined8 *puStack_50;
+      WeakPtr<flutter::PlatformView> local_40;
+      ulonglong local_28;
+      
+      local_28 = __security_cookie ^ (ulonglong)auStack_88;
+      this_00 = (this->shell_)._Mypair._Myval2;
+      if (this_00 != (Shell *)0x0) {
+        Shell::GetPlatformView(this_00,&local_40);
+        EmbedderExternalTextureResolver::ResolveExternalTexture
+                  ((this->external_texture_resolver_)._Mypair._Myval2,(long64)&local_60);
+        local_58 = (undefined1  [8])0x0;
+        puStack_50 = (undefined8 *)0x0;
+        if (local_60 != 0) {
+          puStack_50 = operator_new(0x18);
+          puStack_50[1] = &DAT_100000001;
+          *puStack_50 = &std::
+                         _Ref_count_resource<flutter::Texture*___ptr64,std::default_delete<flutter::Texture>_>
+                         ::_vftable_;
+          puStack_50[2] = local_60;
+          local_58 = (undefined1  [8])local_60;
+          local_60 = 0;
+        }
+        PlatformView::RegisterTexture(local_40.ptr_,(shared_ptr<flutter::Texture> *)local_58);
+        if (local_60 != 0) {
+          (*__guard_dispatch_icall_fptr)(local_60,1);
+        }
+        if (local_40.flag_.ptr_ != (WeakPtrFlag *)0x0) {
+          fml::RefCountedThreadSafe<fml::internal::WeakPtrFlag>::Release
+                    ((RefCountedThreadSafe<fml::internal::WeakPtrFlag> *)local_40.flag_.ptr_);
+        }
+      }
+      if (__security_cookie == (local_28 ^ (ulonglong)auStack_88)) {
+        return this_00 != (Shell *)0x0;
+      }
+      pcVar1 = (code *)swi(3);
+      uVar2 = (*pcVar1)(local_28 ^ (ulonglong)auStack_88);
+      return (bool)uVar2;
+    }
+    
+
+FUNC: name=flutter::TextureRegistry::RegisterTexture
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x1800f5fb6
+  ENTRY_RVA: 0xf5fb6
+  SIZE_BYTES: 113
+  CALLERS: std::_Func_impl_no_alloc<`lambda_at_..\..\..\flutter\shell\common\shell.cc:1293:7',void>::_Do_call
+  CALLEES: __security_check_cookie; std::map<long_long,std::shared_ptr<flutter::Texture>,std::less<long_long>,std::allocator<std::pair<const_long_long,std::shared_ptr<flutter::Texture>_>_>_>::_Try_emplace<long_long>; std::shared_ptr<impeller::Texture>::operator=
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    void __thiscall
+    flutter::TextureRegistry::RegisterTexture
+              (TextureRegistry *this,shared_ptr<flutter::Texture> *param_1)
+    
+    {
+      code *pcVar1;
+      undefined1 auStack_58 [40];
+      long64 local_30;
+      pair<std::_Tree_node<std::pair<__int64_const_,std::shared_ptr<flutter::Texture>_>,void_*>_*,bool>
+      local_28;
+      ulonglong local_18;
+      
+      local_18 = __security_cookie ^ (ulonglong)auStack_58;
+      if (*(longlong *)param_1 != 0) {
+        local_30 = *(long64 *)(*(longlong *)param_1 + 8);
+        std::
+        map<long_long,std::shared_ptr<flutter::Texture>,std::less<long_long>,std::allocator<std::pair<const_long_long,std::shared_ptr<flutter::Texture>_>_>_>
+        ::_Try_emplace<long_long>(this,&local_28,&local_30);
+        std::shared_ptr<impeller::Texture>::operator=
+                  ((shared_ptr<impeller::Texture> *)&((local_28.first)->_Myval).second,
+                   (shared_ptr<impeller::Texture> *)param_1);
+      }
+      if (__security_cookie == (local_18 ^ (ulonglong)auStack_58)) {
+        return;
+      }
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)(local_18 ^ (ulonglong)auStack_58);
+      return;
+    }
+    
+
+FUNC: name=flutter::PlatformView::RegisterTexture
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x1807199d0
+  ENTRY_RVA: 0x7199d0
+  SIZE_BYTES: 105
+  CALLERS: flutter::EmbedderEngine::RegisterTexture
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    void __thiscall
+    flutter::PlatformView::RegisterTexture(PlatformView *this,shared_ptr<flutter::Texture> *param_1)
+    
+    {
+      code *pcVar1;
+      undefined1 auStack_48 [32];
+      undefined8 local_28;
+      undefined8 uStack_20;
+      ulonglong local_10;
+      
+      local_10 = __security_cookie ^ (ulonglong)auStack_48;
+      local_28 = *(undefined8 *)param_1;
+      uStack_20 = *(undefined8 *)&param_1->field_0x8;
+      *(undefined8 *)param_1 = 0;
+      *(undefined8 *)&param_1->field_0x8 = 0;
+      (*__guard_dispatch_icall_fptr)();
+      std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+                ((_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows> *)param_1);
+      if (__security_cookie == (local_10 ^ (ulonglong)auStack_48)) {
+        return;
+      }
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)(local_10 ^ (ulonglong)auStack_48);
+      return;
+    }
+    
+
+FUNC: name=flutter::Shell::OnPlatformViewRegisterTexture
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x1807285c8
+  ENTRY_RVA: 0x7285c8
+  SIZE_BYTES: 413
+  CALLERS: (none)
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; flutter::Rasterizer::GetWeakPtr; flutter::TaskRunners::GetRasterTaskRunner; fml::RefCountedThreadSafe<fml::internal::WeakPtrFlag>::Release; operator_new; std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "GrBackendApi": Some values do not have unique names */
+    /* WARNING: Enum "BlendEquationSupport": Some values do not have unique names */
+    /* WARNING: Enum "GrAccessPattern": Some values do not have unique names */
+    /* WARNING: Enum "SkColorType": Some values do not have unique names */
+    
+    void __thiscall
+    flutter::Shell::OnPlatformViewRegisterTexture(Shell *this,shared_ptr<flutter::Texture> *param_1)
+    
+    {
+      int *piVar1;
+      code *pcVar2;
+      longlong lVar3;
+      undefined1 auStack_c8 [40];
+      longlong local_a0;
+      TaskRunnerAffineWeakPtr<flutter::Rasterizer> local_98;
+      undefined8 local_80;
+      undefined8 uStack_78;
+      undefined8 local_70 [7];
+      undefined8 *local_38;
+      ulonglong local_30;
+      
+      local_30 = __security_cookie ^ (ulonglong)auStack_c8;
+      TaskRunners::GetRasterTaskRunner(&this->task_runners_);
+      lVar3 = local_a0;
+      Rasterizer::GetWeakPtr((this->rasterizer_)._Mypair._Myval2,&local_98);
+      if (*(longlong *)&param_1->field_0x8 == 0) {
+        uStack_78 = 0;
+      }
+      else {
+        LOCK();
+        piVar1 = (int *)(*(longlong *)&param_1->field_0x8 + 8);
+        *piVar1 = *piVar1 + 1;
+        UNLOCK();
+        uStack_78 = *(longlong *)&param_1->field_0x8;
+      }
+      local_80 = *(undefined8 *)param_1;
+      local_38 = operator_new(0x30);
+      *local_38 = &PTR__Copy_1814860d0;
+      local_38[1] = local_98.ptr_;
+      local_38[2] = local_98.flag_.ptr_;
+      local_98.flag_.ptr_ = (WeakPtrFlag *)0x0;
+      *(undefined4 *)(local_38 + 4) = (undefined4)local_80;
+      *(undefined4 *)((longlong)local_38 + 0x24) = local_80._4_4_;
+      *(undefined4 *)(local_38 + 5) = (undefined4)uStack_78;
+      *(undefined4 *)((longlong)local_38 + 0x2c) = uStack_78._4_4_;
+      local_80 = 0;
+      uStack_78 = 0;
+      (*__guard_dispatch_icall_fptr)(lVar3,local_70);
+      if (local_38 != (undefined8 *)0x0) {
+        (*__guard_dispatch_icall_fptr)(local_38,local_38 != local_70);
+        local_38 = (undefined8 *)0x0;
+      }
+      lVar3 = uStack_78;
+      if (uStack_78 != 0) {
+        LOCK();
+        piVar1 = (int *)(uStack_78 + 8);
+        *piVar1 = *piVar1 + -1;
+        UNLOCK();
+        if (*piVar1 == 0) {
+          (*__guard_dispatch_icall_fptr)(uStack_78);
+          LOCK();
+          piVar1 = (int *)(lVar3 + 0xc);
+          *piVar1 = *piVar1 + -1;
+          UNLOCK();
+          if (*piVar1 == 0) {
+            (*__guard_dispatch_icall_fptr)(lVar3);
+          }
+        }
+      }
+      if (local_98.flag_.ptr_ != (WeakPtrFlag *)0x0) {
+        fml::RefCountedThreadSafe<fml::internal::WeakPtrFlag>::Release
+                  ((RefCountedThreadSafe<fml::internal::WeakPtrFlag> *)local_98.flag_.ptr_);
+      }
+      if (local_a0 != 0) {
+        LOCK();
+        piVar1 = (int *)(local_a0 + 8);
+        *piVar1 = *piVar1 + -1;
+        UNLOCK();
+        if (*piVar1 == 0) {
+          (*__guard_dispatch_icall_fptr)(local_a0,1);
+        }
+      }
+      std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+                ((_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows> *)param_1);
+      if (__security_cookie == (local_30 ^ (ulonglong)auStack_c8)) {
+        return;
+      }
+      pcVar2 = (code *)swi(3);
+      (*pcVar2)(local_30 ^ (ulonglong)auStack_c8);
+      return;
+    }
+    
+
+FUNC: name=flutter::TextureRegistrarImpl::RegisterTexture
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x180c0163c
+  ENTRY_RVA: 0xc0163c
+  SIZE_BYTES: 207
+  CALLERS: (none)
+  CALLEES: FlutterDesktopTextureRegistrarRegisterExternalTexture; __security_check_cookie; std::endl<char,std::char_traits<char>_>; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    long64 __thiscall
+    flutter::TextureRegistrarImpl::RegisterTexture
+              (TextureRegistrarImpl *this,
+              variant<flutter::PixelBufferTexture,flutter::GpuSurfaceTexture> *param_1)
+    
+    {
+      code *pcVar1;
+      basic_ostream<char,std::char_traits<char>_> *pbVar2;
+      long64 lVar3;
+      undefined1 auStack_58 [32];
+      undefined1 local_38 [8];
+      undefined1 auStack_30 [40];
+      ulonglong local_8;
+      
+      local_8 = __security_cookie ^ (ulonglong)auStack_58;
+      auStack_30._8_8_ = (variant<flutter::PixelBufferTexture,flutter::GpuSurfaceTexture> *)0x0;
+      auStack_30._16_8_ =
+           (_func___cdecl_FlutterDesktopGpuSurfaceDescriptor_ptr_ulong64_ulong64_void_ptr *)0x0;
+      local_38 = (undefined1  [8])0x0;
+      auStack_30._0_8_ = (_func___cdecl_FlutterDesktopPixelBuffer_ptr_ulong64_ulong64_void_ptr *)0x0;
+      auStack_30._24_8_ = (variant<flutter::PixelBufferTexture,flutter::GpuSurfaceTexture> *)0x0;
+      if (param_1 == (variant<flutter::PixelBufferTexture,flutter::GpuSurfaceTexture> *)0x0) {
+    LAB_180c0168a:
+        pbVar2 = std::operator<<<std::char_traits<char>_>
+                           (&std::cerr,"Attempting to register unknown texture variant.");
+        std::endl<char,std::char_traits<char>_>(pbVar2);
+        lVar3 = -1;
+      }
+      else {
+        if (param_1->field_0x48 == '\x01') {
+          local_38 = (undefined1  [8])0x1;
+          auStack_30._0_8_ = &DAT_00000020;
+          auStack_30._12_4_ = 0;
+          auStack_30._8_4_ = *(uint *)param_1;
+          auStack_30._16_8_ = RegisterTexture::<lambda_3>::__invoke;
+          auStack_30._24_8_ = param_1;
+        }
+        else {
+          if (param_1->field_0x48 != '\0') goto LAB_180c0168a;
+          auStack_30._0_8_ = RegisterTexture::<lambda_2>::__invoke;
+          auStack_30._8_8_ = param_1;
+        }
+        lVar3 = FlutterDesktopTextureRegistrarRegisterExternalTexture
+                          (this->texture_registrar_ref_,(FlutterDesktopTextureInfo *)local_38);
+      }
+      if (__security_cookie == (local_8 ^ (ulonglong)auStack_58)) {
+        return lVar3;
+      }
+      pcVar1 = (code *)swi(3);
+      lVar3 = (*pcVar1)(local_8 ^ (ulonglong)auStack_58);
+      return lVar3;
+    }
+    
+
+FUNC: name=flutter::TextureRegistrarImpl::RegisterTexture::<lambda_2>::__invoke
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x180c01ad4
+  ENTRY_RVA: 0xc01ad4
+  SIZE_BYTES: 17
+  CALLERS: (none)
+  CALLEES: std::_Func_class<const_FlutterDesktopPixelBuffer_*,unsigned_long_long,unsigned_long_long>::operator()
+  PSEUDOCODE:
+    
+    FlutterDesktopPixelBuffer * __cdecl
+    flutter::TextureRegistrarImpl::RegisterTexture::<lambda_2>::__invoke
+              (ulong64 param_1,ulong64 param_2,void *param_3)
+    
+    {
+      FlutterDesktopPixelBuffer *pFVar1;
+      
+      pFVar1 = std::_Func_class<const_FlutterDesktopPixelBuffer_*,unsigned_long_long,unsigned_long_long>
+               ::operator()(param_3,param_1,param_2);
+      return pFVar1;
+    }
+    
+
+FUNC: name=flutter::TextureRegistrarImpl::RegisterTexture::<lambda_3>::__invoke
+  MATCHED_FRAGMENT: RegisterTexture
+  ENTRY_VA: 0x180c01b50
+  ENTRY_RVA: 0xc01b50
+  SIZE_BYTES: 18
+  CALLERS: (none)
+  CALLEES: std::_Func_class<const_FlutterDesktopPixelBuffer_*,unsigned_long_long,unsigned_long_long>::operator()
+  PSEUDOCODE:
+    
+    FlutterDesktopGpuSurfaceDescriptor * __cdecl
+    flutter::TextureRegistrarImpl::RegisterTexture::<lambda_3>::__invoke
+              (ulong64 param_1,ulong64 param_2,void *param_3)
+    
+    {
+      FlutterDesktopGpuSurfaceDescriptor *pFVar1;
+      
+      pFVar1 = (FlutterDesktopGpuSurfaceDescriptor *)
+               std::_Func_class<const_FlutterDesktopPixelBuffer_*,unsigned_long_long,unsigned_long_long>
+               ::operator()((void *)((longlong)param_3 + 8),param_1,param_2);
+      return pFVar1;
+    }
+    
+
+
+=== TARGET: EmplaceTexture ===
+FOUND: 1
+FUNC: name=flutter::FlutterWindowsTextureRegistrar::EmplaceTexture
+  MATCHED_FRAGMENT: EmplaceTexture
+  ENTRY_VA: 0x18001b4d2
+  ENTRY_RVA: 0x1b4d2
+  SIZE_BYTES: 284
+  CALLERS: flutter::FlutterWindowsTextureRegistrar::RegisterTexture
+  CALLEES: _Mtx_lock; _Mtx_unlock; __security_check_cookie; _guard_dispatch_icall_nop; flutter::TaskRunner::RunNowOrPostTask; std::_Hash<std::_Umap_traits<long_long,std::unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>,std::_Uhash_compare<long_long,std::hash<long_long>,std::equal_to<long_long>_>,std::allocator<std::pair<const_long_long,std::unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>_>_>,0>_>::_Try_emplace<const_long_long_&>; std::_Throw_C_error
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    long64 __thiscall
+    flutter::FlutterWindowsTextureRegistrar::EmplaceTexture
+              (FlutterWindowsTextureRegistrar *this,
+              unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>
+              param_1)
+    
+    {
+      ExternalTexture *pEVar1;
+      ExternalTexture *pEVar2;
+      code *pcVar3;
+      int iVar4;
+      unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_> *puVar5;
+      long64 lVar6;
+      undefined1 auStack_a8 [40];
+      long64 local_80;
+      pair<std::_List_node<std::pair<__int64_const_,std::unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>_>,void_*>_*,bool>
+      local_78;
+      undefined **local_68;
+      FlutterWindowsEngine *local_60;
+      long64 local_58;
+      function<void___cdecl(void)> *local_30;
+      ulonglong local_28;
+      
+      local_28 = __security_cookie ^ (ulonglong)auStack_a8;
+      local_80 = *(long64 *)param_1._Mypair._Myval2;
+      iVar4 = _Mtx_lock((_Mtx_internal_imp_t *)&this->map_mutex_);
+      if (iVar4 != 0) {
+                        /* WARNING: Subroutine does not return */
+        std::_Throw_C_error(iVar4);
+      }
+      std::
+      _Hash<std::_Umap_traits<long_long,std::unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>,std::_Uhash_compare<long_long,std::hash<long_long>,std::equal_to<long_long>_>,std::allocator<std::pair<const_long_long,std::unique_ptr<flutter::ExternalTexture,std::default_delete<flutter::ExternalTexture>_>_>_>,0>_>
+      ::_Try_emplace<const_long_long_&>(&this->textures_,&local_78,&local_80);
+      puVar5 = &((local_78.first)->_Myval).second;
+      if ((_Compressed_pair<std::default_delete<flutter::ExternalTexture>,flutter::ExternalTexture_*,1>)
+          puVar5 != param_1._Mypair._Myval2) {
+        pEVar1 = *(ExternalTexture **)param_1._Mypair._Myval2;
+        *(undefined8 *)param_1._Mypair._Myval2 = 0;
+        pEVar2 = (puVar5->_Mypair)._Myval2;
+        (puVar5->_Mypair)._Myval2 = pEVar1;
+        if (pEVar2 != (ExternalTexture *)0x0) {
+          (*__guard_dispatch_icall_fptr)(pEVar2,1);
+        }
+      }
+      _Mtx_unlock((_Mtx_internal_imp_t *)&this->map_mutex_);
+      local_60 = this->engine_;
+      local_30 = (function<void___cdecl(void)> *)&local_68;
+      local_68 = &PTR__Copy_1812c2c80;
+      local_58 = local_80;
+      TaskRunner::RunNowOrPostTask((local_60->task_runner_)._Mypair._Myval2,local_30);
+      lVar6 = local_80;
+      if (*(longlong *)param_1._Mypair._Myval2 != 0) {
+        (*__guard_dispatch_icall_fptr)(*(longlong *)param_1._Mypair._Myval2,1);
+      }
+      if (__security_cookie == (local_28 ^ (ulonglong)auStack_a8)) {
+        return lVar6;
+      }
+      pcVar3 = (code *)swi(3);
+      lVar6 = (*pcVar3)(local_28 ^ (ulonglong)auStack_a8);
+      return lVar6;
+    }
+    
+
+
+=== TARGET: ExternalTextureD3d::CreateOrUpdateTexture ===
+FOUND: 1
+FUNC: name=flutter::ExternalTextureD3d::CreateOrUpdateTexture
+  MATCHED_FRAGMENT: ExternalTextureD3d::CreateOrUpdateTexture
+  ENTRY_VA: 0x18000eafe
+  ENTRY_RVA: 0xeafe
+  SIZE_BYTES: 675
+  CALLERS: flutter::ExternalTextureD3d::PopulateTexture
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; eglBindTexImage; flutter::ExternalTextureD3d::ReleaseImage; flutter::egl::Manager::CreateSurfaceFromHandle; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+    
+    bool __thiscall
+    flutter::ExternalTextureD3d::CreateOrUpdateTexture
+              (ExternalTextureD3d *this,FlutterDesktopGpuSurfaceDescriptor *param_1)
+    
+    {
+      code *pcVar1;
+      bool bVar2;
+      undefined1 uVar3;
+      uint uVar4;
+      void *pvVar5;
+      ulonglong uVar6;
+      void *pvVar7;
+      undefined1 auStackY_188 [32];
+      LogMessage local_158;
+      int local_58;
+      undefined8 local_54;
+      undefined4 local_4c;
+      undefined8 local_48;
+      undefined8 uStack_40;
+      undefined4 local_38;
+      ulonglong local_28;
+      
+      local_28 = __security_cookie ^ (ulonglong)auStackY_188;
+      if (((param_1 == (FlutterDesktopGpuSurfaceDescriptor *)0x0) || (param_1->struct_size < 0x10)) ||
+         (param_1->handle == (void *)0x0)) {
+        ReleaseImage(this);
+        bVar2 = false;
+        goto LAB_18000eb62;
+      }
+      if (this->gl_texture_ == 0) {
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,1,&this->gl_texture_);
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1,this->gl_texture_);
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1,0x2802,0x812f);
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1,0x2803,0x812f);
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1,0x2801,0x2601);
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1,0x2800,0x2601);
+      }
+      else {
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,0xde1);
+      }
+      uVar6 = param_1->struct_size;
+      if (uVar6 < 0x10) {
+        pvVar7 = (void *)0x0;
+      }
+      else {
+        pvVar7 = param_1->handle;
+      }
+      if (pvVar7 != this->last_surface_handle_) {
+        ReleaseImage(this);
+        local_58 = 0x3057;
+        if (param_1->struct_size < 0x18) {
+          local_54 = 0x305600000000;
+          local_4c = 0;
+        }
+        else {
+          local_54 = CONCAT44(0x3056,(int)param_1->width);
+          local_4c = 0;
+          if (0x1f < param_1->struct_size) {
+            local_4c = (undefined4)param_1->height;
+          }
+        }
+        local_48 = ___xmm_0000305e000030800000305f00003081;
+        uStack_40 = _UNK_1812c0758;
+        local_38 = 0x3038;
+        uVar4 = 0x3200;
+        if (this->type_ == kFlutterDesktopGpuSurfaceTypeD3d11Texture2D) {
+          uVar4 = 0x33a3;
+        }
+        pvVar5 = egl::Manager::CreateSurfaceFromHandle(this->egl_manager_,uVar4,pvVar7,&local_58);
+        this->egl_surface_ = pvVar5;
+        if (pvVar5 == (void *)0x0) {
+    LAB_18000ed0c:
+          bVar2 = fml::ShouldCreateLogMessage(2);
+          if (bVar2) {
+            fml::LogMessage::LogMessage
+                      (&local_158,2,"../../../flutter/shell/platform/windows/external_texture_d3d.cc",
+                       0x6b,(char *)0x0);
+            std::operator<<<std::char_traits<char>_>
+                      ((basic_ostream<char,std::char_traits<char>_> *)&local_158,
+                       "Binding D3D surface failed.");
+            fml::LogMessage::~LogMessage(&local_158);
+          }
+        }
+        else {
+          uVar4 = eglBindTexImage(this->egl_manager_->display_,pvVar5,0x3084);
+          if (uVar4 == 0) goto LAB_18000ed0c;
+        }
+        this->last_surface_handle_ = pvVar7;
+        uVar6 = param_1->struct_size;
+      }
+      if ((0x3f < uVar6) && (param_1->release_callback != (_func___cdecl_void_void_ptr *)0x0)) {
+        if (uVar6 < 0x48) {
+          pvVar7 = (void *)0x0;
+        }
+        else {
+          pvVar7 = param_1->release_context;
+        }
+        (*__guard_dispatch_icall_fptr)(pvVar7);
+      }
+      bVar2 = this->egl_surface_ != (void *)0x0;
+    LAB_18000eb62:
+      if (__security_cookie == (local_28 ^ (ulonglong)auStackY_188)) {
+        return bVar2;
+      }
+      pcVar1 = (code *)swi(3);
+      uVar3 = (*pcVar1)(local_28 ^ (ulonglong)auStackY_188);
+      return (bool)uVar3;
+    }
+    
+
+
+=== TARGET: ExternalTextureD3d::PopulateTexture ===
+FOUND: 3
+FUNC: name=flutter::ExternalTextureD3d::PopulateTexture
+  MATCHED_FRAGMENT: ExternalTextureD3d::PopulateTexture
+  ENTRY_VA: 0x18000ea82
+  ENTRY_RVA: 0xea82
+  SIZE_BYTES: 124
+  CALLERS: (none)
+  CALLEES: _guard_dispatch_icall_nop; flutter::ExternalTextureD3d::CreateOrUpdateTexture
+  PSEUDOCODE:
+    
+    bool __thiscall
+    flutter::ExternalTextureD3d::PopulateTexture
+              (ExternalTextureD3d *this,ulong64 param_1,ulong64 param_2,FlutterOpenGLTexture *param_3)
+    
+    {
+      bool bVar1;
+      FlutterDesktopGpuSurfaceDescriptor *pFVar2;
+      ulong64 uVar3;
+      
+      pFVar2 = (FlutterDesktopGpuSurfaceDescriptor *)
+               (*__guard_dispatch_icall_fptr)(param_1,param_2,this->user_data_);
+      bVar1 = CreateOrUpdateTexture(this,pFVar2);
+      if (bVar1) {
+        param_3->target = 0xde1;
+        param_3->name = this->gl_texture_;
+        param_3->format = 0x8058;
+        param_3->user_data = (void *)0x0;
+        param_3->destruction_callback = (_func___cdecl_void_void_ptr *)0x0;
+        if (pFVar2->struct_size < 0x28) {
+          uVar3 = 0;
+        }
+        else {
+          uVar3 = pFVar2->visible_width;
+        }
+        param_3->width = uVar3;
+        if (pFVar2->struct_size < 0x30) {
+          uVar3 = 0;
+        }
+        else {
+          uVar3 = pFVar2->visible_height;
+        }
+        param_3->height = uVar3;
+      }
+      return bVar1;
+    }
+    
+
+FUNC: name=flutter::ExternalTexturePixelBuffer::PopulateTexture
+  MATCHED_FRAGMENT: PopulateTexture
+  ENTRY_VA: 0x18000ee60
+  ENTRY_RVA: 0xee60
+  SIZE_BYTES: 143
+  CALLERS: (none)
+  CALLEES: __security_check_cookie; flutter::ExternalTexturePixelBuffer::CopyPixelBuffer
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    bool __thiscall
+    flutter::ExternalTexturePixelBuffer::PopulateTexture
+              (ExternalTexturePixelBuffer *this,ulong64 param_1,ulong64 param_2,
+              FlutterOpenGLTexture *param_3)
+    
+    {
+      code *pcVar1;
+      bool bVar2;
+      undefined1 uVar3;
+      undefined1 auStack_48 [32];
+      ulong64 local_28;
+      ulong64 local_20;
+      ulonglong local_18;
+      
+      local_18 = __security_cookie ^ (ulonglong)auStack_48;
+      local_28 = param_1;
+      local_20 = param_2;
+      bVar2 = CopyPixelBuffer(this,&local_28,&local_20);
+      if (bVar2) {
+        param_3->target = 0xde1;
+        param_3->name = this->gl_texture_;
+        param_3->format = 0x8058;
+        param_3->user_data = (void *)0x0;
+        param_3->destruction_callback = (_func___cdecl_void_void_ptr *)0x0;
+        param_3->width = local_28;
+        param_3->height = local_20;
+      }
+      if (__security_cookie == (local_18 ^ (ulonglong)auStack_48)) {
+        return bVar2;
+      }
+      pcVar1 = (code *)swi(3);
+      uVar3 = (*pcVar1)(local_18 ^ (ulonglong)auStack_48);
+      return (bool)uVar3;
+    }
+    
+
+FUNC: name=flutter::FlutterWindowsTextureRegistrar::PopulateTexture
+  MATCHED_FRAGMENT: PopulateTexture
+  ENTRY_VA: 0x18001b872
+  ENTRY_RVA: 0x1b872
+  SIZE_BYTES: 197
+  CALLERS: (none)
+  CALLEES: _Mtx_lock; _Mtx_unlock; __security_check_cookie; _guard_dispatch_icall_nop; std::_Hash<std::_Umap_traits<long_long,flutter::FlutterWindowsView_*,std::_Uhash_compare<long_long,std::hash<long_long>,std::equal_to<long_long>_>,std::allocator<std::pair<const_long_long,flutter::FlutterWindowsView_*>_>,0>_>::find<void>; std::_Throw_C_error
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    
+    bool __thiscall
+    flutter::FlutterWindowsTextureRegistrar::PopulateTexture
+              (FlutterWindowsTextureRegistrar *this,long64 param_1,ulong64 param_2,ulong64 param_3,
+              FlutterOpenGLTexture *param_4)
+    
+    {
+      mutex *pmVar1;
+      undefined8 uVar2;
+      code *pcVar3;
+      undefined1 uVar4;
+      int iVar5;
+      undefined1 auStack_68 [40];
+      longlong local_40;
+      long64 local_38;
+      ulonglong local_30;
+      
+      local_30 = __security_cookie ^ (ulonglong)auStack_68;
+      pmVar1 = &this->map_mutex_;
+      local_38 = param_1;
+      iVar5 = _Mtx_lock((_Mtx_internal_imp_t *)pmVar1);
+      if (iVar5 != 0) {
+                        /* WARNING: Subroutine does not return */
+        std::_Throw_C_error(iVar5);
+      }
+      std::
+      _Hash<std::_Umap_traits<long_long,flutter::FlutterWindowsView_*,std::_Uhash_compare<long_long,std::hash<long_long>,std::equal_to<long_long>_>,std::allocator<std::pair<const_long_long,flutter::FlutterWindowsView_*>_>,0>_>
+      ::find<void>(&this->textures_,&local_40);
+      if (local_40 == *(longlong *)&(this->textures_).field_0x8) {
+        _Mtx_unlock((_Mtx_internal_imp_t *)pmVar1);
+        uVar4 = 0;
+      }
+      else {
+        uVar2 = *(undefined8 *)(local_40 + 0x18);
+        _Mtx_unlock((_Mtx_internal_imp_t *)pmVar1);
+        uVar4 = (*__guard_dispatch_icall_fptr)(uVar2,param_2,param_3,param_4);
+      }
+      if (__security_cookie == (local_30 ^ (ulonglong)auStack_68)) {
+        return (bool)uVar4;
+      }
+      pcVar3 = (code *)swi(3);
+      uVar4 = (*pcVar3)(local_30 ^ (ulonglong)auStack_68);
+      return (bool)uVar4;
+    }
+    
+
+
+=== TARGET: ExternalTextureD3d::ExternalTextureD3d ===
+FOUND: 1
+FUNC: name=flutter::ExternalTextureD3d::ExternalTextureD3d
+  MATCHED_FRAGMENT: ExternalTextureD3d::ExternalTextureD3d
+  ENTRY_VA: 0x18000e998
+  ENTRY_RVA: 0xe998
+  SIZE_BYTES: 93
+  CALLERS: flutter::FlutterWindowsTextureRegistrar::RegisterTexture
+  CALLEES: std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+  PSEUDOCODE:
+    
+    ExternalTextureD3d * __thiscall
+    flutter::ExternalTextureD3d::ExternalTextureD3d
+              (ExternalTextureD3d *this,FlutterDesktopGpuSurfaceType param_1,
+              _func___cdecl_FlutterDesktopGpuSurfaceDescriptor_ptr_ulong64_ulong64_void_ptr *param_2,
+              void *param_3,Manager *param_4,shared_ptr<flutter::egl::ProcTable> *param_5)
+    
+    {
+      this->_padding_ = (longlong)&_vftable_;
+      this->type_ = param_1;
+      this->texture_callback_ = param_2;
+      this->user_data_ = param_3;
+      this->egl_manager_ = param_4;
+      *(undefined8 *)&this->gl_ = 0;
+      *(undefined8 *)&(this->gl_).field_0x8 = 0;
+      *(undefined8 *)&this->gl_ = *(undefined8 *)param_5;
+      *(undefined8 *)&(this->gl_).field_0x8 = *(undefined8 *)&param_5->field_0x8;
+      *(undefined8 *)param_5 = 0;
+      *(undefined8 *)&param_5->field_0x8 = 0;
+      this->gl_texture_ = 0;
+      this->egl_surface_ = (void *)0x0;
+      this->last_surface_handle_ = (void *)0x0;
+      std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+                ((_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows> *)param_5);
+      return this;
+    }
+    
+
+
+=== TARGET: ExternalTextureD3d::ReleaseImage ===
+FOUND: 1
+FUNC: name=flutter::ExternalTextureD3d::ReleaseImage
+  MATCHED_FRAGMENT: ExternalTextureD3d::ReleaseImage
+  ENTRY_VA: 0x18000ea3e
+  ENTRY_RVA: 0xea3e
+  SIZE_BYTES: 67
+  CALLERS: flutter::ExternalTextureD3d::CreateOrUpdateTexture; flutter::ExternalTextureD3d::~ExternalTextureD3d
+  CALLEES: eglDestroySurface; eglReleaseTexImage
+  PSEUDOCODE:
+    
+    void __thiscall flutter::ExternalTextureD3d::ReleaseImage(ExternalTextureD3d *this)
+    
+    {
+      if (this->egl_surface_ != (void *)0x0) {
+        eglReleaseTexImage(this->egl_manager_->display_,this->egl_surface_,0x3084);
+        eglDestroySurface(this->egl_manager_->display_,this->egl_surface_);
+        this->egl_surface_ = (void *)0x0;
+      }
+      return;
+    }
+    
+
+
+=== TARGET: ExternalTextureD3d::~ExternalTextureD3d ===
+FOUND: 2
+FUNC: name=flutter::ExternalTextureD3d::~ExternalTextureD3d
+  MATCHED_FRAGMENT: ExternalTextureD3d::~ExternalTextureD3d
+  ENTRY_VA: 0x18000e9f6
+  ENTRY_RVA: 0xe9f6
+  SIZE_BYTES: 72
+  CALLERS: flutter::ExternalTextureD3d::~ExternalTextureD3d
+  CALLEES: _guard_dispatch_icall_nop; flutter::ExternalTextureD3d::ReleaseImage; std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+  PSEUDOCODE:
+    
+    void __thiscall flutter::ExternalTextureD3d::~ExternalTextureD3d(ExternalTextureD3d *this)
+    
+    {
+      this->_padding_ = (longlong)&_vftable_;
+      ReleaseImage(this);
+      if (this->gl_texture_ != 0) {
+        (*__guard_dispatch_icall_fptr)(*(undefined8 *)&this->gl_,1,&this->gl_texture_);
+      }
+      std::_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows>::_Decref
+                ((_Ptr_base<flutter::FlutterPlatformNodeDelegateWindows> *)&this->gl_);
+      return;
+    }
+    
+
+FUNC: name=flutter::ExternalTextureD3d::~ExternalTextureD3d
+  MATCHED_FRAGMENT: ExternalTextureD3d::~ExternalTextureD3d
+  ENTRY_VA: 0x18000eda2
+  ENTRY_RVA: 0xeda2
+  SIZE_BYTES: 45
+  CALLERS: (none)
+  CALLEES: flutter::ExternalTextureD3d::~ExternalTextureD3d; operator_delete
+  PSEUDOCODE:
+    
+    void __thiscall flutter::ExternalTextureD3d::~ExternalTextureD3d(ExternalTextureD3d *this)
+    
+    {
+      uint in_EDX;
+      
+      ~ExternalTextureD3d(this);
+      if ((in_EDX & 1) != 0) {
+        operator_delete(this,0x50);
+      }
+      return;
+    }
+    
+
+
+=== TARGET: egl::Manager::CreateSurfaceFromHandle ===
+FOUND: 1
+FUNC: name=flutter::egl::Manager::CreateSurfaceFromHandle
+  MATCHED_FRAGMENT: Manager::CreateSurfaceFromHandle
+  ENTRY_VA: 0x18000df7a
+  ENTRY_RVA: 0xdf7a
+  SIZE_BYTES: 34
+  CALLERS: flutter::ExternalTextureD3d::CreateOrUpdateTexture
+  CALLEES: eglCreatePbufferFromClientBuffer
+  PSEUDOCODE:
+    
+    void * __thiscall
+    flutter::egl::Manager::CreateSurfaceFromHandle
+              (Manager *this,uint param_1,void *param_2,int *param_3)
+    
+    {
+      void *pvVar1;
+      
+      pvVar1 = eglCreatePbufferFromClientBuffer(this->display_,param_1,param_2,this->config_,param_3);
+      return pvVar1;
+    }
+    
+
+
+=== TARGET: EmbedderExternalTextureGL::ResolveTexture ===
+FOUND: 3
+FUNC: name=flutter::EmbedderExternalTextureGL::ResolveTexture
+  MATCHED_FRAGMENT: EmbedderExternalTextureGL::ResolveTexture
+  ENTRY_VA: 0x1800eb436
+  ENTRY_RVA: 0xeb436
+  SIZE_BYTES: 77
+  CALLERS: flutter::EmbedderExternalTextureGL::Paint
+  CALLEES: flutter::EmbedderExternalTextureGL::ResolveTextureImpeller; flutter::EmbedderExternalTextureGL::ResolveTextureSkia
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "BlendEquationSupport": Some values do not have unique names */
+    /* WARNING: Enum "GrBackendApi": Some values do not have unique names */
+    /* WARNING: Enum "GrAccessPattern": Some values do not have unique names */
+    /* WARNING: Enum "SkColorType": Some values do not have unique names */
+    
+    sk_sp<flutter::DlImage> __thiscall
+    flutter::EmbedderExternalTextureGL::ResolveTexture
+              (EmbedderExternalTextureGL *this,long64 param_1,GrDirectContext *param_2,
+              AiksContext *param_3,SkISize *param_4)
+    
+    {
+      if (param_4 == (SkISize *)0x0) {
+        if (param_3 == (AiksContext *)0x0) {
+          *(undefined8 *)param_1 = 0;
+        }
+        else {
+          ResolveTextureSkia(this,param_1,param_2,(SkISize *)param_3);
+        }
+      }
+      else {
+        ResolveTextureImpeller(this,param_1,(AiksContext *)param_2,param_4);
+      }
+      return (sk_sp<flutter::DlImage>)(DlImage *)param_1;
+    }
+    
+
+FUNC: name=flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+  MATCHED_FRAGMENT: EmbedderExternalTextureGL::ResolveTexture
+  ENTRY_VA: 0x1800eb484
+  ENTRY_RVA: 0xeb484
+  SIZE_BYTES: 1371
+  CALLERS: flutter::EmbedderExternalTextureGL::ResolveTexture
+  CALLEES: X509_get_notBefore; __security_check_cookie; _guard_dispatch_icall_nop; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; impeller::AiksContext::GetContext; impeller::DlImageImpeller::Make; impeller::ReactorGLES::CreateHandle; impeller::ReactorGLES::RegisterCleanupCallback; impeller::TextureGLES::WrapTexture; operator_delete; std::_Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>::operator(); std::_Func_class<void,const_unsigned_char_*,unsigned_long_long,std::function<void_(const_unsigned_char_*,_unsigned_long_long)>_>::_Reset_move; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "Role": Some values do not have unique names */
+    /* WARNING: Enum "StringAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntAttribute": Some values do not have unique names */
+    /* WARNING: Enum "FloatAttribute": Some values do not have unique names */
+    /* WARNING: Enum "BoolAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "StringListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "AXTreeIDType": Some values do not have unique names */
+    /* WARNING: Enum "TextAffinity": Some values do not have unique names */
+    /* WARNING: Enum "Command": Some values do not have unique names */
+    /* WARNING: Enum "TextBoundary": Some values do not have unique names */
+    /* WARNING: Enum "MoveDirection": Some values do not have unique names */
+    
+    sk_sp<flutter::DlImage> __thiscall
+    flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+              (EmbedderExternalTextureGL *this,long64 param_1,AiksContext *param_2,SkISize *param_3)
+    
+    {
+      void **ppvVar1;
+      int *piVar2;
+      longlong lVar3;
+      code *pcVar4;
+      long64 lVar5;
+      long64 lVar6;
+      x509_st *pxVar7;
+      bool bVar8;
+      asn1_string_st *paVar9;
+      sk_sp<flutter::DlImage> sVar10;
+      char *pcVar11;
+      void **ppvVar12;
+      int *in_stack_00000028;
+      undefined1 auStackY_2e8 [32];
+      longlong local_2b8;
+      longlong lStack_2b0;
+      undefined1 local_2a8 [24];
+      TextureDescriptor local_290;
+      HandleGLES local_258;
+      shared_ptr<impeller::TextureGLES> local_220;
+      HandleGLES local_210;
+      void *local_1d8;
+      longlong local_1d0 [7];
+      longlong *local_198;
+      x509_st *local_190;
+      void **local_188;
+      longlong local_180;
+      LogMessage *local_158;
+      undefined1 local_90 [56];
+      undefined1 *local_58;
+      ulonglong local_50;
+      
+      local_50 = __security_cookie ^ (ulonglong)auStackY_2e8;
+      std::
+      _Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>
+      ::operator()(this->external_texture_callback_,(long64)&local_1d8,(ulong64)param_2,
+                   (longlong)*in_stack_00000028);
+      if (local_1d8 == (void *)0x0) {
+        *(undefined8 *)param_1 = 0;
+        goto LAB_1800eb99a;
+      }
+      local_190 = (x509_st *)&PTR__Copy_18132d230;
+      local_58 = (undefined1 *)0x0;
+      local_188 = &local_1d8;
+      local_158 = (LogMessage *)&local_190;
+      std::
+      _Func_class<void,const_unsigned_char_*,unsigned_long_long,std::function<void_(const_unsigned_char_*,_unsigned_long_long)>_>
+      ::_Reset_move(local_90,(_Func_class<void,unsigned_char_const_*,unsigned___int64,std::function<void___cdecl(unsigned_char_const_*,unsigned___int64)>_>
+                              *)&local_190);
+      if (local_158 != (LogMessage *)0x0) {
+        (*__guard_dispatch_icall_fptr)(local_158,local_158 != (LogMessage *)&local_190);
+      }
+      if (*(int *)((longlong)local_1d8 + 8) == 0x8058) {
+        lVar5 = *(long64 *)((longlong)local_1d8 + 0x20);
+        lVar6 = *(long64 *)((longlong)local_1d8 + 0x28);
+        impeller::AiksContext::GetContext
+                  ((AiksContext *)param_3,(shared_ptr<impeller::Context> *)&local_190);
+        ppvVar12 = local_188;
+        pxVar7 = local_190;
+        if (local_188 != (void **)0x0) {
+          LOCK();
+          ppvVar1 = local_188 + 1;
+          *(int *)ppvVar1 = *(int *)ppvVar1 + -1;
+          UNLOCK();
+          if (*(int *)ppvVar1 == 0) {
+            (*__guard_dispatch_icall_fptr)(ppvVar12);
+            LOCK();
+            piVar2 = (int *)((longlong)ppvVar12 + 0xc);
+            *piVar2 = *piVar2 + -1;
+            UNLOCK();
+            if (*piVar2 == 0) {
+              (*__guard_dispatch_icall_fptr)(ppvVar12);
+            }
+          }
+        }
+        paVar9 = X509_get_notBefore(pxVar7);
+        impeller::ReactorGLES::CreateHandle
+                  (*(ReactorGLES **)paVar9,&local_210,kTexture,*(uint *)((longlong)local_1d8 + 4));
+        local_258.type_ = local_210.type_;
+        local_258._padding_ = local_210._padding_;
+        local_258.name_._0_8_ = local_210.name_._0_8_;
+        local_258.name_._8_8_ = local_210.name_._8_8_;
+        local_258.hash_ = local_210.hash_;
+        local_258.untracked_id_._0_8_ = local_210.untracked_id_._0_8_;
+        local_258.untracked_id_._8_8_ = local_210.untracked_id_._8_8_;
+        local_258.owner_thread_ = local_210.owner_thread_;
+        local_290.storage_mode = kDeviceTransient;
+        local_290.type = kTexture2D;
+        local_290.format = kR8G8B8A8UNormInt;
+        local_290.mip_count = 1;
+        local_290.usage.mask_ = 1;
+        local_290.sample_count = kCount1;
+        local_290.compression_type = kLossless;
+        local_290.size.width = lVar5;
+        local_290.size.height = lVar6;
+        paVar9 = X509_get_notBefore(pxVar7);
+        if (paVar9->data == (uchar *)0x0) {
+          local_2a8._8_8_ = (uchar *)0x0;
+        }
+        else {
+          LOCK();
+          piVar2 = (int *)(paVar9->data + 8);
+          *piVar2 = *piVar2 + 1;
+          UNLOCK();
+          local_2a8._8_8_ = paVar9->data;
+        }
+        local_2a8._0_4_ = paVar9->length;
+        local_2a8._4_4_ = paVar9->type;
+        impeller::TextureGLES::WrapTexture
+                  (&local_220,(shared_ptr<impeller::ReactorGLES> *)local_2a8,&local_290,&local_258);
+        if (local_220._0_8_ == 0) {
+          bVar8 = fml::ShouldCreateLogMessage(2);
+          if (bVar8) {
+            fml::LogMessage::LogMessage
+                      ((LogMessage *)&local_190,2,
+                       "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0xaa,
+                       (char *)0x0);
+            pcVar11 = "Could not create external texture";
+    LAB_1800eb8c6:
+            std::operator<<<std::char_traits<char>_>
+                      ((basic_ostream<char,std::char_traits<char>_> *)&local_190,pcVar11);
+            fml::LogMessage::~LogMessage((LogMessage *)&local_190);
+          }
+    LAB_1800eb8d6:
+          *(undefined8 *)param_1 = 0;
+        }
+        else {
+          lVar3 = *(longlong *)((longlong)local_1d8 + 0x10);
+          ppvVar12 = (void **)ui::AXTreeObserver::OnNodeDataWillChange;
+          if (*(void ***)((longlong)local_1d8 + 0x18) != (void **)0x0) {
+            ppvVar12 = *(void ***)((longlong)local_1d8 + 0x18);
+          }
+          paVar9 = X509_get_notBefore(pxVar7);
+          local_190 = (x509_st *)&PTR__Copy_18132d260;
+          local_188 = ppvVar12;
+          local_180 = lVar3;
+          local_158 = (LogMessage *)&local_190;
+          bVar8 = impeller::ReactorGLES::RegisterCleanupCallback
+                            (*(ReactorGLES **)paVar9,&local_210,
+                             (function<void___cdecl(void)> *)&local_190);
+          if (local_158 != (LogMessage *)0x0) {
+            (*__guard_dispatch_icall_fptr)(local_158,local_158 != (LogMessage *)&local_190);
+          }
+          if (!bVar8) {
+            bVar8 = fml::ShouldCreateLogMessage(2);
+            if (bVar8) {
+              fml::LogMessage::LogMessage
+                        ((LogMessage *)&local_190,2,
+                         "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0xbb
+                         ,(char *)0x0);
+              pcVar11 = "Could not register destruction callback";
+              goto LAB_1800eb8c6;
+            }
+            goto LAB_1800eb8d6;
+          }
+          local_198 = (longlong *)0x0;
+          if (local_58 != (undefined1 *)0x0) {
+            local_198 = (longlong *)(*__guard_dispatch_icall_fptr)(local_58,local_1d0);
+            if (local_58 != (undefined1 *)0x0) {
+              (*__guard_dispatch_icall_fptr)(local_58,local_58 != local_90);
+              local_58 = (undefined1 *)0x0;
+            }
+            if (local_198 != (longlong *)0x0) {
+              (*__guard_dispatch_icall_fptr)
+                        (local_198,local_198 != local_1d0,*(undefined8 *)(*local_198 + 0x20));
+              local_198 = (longlong *)0x0;
+            }
+          }
+          if (local_220._8_8_ == 0) {
+            lStack_2b0 = 0;
+          }
+          else {
+            LOCK();
+            *(int *)(local_220._8_8_ + 8) = *(int *)(local_220._8_8_ + 8) + 1;
+            UNLOCK();
+            lStack_2b0 = local_220._8_8_;
+          }
+          local_2b8 = local_220._0_8_;
+          impeller::DlImageImpeller::Make
+                    ((shared_ptr<impeller::Texture> *)&local_190,(OwningContext)&local_2b8);
+          *(x509_st **)param_1 = local_190;
+        }
+        if (local_220._8_8_ != 0) {
+          LOCK();
+          piVar2 = (int *)(local_220._8_8_ + 8);
+          *piVar2 = *piVar2 + -1;
+          UNLOCK();
+          if (*piVar2 == 0) {
+            (*__guard_dispatch_icall_fptr)(local_220._8_8_);
+            LOCK();
+            piVar2 = (int *)(local_220._8_8_ + 0xc);
+            *piVar2 = *piVar2 + -1;
+            UNLOCK();
+            if (*piVar2 == 0) {
+              (*__guard_dispatch_icall_fptr)(local_220._8_8_);
+            }
+          }
+        }
+      }
+      else {
+        bVar8 = fml::ShouldCreateLogMessage(2);
+        if (bVar8) {
+          fml::LogMessage::LogMessage
+                    ((LogMessage *)&local_190,2,
+                     "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0x9a,
+                     (char *)0x0);
+          std::operator<<<std::char_traits<char>_>
+                    ((basic_ostream<char,std::char_traits<char>_> *)&local_190,
+                     "Only support GL_RGBA8 format now");
+          fml::LogMessage::~LogMessage((LogMessage *)&local_190);
+        }
+        *(undefined8 *)param_1 = 0;
+      }
+      if (local_58 != (undefined1 *)0x0) {
+        (*__guard_dispatch_icall_fptr)();
+        if (local_58 != (undefined1 *)0x0) {
+          (*__guard_dispatch_icall_fptr)(local_58,local_58 != local_90);
+        }
+      }
+      if (local_1d8 != (void *)0x0) {
+        operator_delete(local_1d8,0x30);
+      }
+    LAB_1800eb99a:
+      if (__security_cookie == (local_50 ^ (ulonglong)auStackY_2e8)) {
+        return (sk_sp<flutter::DlImage>)(DlImage *)param_1;
+      }
+      pcVar4 = (code *)swi(3);
+      sVar10.fPtr = (DlImage *)(*pcVar4)(local_50 ^ (ulonglong)auStackY_2e8);
+      return (sk_sp<flutter::DlImage>)sVar10.fPtr;
+    }
+    
+
+FUNC: name=flutter::EmbedderExternalTextureGL::ResolveTextureSkia
+  MATCHED_FRAGMENT: EmbedderExternalTextureGL::ResolveTexture
+  ENTRY_VA: 0x1800eb9e0
+  ENTRY_RVA: 0xeb9e0
+  SIZE_BYTES: 665
+  CALLERS: flutter::EmbedderExternalTextureGL::ResolveTexture
+  CALLEES: GrBackendTexture::~GrBackendTexture; GrBackendTextures::MakeGL; GrDirectContext::flush; GrDirectContext::resetContext; GrDirectContext::submit; SkImages::BorrowTextureFrom; __security_check_cookie; _guard_dispatch_icall_nop; flutter::DlImageSkia::Make; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; operator_delete; std::_Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>::operator(); std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "BlendEquationSupport": Some values do not have unique names */
+    /* WARNING: Enum "GrBackendApi": Some values do not have unique names */
+    /* WARNING: Enum "GrAccessPattern": Some values do not have unique names */
+    /* WARNING: Enum "SkColorType": Some values do not have unique names */
+    /* WARNING: Enum "SkAlphaType": Some values do not have unique names */
+    
+    sk_sp<flutter::DlImage> __thiscall
+    flutter::EmbedderExternalTextureGL::ResolveTextureSkia
+              (EmbedderExternalTextureGL *this,long64 param_1,GrDirectContext *param_2,SkISize *param_3)
+    
+    {
+      int *piVar1;
+      void *pvVar2;
+      code *pcVar3;
+      bool bVar4;
+      int iVar5;
+      sk_sp<flutter::DlImage> sVar6;
+      int iVar7;
+      int *in_stack_00000028;
+      undefined1 auStackY_2c8 [32];
+      basic_string_view<char,std::char_traits<char>_> *pbVar8;
+      sk_sp<SkColorSpace> sVar9;
+      undefined8 local_278;
+      undefined1 local_270 [16];
+      longlong lStack_260;
+      GrGLTextureInfo local_250;
+      undefined8 *local_240;
+      unique_ptr<SkArenaAlloc,std::default_delete<SkArenaAlloc>_> local_238;
+      unique_ptr<sktext::gpu::SubRunAllocator,std::default_delete<sktext::gpu::SubRunAllocator>_>
+      uStack_230;
+      unique_ptr<GrProxyProvider,std::default_delete<GrProxyProvider>_> local_228;
+      unique_ptr<GrDrawingManager,std::default_delete<GrDrawingManager>_> uStack_220;
+      unique_ptr<skcpu::ContextImpl_const_,std::default_delete<skcpu::ContextImpl_const_>_> local_218;
+      unique_ptr<SkGaneshRecorder,std::default_delete<SkGaneshRecorder>_> uStack_210;
+      longlong local_208;
+      longlong lStack_200;
+      GrBackendTexture local_130;
+      ulonglong local_38;
+      
+      local_38 = __security_cookie ^ (ulonglong)auStackY_2c8;
+      if (param_3 != (SkISize *)0x0) {
+        local_208 = 0;
+        lStack_200 = 0;
+        local_218._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<skcpu::ContextImpl_const_>,skcpu::ContextImpl_const_*,1>
+              )(ContextImpl *)0x0;
+        uStack_210._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkGaneshRecorder>,SkGaneshRecorder_*,1>)
+             (SkGaneshRecorder *)0x0;
+        local_228._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<GrProxyProvider>,GrProxyProvider_*,1>)
+             (GrProxyProvider *)0x0;
+        uStack_220._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<GrDrawingManager>,GrDrawingManager_*,1>)
+             (GrDrawingManager *)0x0;
+        local_238._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkArenaAlloc>,SkArenaAlloc_*,1>)(SkArenaAlloc *)0x0;
+        uStack_230._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<sktext::gpu::SubRunAllocator>,sktext::gpu::SubRunAllocator_*,1>
+              )(SubRunAllocator *)0x0;
+        GrDirectContext::flush((GrDirectContext *)param_3,(GrFlushInfo *)&local_238);
+        uStack_230._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<sktext::gpu::SubRunAllocator>,sktext::gpu::SubRunAllocator_*,1>
+              )(SubRunAllocator *)0x0;
+        local_238._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkArenaAlloc>,SkArenaAlloc_*,1>)
+             ((ulonglong)local_238._Mypair._Myval2 & 0xffffffffffff0000);
+        GrDirectContext::submit((GrDirectContext *)param_3,(GrSubmitInfo *)&local_238);
+        GrDirectContext::resetContext((GrDirectContext *)param_3,0xffffffff);
+        std::
+        _Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>
+        ::operator()(this->external_texture_callback_,(long64)&local_240,(ulong64)param_2,
+                     (longlong)*in_stack_00000028);
+        if (local_240 != (undefined8 *)0x0) {
+          local_250._0_8_ = *local_240;
+          local_250.fFormat = *(uint *)(local_240 + 1);
+          local_250.fProtected = kNo;
+          iVar7 = *in_stack_00000028;
+          iVar5 = in_stack_00000028[1];
+          if ((local_240[4] != 0) && (local_240[5] != 0)) {
+            iVar7 = (int)local_240[4];
+            iVar5 = (int)local_240[5];
+          }
+          pbVar8 = (basic_string_view<char,std::char_traits<char>_> *)(local_270 + 8);
+          local_270._8_8_ = 0;
+          lStack_260 = 0;
+          GrBackendTextures::MakeGL(&local_130,iVar7,iVar5,kNo,&local_250,pbVar8);
+          pvVar2 = (void *)local_240[3];
+          local_278 = 0;
+          sVar9.fPtr._4_4_ = (undefined4)((ulonglong)pbVar8 >> 0x20);
+          sVar9.fPtr._0_4_ = 2;
+          SkImages::BorrowTextureFrom
+                    ((GrRecordingContext *)local_270,(GrBackendTexture *)param_3,
+                     (GrSurfaceOrigin)&local_130,kUnknown_SkColorType,4,sVar9,
+                     (_func___cdecl_void_void_ptr *)&local_278,pvVar2);
+          if (local_270._0_8_ == 0) {
+            if (pvVar2 != (void *)0x0) {
+              (*__guard_dispatch_icall_fptr)(local_240[2]);
+            }
+            bVar4 = fml::ShouldCreateLogMessage(2);
+            if (bVar4) {
+              fml::LogMessage::LogMessage
+                        ((LogMessage *)&local_238,2,
+                         "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0x7f
+                         ,(char *)0x0);
+              std::operator<<<std::char_traits<char>_>
+                        ((basic_ostream<char,std::char_traits<char>_> *)&local_238,
+                         "Could not create external texture->");
+              fml::LogMessage::~LogMessage((LogMessage *)&local_238);
+            }
+            *(undefined8 *)param_1 = 0;
+          }
+          else {
+            local_270._0_8_ = 0;
+            DlImageSkia::Make((sk_sp<SkImage>)param_1);
+          }
+          if (local_270._0_8_ != 0) {
+            LOCK();
+            piVar1 = (int *)(local_270._0_8_ + 8);
+            *piVar1 = *piVar1 + -1;
+            UNLOCK();
+            if (*piVar1 == 0) {
+              (*__guard_dispatch_icall_fptr)();
+            }
+          }
+          GrBackendTexture::~GrBackendTexture(&local_130);
+          if (local_240 != (undefined8 *)0x0) {
+            operator_delete(local_240,0x30);
+          }
+          goto LAB_1800ebc3d;
+        }
+      }
+      *(undefined8 *)param_1 = 0;
+    LAB_1800ebc3d:
+      if (__security_cookie == (local_38 ^ (ulonglong)auStackY_2c8)) {
+        return (sk_sp<flutter::DlImage>)(DlImage *)param_1;
+      }
+      pcVar3 = (code *)swi(3);
+      sVar6.fPtr = (DlImage *)(*pcVar3)(local_38 ^ (ulonglong)auStackY_2c8);
+      return (sk_sp<flutter::DlImage>)sVar6.fPtr;
+    }
+    
+
+
+=== TARGET: EmbedderExternalTextureGL::ResolveTextureImpeller ===
+FOUND: 1
+FUNC: name=flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+  MATCHED_FRAGMENT: ResolveTextureImpeller
+  ENTRY_VA: 0x1800eb484
+  ENTRY_RVA: 0xeb484
+  SIZE_BYTES: 1371
+  CALLERS: flutter::EmbedderExternalTextureGL::ResolveTexture
+  CALLEES: X509_get_notBefore; __security_check_cookie; _guard_dispatch_icall_nop; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; impeller::AiksContext::GetContext; impeller::DlImageImpeller::Make; impeller::ReactorGLES::CreateHandle; impeller::ReactorGLES::RegisterCleanupCallback; impeller::TextureGLES::WrapTexture; operator_delete; std::_Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>::operator(); std::_Func_class<void,const_unsigned_char_*,unsigned_long_long,std::function<void_(const_unsigned_char_*,_unsigned_long_long)>_>::_Reset_move; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "Role": Some values do not have unique names */
+    /* WARNING: Enum "StringAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntAttribute": Some values do not have unique names */
+    /* WARNING: Enum "FloatAttribute": Some values do not have unique names */
+    /* WARNING: Enum "BoolAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "StringListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "AXTreeIDType": Some values do not have unique names */
+    /* WARNING: Enum "TextAffinity": Some values do not have unique names */
+    /* WARNING: Enum "Command": Some values do not have unique names */
+    /* WARNING: Enum "TextBoundary": Some values do not have unique names */
+    /* WARNING: Enum "MoveDirection": Some values do not have unique names */
+    
+    sk_sp<flutter::DlImage> __thiscall
+    flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+              (EmbedderExternalTextureGL *this,long64 param_1,AiksContext *param_2,SkISize *param_3)
+    
+    {
+      void **ppvVar1;
+      int *piVar2;
+      longlong lVar3;
+      code *pcVar4;
+      long64 lVar5;
+      long64 lVar6;
+      x509_st *pxVar7;
+      bool bVar8;
+      asn1_string_st *paVar9;
+      sk_sp<flutter::DlImage> sVar10;
+      char *pcVar11;
+      void **ppvVar12;
+      int *in_stack_00000028;
+      undefined1 auStackY_2e8 [32];
+      longlong local_2b8;
+      longlong lStack_2b0;
+      undefined1 local_2a8 [24];
+      TextureDescriptor local_290;
+      HandleGLES local_258;
+      shared_ptr<impeller::TextureGLES> local_220;
+      HandleGLES local_210;
+      void *local_1d8;
+      longlong local_1d0 [7];
+      longlong *local_198;
+      x509_st *local_190;
+      void **local_188;
+      longlong local_180;
+      LogMessage *local_158;
+      undefined1 local_90 [56];
+      undefined1 *local_58;
+      ulonglong local_50;
+      
+      local_50 = __security_cookie ^ (ulonglong)auStackY_2e8;
+      std::
+      _Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>
+      ::operator()(this->external_texture_callback_,(long64)&local_1d8,(ulong64)param_2,
+                   (longlong)*in_stack_00000028);
+      if (local_1d8 == (void *)0x0) {
+        *(undefined8 *)param_1 = 0;
+        goto LAB_1800eb99a;
+      }
+      local_190 = (x509_st *)&PTR__Copy_18132d230;
+      local_58 = (undefined1 *)0x0;
+      local_188 = &local_1d8;
+      local_158 = (LogMessage *)&local_190;
+      std::
+      _Func_class<void,const_unsigned_char_*,unsigned_long_long,std::function<void_(const_unsigned_char_*,_unsigned_long_long)>_>
+      ::_Reset_move(local_90,(_Func_class<void,unsigned_char_const_*,unsigned___int64,std::function<void___cdecl(unsigned_char_const_*,unsigned___int64)>_>
+                              *)&local_190);
+      if (local_158 != (LogMessage *)0x0) {
+        (*__guard_dispatch_icall_fptr)(local_158,local_158 != (LogMessage *)&local_190);
+      }
+      if (*(int *)((longlong)local_1d8 + 8) == 0x8058) {
+        lVar5 = *(long64 *)((longlong)local_1d8 + 0x20);
+        lVar6 = *(long64 *)((longlong)local_1d8 + 0x28);
+        impeller::AiksContext::GetContext
+                  ((AiksContext *)param_3,(shared_ptr<impeller::Context> *)&local_190);
+        ppvVar12 = local_188;
+        pxVar7 = local_190;
+        if (local_188 != (void **)0x0) {
+          LOCK();
+          ppvVar1 = local_188 + 1;
+          *(int *)ppvVar1 = *(int *)ppvVar1 + -1;
+          UNLOCK();
+          if (*(int *)ppvVar1 == 0) {
+            (*__guard_dispatch_icall_fptr)(ppvVar12);
+            LOCK();
+            piVar2 = (int *)((longlong)ppvVar12 + 0xc);
+            *piVar2 = *piVar2 + -1;
+            UNLOCK();
+            if (*piVar2 == 0) {
+              (*__guard_dispatch_icall_fptr)(ppvVar12);
+            }
+          }
+        }
+        paVar9 = X509_get_notBefore(pxVar7);
+        impeller::ReactorGLES::CreateHandle
+                  (*(ReactorGLES **)paVar9,&local_210,kTexture,*(uint *)((longlong)local_1d8 + 4));
+        local_258.type_ = local_210.type_;
+        local_258._padding_ = local_210._padding_;
+        local_258.name_._0_8_ = local_210.name_._0_8_;
+        local_258.name_._8_8_ = local_210.name_._8_8_;
+        local_258.hash_ = local_210.hash_;
+        local_258.untracked_id_._0_8_ = local_210.untracked_id_._0_8_;
+        local_258.untracked_id_._8_8_ = local_210.untracked_id_._8_8_;
+        local_258.owner_thread_ = local_210.owner_thread_;
+        local_290.storage_mode = kDeviceTransient;
+        local_290.type = kTexture2D;
+        local_290.format = kR8G8B8A8UNormInt;
+        local_290.mip_count = 1;
+        local_290.usage.mask_ = 1;
+        local_290.sample_count = kCount1;
+        local_290.compression_type = kLossless;
+        local_290.size.width = lVar5;
+        local_290.size.height = lVar6;
+        paVar9 = X509_get_notBefore(pxVar7);
+        if (paVar9->data == (uchar *)0x0) {
+          local_2a8._8_8_ = (uchar *)0x0;
+        }
+        else {
+          LOCK();
+          piVar2 = (int *)(paVar9->data + 8);
+          *piVar2 = *piVar2 + 1;
+          UNLOCK();
+          local_2a8._8_8_ = paVar9->data;
+        }
+        local_2a8._0_4_ = paVar9->length;
+        local_2a8._4_4_ = paVar9->type;
+        impeller::TextureGLES::WrapTexture
+                  (&local_220,(shared_ptr<impeller::ReactorGLES> *)local_2a8,&local_290,&local_258);
+        if (local_220._0_8_ == 0) {
+          bVar8 = fml::ShouldCreateLogMessage(2);
+          if (bVar8) {
+            fml::LogMessage::LogMessage
+                      ((LogMessage *)&local_190,2,
+                       "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0xaa,
+                       (char *)0x0);
+            pcVar11 = "Could not create external texture";
+    LAB_1800eb8c6:
+            std::operator<<<std::char_traits<char>_>
+                      ((basic_ostream<char,std::char_traits<char>_> *)&local_190,pcVar11);
+            fml::LogMessage::~LogMessage((LogMessage *)&local_190);
+          }
+    LAB_1800eb8d6:
+          *(undefined8 *)param_1 = 0;
+        }
+        else {
+          lVar3 = *(longlong *)((longlong)local_1d8 + 0x10);
+          ppvVar12 = (void **)ui::AXTreeObserver::OnNodeDataWillChange;
+          if (*(void ***)((longlong)local_1d8 + 0x18) != (void **)0x0) {
+            ppvVar12 = *(void ***)((longlong)local_1d8 + 0x18);
+          }
+          paVar9 = X509_get_notBefore(pxVar7);
+          local_190 = (x509_st *)&PTR__Copy_18132d260;
+          local_188 = ppvVar12;
+          local_180 = lVar3;
+          local_158 = (LogMessage *)&local_190;
+          bVar8 = impeller::ReactorGLES::RegisterCleanupCallback
+                            (*(ReactorGLES **)paVar9,&local_210,
+                             (function<void___cdecl(void)> *)&local_190);
+          if (local_158 != (LogMessage *)0x0) {
+            (*__guard_dispatch_icall_fptr)(local_158,local_158 != (LogMessage *)&local_190);
+          }
+          if (!bVar8) {
+            bVar8 = fml::ShouldCreateLogMessage(2);
+            if (bVar8) {
+              fml::LogMessage::LogMessage
+                        ((LogMessage *)&local_190,2,
+                         "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0xbb
+                         ,(char *)0x0);
+              pcVar11 = "Could not register destruction callback";
+              goto LAB_1800eb8c6;
+            }
+            goto LAB_1800eb8d6;
+          }
+          local_198 = (longlong *)0x0;
+          if (local_58 != (undefined1 *)0x0) {
+            local_198 = (longlong *)(*__guard_dispatch_icall_fptr)(local_58,local_1d0);
+            if (local_58 != (undefined1 *)0x0) {
+              (*__guard_dispatch_icall_fptr)(local_58,local_58 != local_90);
+              local_58 = (undefined1 *)0x0;
+            }
+            if (local_198 != (longlong *)0x0) {
+              (*__guard_dispatch_icall_fptr)
+                        (local_198,local_198 != local_1d0,*(undefined8 *)(*local_198 + 0x20));
+              local_198 = (longlong *)0x0;
+            }
+          }
+          if (local_220._8_8_ == 0) {
+            lStack_2b0 = 0;
+          }
+          else {
+            LOCK();
+            *(int *)(local_220._8_8_ + 8) = *(int *)(local_220._8_8_ + 8) + 1;
+            UNLOCK();
+            lStack_2b0 = local_220._8_8_;
+          }
+          local_2b8 = local_220._0_8_;
+          impeller::DlImageImpeller::Make
+                    ((shared_ptr<impeller::Texture> *)&local_190,(OwningContext)&local_2b8);
+          *(x509_st **)param_1 = local_190;
+        }
+        if (local_220._8_8_ != 0) {
+          LOCK();
+          piVar2 = (int *)(local_220._8_8_ + 8);
+          *piVar2 = *piVar2 + -1;
+          UNLOCK();
+          if (*piVar2 == 0) {
+            (*__guard_dispatch_icall_fptr)(local_220._8_8_);
+            LOCK();
+            piVar2 = (int *)(local_220._8_8_ + 0xc);
+            *piVar2 = *piVar2 + -1;
+            UNLOCK();
+            if (*piVar2 == 0) {
+              (*__guard_dispatch_icall_fptr)(local_220._8_8_);
+            }
+          }
+        }
+      }
+      else {
+        bVar8 = fml::ShouldCreateLogMessage(2);
+        if (bVar8) {
+          fml::LogMessage::LogMessage
+                    ((LogMessage *)&local_190,2,
+                     "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0x9a,
+                     (char *)0x0);
+          std::operator<<<std::char_traits<char>_>
+                    ((basic_ostream<char,std::char_traits<char>_> *)&local_190,
+                     "Only support GL_RGBA8 format now");
+          fml::LogMessage::~LogMessage((LogMessage *)&local_190);
+        }
+        *(undefined8 *)param_1 = 0;
+      }
+      if (local_58 != (undefined1 *)0x0) {
+        (*__guard_dispatch_icall_fptr)();
+        if (local_58 != (undefined1 *)0x0) {
+          (*__guard_dispatch_icall_fptr)(local_58,local_58 != local_90);
+        }
+      }
+      if (local_1d8 != (void *)0x0) {
+        operator_delete(local_1d8,0x30);
+      }
+    LAB_1800eb99a:
+      if (__security_cookie == (local_50 ^ (ulonglong)auStackY_2e8)) {
+        return (sk_sp<flutter::DlImage>)(DlImage *)param_1;
+      }
+      pcVar4 = (code *)swi(3);
+      sVar10.fPtr = (DlImage *)(*pcVar4)(local_50 ^ (ulonglong)auStackY_2e8);
+      return (sk_sp<flutter::DlImage>)sVar10.fPtr;
+    }
+    
+
+
+=== TARGET: EmbedderExternalTextureGL::ResolveTextureSkia ===
+FOUND: 1
+FUNC: name=flutter::EmbedderExternalTextureGL::ResolveTextureSkia
+  MATCHED_FRAGMENT: ResolveTextureSkia
+  ENTRY_VA: 0x1800eb9e0
+  ENTRY_RVA: 0xeb9e0
+  SIZE_BYTES: 665
+  CALLERS: flutter::EmbedderExternalTextureGL::ResolveTexture
+  CALLEES: GrBackendTexture::~GrBackendTexture; GrBackendTextures::MakeGL; GrDirectContext::flush; GrDirectContext::resetContext; GrDirectContext::submit; SkImages::BorrowTextureFrom; __security_check_cookie; _guard_dispatch_icall_nop; flutter::DlImageSkia::Make; fml::LogMessage::LogMessage; fml::LogMessage::~LogMessage; fml::ShouldCreateLogMessage; operator_delete; std::_Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>::operator(); std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "BlendEquationSupport": Some values do not have unique names */
+    /* WARNING: Enum "GrBackendApi": Some values do not have unique names */
+    /* WARNING: Enum "GrAccessPattern": Some values do not have unique names */
+    /* WARNING: Enum "SkColorType": Some values do not have unique names */
+    /* WARNING: Enum "SkAlphaType": Some values do not have unique names */
+    
+    sk_sp<flutter::DlImage> __thiscall
+    flutter::EmbedderExternalTextureGL::ResolveTextureSkia
+              (EmbedderExternalTextureGL *this,long64 param_1,GrDirectContext *param_2,SkISize *param_3)
+    
+    {
+      int *piVar1;
+      void *pvVar2;
+      code *pcVar3;
+      bool bVar4;
+      int iVar5;
+      sk_sp<flutter::DlImage> sVar6;
+      int iVar7;
+      int *in_stack_00000028;
+      undefined1 auStackY_2c8 [32];
+      basic_string_view<char,std::char_traits<char>_> *pbVar8;
+      sk_sp<SkColorSpace> sVar9;
+      undefined8 local_278;
+      undefined1 local_270 [16];
+      longlong lStack_260;
+      GrGLTextureInfo local_250;
+      undefined8 *local_240;
+      unique_ptr<SkArenaAlloc,std::default_delete<SkArenaAlloc>_> local_238;
+      unique_ptr<sktext::gpu::SubRunAllocator,std::default_delete<sktext::gpu::SubRunAllocator>_>
+      uStack_230;
+      unique_ptr<GrProxyProvider,std::default_delete<GrProxyProvider>_> local_228;
+      unique_ptr<GrDrawingManager,std::default_delete<GrDrawingManager>_> uStack_220;
+      unique_ptr<skcpu::ContextImpl_const_,std::default_delete<skcpu::ContextImpl_const_>_> local_218;
+      unique_ptr<SkGaneshRecorder,std::default_delete<SkGaneshRecorder>_> uStack_210;
+      longlong local_208;
+      longlong lStack_200;
+      GrBackendTexture local_130;
+      ulonglong local_38;
+      
+      local_38 = __security_cookie ^ (ulonglong)auStackY_2c8;
+      if (param_3 != (SkISize *)0x0) {
+        local_208 = 0;
+        lStack_200 = 0;
+        local_218._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<skcpu::ContextImpl_const_>,skcpu::ContextImpl_const_*,1>
+              )(ContextImpl *)0x0;
+        uStack_210._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkGaneshRecorder>,SkGaneshRecorder_*,1>)
+             (SkGaneshRecorder *)0x0;
+        local_228._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<GrProxyProvider>,GrProxyProvider_*,1>)
+             (GrProxyProvider *)0x0;
+        uStack_220._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<GrDrawingManager>,GrDrawingManager_*,1>)
+             (GrDrawingManager *)0x0;
+        local_238._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkArenaAlloc>,SkArenaAlloc_*,1>)(SkArenaAlloc *)0x0;
+        uStack_230._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<sktext::gpu::SubRunAllocator>,sktext::gpu::SubRunAllocator_*,1>
+              )(SubRunAllocator *)0x0;
+        GrDirectContext::flush((GrDirectContext *)param_3,(GrFlushInfo *)&local_238);
+        uStack_230._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<sktext::gpu::SubRunAllocator>,sktext::gpu::SubRunAllocator_*,1>
+              )(SubRunAllocator *)0x0;
+        local_238._Mypair._Myval2 =
+             (_Compressed_pair<std::default_delete<SkArenaAlloc>,SkArenaAlloc_*,1>)
+             ((ulonglong)local_238._Mypair._Myval2 & 0xffffffffffff0000);
+        GrDirectContext::submit((GrDirectContext *)param_3,(GrSubmitInfo *)&local_238);
+        GrDirectContext::resetContext((GrDirectContext *)param_3,0xffffffff);
+        std::
+        _Func_class<std::unique_ptr<FlutterOpenGLTexture,std::default_delete<FlutterOpenGLTexture>_>,long_long,unsigned_long_long,unsigned_long_long>
+        ::operator()(this->external_texture_callback_,(long64)&local_240,(ulong64)param_2,
+                     (longlong)*in_stack_00000028);
+        if (local_240 != (undefined8 *)0x0) {
+          local_250._0_8_ = *local_240;
+          local_250.fFormat = *(uint *)(local_240 + 1);
+          local_250.fProtected = kNo;
+          iVar7 = *in_stack_00000028;
+          iVar5 = in_stack_00000028[1];
+          if ((local_240[4] != 0) && (local_240[5] != 0)) {
+            iVar7 = (int)local_240[4];
+            iVar5 = (int)local_240[5];
+          }
+          pbVar8 = (basic_string_view<char,std::char_traits<char>_> *)(local_270 + 8);
+          local_270._8_8_ = 0;
+          lStack_260 = 0;
+          GrBackendTextures::MakeGL(&local_130,iVar7,iVar5,kNo,&local_250,pbVar8);
+          pvVar2 = (void *)local_240[3];
+          local_278 = 0;
+          sVar9.fPtr._4_4_ = (undefined4)((ulonglong)pbVar8 >> 0x20);
+          sVar9.fPtr._0_4_ = 2;
+          SkImages::BorrowTextureFrom
+                    ((GrRecordingContext *)local_270,(GrBackendTexture *)param_3,
+                     (GrSurfaceOrigin)&local_130,kUnknown_SkColorType,4,sVar9,
+                     (_func___cdecl_void_void_ptr *)&local_278,pvVar2);
+          if (local_270._0_8_ == 0) {
+            if (pvVar2 != (void *)0x0) {
+              (*__guard_dispatch_icall_fptr)(local_240[2]);
+            }
+            bVar4 = fml::ShouldCreateLogMessage(2);
+            if (bVar4) {
+              fml::LogMessage::LogMessage
+                        ((LogMessage *)&local_238,2,
+                         "../../../flutter/shell/platform/embedder/embedder_external_texture_gl.cc",0x7f
+                         ,(char *)0x0);
+              std::operator<<<std::char_traits<char>_>
+                        ((basic_ostream<char,std::char_traits<char>_> *)&local_238,
+                         "Could not create external texture->");
+              fml::LogMessage::~LogMessage((LogMessage *)&local_238);
+            }
+            *(undefined8 *)param_1 = 0;
+          }
+          else {
+            local_270._0_8_ = 0;
+            DlImageSkia::Make((sk_sp<SkImage>)param_1);
+          }
+          if (local_270._0_8_ != 0) {
+            LOCK();
+            piVar1 = (int *)(local_270._0_8_ + 8);
+            *piVar1 = *piVar1 + -1;
+            UNLOCK();
+            if (*piVar1 == 0) {
+              (*__guard_dispatch_icall_fptr)();
+            }
+          }
+          GrBackendTexture::~GrBackendTexture(&local_130);
+          if (local_240 != (undefined8 *)0x0) {
+            operator_delete(local_240,0x30);
+          }
+          goto LAB_1800ebc3d;
+        }
+      }
+      *(undefined8 *)param_1 = 0;
+    LAB_1800ebc3d:
+      if (__security_cookie == (local_38 ^ (ulonglong)auStackY_2c8)) {
+        return (sk_sp<flutter::DlImage>)(DlImage *)param_1;
+      }
+      pcVar3 = (code *)swi(3);
+      sVar6.fPtr = (DlImage *)(*pcVar3)(local_38 ^ (ulonglong)auStackY_2c8);
+      return (sk_sp<flutter::DlImage>)sVar6.fPtr;
+    }
+    
+
+
+=== TARGET: egl::Display::createPbufferFromClientBuffer ===
+FOUND: 1
+FUNC: name=egl::Display::createPbufferFromClientBuffer
+  MATCHED_FRAGMENT: egl::Display::createPbufferFromClientBuffer
+  ENTRY_VA: 0x180d670a0
+  ENTRY_RVA: 0xd670a0
+  SIZE_BYTES: 942
+  CALLERS: egl::CreatePbufferFromClientBuffer
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; _invalid_parameter_noinfo_noreturn; absl::container_internal::GrowSooTableToNextCapacityAndPrepareInsert<16,1>; absl::container_internal::PrepareInsertLarge; dart::CanonicalInstanceKey::CanonicalInstanceKey; egl::Display::restoreLostDevice; egl::PbufferSurface::PbufferSurface; egl::Surface::initialize; egl::SurfaceDeleter::operator(); gl::HandleAllocator::allocate; operator_delete; operator_new; ui::AXTreeObserver::OnNodeDataWillChange
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    /* WARNING: Enum "Role": Some values do not have unique names */
+    /* WARNING: Enum "StringAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntAttribute": Some values do not have unique names */
+    /* WARNING: Enum "FloatAttribute": Some values do not have unique names */
+    /* WARNING: Enum "BoolAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "StringListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "AXTreeIDType": Some values do not have unique names */
+    /* WARNING: Enum "TextAffinity": Some values do not have unique names */
+    /* WARNING: Enum "Command": Some values do not have unique names */
+    /* WARNING: Enum "TextBoundary": Some values do not have unique names */
+    /* WARNING: Enum "MoveDirection": Some values do not have unique names */
+    
+    Error * __thiscall
+    egl::Display::createPbufferFromClientBuffer
+              (Display *this,Error *__return_storage_ptr__,Config *param_1,uint param_2,void *param_3,
+              AttributeMap *param_4,Surface **param_5)
+    
+    {
+      flat_hash_map<unsigned_int,egl::Surface_*,absl::hash_internal::Hash<unsigned_int>,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,egl::Surface_*>_>_>
+      *pfVar1;
+      basic_string<char,std::char_traits<char>,std::allocator<char>_> *pbVar2;
+      ulonglong uVar3;
+      char *pcVar4;
+      NonIterableBitMask<unsigned_short,16,0> NVar5;
+      uint uVar6;
+      char cVar7;
+      SurfaceID SVar8;
+      ulonglong uVar9;
+      AXTree *this_00;
+      ulong64 uVar10;
+      uint *puVar11;
+      char *pcVar12;
+      Display *pDVar13;
+      AXTree *pAVar14;
+      PolicyFunctions *pPVar15;
+      ushort uVar16;
+      uint uVar17;
+      int iVar18;
+      undefined8 *puVar19;
+      AXNodeData *pAVar20;
+      Display *pDVar21;
+      Display *pDVar22;
+      byte bVar23;
+      undefined1 auVar24 [16];
+      undefined1 auVar25 [16];
+      undefined1 auVar26 [16];
+      undefined8 uStackY_d0;
+      undefined1 auStackY_c8 [32];
+      uint local_88 [2];
+      AXTree *local_80;
+      SurfaceDeleter local_78;
+      AXTree *local_70;
+      undefined1 local_68 [16];
+      Display *local_58;
+      code *local_50;
+      void *local_48;
+      
+      local_48 = (void *)(__security_cookie ^ (ulonglong)auStackY_c8);
+      uStackY_d0 = 0x180d670e8;
+      cVar7 = (*__guard_dispatch_icall_fptr)();
+      if (cVar7 == '\0') {
+    LAB_180d67157:
+        uStackY_d0 = 0x180d6716b;
+        SVar8.value = gl::HandleAllocator::allocate(&this->mSurfaceHandleAllocator);
+        uStackY_d0 = 0x180d6717e;
+        dart::CanonicalInstanceKey::CanonicalInstanceKey
+                  ((CanonicalInstanceKey *)&stack0xffffffffffffffa8,(Instance *)this);
+        uStackY_d0 = 0x180d67188;
+        this_00 = operator_new(0x1c0);
+        pAVar14 = (AXTree *)this->mImplementation;
+        pAVar20 = (AXNodeData *)(ulonglong)SVar8.value;
+        uStackY_d0 = 0x180d671c4;
+        PbufferSurface::PbufferSurface
+                  ((PbufferSurface *)this_00,(EGLImplFactory *)pAVar14,SVar8,param_1,param_2,param_3,
+                   param_4,(this->mFrontendFeatures).forceRobustResourceInit.enabled);
+        local_78.mDisplay = local_58;
+        uStackY_d0 = 0x180d671db;
+        local_70 = this_00;
+        ui::AXTreeObserver::OnNodeDataWillChange
+                  ((AXTreeObserver *)&stack0xffffffffffffffa8,pAVar14,pAVar20,(AXNodeData *)param_1);
+        uStackY_d0 = 0x180d671e9;
+        pAVar14 = (AXTree *)__return_storage_ptr__;
+        pDVar21 = this;
+        Surface::initialize((Surface *)this_00,__return_storage_ptr__,this);
+        if (__return_storage_ptr__->mCode == 0x3000) {
+          pbVar2 = (__return_storage_ptr__->mMessage)._Mypair._Myval2;
+          if (pbVar2 != (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0) {
+            uVar3 = (pbVar2->_Mypair)._Myval2._Myres;
+            if (0xf < uVar3) {
+              pDVar22 = (Display *)(pbVar2->_Mypair)._Myval2._Bx._Ptr;
+              uVar9 = uVar3 + 1;
+              pDVar13 = pDVar22;
+              if (0xfff < uVar9) {
+                pDVar13 = *(Display **)&pDVar22[-1].mTerminatedByApi;
+                puVar19 = (undefined8 *)auStackY_c8;
+                if (0x1f < (ulonglong)((longlong)pDVar22 + (-8 - (longlong)pDVar13)))
+                goto LAB_180d67449;
+                uVar9 = uVar3 + 0x28;
+                pDVar21 = pDVar13;
+              }
+              uStackY_d0 = 0x180d6723c;
+              operator_delete(pDVar13,uVar9);
+            }
+            pAVar14 = (AXTree *)&DAT_00000020;
+            uStackY_d0 = 0x180d67249;
+            operator_delete(pbVar2,0x20);
+          }
+          local_70 = (AXTree *)0x0;
+          *param_5 = (Surface *)this_00;
+          pfVar1 = &(this->mState).surfaceMap;
+          local_88[0] = (((SurfaceState *)((longlong)&(this_00->error_)._Mypair._Myval2._Bx + 8))->id).
+                        value;
+          uVar3 = *(ulonglong *)&(this->mState).surfaceMap;
+          local_80 = this_00;
+          if (uVar3 < 2) {
+            if (*(ulonglong *)&(this->mState).surfaceMap.field_0x8 < 0x20000) {
+              *(undefined8 *)&(this->mState).surfaceMap.field_0x8 = 0x20000;
+              puVar11 = (uint *)&(this->mState).surfaceMap.field_0x10;
+              goto LAB_180d673cc;
+            }
+            if (*(uint *)&(this->mState).surfaceMap.field_0x10 != local_88[0]) {
+              local_68._8_8_ = local_88;
+              local_50 = absl::functional_internal::
+                         InvokeObject<absl::container_internal::HashKey<absl::hash_internal::Hash<VkColorSpaceKHR>,VkColorSpaceKHR,1>_&,unsigned_long_long,unsigned_long_long>
+              ;
+              local_58 = (Display *)local_68;
+              pPVar15 = &`private:_static_struct_absl::container_internal::PolicyFunctions_const&___ptr64___cdecl_absl::container_internal::raw_hash_set<absl::container_internal::FlatHashMapPolicy<unsigned_int,egl::Surface*___ptr64>,absl::hash_internal::Hash<unsigned_int>,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,egl::Surface*___ptr64>_>_>::GetPolicyFunctions(void)'
+                         ::__l2::value;
+              pDVar21 = (Display *)&stack0xffffffffffffffa8;
+              param_1 = (Config *)0x0;
+              uStackY_d0 = 0x180d673c1;
+              local_68._0_8_ = pfVar1;
+              uVar10 = absl::container_internal::GrowSooTableToNextCapacityAndPrepareInsert<16,1>
+                                 ((CommonFields *)pfVar1,
+                                  &`private:_static_struct_absl::container_internal::PolicyFunctions_const&___ptr64___cdecl_absl::container_internal::raw_hash_set<absl::container_internal::FlatHashMapPolicy<unsigned_int,egl::Surface*___ptr64>,absl::hash_internal::Hash<unsigned_int>,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,egl::Surface*___ptr64>_>_>::GetPolicyFunctions(void)'
+                                   ::__l2::value,
+                                  (FunctionRef<unsigned___int64___cdecl(unsigned___int64)> *)pDVar21,
+                                  false);
+              goto LAB_180d673c1;
+            }
+    LAB_180d67357:
+            __return_storage_ptr__->mCode = 0x3000;
+            __return_storage_ptr__->mID = 0;
+            (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+                 (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+          }
+          else {
+            auVar24._8_8_ = 0;
+            auVar24._0_8_ =
+                 (longlong)*(short *)&(this->mState).surfaceMap.field_0x8 ^ (ulonglong)local_88[0];
+            pDVar21 = (Display *)
+                      (SUB168(auVar24 * ZEXT816(0x79d5f9e0de1e8cf5),8) ^
+                      SUB168(auVar24 * ZEXT816(0x79d5f9e0de1e8cf5),0));
+            bVar23 = (byte)((ulonglong)pDVar21 >> 0x39);
+            auVar24 = ZEXT216(CONCAT11(bVar23,bVar23));
+            auVar24 = pshuflw(auVar24,auVar24,0);
+            pAVar14 = (AXTree *)0x0;
+            pDVar22 = pDVar21;
+            while( true ) {
+              pDVar22 = (Display *)((ulonglong)pDVar22 & uVar3);
+              pcVar4 = (char *)((longlong)&pDVar22->_padding_ +
+                               *(longlong *)&(this->mState).surfaceMap.field_0x10);
+              auVar26[0] = -(auVar24[0] == *pcVar4);
+              auVar26[1] = -(auVar24[1] == pcVar4[1]);
+              auVar26[2] = -(auVar24[2] == pcVar4[2]);
+              auVar26[3] = -(auVar24[3] == pcVar4[3]);
+              auVar26[4] = -(auVar24[4] == pcVar4[4]);
+              auVar26[5] = -(auVar24[5] == pcVar4[5]);
+              auVar26[6] = -(auVar24[6] == pcVar4[6]);
+              auVar26[7] = -(auVar24[7] == pcVar4[7]);
+              auVar26[8] = -(auVar24[0] == pcVar4[8]);
+              auVar26[9] = -(auVar24[1] == pcVar4[9]);
+              auVar26[10] = -(auVar24[2] == pcVar4[10]);
+              auVar26[0xb] = -(auVar24[3] == pcVar4[0xb]);
+              auVar26[0xc] = -(auVar24[4] == pcVar4[0xc]);
+              auVar26[0xd] = -(auVar24[5] == pcVar4[0xd]);
+              auVar26[0xe] = -(auVar24[6] == pcVar4[0xe]);
+              auVar26[0xf] = -(auVar24[7] == pcVar4[0xf]);
+              uVar16 = (ushort)(SUB161(auVar26 >> 7,0) & 1) |
+                       (ushort)(SUB161(auVar26 >> 0xf,0) & 1) << 1 |
+                       (ushort)(SUB161(auVar26 >> 0x17,0) & 1) << 2 |
+                       (ushort)(SUB161(auVar26 >> 0x1f,0) & 1) << 3 |
+                       (ushort)(SUB161(auVar26 >> 0x27,0) & 1) << 4 |
+                       (ushort)(SUB161(auVar26 >> 0x2f,0) & 1) << 5 |
+                       (ushort)(SUB161(auVar26 >> 0x37,0) & 1) << 6 |
+                       (ushort)(SUB161(auVar26 >> 0x3f,0) & 1) << 7 |
+                       (ushort)(SUB161(auVar26 >> 0x47,0) & 1) << 8 |
+                       (ushort)(SUB161(auVar26 >> 0x4f,0) & 1) << 9 |
+                       (ushort)(SUB161(auVar26 >> 0x57,0) & 1) << 10 |
+                       (ushort)(SUB161(auVar26 >> 0x5f,0) & 1) << 0xb |
+                       (ushort)(SUB161(auVar26 >> 0x67,0) & 1) << 0xc |
+                       (ushort)(SUB161(auVar26 >> 0x6f,0) & 1) << 0xd |
+                       (ushort)(SUB161(auVar26 >> 0x77,0) & 1) << 0xe |
+                       (ushort)(auVar26[0xf] >> 7) << 0xf;
+              param_1 = (Config *)(ulonglong)uVar16;
+              while (uVar16 != 0) {
+                uVar6 = 0;
+                for (uVar17 = (uint)param_1 | 0xffff0000; (uVar17 & 1) == 0;
+                    uVar17 = uVar17 >> 1 | 0x80000000) {
+                  uVar6 = uVar6 + 1;
+                }
+                if (*(uint *)(*(longlong *)&(this->mState).surfaceMap.field_0x18 +
+                             ((ulonglong)((longlong)&pDVar22->_padding_ + (ulonglong)uVar6) & uVar3) *
+                             0x10) == local_88[0]) goto LAB_180d67357;
+                iVar18 = (uint)param_1 - 1;
+                uVar16 = (ushort)iVar18 & (ushort)param_1;
+                param_1 = (Config *)(ulonglong)CONCAT22((short)((uint)iVar18 >> 0x10),uVar16);
+              }
+              auVar25[0] = -(*pcVar4 == __xmm_80808080808080808080808080808080);
+              auVar25[1] = -(pcVar4[1] == UNK_181380701);
+              auVar25[2] = -(pcVar4[2] == UNK_181380702);
+              auVar25[3] = -(pcVar4[3] == UNK_181380703);
+              auVar25[4] = -(pcVar4[4] == UNK_181380704);
+              auVar25[5] = -(pcVar4[5] == UNK_181380705);
+              auVar25[6] = -(pcVar4[6] == UNK_181380706);
+              auVar25[7] = -(pcVar4[7] == UNK_181380707);
+              auVar25[8] = -(pcVar4[8] == UNK_181380708);
+              auVar25[9] = -(pcVar4[9] == UNK_181380709);
+              auVar25[10] = -(pcVar4[10] == UNK_18138070a);
+              auVar25[0xb] = -(pcVar4[0xb] == UNK_18138070b);
+              auVar25[0xc] = -(pcVar4[0xc] == UNK_18138070c);
+              auVar25[0xd] = -(pcVar4[0xd] == UNK_18138070d);
+              auVar25[0xe] = -(pcVar4[0xe] == UNK_18138070e);
+              auVar25[0xf] = -(pcVar4[0xf] == UNK_18138070f);
+              NVar5.mask_ = (ushort)(SUB161(auVar25 >> 7,0) & 1) |
+                            (ushort)(SUB161(auVar25 >> 0xf,0) & 1) << 1 |
+                            (ushort)(SUB161(auVar25 >> 0x17,0) & 1) << 2 |
+                            (ushort)(SUB161(auVar25 >> 0x1f,0) & 1) << 3 |
+                            (ushort)(SUB161(auVar25 >> 0x27,0) & 1) << 4 |
+                            (ushort)(SUB161(auVar25 >> 0x2f,0) & 1) << 5 |
+                            (ushort)(SUB161(auVar25 >> 0x37,0) & 1) << 6 |
+                            (ushort)(SUB161(auVar25 >> 0x3f,0) & 1) << 7 |
+                            (ushort)(SUB161(auVar25 >> 0x47,0) & 1) << 8 |
+                            (ushort)(SUB161(auVar25 >> 0x4f,0) & 1) << 9 |
+                            (ushort)(SUB161(auVar25 >> 0x57,0) & 1) << 10 |
+                            (ushort)(SUB161(auVar25 >> 0x5f,0) & 1) << 0xb |
+                            (ushort)(SUB161(auVar25 >> 0x67,0) & 1) << 0xc |
+                            (ushort)(SUB161(auVar25 >> 0x6f,0) & 1) << 0xd |
+                            (ushort)(SUB161(auVar25 >> 0x77,0) & 1) << 0xe |
+                            (ushort)(auVar25[0xf] >> 7) << 0xf;
+              param_1 = (Config *)(ulonglong)NVar5.mask_;
+              if (NVar5.mask_ != 0) break;
+              pDVar22 = (Display *)
+                        ((longlong)&(pAVar14->observers_)._Mypair._Myval2._Myfirst +
+                        (longlong)&pDVar22->_padding_);
+              pAVar14 = (AXTree *)&(pAVar14->observers_)._Mypair._Myval2._Mylast;
+            }
+            pPVar15 = &`private:_static_struct_absl::container_internal::PolicyFunctions_const&___ptr64___cdecl_absl::container_internal::raw_hash_set<absl::container_internal::FlatHashMapPolicy<unsigned_int,egl::Surface*___ptr64>,absl::hash_internal::Hash<unsigned_int>,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,egl::Surface*___ptr64>_>_>::GetPolicyFunctions(void)'
+                       ::__l2::value;
+            uStackY_d0 = 0x180d67386;
+            local_58 = pDVar22;
+            local_50 = (code *)pAVar14;
+            uVar10 = absl::container_internal::PrepareInsertLarge
+                               ((CommonFields *)pfVar1,
+                                &`private:_static_struct_absl::container_internal::PolicyFunctions_const&___ptr64___cdecl_absl::container_internal::raw_hash_set<absl::container_internal::FlatHashMapPolicy<unsigned_int,egl::Surface*___ptr64>,absl::hash_internal::Hash<unsigned_int>,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,egl::Surface*___ptr64>_>_>::GetPolicyFunctions(void)'
+                                 ::__l2::value,(ulong64)pDVar21,NVar5,
+                                (FindInfo *)&stack0xffffffffffffffa8);
+    LAB_180d673c1:
+            puVar11 = (uint *)(uVar10 * 0x10 + *(longlong *)&(this->mState).surfaceMap.field_0x18);
+            pAVar14 = (AXTree *)pPVar15;
+    LAB_180d673cc:
+            *puVar11 = local_88[0];
+            *(AXTree **)(puVar11 + 2) = local_80;
+            __return_storage_ptr__->mCode = 0x3000;
+            __return_storage_ptr__->mID = 0;
+            (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+                 (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+            this_00 = local_70;
+            if (local_70 != (AXTree *)0x0) goto LAB_180d673f4;
+          }
+        }
+        else {
+    LAB_180d673f4:
+          pAVar14 = this_00;
+          uStackY_d0 = 0x180d67401;
+          SurfaceDeleter::operator()(&local_78,(Surface *)pAVar14);
+        }
+        uStackY_d0 = 0x180d6740b;
+        ui::AXTreeObserver::OnNodeDataWillChange
+                  ((AXTreeObserver *)&local_78,pAVar14,(AXNodeData *)pDVar21,(AXNodeData *)param_1);
+      }
+      else {
+        uStackY_d0 = 0x180d670f7;
+        restoreLostDevice(this,__return_storage_ptr__);
+        if (__return_storage_ptr__->mCode == 0x3000) {
+          pbVar2 = (__return_storage_ptr__->mMessage)._Mypair._Myval2;
+          if (pbVar2 != (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0) {
+            uVar3 = (pbVar2->_Mypair)._Myval2._Myres;
+            if (0xf < uVar3) {
+              pcVar4 = (pbVar2->_Mypair)._Myval2._Bx._Ptr;
+              uVar9 = uVar3 + 1;
+              pcVar12 = pcVar4;
+              if (0xfff < uVar9) {
+                pcVar12 = *(char **)(pcVar4 + -8);
+                puVar19 = (undefined8 *)auStackY_c8;
+                if ((char *)0x1f < pcVar4 + (-8 - (longlong)pcVar12)) goto LAB_180d67449;
+                uVar9 = uVar3 + 0x28;
+              }
+              uStackY_d0 = 0x180d6714a;
+              operator_delete(pcVar12,uVar9);
+            }
+            uStackY_d0 = 0x180d67157;
+            operator_delete(pbVar2,0x20);
+          }
+          goto LAB_180d67157;
+        }
+      }
+      if (__security_cookie == ((ulonglong)local_48 ^ (ulonglong)auStackY_c8)) {
+        return __return_storage_ptr__;
+      }
+      puVar19 = &uStackY_d0;
+      uStackY_d0 = 0x180d67449;
+    LAB_180d67449:
+                        /* WARNING: Subroutine does not return */
+      *(undefined **)((longlong)puVar19 + -8) = &UNK_180d6744e;
+      _invalid_parameter_noinfo_noreturn();
+    }
+    
+
+
+=== TARGET: rx::DisplayD3D::createPbufferFromClientBuffer ===
+FOUND: 1
+FUNC: name=rx::DisplayD3D::createPbufferFromClientBuffer
+  MATCHED_FRAGMENT: DisplayD3D::createPbufferFromClientBuffer
+  ENTRY_VA: 0x180ee9d40
+  ENTRY_RVA: 0xee9d40
+  SIZE_BYTES: 102
+  CALLERS: (none)
+  CALLEES: operator_new; rx::PbufferSurfaceD3D::PbufferSurfaceD3D
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    SurfaceImpl * __thiscall
+    rx::DisplayD3D::createPbufferFromClientBuffer
+              (DisplayD3D *this,SurfaceState *param_1,uint param_2,void *param_3,AttributeMap *param_4)
+    
+    {
+      PbufferSurfaceD3D *this_00;
+      
+      this_00 = operator_new(0xd8);
+      PbufferSurfaceD3D::PbufferSurfaceD3D
+                (this_00,param_1,this->mRenderer,this->mDisplay,param_2,param_3,param_4);
+      return (SurfaceImpl *)this_00;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::SurfaceD3D ===
+FOUND: 1
+FUNC: name=rx::SurfaceD3D::SurfaceD3D
+  MATCHED_FRAGMENT: SurfaceD3D::SurfaceD3D
+  ENTRY_VA: 0x180f18220
+  ENTRY_RVA: 0xf18220
+  SIZE_BYTES: 433
+  CALLERS: rx::PbufferSurfaceD3D::PbufferSurfaceD3D; rx::WindowSurfaceD3D::WindowSurfaceD3D
+  CALLEES: _guard_dispatch_icall_nop; egl::AttributeMap::get; rx::SurfaceImpl::SurfaceImpl
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    SurfaceD3D * __thiscall
+    rx::SurfaceD3D::SurfaceD3D
+              (SurfaceD3D *this,SurfaceState *param_1,RendererD3D *param_2,Display *param_3,
+              HWND__ *param_4,uint param_5,void *param_6,AttributeMap *param_7)
+    
+    {
+      long64 lVar1;
+      NativeWindowD3D *pNVar2;
+      bool bVar3;
+      
+      SurfaceImpl::SurfaceImpl((SurfaceImpl *)this,param_1);
+      this->_padding_ = (longlong)&_vftable_;
+      this->mRenderer = param_2;
+      this->mDisplay = param_3;
+      if (param_4 == (HWND__ *)0x0) {
+        bVar3 = true;
+      }
+      else {
+        lVar1 = egl::AttributeMap::get(param_7,0x3201,0);
+        bVar3 = lVar1 == 1;
+      }
+      this->mFixedSize = bVar3;
+      this->mFixedWidth = 0;
+      this->mFixedHeight = 0;
+      lVar1 = egl::AttributeMap::get(param_7,0x33a8,0);
+      this->mOrientation = (int)lVar1;
+      this->mRenderTargetFormat = param_1->config->renderTargetFormat;
+      this->mDepthStencilFormat = param_1->config->depthStencilFormat;
+      this->mColorFormat = (Format *)0x0;
+      this->mSwapChain = (SwapChainD3D *)0x0;
+      this->mSwapIntervalDirty = true;
+      pNVar2 = (NativeWindowD3D *)
+               (*__guard_dispatch_icall_fptr)(param_2,param_4,param_1->config,param_7);
+      this->mNativeWindow = pNVar2;
+      lVar1 = egl::AttributeMap::get(param_7,0x3057,0);
+      this->mWidth = (int)lVar1;
+      lVar1 = egl::AttributeMap::get(param_7,0x3056,0);
+      this->mHeight = (int)lVar1;
+      this->mSwapInterval = 1;
+      this->mShareHandle = (void *)0x0;
+      this->mD3DTexture = (IUnknown *)0x0;
+      this->mBuftype = param_5;
+      if (param_4 == (HWND__ *)0x0 || (this->mFixedSize & 1U) != 0) {
+        if (this->mFixedSize == true) {
+          this->mFixedWidth = this->mWidth;
+          this->mFixedHeight = (int)lVar1;
+        }
+      }
+      else {
+        this->mWidth = -1;
+        this->mHeight = -1;
+      }
+      if (param_5 == 0x33a3) {
+        this->mD3DTexture = param_6;
+        (*__guard_dispatch_icall_fptr)();
+      }
+      else if (param_5 == 0x3200) {
+        this->mShareHandle = param_6;
+      }
+      return this;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::initialize ===
+FOUND: 2
+FUNC: name=rx::SurfaceD3D::initialize
+  MATCHED_FRAGMENT: SurfaceD3D::initialize
+  ENTRY_VA: 0x180f18420
+  ENTRY_RVA: 0xf18420
+  SIZE_BYTES: 821
+  CALLERS: (none)
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; _invalid_parameter_noinfo_noreturn; egl::AttributeMap::contains; egl::AttributeMap::get; egl::Error::Error; operator_delete; operator_new; rx::SurfaceD3D::resetSwapChain
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    Error * __thiscall
+    rx::SurfaceD3D::initialize(SurfaceD3D *this,Error *__return_storage_ptr__,Display *param_1)
+    
+    {
+      Format **ppFVar1;
+      FormatID FVar2;
+      basic_string<char,std::char_traits<char>,std::allocator<char>_> *pbVar3;
+      char *pcVar4;
+      char cVar5;
+      bool bVar6;
+      ulonglong uVar7;
+      ulonglong uVar8;
+      long64 lVar9;
+      undefined8 uVar10;
+      Format *pFVar11;
+      char *pcVar12;
+      undefined8 *puVar13;
+      undefined8 uStack_b0;
+      undefined1 auStack_a8 [32];
+      longlong local_88;
+      int *local_80;
+      int *local_78;
+      undefined8 local_70;
+      undefined8 uStack_68;
+      Format **local_60;
+      undefined8 local_58;
+      _Bxty local_50;
+      undefined8 local_40;
+      ulonglong local_38;
+      ulonglong local_30;
+      
+      local_30 = __security_cookie ^ (ulonglong)auStack_a8;
+      if (this->mNativeWindow->mWindow == (HWND__ *)0x0) {
+    LAB_180f18469:
+        if (this->mBuftype == 0x33a3) {
+          ppFVar1 = &this->mColorFormat;
+          local_78 = &this->mFixedHeight;
+          local_80 = &this->mFixedWidth;
+          local_88 = this->_padding_ + 0x18;
+          local_70 = 0;
+          uStack_68 = 0;
+          local_58 = 0;
+          uStack_b0 = 0x180f184da;
+          local_60 = ppFVar1;
+          (*__guard_dispatch_icall_fptr)
+                    (this->mRenderer,__return_storage_ptr__,*(undefined8 *)(this->_padding_ + 0x10),
+                     this->mD3DTexture);
+          if (__return_storage_ptr__->mCode == 0x3000) {
+            pbVar3 = (__return_storage_ptr__->mMessage)._Mypair._Myval2;
+            if (pbVar3 != (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0) {
+              uVar8 = (pbVar3->_Mypair)._Myval2._Myres;
+              if (0xf < uVar8) {
+                pcVar4 = (pbVar3->_Mypair)._Myval2._Bx._Ptr;
+                uVar7 = uVar8 + 1;
+                pcVar12 = pcVar4;
+                if (0xfff < uVar7) {
+                  pcVar12 = *(char **)(pcVar4 + -8);
+                  puVar13 = (undefined8 *)auStack_a8;
+                  if ((char *)0x1f < pcVar4 + (-8 - (longlong)pcVar12)) goto LAB_180f18750;
+                  uVar7 = uVar8 + 0x28;
+                }
+                uStack_b0 = 0x180f1852d;
+                operator_delete(pcVar12,uVar7);
+              }
+              uStack_b0 = 0x180f1853a;
+              operator_delete(pbVar3,0x20);
+            }
+            uStack_b0 = 0x180f1854c;
+            bVar6 = egl::AttributeMap::contains((AttributeMap *)(this->_padding_ + 0x18),0x309d);
+            pFVar11 = this->mColorFormat;
+            FVar2 = pFVar11->id;
+            if (bVar6) {
+              if (FVar2 != B8G8R8A8_TYPELESS) {
+                if (FVar2 == R8G8B8A8_TYPELESS) goto LAB_180f1863c;
+                local_50._8_8_ = 0;
+                uStack_b0 = 0x180f18586;
+                local_50._Ptr = operator_new(0x40);
+                uVar10 = s_EGL_GL_COLORSPACE_may_only_be_sp._8_8_;
+                local_40 = 0x3d;
+                local_38 = 0x3f;
+                *(undefined8 *)local_50._Ptr = s_EGL_GL_COLORSPACE_may_only_be_sp._0_8_;
+                *(undefined8 *)(local_50._Ptr + 8) = uVar10;
+                uVar10 = s_EGL_GL_COLORSPACE_may_only_be_sp._24_8_;
+                *(undefined8 *)(local_50._Ptr + 0x10) = s_EGL_GL_COLORSPACE_may_only_be_sp._16_8_;
+                *(undefined8 *)(local_50._Ptr + 0x18) = uVar10;
+                uVar10 = CONCAT35(s_EGL_GL_COLORSPACE_may_only_be_sp._45_3_,
+                                  s_EGL_GL_COLORSPACE_may_only_be_sp._40_5_);
+                *(undefined8 *)(local_50._Ptr + 0x20) = s_EGL_GL_COLORSPACE_may_only_be_sp._32_8_;
+                *(undefined8 *)(local_50._Ptr + 0x28) = uVar10;
+                uVar10 = s_EGL_GL_COLORSPACE_may_only_be_sp._53_8_;
+                *(ulonglong *)(local_50._Ptr + 0x2d) =
+                     CONCAT53(s_EGL_GL_COLORSPACE_may_only_be_sp._48_5_,
+                              s_EGL_GL_COLORSPACE_may_only_be_sp._45_3_);
+                *(undefined8 *)(local_50._Ptr + 0x35) = uVar10;
+                *(local_50._Ptr + 0x3d) = '\0';
+                uStack_b0 = 0x180f185de;
+                egl::Error::Error(__return_storage_ptr__,0x3009,
+                                  (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)
+                                  &local_50);
+                if (0xf < local_38) {
+                  uVar8 = local_38 + 1;
+                  uVar10 = local_50._Ptr;
+                  if (0xfff < uVar8) {
+                    uVar10 = *(undefined8 *)(local_50._Ptr + -8);
+                    puVar13 = (undefined8 *)auStack_a8;
+                    if ((char *)0x1f < local_50._Ptr + (-8 - uVar10)) goto LAB_180f18750;
+                    uVar8 = local_38 + 0x28;
+                  }
+                  uStack_b0 = 0x180f18623;
+                  operator_delete((void *)uVar10,uVar8);
+                }
+                goto LAB_180f1871d;
+              }
+            }
+            else if (FVar2 == R8G8B8A8_TYPELESS) {
+    LAB_180f1863c:
+              uStack_b0 = 0x180f18654;
+              lVar9 = egl::AttributeMap::get((AttributeMap *)(this->_padding_ + 0x18),0x309d,0x308a);
+              if (lVar9 == 0x3089) {
+                pFVar11 = angle::gFormatInfoTable + 0xd0;
+                *ppFVar1 = angle::gFormatInfoTable + 0xd0;
+              }
+              else {
+                pFVar11 = *ppFVar1;
+              }
+            }
+            if (pFVar11->id == B8G8R8A8_TYPELESS) {
+              uStack_b0 = 0x180f18688;
+              lVar9 = egl::AttributeMap::get((AttributeMap *)(this->_padding_ + 0x18),0x309d,0x308a);
+              if (lVar9 == 0x3089) {
+                pFVar11 = angle::gFormatInfoTable + 0x47;
+                *ppFVar1 = angle::gFormatInfoTable + 0x47;
+              }
+              else {
+                pFVar11 = *ppFVar1;
+              }
+            }
+            this->mRenderTargetFormat = pFVar11->fboImplementationInternalFormat;
+            goto LAB_180f186a8;
+          }
+        }
+        else {
+    LAB_180f186a8:
+          uStack_b0 = 0x180f186b6;
+          resetSwapChain(this,__return_storage_ptr__,param_1);
+          if (__return_storage_ptr__->mCode == 0x3000) {
+            pbVar3 = (__return_storage_ptr__->mMessage)._Mypair._Myval2;
+            if (pbVar3 != (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0) {
+              uVar8 = (pbVar3->_Mypair)._Myval2._Myres;
+              if (0xf < uVar8) {
+                pcVar4 = (pbVar3->_Mypair)._Myval2._Bx._Ptr;
+                uVar7 = uVar8 + 1;
+                pcVar12 = pcVar4;
+                if (0xfff < uVar7) {
+                  pcVar12 = *(char **)(pcVar4 + -8);
+                  puVar13 = (undefined8 *)auStack_a8;
+                  if ((char *)0x1f < pcVar4 + (-8 - (longlong)pcVar12)) goto LAB_180f18750;
+                  uVar7 = uVar8 + 0x28;
+                }
+                uStack_b0 = 0x180f18701;
+                operator_delete(pcVar12,uVar7);
+              }
+              uStack_b0 = 0x180f1870e;
+              operator_delete(pbVar3,0x20);
+            }
+            __return_storage_ptr__->mCode = 0x3000;
+            __return_storage_ptr__->mID = 0;
+            goto LAB_180f18715;
+          }
+        }
+      }
+      else {
+        uStack_b0 = 0x180f18461;
+        cVar5 = (*__guard_dispatch_icall_fptr)();
+        if (cVar5 != '\0') goto LAB_180f18469;
+        __return_storage_ptr__->mCode = 0x300d;
+        __return_storage_ptr__->mID = 0;
+    LAB_180f18715:
+        (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+             (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+      }
+    LAB_180f1871d:
+      if (__security_cookie == (local_30 ^ (ulonglong)auStack_a8)) {
+        return __return_storage_ptr__;
+      }
+      uStack_b0 = 0x180f18750;
+      puVar13 = &uStack_b0;
+    LAB_180f18750:
+                        /* WARNING: Subroutine does not return */
+      *(undefined **)((longlong)puVar13 + -8) = &UNK_180f18755;
+      _invalid_parameter_noinfo_noreturn();
+    }
+    
+
+FUNC: name=rx::SurfaceD3D::initializeContents
+  MATCHED_FRAGMENT: SurfaceD3D::initialize
+  ENTRY_VA: 0x180f19000
+  ENTRY_RVA: 0xf19000
+  SIZE_BYTES: 109
+  CALLERS: (none)
+  CALLEES: _guard_dispatch_icall_nop; rx::RendererD3D::initRenderTarget
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    Result __thiscall
+    rx::SurfaceD3D::initializeContents
+              (SurfaceD3D *this,Context *param_1,uint param_2,ImageIndex *param_3)
+    
+    {
+      Result RVar1;
+      RenderTargetD3D *pRVar2;
+      RendererD3D *this_00;
+      
+      if (param_2 - 0x1801 < 2) {
+        this_00 = this->mRenderer;
+      }
+      else {
+        if (param_2 != 0x405) {
+          return Continue;
+        }
+        this_00 = this->mRenderer;
+      }
+      pRVar2 = (RenderTargetD3D *)(*__guard_dispatch_icall_fptr)();
+      RVar1 = RendererD3D::initRenderTarget(this_00,param_1,pRVar2);
+      if (RVar1 != Stop) {
+        return Continue;
+      }
+      return Stop;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::bindTexImage ===
+FOUND: 1
+FUNC: name=rx::SurfaceD3D::bindTexImage
+  MATCHED_FRAGMENT: SurfaceD3D::bindTexImage
+  ENTRY_VA: 0x180c2cbe0
+  ENTRY_RVA: 0xc2cbe0
+  SIZE_BYTES: 19
+  CALLERS: rx::DisplayWGL::initialize
+  CALLEES: (none)
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VkStructureType": Some values do not have unique names */
+    /* WARNING: Enum "VkStructureType.conflict": Some values do not have unique names */
+    /* WARNING: Enum "VkObjectType": Some values do not have unique names */
+    /* WARNING: Enum "VkDriverId.conflict": Some values do not have unique names */
+    /* WARNING: Enum "VkImageLayout": Some values do not have unique names */
+    /* WARNING: Enum "VkShaderFloatControlsIndependence": Some values do not have unique names */
+    /* WARNING: Enum "MemoryAllocationType": Some values do not have unique names */
+    /* WARNING: Enum "EventStage": Some values do not have unique names */
+    /* WARNING: Enum "ProtectionType": Some values do not have unique names */
+    /* WARNING: Enum "ContextPriority": Some values do not have unique names */
+    /* WARNING: Enum "VkResult": Some values do not have unique names */
+    /* WARNING: Enum "VkFormat.conflict": Some values do not have unique names */
+    /* WARNING: Enum "ImageAccess": Some values do not have unique names */
+    /* WARNING: Enum "VkFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "VkDescriptorType": Some values do not have unique names */
+    /* WARNING: Enum "VkImageAspectFlagBits": Some values do not have unique names */
+    /* WARNING: Enum "PipelineStage": Some values do not have unique names */
+    /* WARNING: Enum "PipelineStageGroup": Some values do not have unique names */
+    
+    Error * __thiscall rx::DeviceVk::initialize(DeviceVk *this,Error *__return_storage_ptr__)
+    
+    {
+      __return_storage_ptr__->mCode = 0x3000;
+      __return_storage_ptr__->mID = 0;
+      (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+           (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+      return __return_storage_ptr__;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::releaseTexImage ===
+FOUND: 1
+FUNC: name=rx::SurfaceD3D::releaseTexImage
+  MATCHED_FRAGMENT: SurfaceD3D::releaseTexImage
+  ENTRY_VA: 0x180c2cbe0
+  ENTRY_RVA: 0xc2cbe0
+  SIZE_BYTES: 19
+  CALLERS: rx::DisplayWGL::initialize
+  CALLEES: (none)
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VkStructureType": Some values do not have unique names */
+    /* WARNING: Enum "VkStructureType.conflict": Some values do not have unique names */
+    /* WARNING: Enum "VkObjectType": Some values do not have unique names */
+    /* WARNING: Enum "VkDriverId.conflict": Some values do not have unique names */
+    /* WARNING: Enum "VkImageLayout": Some values do not have unique names */
+    /* WARNING: Enum "VkShaderFloatControlsIndependence": Some values do not have unique names */
+    /* WARNING: Enum "MemoryAllocationType": Some values do not have unique names */
+    /* WARNING: Enum "EventStage": Some values do not have unique names */
+    /* WARNING: Enum "ProtectionType": Some values do not have unique names */
+    /* WARNING: Enum "ContextPriority": Some values do not have unique names */
+    /* WARNING: Enum "VkResult": Some values do not have unique names */
+    /* WARNING: Enum "VkFormat.conflict": Some values do not have unique names */
+    /* WARNING: Enum "ImageAccess": Some values do not have unique names */
+    /* WARNING: Enum "VkFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "VkDescriptorType": Some values do not have unique names */
+    /* WARNING: Enum "VkImageAspectFlagBits": Some values do not have unique names */
+    /* WARNING: Enum "PipelineStage": Some values do not have unique names */
+    /* WARNING: Enum "PipelineStageGroup": Some values do not have unique names */
+    
+    Error * __thiscall rx::DeviceVk::initialize(DeviceVk *this,Error *__return_storage_ptr__)
+    
+    {
+      __return_storage_ptr__->mCode = 0x3000;
+      __return_storage_ptr__->mID = 0;
+      (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+           (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+      return __return_storage_ptr__;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::querySurfacePointerANGLE ===
+FOUND: 1
+FUNC: name=rx::SurfaceD3D::querySurfacePointerANGLE
+  MATCHED_FRAGMENT: SurfaceD3D::querySurfacePointerANGLE
+  ENTRY_VA: 0x180f18f50
+  ENTRY_RVA: 0xf18f50
+  SIZE_BYTES: 103
+  CALLERS: (none)
+  CALLEES: _guard_dispatch_icall_nop
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    Error * __thiscall
+    rx::SurfaceD3D::querySurfacePointerANGLE
+              (SurfaceD3D *this,Error *__return_storage_ptr__,int param_1,void **param_2)
+    
+    {
+      void *pvVar1;
+      
+      if (param_1 == 0x33a2) {
+        pvVar1 = (void *)(*__guard_dispatch_icall_fptr)
+                                   (this->mSwapChain,*(undefined8 *)(this->mSwapChain->_padding_ + 0x38)
+                                   );
+      }
+      else {
+        if (param_1 != 0x3200) goto LAB_180f18fa1;
+        pvVar1 = this->mSwapChain->mShareHandle;
+      }
+      *param_2 = pvVar1;
+    LAB_180f18fa1:
+      __return_storage_ptr__->mCode = 0x3000;
+      __return_storage_ptr__->mID = 0;
+      (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+           (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+      return __return_storage_ptr__;
+    }
+    
+
+
+=== TARGET: rx::SwapChain11::getKeyedMutex ===
+FOUND: 1
+FUNC: name=rx::SwapChain11::getKeyedMutex
+  MATCHED_FRAGMENT: SwapChain11::getKeyedMutex
+  ENTRY_VA: 0x18003d960
+  ENTRY_RVA: 0x3d960
+  SIZE_BYTES: 5
+  CALLERS: gl::ValidateEGLImageObject; skgpu::ganesh::Device::baseRecorder
+  CALLEES: (none)
+  PSEUDOCODE:
+    
+    /* WARNING: Enum "Role": Some values do not have unique names */
+    /* WARNING: Enum "StringAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntAttribute": Some values do not have unique names */
+    /* WARNING: Enum "FloatAttribute": Some values do not have unique names */
+    /* WARNING: Enum "BoolAttribute": Some values do not have unique names */
+    /* WARNING: Enum "IntListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "StringListAttribute": Some values do not have unique names */
+    /* WARNING: Enum "AXTreeIDType": Some values do not have unique names */
+    /* WARNING: Enum "TextAffinity": Some values do not have unique names */
+    /* WARNING: Enum "Command": Some values do not have unique names */
+    /* WARNING: Enum "TextBoundary": Some values do not have unique names */
+    /* WARNING: Enum "MoveDirection": Some values do not have unique names */
+    
+    AXTree * __thiscall flutter::AccessibilityBridge::GetTree(AccessibilityBridge *this)
+    
+    {
+      return *(AXTree **)&(this->id_wrapper_map_).field_0x38;
+    }
+    
+
+
+=== TARGET: rx::SurfaceD3D::resetSwapChain ===
+FOUND: 1
+FUNC: name=rx::SurfaceD3D::resetSwapChain
+  MATCHED_FRAGMENT: SurfaceD3D::resetSwapChain
+  ENTRY_VA: 0x180f18760
+  ENTRY_RVA: 0xf18760
+  SIZE_BYTES: 641
+  CALLERS: rx::DisplayD3D::restoreLostDevice; rx::SurfaceD3D::initialize
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; _invalid_parameter_noinfo_noreturn; egl::Error::Error; operator_delete; operator_new; rx::RendererD3D::notifyDeviceLost
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    
+    Error * __thiscall
+    rx::SurfaceD3D::resetSwapChain(SurfaceD3D *this,Error *__return_storage_ptr__,Display *param_1)
+    
+    {
+      int iVar1;
+      char cVar2;
+      int iVar3;
+      SwapChainD3D *pSVar4;
+      ulonglong uVar5;
+      undefined8 uVar6;
+      undefined8 *puVar7;
+      undefined8 uStack_c0;
+      undefined1 auStack_b8 [32];
+      uint local_98;
+      uint local_90;
+      int local_88;
+      undefined4 local_80;
+      undefined1 local_70 [16];
+      _Bxty local_60;
+      undefined8 local_50;
+      ulonglong local_48;
+      ulonglong local_40;
+      
+      puVar7 = (undefined8 *)auStack_b8;
+      local_40 = __security_cookie ^ (ulonglong)auStack_b8;
+      if (this->mFixedSize == false) {
+        uStack_c0 = 0x180f187b4;
+        cVar2 = (*__guard_dispatch_icall_fptr)(this->mNativeWindow,local_70);
+        if (cVar2 != '\0') {
+          uVar6 = CONCAT44(SUB84(local_70._8_8_,4) - SUB84(local_70._0_8_,4),
+                           (int)local_70._8_8_ - (int)local_70._0_8_);
+          goto LAB_180f187cc;
+        }
+        local_60._8_8_ = 0;
+        uStack_c0 = 0x180f188f3;
+        local_60._Ptr = operator_new(0x30);
+        uVar6 = s_Could_not_retrieve_the_window_di._8_8_;
+        local_50 = 0x28;
+        local_48 = 0x2f;
+        *(undefined8 *)local_60._Ptr = s_Could_not_retrieve_the_window_di._0_8_;
+        *(undefined8 *)(local_60._Ptr + 8) = uVar6;
+        uVar6 = s_Could_not_retrieve_the_window_di._24_8_;
+        *(undefined8 *)(local_60._Ptr + 0x10) = s_Could_not_retrieve_the_window_di._16_8_;
+        *(undefined8 *)(local_60._Ptr + 0x18) = uVar6;
+        *(local_60._Ptr + 0x20) = 'm';
+        *(local_60._Ptr + 0x21) = 'e';
+        *(local_60._Ptr + 0x22) = 'n';
+        *(local_60._Ptr + 0x23) = 's';
+        *(local_60._Ptr + 0x24) = 'i';
+        *(local_60._Ptr + 0x25) = 'o';
+        *(local_60._Ptr + 0x26) = 'n';
+        *(local_60._Ptr + 0x27) = 's';
+        *(local_60._Ptr + 0x28) = '\0';
+        uStack_c0 = 0x180f18945;
+        egl::Error::Error(__return_storage_ptr__,0x300d,
+                          (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)&local_60);
+        if (0xf < local_48) {
+          uVar5 = local_48 + 1;
+          uVar6 = local_60._Ptr;
+          if (0xfff < uVar5) {
+            uVar6 = *(undefined8 *)(local_60._Ptr + -8);
+            if ((char *)0x1f < local_60._Ptr + (-8 - uVar6)) goto LAB_180f189dc;
+            uVar5 = local_48 + 0x28;
+          }
+          uStack_c0 = 0x180f18982;
+          operator_delete((void *)uVar6,uVar5);
+        }
+      }
+      else {
+        uVar6._0_4_ = this->mFixedWidth;
+        uVar6._4_4_ = this->mFixedHeight;
+    LAB_180f187cc:
+        local_80 = *(undefined4 *)(*(longlong *)(this->_padding_ + 0x10) + 0x74);
+        local_88 = this->mOrientation;
+        local_90 = this->mDepthStencilFormat;
+        local_98 = this->mRenderTargetFormat;
+        uStack_c0 = 0x180f18828;
+        pSVar4 = (SwapChainD3D *)
+                 (*__guard_dispatch_icall_fptr)
+                           (this->mRenderer,this->mNativeWindow,this->mShareHandle,this->mD3DTexture);
+        this->mSwapChain = pSVar4;
+        if (pSVar4 == (SwapChainD3D *)0x0) {
+          __return_storage_ptr__->mCode = 0x3003;
+          __return_storage_ptr__->mID = 0;
+        }
+        else {
+          local_98 = this->mSwapInterval;
+          iVar3 = (int)((ulonglong)uVar6 >> 0x20);
+          if (iVar3 < 2) {
+            iVar3 = 1;
+          }
+          iVar1 = 1;
+          if (1 < (int)uVar6) {
+            iVar1 = (int)uVar6;
+          }
+          uStack_c0 = 0x180f18881;
+          iVar3 = (*__guard_dispatch_icall_fptr)(pSVar4,param_1->mImplementation,iVar1,iVar3);
+          if (iVar3 == 0x3000) {
+            this->mWidth = (int)uVar6;
+            this->mHeight = (int)((ulonglong)uVar6 >> 0x20);
+            this->mSwapIntervalDirty = false;
+            __return_storage_ptr__->mCode = 0x3000;
+            __return_storage_ptr__->mID = 0;
+          }
+          else {
+            if (iVar3 == 0x300e) {
+              uStack_c0 = 0x180f1889e;
+              RendererD3D::notifyDeviceLost(this->mRenderer);
+            }
+            if (this->mSwapChain != (SwapChainD3D *)0x0) {
+              uStack_c0 = 0x180f188bb;
+              (*__guard_dispatch_icall_fptr)(this->mSwapChain,1);
+            }
+            this->mSwapChain = (SwapChainD3D *)0x0;
+            __return_storage_ptr__->mCode = iVar3;
+            __return_storage_ptr__->mID = 0;
+          }
+        }
+        (__return_storage_ptr__->mMessage)._Mypair._Myval2 =
+             (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)0x0;
+      }
+      if (__security_cookie == (local_40 ^ (ulonglong)auStack_b8)) {
+        return __return_storage_ptr__;
+      }
+      puVar7 = &uStack_c0;
+      uStack_c0 = 0x180f189dc;
+    LAB_180f189dc:
+                        /* WARNING: Subroutine does not return */
+      *(undefined **)((longlong)puVar7 + -8) = &UNK_180f189e1;
+      _invalid_parameter_noinfo_noreturn();
+    }
+    
+
+
+=== TARGET: rx::SwapChain11::SwapChain11 ===
+FOUND: 1
+FUNC: name=rx::SwapChain11::SwapChain11
+  MATCHED_FRAGMENT: SwapChain11::SwapChain11
+  ENTRY_VA: 0x180eca580
+  ENTRY_RVA: 0xeca580
+  SIZE_BYTES: 974
+  CALLERS: rx::Renderer11::createSwapChain
+  CALLEES: KERNEL32.DLL::QueryPerformanceFrequency; __security_check_cookie; operator_new; rx::SurfaceRenderTarget11::SurfaceRenderTarget11; rx::SwapChainD3D::SwapChainD3D; rx::TextureHelper11::TextureHelper11
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "D3D_SRV_DIMENSION": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "D3D_PRIMITIVE_TOPOLOGY": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    
+    SwapChain11 * __thiscall
+    rx::SwapChain11::SwapChain11
+              (SwapChain11 *this,Renderer11 *param_1,NativeWindow11 *param_2,void *param_3,
+              IUnknown *param_4,uint param_5,uint param_6,int param_7,int param_8)
+    
+    {
+      code *pcVar1;
+      undefined8 *puVar2;
+      undefined8 *puVar3;
+      SwapChain11 *pSVar4;
+      bool bVar5;
+      undefined1 auStackY_98 [32];
+      LARGE_INTEGER local_68;
+      ulonglong local_60;
+      
+      local_60 = __security_cookie ^ (ulonglong)auStackY_98;
+      SwapChainD3D::SwapChainD3D((SwapChainD3D *)this,param_3,param_4,param_5,param_6);
+      this->_padding_ = (longlong)&_vftable_;
+      this->mRenderer = param_1;
+      this->mWidth = -1;
+      this->mHeight = -1;
+      this->mOrientation = param_7;
+      this->mAppCreatedShareHandle = this->_padding_ != 0;
+      this->mSwapInterval = 0;
+      this->mPassThroughResourcesInit = false;
+      this->mNativeWindow = param_2;
+      this->mFirstSwap = true;
+      this->mSwapChain = (IDXGISwapChain *)0x0;
+      this->mSwapChain1 = (IDXGISwapChain1 *)0x0;
+      this->mKeyedMutex = (IDXGIKeyedMutex *)0x0;
+      TextureHelper11::TextureHelper11(&this->mBackBufferTexture);
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mBackBufferRTView).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mBackBufferRTView).field_0x10 = 0;
+      *(undefined8 *)&(this->mBackBufferRTView).field_0x18 = 0;
+      *(undefined ***)&this->mBackBufferRTView = &Resource11<ID3D11RenderTargetView>::_vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      puVar3 = operator_new(0x18);
+      puVar3[1] = &DAT_100000001;
+      *puVar3 = &std::_Ref_count<rx::TypedData<ID3D11ShaderResourceView>_>::_vftable_;
+      puVar3[2] = puVar2;
+      *(undefined8 **)&(this->mBackBufferSRView).field_0x8 = puVar2;
+      *(undefined8 **)&(this->mBackBufferSRView).field_0x10 = puVar3;
+      *(undefined8 *)&(this->mBackBufferSRView).field_0x18 = 0;
+      *(undefined8 *)&(this->mBackBufferSRView).field_0x20 = 0;
+      *(undefined ***)&this->mBackBufferSRView = &SharedResource11<ID3D11UnorderedAccessView>::_vftable_
+      ;
+      if (param_7 == 2) {
+        bVar5 = false;
+      }
+      else {
+        bVar5 = true;
+        if ((char)param_1->_padding_ == '\x01') {
+          bVar5 = *(longlong *)&param_2->field_0x8 == 0;
+        }
+      }
+      this->mNeedsOffscreenTexture = bVar5;
+      TextureHelper11::TextureHelper11(&this->mOffscreenTexture);
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mOffscreenRTView).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mOffscreenRTView).field_0x10 = 0;
+      *(undefined8 *)&(this->mOffscreenRTView).field_0x18 = 0;
+      *(undefined ***)&this->mOffscreenRTView = &Resource11<ID3D11RenderTargetView>::_vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      puVar3 = operator_new(0x18);
+      puVar3[1] = &DAT_100000001;
+      *puVar3 = &std::_Ref_count<rx::TypedData<ID3D11ShaderResourceView>_>::_vftable_;
+      puVar3[2] = puVar2;
+      *(undefined8 **)&(this->mOffscreenSRView).field_0x8 = puVar2;
+      *(undefined8 **)&(this->mOffscreenSRView).field_0x10 = puVar3;
+      *(undefined8 *)&(this->mOffscreenSRView).field_0x18 = 0;
+      *(undefined8 *)&(this->mOffscreenSRView).field_0x20 = 0;
+      *(undefined ***)&this->mOffscreenSRView = &SharedResource11<ID3D11UnorderedAccessView>::_vftable_;
+      this->mNeedsOffscreenTextureCopy = false;
+      TextureHelper11::TextureHelper11(&this->mOffscreenTextureCopyForSRV);
+      TextureHelper11::TextureHelper11(&this->mDepthStencilTexture);
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mDepthStencilDSView).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mDepthStencilDSView).field_0x10 = 0;
+      *(undefined8 *)&(this->mDepthStencilDSView).field_0x18 = 0;
+      *(undefined ***)&this->mDepthStencilDSView =
+           &Resource11Base<ID3D11DepthStencilView,rx::UniquePtr,rx::TypedData<ID3D11DepthStencilView>_>
+            ::_vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      puVar3 = operator_new(0x18);
+      puVar3[1] = &DAT_100000001;
+      *puVar3 = &std::_Ref_count<rx::TypedData<ID3D11ShaderResourceView>_>::_vftable_;
+      puVar3[2] = puVar2;
+      *(undefined8 **)&(this->mDepthStencilSRView).field_0x8 = puVar2;
+      *(undefined8 **)&(this->mDepthStencilSRView).field_0x10 = puVar3;
+      *(undefined8 *)&(this->mDepthStencilSRView).field_0x18 = 0;
+      *(undefined8 *)&(this->mDepthStencilSRView).field_0x20 = 0;
+      *(undefined ***)&this->mDepthStencilSRView =
+           &SharedResource11<ID3D11UnorderedAccessView>::_vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mQuadVB).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mQuadVB).field_0x10 = 0;
+      *(undefined8 *)&(this->mQuadVB).field_0x18 = 0;
+      *(undefined ***)&this->mQuadVB = &Resource11<ID3D11Buffer>::_vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mPassThroughSampler).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mPassThroughSampler).field_0x10 = 0;
+      *(undefined8 *)&(this->mPassThroughSampler).field_0x18 = 0;
+      *(undefined ***)&this->mPassThroughSampler =
+           &Resource11Base<ID3D11SamplerState,rx::UniquePtr,rx::TypedData<ID3D11SamplerState>_>::
+            _vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mPassThroughIL).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mPassThroughIL).field_0x10 = 0;
+      *(undefined8 *)&(this->mPassThroughIL).field_0x18 = 0;
+      *(undefined ***)&this->mPassThroughIL =
+           &Resource11Base<ID3D11InputLayout,rx::UniquePtr,rx::TypedData<ID3D11InputLayout>_>::_vftable_
+      ;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mPassThroughVS).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mPassThroughVS).field_0x10 = 0;
+      *(undefined8 *)&(this->mPassThroughVS).field_0x18 = 0;
+      *(undefined ***)&this->mPassThroughVS =
+           &Resource11Base<ID3D11VertexShader,rx::UniquePtr,rx::TypedData<ID3D11VertexShader>_>::
+            _vftable_;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mPassThroughOrResolvePS).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mPassThroughOrResolvePS).field_0x10 = 0;
+      *(undefined8 *)&(this->mPassThroughOrResolvePS).field_0x18 = 0;
+      *(undefined ***)&this->mPassThroughOrResolvePS =
+           &Resource11Base<ID3D11PixelShader,rx::UniquePtr,rx::TypedData<ID3D11PixelShader>_>::_vftable_
+      ;
+      puVar2 = operator_new(0x10);
+      *puVar2 = 0;
+      puVar2[1] = 0;
+      *(undefined8 **)&(this->mPassThroughRS).field_0x8 = puVar2;
+      *(undefined8 *)&(this->mPassThroughRS).field_0x10 = 0;
+      *(undefined8 *)&(this->mPassThroughRS).field_0x18 = 0;
+      *(undefined ***)&this->mPassThroughRS =
+           &Resource11Base<ID3D11RasterizerState,rx::UniquePtr,rx::TypedData<ID3D11RasterizerState>_>::
+            _vftable_;
+      SurfaceRenderTarget11::SurfaceRenderTarget11(&this->mColorRenderTarget,this,param_1,false);
+      SurfaceRenderTarget11::SurfaceRenderTarget11(&this->mDepthStencilRenderTarget,this,param_1,true);
+      this->mEGLSamples = param_8;
+      local_68.QuadPart = 0;
+      QueryPerformanceFrequency(&local_68);
+      this->mQPCFrequency = (long64)local_68;
+      if (__security_cookie == (local_60 ^ (ulonglong)auStackY_98)) {
+        return this;
+      }
+      pcVar1 = (code *)swi(3);
+      pSVar4 = (SwapChain11 *)(*pcVar1)(local_60 ^ (ulonglong)auStackY_98);
+      return pSVar4;
+    }
+    
+
+
+=== TARGET: rx::SwapChain11::resetOffscreenColorBuffer ===
+FOUND: 1
+FUNC: name=rx::SwapChain11::resetOffscreenColorBuffer
+  MATCHED_FRAGMENT: SwapChain11::resetOffscreenColorBuffer
+  ENTRY_VA: 0x180ecb660
+  ENTRY_RVA: 0xecb660
+  SIZE_BYTES: 2614
+  CALLERS: rx::SwapChain11::reset; rx::SwapChain11::resize
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; gl::FmtHR; gl::LogMessage::LogMessage; gl::LogMessage::~LogMessage; gl::priv::FmtHexAutoSized<std::basic_ostream<char,std::char_traits<char>_>,long,char>; gl::priv::ShouldCreatePlatformLogMessage; rx::Renderer11::allocateTexture; rx::Renderer11::getShareHandleSupport; rx::Renderer11::onSwap; rx::Resource11Base<ID3D11ShaderResourceView,std::shared_ptr,rx::TypedData<ID3D11ShaderResourceView>_>::~Resource11Base; rx::ResourceManager11::allocate<ID3D11RenderTargetView>; rx::ResourceManager11::allocate<ID3D11ShaderResourceView>; rx::SwapChain11::copyOffscreenToBackbuffer; rx::SwapChain11::present; rx::SwapChain11::release; rx::SwapChain11::releaseOffscreenColorBuffer; rx::TextureHelper11::TextureHelper11; rx::TextureHelper11::getDesc; rx::TextureHelper11::initDesc; rx::d3d11::Format::Get; rx::d3d11::SetDebugName; std::_Insert_string<char,std::char_traits<char>,unsigned_long_long>; std::operator<<<std::char_traits<char>_>
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "D3D_SRV_DIMENSION": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "D3D_PRIMITIVE_TOPOLOGY": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    
+    int __thiscall
+    rx::SwapChain11::resetOffscreenColorBuffer
+              (SwapChain11 *this,DisplayD3D *param_1,int param_2,int param_3)
+    
+    {
+      TextureHelper11 *this_00;
+      DXGI_FORMAT DVar1;
+      ID3D11Device *pIVar2;
+      longlong lVar3;
+      ID3D11Device1 *pIVar4;
+      ulong64 uVar5;
+      ulonglong uVar6;
+      code *pcVar7;
+      bool bVar8;
+      int iVar9;
+      Result RVar10;
+      uint uVar11;
+      int iVar12;
+      Format *pFVar13;
+      basic_ostream<char,std::char_traits<char>_> *pbVar14;
+      IDXGIKeyedMutex *pIVar15;
+      Context *pCVar16;
+      DisplayD3D *pDVar17;
+      basic_string<char,std::char_traits<char>,std::allocator<char>_> *pbVar18;
+      char *pcVar19;
+      undefined1 auStackY_238 [32];
+      D3D11_SHADER_RESOURCE_VIEW_DESC local_1e8;
+      D3D11_RENDER_TARGET_VIEW_DESC local_1d0;
+      undefined1 local_1b8 [8];
+      undefined1 *puStack_1b0;
+      undefined8 local_1a8;
+      uint uStack_1a0;
+      D3D11_USAGE local_19c;
+      uint uStack_198;
+      uint uStack_194;
+      uint uStack_190;
+      TextureHelper11 local_188;
+      undefined1 local_148 [256];
+      ulonglong local_48;
+      
+      local_48 = __security_cookie ^ (ulonglong)auStackY_238;
+      pIVar2 = (this->mRenderer->mDevice).ptr_;
+      this_00 = &this->mOffscreenTexture;
+      TextureHelper11::TextureHelper11(&local_188,this_00);
+      uVar11 = this->mWidth;
+      DVar1 = this->mHeight;
+      releaseOffscreenColorBuffer(this);
+      pFVar13 = d3d11::Format::Get((uint)this->_padding_,&this->mRenderer->mRenderer11DeviceCaps);
+      uStack_198 = 0;
+      uStack_194 = 0;
+      uStack_190 = 0;
+      local_1a8._0_4_ = DXGI_FORMAT_UNKNOWN;
+      local_1a8._4_4_ = 0;
+      uStack_1a0 = 0;
+      local_19c = D3D11_USAGE_DEFAULT;
+      local_1b8._0_4_ = 0;
+      local_1b8._4_4_ = 0;
+      puStack_1b0 = (undefined1 *)0x0;
+      lVar3 = this->_padding_;
+      if ((lVar3 != 0 | this->mAppCreatedShareHandle) == 1) {
+        if (this->mAppCreatedShareHandle == false) {
+          if (lVar3 != 0) {
+            local_148._0_8_ = (IDXGIKeyedMutex *)0x0;
+            iVar9 = (*__guard_dispatch_icall_fptr)
+                              (lVar3,&_GUID_6f15aaf2_d208_4e89_9ab4_489535d34f9c,local_148);
+            pIVar15 = (IDXGIKeyedMutex *)local_148._0_8_;
+            if (iVar9 < 0) {
+              if ((IDXGIKeyedMutex *)local_148._0_8_ != (IDXGIKeyedMutex *)0x0) {
+                (*__guard_dispatch_icall_fptr)();
+              }
+              pIVar15 = (IDXGIKeyedMutex *)0x0;
+            }
+            (this->mOffscreenTexture).mFormatSet = pFVar13;
+            *(IDXGIKeyedMutex **)((this->mOffscreenTexture)._padding_ + 8) = pIVar15;
+            *(undefined8 *)((this->mOffscreenTexture)._padding_ + 0x10) = 0;
+            TextureHelper11::getDesc(this_00,(D3D11_TEXTURE2D_DESC *)local_148);
+            TextureHelper11::initDesc(this_00,(D3D11_TEXTURE2D_DESC *)local_148);
+          }
+    LAB_180ecb893:
+          TextureHelper11::getDesc(this_00,(D3D11_TEXTURE2D_DESC *)local_1b8);
+          if ((uStack_198 & 0x20) != 0) goto LAB_180ecbc9b;
+          bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+          if (bVar8) {
+            gl::LogMessage::LogMessage
+                      ((LogMessage *)local_148,
+                       "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                       ,"rx::SwapChain11::resetOffscreenColorBuffer",0xfe,3);
+            std::operator<<<std::char_traits<char>_>
+                      ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                       "Could not use provided offscreen texture, texture not renderable.");
+            goto LAB_180ecbbfb;
+          }
+        }
+        else {
+          iVar9 = (*__guard_dispatch_icall_fptr)
+                            (pIVar2,this->_padding_,&_GUID_dc8e63f3_d12b_4952_b47b_5e45026a862d,
+                             &local_1d0);
+          if ((-1 < iVar9) ||
+             ((pIVar4 = (this->mRenderer->mDevice1).ptr_, pIVar4 != (ID3D11Device1 *)0x0 &&
+              (iVar9 = (*__guard_dispatch_icall_fptr)
+                                 (pIVar4,this->_padding_,&_GUID_dc8e63f3_d12b_4952_b47b_5e45026a862d,
+                                  &local_1d0), -1 < iVar9)))) {
+            local_148._0_8_ = (IDXGIKeyedMutex *)0x0;
+            iVar9 = (*__guard_dispatch_icall_fptr)
+                              (local_1d0._0_8_,&_GUID_6f15aaf2_d208_4e89_9ab4_489535d34f9c,local_148);
+            pIVar15 = (IDXGIKeyedMutex *)local_148._0_8_;
+            if (iVar9 < 0) {
+              if ((IDXGIKeyedMutex *)local_148._0_8_ != (IDXGIKeyedMutex *)0x0) {
+                (*__guard_dispatch_icall_fptr)();
+              }
+              pIVar15 = (IDXGIKeyedMutex *)0x0;
+            }
+            (this->mOffscreenTexture).mFormatSet = pFVar13;
+            *(IDXGIKeyedMutex **)((this->mOffscreenTexture)._padding_ + 8) = pIVar15;
+            *(undefined8 *)((this->mOffscreenTexture)._padding_ + 0x10) = 0;
+            TextureHelper11::getDesc(this_00,(D3D11_TEXTURE2D_DESC *)local_148);
+            TextureHelper11::initDesc(this_00,(D3D11_TEXTURE2D_DESC *)local_148);
+            if (local_1d0._0_8_ != 0) {
+              (*__guard_dispatch_icall_fptr)();
+            }
+            goto LAB_180ecb893;
+          }
+          bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+          if (bVar8) {
+            gl::LogMessage::LogMessage
+                      ((LogMessage *)local_148,
+                       "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                       ,"rx::SwapChain11::resetOffscreenColorBuffer",0xe6,3);
+            pbVar14 = std::operator<<<std::char_traits<char>_>
+                                ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                                 "Could not open shared handle. ");
+            gl::FmtHR((FmtHexHelper<long,char> *)&local_1e8,iVar9);
+            gl::priv::FmtHexAutoSized<std::basic_ostream<char,std::char_traits<char>_>,long,char>
+                      (pbVar14,local_1e8.field2_0x8.Texture1D.MostDetailedMip,
+                       (char *)CONCAT44(local_1e8.ViewDimension,local_1e8.Format),"0x",'0');
+    LAB_180ecbbfb:
+            gl::LogMessage::~LogMessage((LogMessage *)local_148);
+          }
+        }
+        release(this);
+        iVar9 = 0x300d;
+        goto LAB_180ecbdee;
+      }
+      if (*(longlong *)&this->mNativeWindow->field_0x8 == 0) {
+        bVar8 = Renderer11::getShareHandleSupport(this->mRenderer);
+      }
+      else {
+        bVar8 = false;
+      }
+      local_1b8._4_4_ = param_3;
+      local_1b8._0_4_ = param_2;
+      puStack_1b0 = &DAT_100000001;
+      local_1a8._4_4_ = this->mEGLSamples + (uint)(this->mEGLSamples == 0);
+      local_1a8._0_4_ = pFVar13->texFormat;
+      uStack_1a0 = (uint)___xmm_00000000000000280000000000000000;
+      local_19c = (D3D11_USAGE)((ulonglong)___xmm_00000000000000280000000000000000 >> 0x20);
+      uStack_198 = (uint)_UNK_182aa11c8;
+      uStack_194 = (uint)((ulonglong)_UNK_182aa11c8 >> 0x20);
+      uStack_190 = (uint)bVar8 * 2;
+      pCVar16 = (Context *)&param_1->_padding_;
+      if (param_1 == (DisplayD3D *)0x0) {
+        pCVar16 = (Context *)0x0;
+      }
+      RVar10 = Renderer11::allocateTexture
+                         (this->mRenderer,pCVar16,(D3D11_TEXTURE2D_DESC *)local_1b8,pFVar13,
+                          (D3D11_SUBRESOURCE_DATA *)0x0,this_00);
+      if (RVar10 == Stop) {
+        bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+        if (bVar8) {
+          gl::LogMessage::LogMessage
+                    ((LogMessage *)local_148,
+                     "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                     ,"rx::SwapChain11::resetOffscreenColorBuffer",0x118,3);
+          pbVar14 = std::operator<<<std::char_traits<char>_>
+                              ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                               "Could not create offscreen texture, ");
+          uVar5 = (param_1->mStoredErrorString)._Mypair._Myval2._Mysize;
+          uVar6 = (param_1->mStoredErrorString)._Mypair._Myval2._Myres;
+    joined_r0x000180ecbf2c:
+          if (uVar6 < 0x10) {
+            pbVar18 = &param_1->mStoredErrorString;
+          }
+          else {
+            pbVar18 = (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)
+                      (param_1->mStoredErrorString)._Mypair._Myval2._Bx._Ptr;
+          }
+          std::_Insert_string<char,std::char_traits<char>,unsigned_long_long>
+                    (pbVar14,(char *)pbVar18,uVar5);
+          gl::LogMessage::~LogMessage((LogMessage *)local_148);
+        }
+      }
+      else {
+        (this->mOffscreenTexture)._padding_ = (longlong)"OffscreenBackBufferTexture";
+        d3d11::SetDebugName(*(ID3D11DeviceChild **)((this->mOffscreenTexture)._padding_ + 8),
+                            "OffscreenBackBufferTexture",
+                            (basic_string<char,std::char_traits<char>,std::allocator<char>_> *)
+                            (this->mOffscreenTexture)._padding_);
+        if (bVar8 != false) {
+          local_1d0.Format = DXGI_FORMAT_UNKNOWN;
+          local_1d0.ViewDimension = D3D11_RTV_DIMENSION_UNKNOWN;
+          iVar9 = (*__guard_dispatch_icall_fptr)
+                            (*(undefined8 *)((this->mOffscreenTexture)._padding_ + 8),
+                             &_GUID_035f3ab4_482e_4e50_b41f_8a7f8bd8960b,&local_1d0);
+          if (iVar9 < 0) {
+            bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+            if (bVar8) {
+              gl::LogMessage::LogMessage
+                        ((LogMessage *)local_148,
+                         "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                         ,"rx::SwapChain11::resetOffscreenColorBuffer",0x12a,3);
+              pbVar14 = std::operator<<<std::char_traits<char>_>
+                                  ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                                   "Could not query offscreen texture resource, ");
+              gl::FmtHR((FmtHexHelper<long,char> *)&local_1e8,iVar9);
+              pcVar19 = (char *)CONCAT44(local_1e8.ViewDimension,local_1e8.Format);
+    LAB_180ecbc89:
+              gl::priv::FmtHexAutoSized<std::basic_ostream<char,std::char_traits<char>_>,long,char>
+                        (pbVar14,local_1e8.field2_0x8.Texture1D.MostDetailedMip,pcVar19,"0x",'0');
+              gl::LogMessage::~LogMessage((LogMessage *)local_148);
+            }
+          }
+          else {
+            iVar9 = (*__guard_dispatch_icall_fptr)(local_1d0._0_8_,&this->_padding_);
+            if (local_1d0._0_8_ != 0) {
+              (*__guard_dispatch_icall_fptr)();
+              local_1d0.Format = DXGI_FORMAT_UNKNOWN;
+              local_1d0.ViewDimension = D3D11_RTV_DIMENSION_UNKNOWN;
+            }
+            if (iVar9 < 0) {
+              this->_padding_ = 0;
+              bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+              if (bVar8) {
+                gl::LogMessage::LogMessage
+                          ((LogMessage *)local_148,
+                           "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                           ,"rx::SwapChain11::resetOffscreenColorBuffer",0x134,3);
+                pbVar14 = std::operator<<<std::char_traits<char>_>
+                                    ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                                     "Could not get offscreen texture shared handle, ");
+                gl::FmtHR((FmtHexHelper<long,char> *)&local_1e8,iVar9);
+                pcVar19 = (char *)CONCAT44(local_1e8.ViewDimension,local_1e8.Format);
+                goto LAB_180ecbc89;
+              }
+            }
+          }
+        }
+    LAB_180ecbc9b:
+        local_148._0_8_ = (IDXGIKeyedMutex *)0x0;
+        iVar9 = (*__guard_dispatch_icall_fptr)
+                          (*(undefined8 *)((this->mOffscreenTexture)._padding_ + 8),
+                           &_GUID_9d8e1289_d7b3_465f_8126_250e349af85d,local_148);
+        pIVar15 = (IDXGIKeyedMutex *)local_148._0_8_;
+        if (iVar9 < 0) {
+          if ((IDXGIKeyedMutex *)local_148._0_8_ != (IDXGIKeyedMutex *)0x0) {
+            (*__guard_dispatch_icall_fptr)();
+          }
+          pIVar15 = (IDXGIKeyedMutex *)0x0;
+        }
+        this->mKeyedMutex = pIVar15;
+        local_1d0.ViewDimension = (uint)(1 < this->mEGLSamples) * 2 + 4;
+        local_1d0.Format = pFVar13->rtvFormat;
+        local_1d0.field2_0x8.Texture1DArray.MipSlice = 0;
+        pCVar16 = (Context *)&param_1->_padding_;
+        if (param_1 == (DisplayD3D *)0x0) {
+          pCVar16 = (Context *)0x0;
+        }
+        RVar10 = ResourceManager11::allocate<ID3D11RenderTargetView>
+                           (&this->mRenderer->mResourceManager11,pCVar16,this->mRenderer,&local_1d0,
+                            *(ID3D11Resource **)((this->mOffscreenTexture)._padding_ + 8),
+                            &this->mOffscreenRTView);
+        if (RVar10 != Stop) {
+          *(char **)&(this->mOffscreenRTView).field_0x18 = "OffscreenBackBufferRenderTarget";
+          d3d11::SetDebugName((ID3D11DeviceChild *)**(undefined8 **)&(this->mOffscreenRTView).field_0x8,
+                              "OffscreenBackBufferRenderTarget",
+                              *(basic_string<char,std::char_traits<char>,std::allocator<char>_> **)
+                               &(this->mOffscreenRTView).field_0x10);
+          local_1e8.Format = pFVar13->srvFormat;
+          local_1e8.ViewDimension = (uint)(1 < this->mEGLSamples) * 2 + D3D10_1_SRV_DIMENSION_TEXTURE2D;
+          local_1e8.field2_0x8.Texture1D.MostDetailedMip = 0;
+          local_1e8.field2_0x8.Texture1D.MipLevels = 0xffffffff;
+          if ((uStack_198 & 8) == 0) {
+            this->mNeedsOffscreenTextureCopy = true;
+          }
+          else {
+            RVar10 = ResourceManager11::allocate<ID3D11ShaderResourceView>
+                               (&this->mRenderer->mResourceManager11,pCVar16,this->mRenderer,&local_1e8,
+                                *(ID3D11Resource **)((this->mOffscreenTexture)._padding_ + 8),
+                                &this->mOffscreenSRView);
+            if (RVar10 == Stop) {
+              bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+              if (bVar8) {
+                gl::LogMessage::LogMessage
+                          ((LogMessage *)local_148,
+                           "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                           ,"rx::SwapChain11::resetOffscreenColorBuffer",0x15b,3);
+                pbVar14 = std::operator<<<std::char_traits<char>_>
+                                    ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                                     "Could not create offscreen back buffer shader resource, ");
+                uVar5 = (param_1->mStoredErrorString)._Mypair._Myval2._Mysize;
+                uVar6 = (param_1->mStoredErrorString)._Mypair._Myval2._Myres;
+                goto joined_r0x000180ecbf2c;
+              }
+              goto LAB_180ecbde0;
+            }
+            *(char **)&(this->mOffscreenSRView).field_0x20 = "OffscreenBackBufferShaderResource";
+            d3d11::SetDebugName((ID3D11DeviceChild *)
+                                **(undefined8 **)&(this->mOffscreenSRView).field_0x8,
+                                "OffscreenBackBufferShaderResource",
+                                *(basic_string<char,std::char_traits<char>,std::allocator<char>_> **)
+                                 &(this->mOffscreenSRView).field_0x18);
+          }
+          iVar9 = 0x3000;
+          if (*(longlong *)(local_188._padding_ + 8) != 0) {
+            local_148._12_4_ = uVar11;
+            if (param_2 < (int)uVar11) {
+              local_148._12_4_ = param_2;
+            }
+            uVar11 = DVar1 - param_3;
+            if ((int)uVar11 < 1) {
+              uVar11 = 0;
+            }
+            local_148._0_8_ = (ulonglong)uVar11 << 0x20;
+            local_148._8_4_ = 0;
+            local_148._20_4_ = 1;
+            pDVar17 = *(DisplayD3D **)((this->mOffscreenTexture)._padding_ + 8);
+            local_148._16_4_ = DVar1;
+            (*__guard_dispatch_icall_fptr)();
+            if ((this->mSwapChain != (IDXGISwapChain *)0x0) &&
+               (((this->mNeedsOffscreenTexture != true ||
+                 (iVar12 = copyOffscreenToBackbuffer(this,param_1,0,0,param_2,param_3),
+                 pDVar17 = param_1, iVar12 == 0x3000)) &&
+                (iVar12 = present(this,pDVar17,0,0,param_2,param_3), iVar12 == 0x3000)))) {
+              Renderer11::onSwap(this->mRenderer);
+            }
+          }
+          goto LAB_180ecbdee;
+        }
+        bVar8 = gl::priv::ShouldCreatePlatformLogMessage(3);
+        if (bVar8) {
+          gl::LogMessage::LogMessage
+                    ((LogMessage *)local_148,
+                     "../../../flutter/third_party/angle/src/libANGLE/renderer/d3d/d3d11/SwapChain11.cpp"
+                     ,"rx::SwapChain11::resetOffscreenColorBuffer",0x147,3);
+          pbVar14 = std::operator<<<std::char_traits<char>_>
+                              ((basic_ostream<char,std::char_traits<char>_> *)(local_148 + 0x18),
+                               "Could not create offscreen back buffer render target, ");
+          uVar5 = (param_1->mStoredErrorString)._Mypair._Myval2._Mysize;
+          uVar6 = (param_1->mStoredErrorString)._Mypair._Myval2._Myres;
+          goto joined_r0x000180ecbf2c;
+        }
+      }
+    LAB_180ecbde0:
+      release(this);
+      iVar9 = 0x3003;
+    LAB_180ecbdee:
+      Resource11Base<ID3D11ShaderResourceView,std::shared_ptr,rx::TypedData<ID3D11ShaderResourceView>_>
+      ::~Resource11Base((Resource11Base<ID3D11ShaderResourceView,std::shared_ptr,rx::TypedData<ID3D11ShaderResourceView>_>
+                         *)&local_188);
+      if (__security_cookie != (local_48 ^ (ulonglong)auStackY_238)) {
+        pcVar7 = (code *)swi(3);
+        iVar9 = (*pcVar7)(local_48 ^ (ulonglong)auStackY_238);
+        return iVar9;
+      }
+      return iVar9;
+    }
+    
+
+
+=== TARGET: rx::TextureStorage11_External::TextureStorage11_External ===
+FOUND: 1
+FUNC: name=rx::TextureStorage11_External::TextureStorage11_External
+  MATCHED_FRAGMENT: TextureStorage11_External::TextureStorage11_External
+  ENTRY_VA: 0x180ed4190
+  ENTRY_RVA: 0xed4190
+  SIZE_BYTES: 333
+  CALLERS: rx::Renderer11::createTextureStorageExternal
+  CALLEES: __security_check_cookie; _guard_dispatch_icall_nop; flutter::FlutterWindowsView::GetEngine; fml::FileMapping::GetMapping; icu_78::Array1D::d1; rx::TextureHelper11::TextureHelper11; rx::TextureHelper11::getDesc; rx::TextureHelper11::initDesc; rx::TextureStorage11::TextureStorage11
+  PSEUDOCODE:
+    
+    /* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+    /* WARNING: Enum "CullFaceMode": Some values do not have unique names */
+    /* WARNING: Enum "PolygonMode": Some values do not have unique names */
+    /* WARNING: Enum "D3D_SRV_DIMENSION": Some values do not have unique names */
+    /* WARNING: Enum "VertexAttribType": Some values do not have unique names */
+    /* WARNING: Enum "D3D_PRIMITIVE_TOPOLOGY": Some values do not have unique names */
+    /* WARNING: Enum "PrimitiveMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureType": Some values do not have unique names */
+    /* WARNING: Enum "SamplerFormat": Some values do not have unique names */
+    /* WARNING: Enum "DrawElementsType": Some values do not have unique names */
+    /* WARNING: Enum "TextureFormat": Some values do not have unique names */
+    /* WARNING: Enum "TilingMode": Some values do not have unique names */
+    /* WARNING: Enum "CaptureAPI": Some values do not have unique names */
+    /* WARNING: Enum "BlockLayoutType": Some values do not have unique names */
+    /* WARNING: Enum "ShaderType": Some values do not have unique names */
+    /* WARNING: Enum "ShFragmentSynchronizationType": Some values do not have unique names */
+    /* WARNING: Enum "ClipOrigin": Some values do not have unique names */
+    /* WARNING: Enum "ClipDepthMode": Some values do not have unique names */
+    /* WARNING: Enum "ProvokingVertexConvention": Some values do not have unique names */
+    /* WARNING: Enum "LogicalOperation": Some values do not have unique names */
+    /* WARNING: Enum "MatrixType": Some values do not have unique names */
+    /* WARNING: Enum "TextureEnvMode": Some values do not have unique names */
+    /* WARNING: Enum "TextureCombine": Some values do not have unique names */
+    /* WARNING: Enum "TextureSrc": Some values do not have unique names */
+    /* WARNING: Enum "TextureOp": Some values do not have unique names */
+    /* WARNING: Enum "FogMode": Some values do not have unique names */
+    /* WARNING: Enum "ShadingModel": Some values do not have unique names */
+    /* WARNING: Enum "AlphaTestFunc": Some values do not have unique names */
+    /* WARNING: Enum "HintSetting": Some values do not have unique names */
+    /* WARNING: Enum "ShadingRate": Some values do not have unique names */
+    /* WARNING: Enum "CombinerOp": Some values do not have unique names */
+    /* WARNING: Enum "GraphicsResetStatus": Some values do not have unique names */
+    /* WARNING: Enum "QueryType": Some values do not have unique names */
+    
+    TextureStorage11_External * __thiscall
+    rx::TextureStorage11_External::TextureStorage11_External
+              (TextureStorage11_External *this,Renderer11 *param_1,Stream *param_2,
+              GLTextureDescription *param_3,
+              basic_string<char,std::char_traits<char>,std::allocator<char>_> *param_4)
+    
+    {
+      TextureHelper11 *this_00;
+      Format *pFVar1;
+      code *pcVar2;
+      int iVar3;
+      FlutterWindowsView *this_01;
+      FlutterWindowsEngine *pFVar4;
+      TextureStorage11_External *pTVar5;
+      undefined1 auStackY_88 [32];
+      D3D11_TEXTURE2D_DESC local_58;
+      ulonglong local_28;
+      
+      local_28 = __security_cookie ^ (ulonglong)auStackY_88;
+      TextureStorage11::TextureStorage11
+                ((TextureStorage11 *)this,param_1,8,0,param_3->internalFormat,param_4);
+      this->_padding_ = (longlong)&_vftable_;
+      this_00 = &this->mTexture;
+      TextureHelper11::TextureHelper11(this_00);
+      this->mAssociatedImage = (Image11 *)0x0;
+      this_01 = (FlutterWindowsView *)fml::FileMapping::GetMapping((FileMapping *)param_2);
+      pFVar1 = (Format *)this->_padding_;
+      pFVar4 = flutter::FlutterWindowsView::GetEngine(this_01);
+      (this->mTexture).mFormatSet = pFVar1;
+      *(FlutterWindowsEngine **)((this->mTexture)._padding_ + 8) = pFVar4;
+      *(undefined8 *)((this->mTexture)._padding_ + 0x10) = 0;
+      TextureHelper11::getDesc(this_00,&local_58);
+      TextureHelper11::initDesc(this_00,&local_58);
+      iVar3 = icu_78::Array1D::d1((Array1D *)this_01);
+      this->mSubresourceIndex = iVar3;
+      (*__guard_dispatch_icall_fptr)();
+      *(undefined4 *)((longlong)&this->_padding_ + 4) = 1;
+      TextureHelper11::getDesc(this_00,&local_58);
+      this->_padding_ = local_58._0_8_;
+      *(undefined4 *)&this->_padding_ = 1;
+      this->mHasKeyedMutex = (bool)(local_58.MiscFlags._1_1_ & 1);
+      if (__security_cookie == (local_28 ^ (ulonglong)auStackY_88)) {
+        return this;
+      }
+      pcVar2 = (code *)swi(3);
+      pTVar5 = (TextureStorage11_External *)(*pcVar2)(local_28 ^ (ulonglong)auStackY_88);
+      return pTVar5;
+    }
+    
+
+
+=== ANCHOR STRING XREFS ===
+STRING: 'Binding D3D surface failed.' @ 0x1812c07b0 (rva 0x12c07b0)
+  REF from 0x18000ed42 rva 0xed42 in flutter::ExternalTextureD3d::CreateOrUpdateTexture
+
+STRING: 'Only support GL_RGBA8 format now' @ 0x18132d1bd (rva 0x132d1bd)
+  REF from 0x1800eb69e rva 0xeb69e in flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+
+STRING: 'Could not create external texture' @ 0x18132d1de (rva 0x132d1de)
+  REF from 0x1800eb87d rva 0xeb87d in flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+
+STRING: 'Could not register destruction callback' @ 0x18132d200 (rva 0x132d200)
+  REF from 0x1800eb8bf rva 0xeb8bf in flutter::EmbedderExternalTextureGL::ResolveTextureImpeller
+
+STRING: 'EGL_ANGLE_keyed_mutex' @ 0x182a48f01 (rva 0x2a48f01)
+  REF from 0x180d2c748 rva 0xd2c748 in egl::DisplayExtensions::getStrings
+
+STRING: 'eglCreatePbufferSurface' @ 0x182ac5631 (rva 0x2ac5631)
+  REF from 0x182ac6100 rva 0x2ac6100 in (no function)
+  REF from 0x18109deec rva 0x109deec in EGL_CreatePbufferSurface
+  REF from 0x18109def3 rva 0x109def3 in EGL_CreatePbufferSurface
+  REF from 0x1810a4a4c rva 0x10a4a4c in egl::CreatePbufferSurface
+  REF from 0x182ad0c30 rva 0x2ad0c30 in (no function)
+
+STRING: 'eglDestroySurface' @ 0x182ac5689 (rva 0x2ac5689)
+  REF from 0x182ac6200 rva 0x2ac6200 in (no function)
+  REF from 0x18109e2d4 rva 0x109e2d4 in EGL_DestroySurface
+  REF from 0x18109e2db rva 0x109e2db in EGL_DestroySurface
+  REF from 0x1810a54b6 rva 0x10a54b6 in egl::DestroySurface
+  REF from 0x182ad0cb0 rva 0x2ad0cb0 in (no function)
+
+STRING: 'eglBindTexImage' @ 0x182ac576e (rva 0x2ac576e)
+  REF from 0x182ac6040 rva 0x2ac6040 in (no function)
+  REF from 0x18109f00a rva 0x109f00a in EGL_BindTexImage
+  REF from 0x18109f011 rva 0x109f011 in EGL_BindTexImage
+  REF from 0x1810a40ff rva 0x10a40ff in egl::BindTexImage
+  REF from 0x182ad0bd0 rva 0x2ad0bd0 in (no function)
+
+STRING: 'eglReleaseTexImage' @ 0x182ac577e (rva 0x2ac577e)
+  REF from 0x182ac65c0 rva 0x2ac65c0 in (no function)
+  REF from 0x18109f0ca rva 0x109f0ca in EGL_ReleaseTexImage
+  REF from 0x18109f0d1 rva 0x109f0d1 in EGL_ReleaseTexImage
+  REF from 0x1810a62bd rva 0x10a62bd in egl::ReleaseTexImage
+  REF from 0x182ad0e90 rva 0x2ad0e90 in (no function)
+
+STRING: 'eglCreatePbufferFromClientBuffer' @ 0x182ac57bd (rva 0x2ac57bd)
+  REF from 0x182ac60f0 rva 0x2ac60f0 in (no function)
+  REF from 0x18109f3ef rva 0x109f3ef in EGL_CreatePbufferFromClientBuffer
+  REF from 0x18109f3f6 rva 0x109f3f6 in EGL_CreatePbufferFromClientBuffer
+  REF from 0x1810a48fc rva 0x10a48fc in egl::CreatePbufferFromClientBuffer
+  REF from 0x182ad0c28 rva 0x2ad0c28 in (no function)
+
+STRING: 'eglQuerySurfacePointerANGLE' @ 0x182ac5c0b (rva 0x2ac5c0b)
+  REF from 0x182ac6570 rva 0x2ac6570 in (no function)
+  REF from 0x1810a183f rva 0x10a183f in EGL_QuerySurfacePointerANGLE
+  REF from 0x1810a1846 rva 0x10a1846 in EGL_QuerySurfacePointerANGLE
+  REF from 0x1810a8918 rva 0x10a8918 in egl::QuerySurfacePointerANGLE
+  REF from 0x182ad0e68 rva 0x2ad0e68 in (no function)
+

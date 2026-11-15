@@ -1,0 +1,15 @@
+host gpu="NVIDIA GeForce RTX 4060 Laptop GPU" refresh_hz=165 power_online=True os=Windows(MINGW64 Git Bash) flutter=3.47.8
+source=av://lavfi:testsrc2=size=3840x2160:rate=60:duration=200[out0];sine=frequency=440:sample_rate=48000:duration=200[out1] ao=null window=default(1280x720, untouched) run_seconds=150
+windows: probe lines 6..end (done_med, pickup_med, superseded); stat lines 10..end (drops = last N - 10th N, avsync_max over numeric avdiff); errors = whole log
+builds: base=HEAD(0bf0bb6)+instrumentation(superseded counter, log only) fix=HEAD+instrumentation+fix(swap at publish) both Release with libmpv-rtx bundle
+ab run=base-auto reason="vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)" probe_lines=73 stat_lines=147 drops=0 superseded=0 effective=0 done_med=0.781313 pickup_med=8.85 avsync_max=2.45972e-05 errors=0
+ab run=base-d3d11 reason="vulkan (d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11)" probe_lines=73 stat_lines=147 drops=0 superseded=0 effective=0 done_med=1.36068 pickup_med=7.895 avsync_max=2.61027e-05 errors=0
+ab run=fix-auto reason="vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)" probe_lines=73 stat_lines=146 drops=0 superseded=123 effective=123 done_med=0.0366295 pickup_med=4.62 avsync_max=1.94906e-05 errors=0
+ab run=fix-d3d11 reason="vulkan (d3d11 (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU; vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=d3d11)" probe_lines=73 stat_lines=146 drops=0 superseded=128 effective=128 done_med=0.004015 pickup_med=4.65 avsync_max=5.50944e-05 errors=0
+whole-run mpv frame-drop-count (incl. first 10 s): base-auto=0 base-d3d11=10 fix-auto=0 fix-d3d11=0
+pickup avg (probe windows 6..end, ms): base-auto=8.80 base-d3d11=7.87 fix-auto=4.63 fix-d3d11=4.68; pickup max seen: base 22.7/22.5 fix 17.5/17.6
+rule: not_worse = effective_fix <= effective_base + 2 per config; clearly_better = effective_fix*2 <= effective_base and effective_base - effective_fix >= 5 for at least one config; avsync_max_fix <= 10*max(avsync_max_base,0.001); errors_fix <= errors_base; probe_lines >= 65 in every run
+eval not_worse auto=NO (123 > 0+2) d3d11=NO (128 > 0+2); clearly_better=NO (baseline effective drops are 0 in both configs, so the 5-frame improvement is unreachable on this host); avsync=ok errors=ok probe_lines=ok(73)
+note: superseded frames = published, replaced before the compositor took them (about 1.5% of frames, spread evenly over the 150 s: 0-5 per 120-frame window). mpv drops fell to 0 (base-d3d11 had 10 in the first 10 s), done wait fell 0.78/1.36 ms -> 0.04/0.004 ms and pickup avg 8.8/7.9 -> 4.6/4.7 ms.
+ab_gate=FAIL
+decision (user, via orchestrator, 2026-10-29): option 3+4. Commit only the log-only superseded= instrumentation; ship package3 main (current swap behaviour) plus an experimental control package with build/nwm/fix.patch applied to the working tree only; compare on the GTX 960M laptop. The D-05 gate is overridden for packaging only.

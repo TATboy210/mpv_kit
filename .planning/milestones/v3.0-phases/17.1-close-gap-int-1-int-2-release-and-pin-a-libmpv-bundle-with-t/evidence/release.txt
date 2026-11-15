@@ -1,0 +1,19 @@
+tags_before=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3
+push_command=git push --no-follow-tags origin refs/tags/v0.1.0-dev.4
+tags_after=v0.1.0-dev.1 v0.1.0-dev.2 v0.1.0-dev.3 v0.1.0-dev.4
+tag_remote_sha=47cbbf21f603cffb0d0d472796f42f72ad768099
+release tag=v0.1.0-dev.4 isDraft=false isPrerelease=false assets=7 publishedAt=2026-10-30T20:55:34Z
+sums cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1  libmpv-linux-arm64.tar.gz
+sums 2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29  libmpv-linux-x64.tar.gz
+sums 38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a  libmpv-macos-arm64.tar.gz
+sums c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190  libmpv-macos-x64.tar.gz
+sums af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1  libmpv-windows-arm64.tar.gz
+sums 6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254  libmpv-windows-x64.tar.gz
+digest target=linux-x64 api=2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29 sums=2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29 match=yes
+digest target=linux-arm64 api=cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1 sums=cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1 match=yes
+digest target=macos-arm64 api=38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a sums=38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a match=yes
+digest target=macos-x64 api=c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190 sums=c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190 match=yes
+digest target=windows-x64 api=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254 sums=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254 match=yes
+digest target=windows-arm64 api=af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1 sums=af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1 match=yes
+downloaded_check=all six archives re-hashed locally in /tmp/gsd-dl.WDjRpL: shasum -c OK; SHA256SUMS sha256=b18e8f4c9467efb7957855fde061a60bacc600e160fba37742229ada50956369
+tag_run id=41123644028 created=2026-10-30T20:29:40Z updated=2026-10-30T20:55:37Z duration_s=1557 attempt=1 no_rerun

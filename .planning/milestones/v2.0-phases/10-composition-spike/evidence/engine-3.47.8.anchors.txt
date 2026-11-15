@@ -1,0 +1,38 @@
+# Flutter 3.47.8 engine artifact — anchor-string counts
+
+Date (UTC): 2026-10-24
+Target: `D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll`
+sha256: `9a3a09cabda0fb31b27313394205bdcac62a5211c0d71934d2272313ffb7d170`
+
+## Command
+
+```bash
+DLL="D:/flutter/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll"
+grep -a -o -F "<anchor>" "$DLL" | wc -l
+```
+
+## Measured counts (each expected value is the measurement, not a uniform 1)
+
+| Anchor | Count | Path / branch it identifies |
+|---|---|---|
+| `Only support GL_RGBA8 format now` | 1 | Path C, Impeller branch: `ResolveTextureImpeller` rejects any external texture whose format is not `GL_RGBA8` (the format cliff). |
+| `Could not create external texture` | 2 | Path C: two distinct literals — the Skia `TextureGLES`/wrap failure message (embedder path) and the Impeller `TextureGLES::WrapTexture` failure message. |
+| `Could not register destruction callback` | 1 | Path C, Impeller branch: `RegisterCleanupCallback` on the reactor failed. |
+| `Binding D3D surface failed.` | 1 | Path B, production: ANGLE `eglBindTexImage` failed inside `ExternalTextureD3d::CreateOrUpdateTexture`. |
+| `Using the Impeller rendering backend` | 4 | Runtime renderer identity. The four hits are the four rendered-backend literals (`(OpenGLESSDF)`, `(OpenGLES)`, `(VulkanSDF)`, `(Vulkan)`, each duplicated in the literal pool); the smoke gate must use `>= 1`, not `== 1`. |
+| `OpenGLESSDF` | 1 | Runtime renderer identity, Windows GLES-over-ANGLE variant. |
+| `EmbedderExternalTextureGL` | 2 | RTTI/type-name string for the consumption class; xref anchor for Path C. |
+| `ExternalTextureD3d` | 0 | Correctly absent as a string — do NOT use it as a string anchor; locate the class via PDB symbols and the `Binding D3D surface failed.` / EGL string xrefs instead. |
+
+## Consistency note
+
+These counts are identical to the counts measured against the 3.47.6 DLL in
+`10-RESEARCH.md`. The earlier "exactly once" expectation was a measurement
+error, not a version difference: the additional hits are distinct literals
+(`Using the Impeller rendering backend (OpenGLESSDF)`, `(OpenGLES)`,
+`(VulkanSDF)`, `(Vulkan)`), and the two `Could not create external texture`
+messages correspond to the Skia and Impeller wrap-failure sites.
+
+Consequence for downstream verification: a gate that asserts `== 1` for
+`Could not create external texture` or `Using the Impeller rendering backend`
+fails against the real binary. Use the per-anchor counts above.

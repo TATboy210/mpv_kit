@@ -8,6 +8,8 @@
 #include <wrl/client.h>
 
 #include <functional>
+#include <memory>
+#include <vector>
 
 #include "../src/video_renderer.h"
 #include "../src/vulkan_backend.h"
@@ -22,6 +24,9 @@ class D3D11Interop : public Interop, public VulkanInterop {
 
   // Interop
   VulkanInterop* vulkan() override { return device_ ? this : nullptr; }
+  const char* interopReason() const override {
+    return d3d_reason_.empty() ? nullptr : d3d_reason_.c_str();
+  }
   bool SoftwareIsBgra() const override { return false; }  // Flutter wants RGBA
   void FrameReady() override { frame_ready_(); }
   // Flutter (ExternalTextureD3d::CreateOrUpdateTexture, verified by
@@ -30,10 +35,21 @@ class D3D11Interop : public Interop, public VulkanInterop {
   // mutex: the only bound on when ANGLE stops sampling an image is the
   // swap chain queue (DXGI default: 3 frames) plus the frame being built.
   int CompositorLatency() const override { return 4; }
-  /// AddRef for Flutter; released by the descriptor's release_callback.
-  void RetainFrame(void* platform) override {
-    static_cast<Texture*>(platform)->texture->AddRef();
+  /// AddRef for Flutter and copies the handle/release token into the frame
+  /// while the renderer lock is held; released by the descriptor callback.
+  void RetainFrame(void* platform, Frame* frame) override {
+    auto* tex = static_cast<Texture*>(platform);
+    if (!tex || !tex->texture) return;
+    tex->texture->AddRef();
+    frame->handle = tex->shared_handle;
+    frame->release_context = tex->texture.Get();
   }
+  /// Windows chain (kWindowsApiOrder in d3d11_interop.cpp): the Vulkan and
+  /// the native D3D11 backend per renderer tier, then software.
+  std::vector<BackendCandidate> BackendCandidates(
+      RendererChoice choice) const override;
+  /// "d3d11": the native backend on Flutter's adapter; others: nullptr.
+  std::unique_ptr<RenderBackend> CreateBackend(const char* api) override;
 
   // VulkanInterop
   std::vector<const char*> InstanceExtensions() const override { return {}; }
@@ -50,7 +66,13 @@ class D3D11Interop : public Interop, public VulkanInterop {
   };
 
  private:
+  // Flutter's adapter, kept even when this class's own device failed: the
+  // D3D11 backend creates its device on it.
+  Microsoft::WRL::ComPtr<IDXGIAdapter> adapter_;
   Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  // Why zero-copy sharing is unavailable (probe failure with the HRESULT),
+  // empty when the device came up (OBS-03).
+  std::string d3d_reason_;
   LUID luid_{};
   std::function<void()> frame_ready_;
 };

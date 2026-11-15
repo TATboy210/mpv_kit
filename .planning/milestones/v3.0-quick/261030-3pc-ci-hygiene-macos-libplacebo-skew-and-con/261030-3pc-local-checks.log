@@ -1,0 +1,20 @@
+audit head=CONSTANTS ok
+audit checks_unchanged=12
+audit negative=ok drift_lines=4 at=4be7678
+audit bash-n=ok
+harness S1=ok
+harness S2=ok
+harness S3=ok
+harness S4=ok
+harness S5=ok
+bash-n stager=ok probe-n=ok(dart analyze)
+bash32 static grep=ok (no associative arrays, mapfile/readarray, case-modifying expansions, pipe-both-streams)
+check_matrix=ok
+WORKFLOW-CHECK no_brew_install=True staged_in_macos=True probe_step=True
+workflow gate strings absent=ok (Library not loaded / MACOS-DYLD summary / MACOS-CLOSURE check)
+dart analyze --fatal-infos tools/macos_dyld_images.dart=No issues found
+probe non-macOS host exit=2
+no CR bytes=ok
+scope diff=ok (nothing under packages/ native/ example/, release.yml, flutter-plugin.yml, macos-route.yml changed since 0e149da)
+review note: macos-route.yml has no build/consume split (pinned hook bundle measured in-app; only Homebrew use is ffmpeg to encode samples in the same job), so no change
+harness S6=ok (fix-forward: re-sign unmodified copies that do not verify; Intel run 40937808629 badsig)

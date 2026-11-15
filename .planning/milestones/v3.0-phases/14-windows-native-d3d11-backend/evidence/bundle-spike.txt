@@ -1,0 +1,51 @@
+# 14-04 bundle composition evidence (Windows: SPIRV-Cross + shaderc)
+# No scratch CI spike was run (hosted CI was deferred by user decision 2026-10-27). The milestone CI pass of 2026-10-28 supplies the evidence below from the release.yml
+# dispatch run 40618740386 at b40cdff9262e32f884f4c71b31d3306a4fa37e49 (feat), whose six build jobs succeeded (publish skipped by design). The first shaderc/spirv-cross build happened in release run 40616262900 (sha 943f0be, both windows jobs success, deps cache saved), the later run reused that cache.
+
+shaderc_tag=v2026.4 reason=newest tag returned by `gh api repos/google/shaderc/tags` on 2026-10-27 (v2026.4, v2026.3, v2026.2, ...); matches the research recommendation; tag sha d393a813c9b67c709d37b329203d72beb69d719e
+pin name=spirv-cross url=https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721 tag_sha=f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7
+pin name=spirv-headers url=https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=5b3a0d099f5c7649e29c0938476c462e71d66ad89a0bde42fa1ba3eb476956c9 tag_sha=496543121ce6419f23d6fa5d7194ba66c36212d2
+pin name=spirv-tools url=https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz sha256=e6c83a215538fbfd265ccf398d3877985055df1273dbed73912bd05307664688 tag_sha=ef96ed763b43b59b33b31b362f09a02b729fa1c9
+pin name=shaderc url=https://github.com/google/shaderc/archive/refs/tags/v2026.4.tar.gz sha256=f06ce5bcca94e5df7f34e115743597d0ad2e13c5fe9213c67dc8c76031241947 tag_sha=d393a813c9b67c709d37b329203d72beb69d719e
+pin name=libplacebo-v7.360.1 sha256=14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39 verified=match
+# sha256 values were computed locally from archives downloaded into build/phase14/dl/<name>/ (one directory each, nothing executed inside them).
+
+# What the local source inspection found (not a build result):
+glslang_compat=ok run=40616262900 sha=943f0be6f9a74c2150b1e1d8dde05b37c1bdce20 basis="deps stage built shaderc against the pinned glslang 16.6.0 on both windows jobs (job success, `Cache saved with key: deps-windows-x64-1ecf3253...`); mpv meson then printed `Run-time dependency shaderc found: YES 2026.4.1`" source_note_from_local_inspection=shaderc v2026.4 DEPS pins glslang e1b562a8 (not 16.6.0) and SPIRV-Headers 04fd3caa (not the SDK tag 496543121); SPIRV-Tools ef96ed76 equals the SDK tag exactly. The pinned glslang 16.6.0 source is handed to shaderc through SHADERC_GLSLANG_DIR; whether its CMake/API still fits is only known at the first Windows build.
+arm64_clangarm64_shaderc_build=ok run=40616262900 basis="windows (windows-11-arm, CLANGARM64, windows-arm64) success; `Cache saved with key: deps-windows-arm64-1ecf3253...`; release run 40618740386 on the same keys: `Run-time dependency shaderc found: YES 2026.4.1`, `Run-time dependency spirv-cross-c-shared found: YES 0.68.0`, `#define HAVE_D3D11 1`"
+have_d3d11 target=x64 run=40618740386 sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 line="#define HAVE_D3D11 1" job="windows (windows-2025, CLANG64, windows-x64, nasm:p)"
+have_d3d11 target=arm64 run=40618740386 sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 line="#define HAVE_D3D11 1" job="windows (windows-11-arm, CLANGARM64, windows-arm64)"
+resolved target=x64 (was: blocked, hosted CI deferred, no local Windows toolchain) now answered by release run 40618740386
+resolved target=arm64 (was: blocked, hosted CI deferred) now answered by release run 40618740386
+
+# Task 2 (checkpoint:decision, bundle composition), answered in the orchestrator session at 2026-10-27T10:05:00Z.
+decision=shared user_reply=`shared`. shaderc_shared and spirv-cross-c-shared each ship as a separate DLL. (user: decide now and confirm buildability at the final CI pass; if shaderc later turns out not to build on glslang 16.6.0, the fallback is `own-glslang`.)
+fallback_if_shaderc_fails_on_glslang_16_6_0=own-glslang
+
+# Implemented shape (decision=shared): deps.sh Windows block builds spirv-cross-c-shared (DLL + spirv-cross-c-shared.pc) and shaderc_shared
+# (staged install; only include/shaderc, libshaderc_shared.dll.a, libshaderc_shared.dll and shaderc.pc are copied into PREFIX so the staged glslang cannot overwrite the one libplacebo links).
+# Bundle gains two DLLs, both audited by package.sh (--forbid-gpl --forbid-angle), listed in MANIFEST.txt, licenses under share/licenses/{spirv-cross,shaderc,spirv-tools,spirv-headers}.
+
+# Local checks (this host):
+local libplacebo_patches applied=16 fuzz=0 base=v7.360.1 result=ok
+local bash_n deps.sh=ok build.sh=ok
+local check_matrix=ok check_consistency=ok golden_freeze=5xOK(manifest=golden-freeze-14.sha256)
+
+# Was pending at the milestone-end CI pass (all items below were checked on 2026-10-28, see the results block at the end):
+#   release.yml on feat: six jobs green; Windows logs show `#define HAVE_D3D11 1` and `ANGLE-FREE` for the spirv-cross and shaderc DLLs
+#   native-verify / flutter-plugin on feat: green (Linux deps cache rebuilds because deps.sh hash changed; Linux path unchanged)
+#   then append `attempt ...`, `dlls ...`, `bundle_total ...`, `final target=<x64|arm64> run=<id> dlls=<n> manifest_ok=<yes|no> licenses=<list>` lines
+
+# Milestone CI results (2026-10-28), release.yml dispatch run 40618740386 at b40cdff9262e32f884f4c71b31d3306a4fa37e49 (artifacts downloaded from that run into a scratch directory, nothing executed):
+attempt n=1 run=40616262900 sha=943f0be6f9a74c2150b1e1d8dde05b37c1bdce20 target=x64 windows=success note=first full deps build with shaderc + spirv-cross-c-shared (linux jobs of that run failed for libgles2, unrelated)
+attempt n=1 run=40616262900 sha=943f0be6f9a74c2150b1e1d8dde05b37c1bdce20 target=arm64 windows=success
+attempt n=2 run=40618740386 sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 target=x64 windows=success
+attempt n=2 run=40618740386 sha=b40cdff9262e32f884f4c71b31d3306a4fa37e49 target=arm64 windows=success
+dlls target=x64 run=40618740386 n=24 line="packaged 24 libraries into /d/a/mpv_kit/mpv_kit/dist/libmpv-windows-x64" new=libshaderc_shared.dll(7.4 MiB),libspirv-cross-c-shared.dll(3.0 MiB) names_match_plan=yes
+dlls target=arm64 run=40618740386 n=24 line="packaged 24 libraries into /c/a/mpv_kit/mpv_kit/dist/libmpv-windows-arm64" new=libshaderc_shared.dll(6.7 MiB),libspirv-cross-c-shared.dll
+bundle_total target=x64 run=40618740386 lib_dir_kib=49636 (du -sk of lib/ in the downloaded artifact; 24 DLLs including libmpv-2.dll)
+bundle_total target=arm64 run=40618740386 lib_dir_kib=40544
+final target=x64 run=40618740386 dlls=24 manifest_ok=yes licenses=shaderc,spirv-cross,spirv-tools,spirv-headers
+final target=arm64 run=40618740386 dlls=24 manifest_ok=yes licenses=shaderc,spirv-cross,spirv-tools,spirv-headers
+# manifest_ok basis: MANIFEST.txt of both downloaded artifacts lists lib/libshaderc_shared.dll and lib/libspirv-cross-c-shared.dll (24 lib/*.dll entries each) and licenses/{shaderc,spirv-cross,spirv-tools,spirv-headers}/LICENSE (also glslang, libplacebo, vulkan-headers etc.). LGPL-only: package.sh ran with --forbid-gpl --forbid-angle and the job succeeded; every DLL printed `ANGLE-FREE`, including libshaderc_shared.dll and libspirv-cross-c-shared.dll.
+# Open item from the plan text: "bundle_total" has no plan-set budget in this file; the numbers above are informational.

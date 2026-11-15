@@ -1,0 +1,105 @@
+# Phase 10 / 10-07 Task 1 — soak-window abort diagnosis
+#
+# OUTCOME: NOT REPRODUCED. Per the plan's step 7 safety rule, a non-reproducing
+# run is recorded honestly, Task 1 FAILS, and Task 2 (the single-point fix) is
+# NOT entered. No speculative fix was applied and nothing in `packages/` was
+# touched.
+#
+# The trace channel works: both modes wrote synchronously flushed markers and
+# both reached `DIAG soak complete` with exit 0. The 10-05 abort shape
+# (`soak-start`, then process gone, exit 79) did not recur in either mode nor
+# in the bounded 25-round retry, so there is no last begin/done marker to
+# derive an `abort_step` from.
+
+diagnosis: not-reproduced
+reproducer: not-reproduced
+part1_replay: yes
+mode_after4k: complete
+mode_loop: complete
+rounds_requested: 5
+rounds_requested_retry: 25
+rounds_completed_after4k: 5
+rounds_completed_retry: 25
+rounds_completed_loop: 5
+last_step_after4k: round-end
+last_step_loop: round-end
+abort_step: none
+abort_await: none
+abort_precondition: none
+sibling_diff: subscription-cancel;expect-registration
+sibling_diff.detail: this harness never cancels the per-round event subscription explicitly (playback_bench_test.dart:139 and uhd_endurance_test.dart:158 both cancel theirs) and calls `expect` only after the whole workload rather than mid-run; with no abort observed in 25 rounds neither difference is evidenced as a cause, so there is no `abort_step` they can be related to.
+exit_code_after4k: 0
+exit_code_loop: 0
+exit_code_retry: 0
+controllers_created_after4k: 8
+controllers_created_retry: 28
+controllers_created_loop: 7
+crash.wer: none — no mpv_kit_example dump in %LOCALAPPDATA%/CrashDumps for this session (newest dump is 2026-10-18); no WER ReportArchive/ReportQueue entry
+crash.eventlog: none — no Application Error (Id 1000/1001) or Application Hang event in the 2026-10-25T05:04Z..05:12Z window; no display-driver TDR/4101 event
+crash.resource: none — no Resource-Exhaustion-Detector or RADAR_PRE_LEAK_64 event in the run window
+crash.last_stage: soak
+trace_writer: sync-flush
+trace_after4k: .planning/phases/10-composition-spike/evidence/soak-abort.trace
+trace_loop: .planning/phases/10-composition-spike/evidence/soak-abort-loop.trace
+run_after4k: .planning/phases/10-composition-spike/evidence/soak-abort-diag-after4k.log
+run_loop: .planning/phases/10-composition-spike/evidence/soak-abort-diag-loop.log
+run_retry: .planning/phases/10-composition-spike/evidence/soak-abort-diag-retry25.log
+
+# --- Run matrix --------------------------------------------------------------
+# All three runs: debug build, Flutter 3.47.8 (framework 737ba8f885, engine
+# revision cf636b1dfb), one external texture, unlocked desktop with a visible
+# window, libmpv from the mpv_kit_libs hook build v0.1.0-dev.3. The older
+# bt/libmpv-2.dll was NOT used. `--enable-impeller` throughout; both modes share
+# the same `_runSoakRounds` body as the measured part 3.
+
+run-after4k.command: cd example && MPV_KIT_SMOKE_DIAG=soak-after-4k MPV_KIT_SMOKE_ROUNDS=5 MPV_KIT_SMOKE_TRACE=D:/mpv_kit/.planning/phases/10-composition-spike/evidence/soak-abort.trace MPV_KIT_LIBMPV_PATH=D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll PATH="$PATH:/d/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib" D:/flutter/bin/flutter test integration_test/impeller_smoke_test.dart -d windows --enable-impeller
+run-after4k.start: 2026-10-25T05:08:43Z
+run-after4k.end: 2026-10-25T05:09:37Z
+run-after4k.result: 5/5 rounds, `DIAG soak complete {"rounds":5,"mode":"soak-after-4k"}`, exit 0
+
+run-loop.command: cd example && MPV_KIT_SMOKE_DIAG=soak MPV_KIT_SMOKE_ROUNDS=5 MPV_KIT_SMOKE_TRACE=D:/mpv_kit/.planning/phases/10-composition-spike/evidence/soak-abort-loop.trace ... (same libmpv/PATH/test arguments as above)
+run-loop.start: 2026-10-25T05:09:47Z
+run-loop.end: 2026-10-25T05:10:37Z
+run-loop.result: 5/5 rounds, `DIAG soak complete {"rounds":5,"mode":"soak"}`, exit 0
+
+run-retry.command: cd example && MPV_KIT_SMOKE_DIAG=soak-after-4k MPV_KIT_SMOKE_ROUNDS=25 MPV_KIT_SMOKE_TRACE=D:/mpv_kit/.planning/phases/10-composition-spike/evidence/soak-abort.trace ... (bounded retry, overwrites the after-4k trace)
+run-retry.start: 2026-10-25T05:10:47Z
+run-retry.end: 2026-10-25T05:11:51Z
+run-retry.result: 25/25 rounds, `DIAG soak complete {"rounds":25,"mode":"soak-after-4k"}`, exit 0
+
+# --- Mechanical derivation (no stack reading, no guessing) -------------------
+# The derivation rule only applies when a run stops: take the last trace line;
+# a trailing `*-begin` without its `*-done` names `abort_step`; a trailing
+# `round-start`/`round-end` names that step; a header-only or trailing `*-done`
+# file is `external`. Here BOTH trace files end with `round-end` on their last
+# requested round (round=25 in the retry trace that overwrote
+# soak-abort.trace; round=5 in soak-abort-loop.trace), and both logs carry
+# `DIAG soak complete` — so the loop did not stop, and there is no abort to
+# locate. This is `not-reproduced`, not `external`.
+
+# --- Part 1 replay -----------------------------------------------------------
+# Both modes replayed the measured part-1 lifecycle first: mount the preflight
+# controller's texture, open the same lavfi source, wait for 1920x1080 params,
+# setSize(1920,1080), wait for estimated-vf-fps > 0 plus the first resize, then
+# unmount -> frame -> dispose -> create -> mount -> frame on the same Player.
+# The trace carries every one of those markers with round=0 and the log prints
+# `DIAG soak part1_replay yes`. `soak-after-4k` then applied the 4K prelude
+# (setSize(3840,2160), 3840x2160 resize at t≈1195..1291 ms, 2 s hold, one
+# entry cycle); `soak` applied setSize(1280,720) plus its first resize instead.
+
+# --- Why a diag run cannot be read as a measurement --------------------------
+# The diag branch returns before part 2 / part 3, never calls `_classify`,
+# never emits a `"stage":"complete"` payload and never writes
+# `evidence/impeller-bench.txt`. Verified mechanically: the complete-line count
+# in all three diag logs is 0.
+
+# --- Observed shape during the reproductions --------------------------------
+# RSS stayed bounded across both modes (≈286 MB at the first marker, ≈503 MB at
+# round 25 of the retry; it drops back after each dispose). No
+# renderError/deviceLost/idleSoak event was ever counted, and resizeEvents
+# stayed at 2 after the prelude in every run.
+
+# --- Consequence for the plan ------------------------------------------------
+# Task 2's precondition (`diagnosis: complete` AND `reproducer: reproduced`) is
+# false, so Task 2 is NOT executed and no fix branch (F1..F6) is applied. The
+# 10-05 abort remains unexplained; 10-08/10-09 must not assume it is gone.

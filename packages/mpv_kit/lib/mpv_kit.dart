@@ -1,4 +1,4 @@
-/// mpv_kit — libmpv 0.41 (client API 2.5) 的完整 Dart 绑定。
+/// mpv_kit — libmpv 0.42 (client API 2.6) 的完整 Dart 绑定。
 ///
 /// * [Mpv] — 1:1 low-level client API (commands, properties, observers,
 ///   async requests, hooks, logs, sub-clients).
@@ -22,5 +22,7 @@ export 'src/generated/catalog.dart';
 export 'src/generated/catalog_types.dart';
 export 'src/generated/option_types.dart';
 export 'src/generated/options.dart';
+export 'src/player/hwdec_defaults.dart'
+    show defaultHwdecFor, defaultHwdecForBackend;
 export 'src/player/models.dart' hide secondsToDuration, nodeInt;
 export 'src/player/player.dart';

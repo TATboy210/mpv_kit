@@ -1,0 +1,15 @@
+golden_freeze=ok manifest=.planning/phases/14-windows-native-d3d11-backend/evidence/golden-freeze-14.sha256 ok_lines=5
+constants=ok CONSTANTS ok
+api_freeze=ok no diff vs 3a5f450
+enum_line=ok
+check_matrix=ok CHECK-MATRIX ok native-verify linux runners (x64+arm64)
+CHECK-MATRIX ok native-verify macos runners (arm64+x64)
+CHECK-MATRIX ok native-verify windows msystems (x64+arm64)
+CHECK-MATRIX ok release.yml six targets (6)
+CHECK-MATRIX ok ./.github/workflows/native-verify.yml continue-on-error allowed: Vulkan loader diagnostics
+CHECK-MATRIX ok ./.github/workflows/native-verify.yml continue-on-error allowed: msys2/setup-msys2@v2
+CHECK-MATRIX: all targets present, no unauthorized continue-on-error
+phase_scope=ok 21 commits with (13-0 in subject; files outside the 13-01..13-05 files_modified union are only GSD bookkeeping: .planning/{REQUIREMENTS,ROADMAP,STATE}.md and 13-0{1,2,3,4}-SUMMARY.md
+user_files=ok none of those commits touch .planning/config.json, .planning/state.json, .planning/tmp/, .planning/ui-reviews/, engine_repo_embedder.cc (checked on the working tree: not staged)
+no_media=ok
+# final_gate=deferred (user decision 2026-10-27): hosted CI full gate, final run= ROUTE-* lines and the run-to-run comparison are not part of this local audit.

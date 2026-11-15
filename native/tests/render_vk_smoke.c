@@ -4,6 +4,13 @@
 //
 // Exit codes: 0 pass, 1 failure, 77 skipped (no Vulkan device; meson "skip").
 // Optional argument: renderer ("gpu-next", the default, or "gpu").
+// Optional second argument "--drm" (Phase 16, HWD-03): also passes
+// MPV_RENDER_PARAM_DRM_DISPLAY_V2 (render_fd = -1, the shape a host without a
+// render node uses) and reads mpv's verbose log. Under gpu-next the log must
+// show that the drm_params_v2 native resource was registered (patch 0004;
+// the gpu renderer registers it in upstream code and logs nothing). The
+// VA-API lines are only reported ("vaapi=..."): on a hosted runner
+// (llvmpipe/lavapipe, no /dev/dri) they say nothing about real interop.
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdbool.h>
@@ -18,6 +25,7 @@
 #include <time.h>
 
 #include <mpv/client.h>
+#include <mpv/render_gl.h>
 #include <mpv/render_vk.h>
 #include <vulkan/vulkan.h>
 
@@ -40,6 +48,43 @@ static void sleep_ms(int ms)
 {
     struct timespec ts = { .tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000L };
     nanosleep(&ts, NULL);
+}
+
+// --drm: what mpv's verbose log said about the DRM native resource and VA-API.
+struct drm_scan {
+    bool registered;    // "gpu-next: native resource drm_params_v2" (0004)
+    bool no_display;    // hwdec_vaapi: "Could not create a VA display."
+    bool no_interop;    // hwdec_vaapi: no OpenGL/Vulkan dma-buf interop
+};
+
+static void scan_log(struct drm_scan *s, const mpv_event *ev)
+{
+    if (ev->event_id != MPV_EVENT_LOG_MESSAGE)
+        return;
+    const mpv_event_log_message *m = ev->data;
+    if (strstr(m->text, "native resource drm_params_v2"))
+        s->registered = true;
+    if (strstr(m->text, "Could not create a VA display."))
+        s->no_display = true;
+    if (strstr(m->text, "VAAPI hwdec only works with OpenGL or Vulkan backends."))
+        s->no_interop = true;
+}
+
+// Reads queued events for at most `ms` milliseconds, scanning log messages.
+// Stops early once the queue has been idle for 50 ms.
+static void drain_logs(mpv_handle *mpv, struct drm_scan *s, int ms)
+{
+    struct timespec t0, now;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (;;) {
+        mpv_event *ev = mpv_wait_event(mpv, 0.05);
+        if (ev->event_id == MPV_EVENT_NONE)
+            return;
+        scan_log(s, ev);
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if ((now.tv_sec - t0.tv_sec) * 1000 + (now.tv_nsec - t0.tv_nsec) / 1000000 >= ms)
+            return;
+    }
 }
 
 static int find_memory(VkPhysicalDevice pd, uint32_t bits, VkMemoryPropertyFlags want)
@@ -209,7 +254,10 @@ int main(int argc, char **argv)
     }, NULL, &buf_mem));
     VK(vkBindBufferMemory(dev, buf, buf_mem, 0));
 
-    VkSemaphore done;
+    // first: frame 1 -> frame 2; done: frame 2 -> read back.
+    VkSemaphore first, done;
+    VK(vkCreateSemaphore(dev, &(VkSemaphoreCreateInfo){
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }, NULL, &first));
     VK(vkCreateSemaphore(dev, &(VkSemaphoreCreateInfo){
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }, NULL, &done));
 
@@ -222,9 +270,17 @@ int main(int argc, char **argv)
     mpv_set_option_string(mpv, "ao", "null");
     mpv_set_option_string(mpv, "config", "no");
     mpv_set_option_string(mpv, "terminal", "yes");
-    mpv_set_option_string(mpv, "msg-level", "all=warn,vo=v");
+    const bool drm = argc > 2 && strcmp(argv[2], "--drm") == 0;
+    struct drm_scan scan = { 0 };
+    // --drm needs the verbose render-context and VA-API lines. Only those
+    // modules go verbose: mpv's log queue drops the OLDEST entries when it
+    // overflows, and the registration line comes first.
+    mpv_set_option_string(mpv, "msg-level",
+        drm ? "all=warn,vo=v,libmpv_render=v,vaapi=v" : "all=warn,vo=v");
     if (mpv_initialize(mpv) < 0)
         FAIL("mpv_initialize");
+    if (drm)
+        mpv_request_log_messages(mpv, "v");
 
     mpv_vulkan_init_params vkp = {
         .instance = inst,
@@ -242,10 +298,18 @@ int main(int argc, char **argv)
         .unlock_queue = unlock_queue,
     };
     const char *renderer = argc > 1 ? argv[1] : "gpu-next";
+    // A host without a DRM render node: fds invalid, so VA-API cannot create
+    // a display, but the parameter must still be accepted and registered.
+    mpv_opengl_drm_params_v2 drm_params = {
+        .fd = -1, .crtc_id = 0, .connector_id = 0,
+        .atomic_request_ptr = NULL, .render_fd = -1,
+    };
+    // Without --drm the 4th entry has type INVALID (0): it ends the list.
     mpv_render_param params[] = {
         { MPV_RENDER_PARAM_API_TYPE, (void *)MPV_RENDER_API_TYPE_VULKAN },
         { MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &vkp },
         { MPV_RENDER_PARAM_VULKAN_RENDERER, (void *)renderer },
+        { drm ? MPV_RENDER_PARAM_DRM_DISPLAY_V2 : MPV_RENDER_PARAM_INVALID, &drm_params },
         { 0 },
     };
     fprintf(stderr, "[smoke] renderer: %s\n", renderer);
@@ -254,6 +318,11 @@ int main(int argc, char **argv)
     int err = mpv_render_context_create(&rc, mpv, params);
     if (err < 0)
         FAIL("mpv_render_context_create: %s", mpv_error_string(err));
+    if (drm) {
+        drain_logs(mpv, &scan, 2000);
+        if (strcmp(renderer, "gpu-next") == 0 && !scan.registered)
+            FAIL("gpu-next did not register the drm_params_v2 native resource");
+    }
 
     const char *cmd[] = { "loadfile", "av://lavfi:color=c=red:s=64x64:r=30", NULL };
     if (mpv_command(mpv, cmd) < 0)
@@ -265,6 +334,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 1000 && !have_frame; i++) {
         mpv_event *ev;
         while ((ev = mpv_wait_event(mpv, 0))->event_id != MPV_EVENT_NONE) {
+            scan_log(&scan, ev);
             if (ev->event_id == MPV_EVENT_END_FILE)
                 FAIL("playback ended before a frame was rendered");
         }
@@ -283,19 +353,44 @@ int main(int argc, char **argv)
                  VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .width = W,
         .height = H,
+        // Like the plugin: the image is always handed over to/from the
+        // external queue family, starting with discardable contents.
         .layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .queue_family = VK_QUEUE_FAMILY_IGNORED,
-        .signal_semaphore = done,
+        .final_layout = VK_IMAGE_LAYOUT_GENERAL,
+        .queue_family = VK_QUEUE_FAMILY_EXTERNAL,
+        .signal_semaphore = first,
     };
+    // Two renders into one image; a redraw must not wait for a vsync report.
+    int no_block = 0;
     mpv_render_param rparams[] = {
         { MPV_RENDER_PARAM_VULKAN_IMAGE, &target },
+        { MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &no_block },
         { 0 },
     };
+    // A target without a signal semaphore is rejected up front (libplacebo
+    // would assert when handing the image back); the frame stays queued.
+    step("render without signal_semaphore is rejected");
+    target.signal_semaphore = VK_NULL_HANDLE;
+    err = mpv_render_context_render(rc, rparams);
+    if (err != MPV_ERROR_INVALID_PARAMETER)
+        FAIL("render without signal_semaphore: got %d (%s)", err, mpv_error_string(err));
+    target.signal_semaphore = first;
+
     step("render");
     err = mpv_render_context_render(rc, rparams);
     if (err < 0)
         FAIL("mpv_render_context_render: %s", mpv_error_string(err));
+
+    // Second frame: acquire from EXTERNAL again (paired with the release of
+    // frame 1), preserving contents, then end in the read-back layout.
+    step("render again into the same image");
+    target.layout = VK_IMAGE_LAYOUT_GENERAL;
+    target.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    target.wait_semaphore = first;
+    target.signal_semaphore = done;
+    err = mpv_render_context_render(rc, rparams);
+    if (err < 0)
+        FAIL("second mpv_render_context_render: %s", mpv_error_string(err));
 
     // --- Read back: copy after mpv's signal --------------------------------
     VkCommandPool pool;
@@ -314,6 +409,19 @@ int main(int argc, char **argv)
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     }));
+    // Acquire the image from the external queue family mpv released it to.
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+            .dstQueueFamilyIndex = qf,
+            .image = img,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        });
     vkCmdCopyImageToBuffer(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1,
         &(VkBufferImageCopy){
             .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
@@ -352,6 +460,7 @@ int main(int argc, char **argv)
     vkDestroyFence(dev, fence, NULL);
     vkDestroyCommandPool(dev, pool, NULL);
     vkDestroySemaphore(dev, done, NULL);
+    vkDestroySemaphore(dev, first, NULL);
     vkDestroyBuffer(dev, buf, NULL);
     vkFreeMemory(dev, buf_mem, NULL);
     vkDestroyImage(dev, img, NULL);
@@ -361,6 +470,14 @@ int main(int argc, char **argv)
 
     if (!ok)
         FAIL("rendered pixel is not red");
+    if (drm) {
+        // Information only: llvmpipe/lavapipe without /dev/dri cannot show
+        // that VA-API interop works (research Pitfall 4).
+        printf("RENDER_VK drm ok renderer=%s native_resource=%s vaapi=%s\n", renderer,
+               strcmp(renderer, "gpu-next") == 0 ? "registered" : "upstream",
+               scan.no_interop ? "interop-unavailable"
+                               : scan.no_display ? "display-not-created" : "no-log");
+    }
     printf("PASS\n");
     return 0;
 }

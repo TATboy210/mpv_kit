@@ -63,6 +63,7 @@ final class MpvOption<T extends Object> {
     }
   }
 
+  /// 调试输出：直接给出选项名。
   @override
   String toString() => name;
 }

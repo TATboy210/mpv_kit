@@ -16,6 +16,7 @@ final class TarFormatException implements Exception {
 
   final String message;
 
+  /// 调试输出：`TarFormatException: 原因`。
   @override
   String toString() => 'TarFormatException: $message';
 }

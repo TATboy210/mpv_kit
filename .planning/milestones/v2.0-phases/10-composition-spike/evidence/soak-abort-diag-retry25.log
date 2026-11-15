@@ -1,0 +1,490 @@
+Resolving dependencies in `D:\mpv_kit`...
+Downloading packages...
+  _fe_analyzer_shared 103.0.0 (110.0.0 available)
+  analyzer 13.3.0 (14.6.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  desktop_drop 0.7.1 (0.9.2 available)
+  frontend_server_client 4.1.0 (4.2.0 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  shelf 1.4.2 (1.4.3 available)
+  shelf_static 1.1.3 (1.2.0 available)
+  test 1.31.1 (1.33.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  test_core 0.6.18 (0.6.21 available)
+  vm_service 15.3.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+Got dependencies in `D:\mpv_kit`!
+16 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading D:/mpv_kit/example/integration_test/impeller_smoke_test.dart
+Building Windows application...                                    37.0s
+✓ Built build\windows\x64\runner\Debug\mpv_kit_example.exe
+00:00 +0: Impeller composition smoke (3 parts)
+BENCH impeller {"stage":"preflight","dart":"3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"windows_x64\"","releaseMode":false,"profileMode":false,"mpvKitPath":"D:/mpv_kit/.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib/libmpv-2.dll"}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":553,"round":0,"step":"mount-begin","rss":286859264,"resizeEvents":0,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":556,"round":0,"step":"mount-done","rss":286859264,"resizeEvents":0,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":693,"round":0,"step":"set-size-begin","rss":405573632,"resizeEvents":0,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":700,"round":0,"step":"set-size-done","rss":413057024,"resizeEvents":0,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":717,"round":0,"step":"unmount-begin","rss":429375488,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":720,"round":0,"step":"unmount-done","rss":425242624,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":723,"round":0,"step":"frame-after-unmount-begin","rss":425906176,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":744,"round":0,"step":"frame-after-unmount-done","rss":426381312,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":747,"round":0,"step":"dispose-begin","rss":426446848,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":998,"round":0,"step":"dispose-done","rss":426450944,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+DIAG soak {"t":1007,"round":0,"step":"create-begin","rss":426508288,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":1}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":1155,"round":0,"step":"create-done","rss":438247424,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":1158,"round":0,"step":"mount-begin","rss":438251520,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":1160,"round":0,"step":"mount-done","rss":438317056,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":1163,"round":0,"step":"frame-after-mount-begin","rss":438317056,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":1173,"round":0,"step":"frame-after-mount-done","rss":438452224,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak part1_replay yes
+DIAG soak {"t":1176,"round":0,"step":"set-size-begin","rss":438521856,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":1179,"round":0,"step":"set-size-done","rss":438538240,"resizeEvents":1,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3289,"round":0,"step":"unmount-begin","rss":450019328,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3295,"round":0,"step":"unmount-done","rss":450023424,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3298,"round":0,"step":"frame-after-unmount-begin","rss":450027520,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3303,"round":0,"step":"frame-after-unmount-done","rss":450170880,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3305,"round":0,"step":"dispose-begin","rss":450236416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3372,"round":0,"step":"dispose-done","rss":449822720,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+DIAG soak {"t":3375,"round":0,"step":"create-begin","rss":449708032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":2}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":3518,"round":0,"step":"create-done","rss":455856128,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3521,"round":0,"step":"mount-begin","rss":455921664,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3523,"round":0,"step":"mount-done","rss":455987200,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3525,"round":0,"step":"frame-after-mount-begin","rss":455987200,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3547,"round":0,"step":"frame-after-mount-done","rss":456130560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3550,"round":1,"step":"round-start","rss":456130560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3552,"round":1,"step":"unmount-begin","rss":456130560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3554,"round":1,"step":"unmount-done","rss":456130560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3557,"round":1,"step":"frame-after-unmount-begin","rss":456196096,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3568,"round":1,"step":"frame-after-unmount-done","rss":456269824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3571,"round":1,"step":"set-size-begin","rss":456269824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3574,"round":1,"step":"set-size-done","rss":456351744,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3576,"round":1,"step":"dispose-begin","rss":456355840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3644,"round":1,"step":"dispose-done","rss":456187904,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+DIAG soak {"t":3646,"round":1,"step":"create-begin","rss":456151040,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":3}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":3795,"round":1,"step":"create-done","rss":464392192,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":3798,"round":1,"step":"mount-begin","rss":464457728,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":3801,"round":1,"step":"mount-done","rss":464523264,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":3803,"round":1,"step":"frame-after-mount-begin","rss":464523264,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":3809,"round":1,"step":"frame-after-mount-done","rss":464662528,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":3811,"round":1,"step":"round-end","rss":464662528,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4073,"round":2,"step":"round-start","rss":465489920,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4082,"round":2,"step":"unmount-begin","rss":465502208,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4084,"round":2,"step":"unmount-done","rss":465518592,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4086,"round":2,"step":"frame-after-unmount-begin","rss":465530880,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4091,"round":2,"step":"frame-after-unmount-done","rss":465674240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4093,"round":2,"step":"set-size-begin","rss":465674240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4096,"round":2,"step":"set-size-done","rss":465690624,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4099,"round":2,"step":"dispose-begin","rss":465690624,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4165,"round":2,"step":"dispose-done","rss":465645568,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+DIAG soak {"t":4168,"round":2,"step":"create-begin","rss":465436672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":4}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":4302,"round":2,"step":"create-done","rss":468398080,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4304,"round":2,"step":"mount-begin","rss":468402176,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4306,"round":2,"step":"mount-done","rss":468467712,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4309,"round":2,"step":"frame-after-mount-begin","rss":468533248,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4314,"round":2,"step":"frame-after-mount-done","rss":468611072,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4316,"round":2,"step":"round-end","rss":468627456,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4570,"round":3,"step":"round-start","rss":467918848,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4573,"round":3,"step":"unmount-begin","rss":467988480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4575,"round":3,"step":"unmount-done","rss":467996672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4577,"round":3,"step":"frame-after-unmount-begin","rss":468000768,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4582,"round":3,"step":"frame-after-unmount-done","rss":468078592,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4584,"round":3,"step":"set-size-begin","rss":468082688,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4587,"round":3,"step":"set-size-done","rss":468176896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4590,"round":3,"step":"dispose-begin","rss":468176896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4655,"round":3,"step":"dispose-done","rss":468033536,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+DIAG soak {"t":4658,"round":3,"step":"create-begin","rss":467951616,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":5}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":4796,"round":3,"step":"create-done","rss":471117824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":4799,"round":3,"step":"mount-begin","rss":471121920,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":4801,"round":3,"step":"mount-done","rss":471121920,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":4804,"round":3,"step":"frame-after-mount-begin","rss":471134208,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":4809,"round":3,"step":"frame-after-mount-done","rss":471248896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":4811,"round":3,"step":"round-end","rss":471252992,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5065,"round":4,"step":"round-start","rss":481468416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5073,"round":4,"step":"unmount-begin","rss":485924864,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5075,"round":4,"step":"unmount-done","rss":487202816,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5078,"round":4,"step":"frame-after-unmount-begin","rss":488394752,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5083,"round":4,"step":"frame-after-unmount-done","rss":490754048,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5085,"round":4,"step":"set-size-begin","rss":491831296,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5089,"round":4,"step":"set-size-done","rss":492662784,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5091,"round":4,"step":"dispose-begin","rss":492969984,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5169,"round":4,"step":"dispose-done","rss":473542656,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+DIAG soak {"t":5172,"round":4,"step":"create-begin","rss":473542656,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":6}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":5311,"round":4,"step":"create-done","rss":473772032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5314,"round":4,"step":"mount-begin","rss":473784320,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5317,"round":4,"step":"mount-done","rss":473804800,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5319,"round":4,"step":"frame-after-mount-begin","rss":473817088,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5324,"round":4,"step":"frame-after-mount-done","rss":474034176,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5327,"round":4,"step":"round-end","rss":474034176,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5586,"round":5,"step":"round-start","rss":474959872,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5589,"round":5,"step":"unmount-begin","rss":474963968,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5591,"round":5,"step":"unmount-done","rss":475033600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5593,"round":5,"step":"frame-after-unmount-begin","rss":475033600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5598,"round":5,"step":"frame-after-unmount-done","rss":475099136,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5600,"round":5,"step":"set-size-begin","rss":475099136,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5603,"round":5,"step":"set-size-done","rss":475185152,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5606,"round":5,"step":"dispose-begin","rss":475185152,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5670,"round":5,"step":"dispose-done","rss":474992640,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+DIAG soak {"t":5673,"round":5,"step":"create-begin","rss":474894336,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":7}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":5805,"round":5,"step":"create-done","rss":478617600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":5807,"round":5,"step":"mount-begin","rss":478765056,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":5809,"round":5,"step":"mount-done","rss":478765056,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":5811,"round":5,"step":"frame-after-mount-begin","rss":478830592,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":5816,"round":5,"step":"frame-after-mount-done","rss":480604160,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":5819,"round":5,"step":"round-end","rss":481832960,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6072,"round":6,"step":"round-start","rss":483512320,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6079,"round":6,"step":"unmount-begin","rss":483512320,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6081,"round":6,"step":"unmount-done","rss":483512320,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6083,"round":6,"step":"frame-after-unmount-begin","rss":483577856,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6088,"round":6,"step":"frame-after-unmount-done","rss":483704832,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6090,"round":6,"step":"set-size-begin","rss":483704832,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6093,"round":6,"step":"set-size-done","rss":483721216,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6095,"round":6,"step":"dispose-begin","rss":483721216,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6160,"round":6,"step":"dispose-done","rss":478912512,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+DIAG soak {"t":6162,"round":6,"step":"create-begin","rss":478765056,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":8}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":6301,"round":6,"step":"create-done","rss":486125568,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6304,"round":6,"step":"mount-begin","rss":486191104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6306,"round":6,"step":"mount-done","rss":486191104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6308,"round":6,"step":"frame-after-mount-begin","rss":486256640,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6313,"round":6,"step":"frame-after-mount-done","rss":486322176,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6315,"round":6,"step":"round-end","rss":486391808,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6569,"round":7,"step":"round-start","rss":483860480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6572,"round":7,"step":"unmount-begin","rss":483860480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6574,"round":7,"step":"unmount-done","rss":483860480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6577,"round":7,"step":"frame-after-unmount-begin","rss":483926016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6582,"round":7,"step":"frame-after-unmount-done","rss":484007936,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6584,"round":7,"step":"set-size-begin","rss":484012032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6587,"round":7,"step":"set-size-done","rss":484106240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6589,"round":7,"step":"dispose-begin","rss":484106240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6655,"round":7,"step":"dispose-done","rss":484012032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+DIAG soak {"t":6657,"round":7,"step":"create-begin","rss":483885056,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":9}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":6796,"round":7,"step":"create-done","rss":485445632,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":6798,"round":7,"step":"mount-begin","rss":485511168,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":6801,"round":7,"step":"mount-done","rss":485511168,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":6803,"round":7,"step":"frame-after-mount-begin","rss":485511168,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":6808,"round":7,"step":"frame-after-mount-done","rss":485642240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":6810,"round":7,"step":"round-end","rss":485642240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7063,"round":8,"step":"round-start","rss":488988672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7066,"round":8,"step":"unmount-begin","rss":488988672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7068,"round":8,"step":"unmount-done","rss":488988672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7070,"round":8,"step":"frame-after-unmount-begin","rss":488988672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7075,"round":8,"step":"frame-after-unmount-done","rss":489127936,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7077,"round":8,"step":"set-size-begin","rss":489136128,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7080,"round":8,"step":"set-size-done","rss":489181184,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7082,"round":8,"step":"dispose-begin","rss":489197568,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7148,"round":8,"step":"dispose-done","rss":489021440,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+DIAG soak {"t":7150,"round":8,"step":"create-begin","rss":488972288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":10}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":7290,"round":8,"step":"create-done","rss":490729472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7292,"round":8,"step":"mount-begin","rss":490729472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7295,"round":8,"step":"mount-done","rss":490799104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7297,"round":8,"step":"frame-after-mount-begin","rss":490803200,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7301,"round":8,"step":"frame-after-mount-done","rss":490934272,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7303,"round":8,"step":"round-end","rss":490938368,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7562,"round":9,"step":"round-start","rss":492195840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7564,"round":9,"step":"unmount-begin","rss":492195840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7566,"round":9,"step":"unmount-done","rss":492195840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7568,"round":9,"step":"frame-after-unmount-begin","rss":492199936,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7573,"round":9,"step":"frame-after-unmount-done","rss":492318720,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7575,"round":9,"step":"set-size-begin","rss":492318720,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7578,"round":9,"step":"set-size-done","rss":492347392,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7580,"round":9,"step":"dispose-begin","rss":492347392,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7644,"round":9,"step":"dispose-done","rss":492384256,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+DIAG soak {"t":7646,"round":9,"step":"create-begin","rss":492118016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":11}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":7793,"round":9,"step":"create-done","rss":494796800,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":7795,"round":9,"step":"mount-begin","rss":494800896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":7798,"round":9,"step":"mount-done","rss":494800896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":7800,"round":9,"step":"frame-after-mount-begin","rss":494800896,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":7804,"round":9,"step":"frame-after-mount-done","rss":494940160,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":7806,"round":9,"step":"round-end","rss":494940160,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8060,"round":10,"step":"round-start","rss":492273664,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8069,"round":10,"step":"unmount-begin","rss":492281856,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8071,"round":10,"step":"unmount-done","rss":492281856,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8073,"round":10,"step":"frame-after-unmount-begin","rss":492347392,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8078,"round":10,"step":"frame-after-unmount-done","rss":492482560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8081,"round":10,"step":"set-size-begin","rss":492482560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8084,"round":10,"step":"set-size-done","rss":492564480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8086,"round":10,"step":"dispose-begin","rss":492564480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8163,"round":10,"step":"dispose-done","rss":492351488,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+DIAG soak {"t":8166,"round":10,"step":"create-begin","rss":492269568,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":12}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":8324,"round":10,"step":"create-done","rss":495050752,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8326,"round":10,"step":"mount-begin","rss":495120384,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8329,"round":10,"step":"mount-done","rss":495124480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8331,"round":10,"step":"frame-after-mount-begin","rss":495124480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8336,"round":10,"step":"frame-after-mount-done","rss":495263744,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak progress {"rounds":10,"seconds":4.788,"resizeEvents":2,"idleSoak":0}
+DIAG soak {"t":8340,"round":10,"step":"round-end","rss":495276032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8607,"round":11,"step":"round-start","rss":497012736,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8616,"round":11,"step":"unmount-begin","rss":497012736,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8619,"round":11,"step":"unmount-done","rss":497012736,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8621,"round":11,"step":"frame-after-unmount-begin","rss":497012736,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8632,"round":11,"step":"frame-after-unmount-done","rss":496635904,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8635,"round":11,"step":"set-size-begin","rss":496648192,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8639,"round":11,"step":"set-size-done","rss":496693248,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8641,"round":11,"step":"dispose-begin","rss":496758784,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8721,"round":11,"step":"dispose-done","rss":496742400,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+DIAG soak {"t":8724,"round":11,"step":"create-begin","rss":496533504,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":13}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":8884,"round":11,"step":"create-done","rss":498339840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":8887,"round":11,"step":"mount-begin","rss":498405376,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":8889,"round":11,"step":"mount-done","rss":498405376,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":8891,"round":11,"step":"frame-after-mount-begin","rss":498405376,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":8896,"round":11,"step":"frame-after-mount-done","rss":498601984,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":8899,"round":11,"step":"round-end","rss":498601984,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9152,"round":12,"step":"round-start","rss":497442816,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9161,"round":12,"step":"unmount-begin","rss":497512448,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9164,"round":12,"step":"unmount-done","rss":497512448,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9167,"round":12,"step":"frame-after-unmount-begin","rss":497512448,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9172,"round":12,"step":"frame-after-unmount-done","rss":497647616,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9175,"round":12,"step":"set-size-begin","rss":497713152,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9178,"round":12,"step":"set-size-done","rss":497729536,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9181,"round":12,"step":"dispose-begin","rss":497729536,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9257,"round":12,"step":"dispose-done","rss":499826688,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+DIAG soak {"t":9260,"round":12,"step":"create-begin","rss":499724288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":14}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":9417,"round":12,"step":"create-done","rss":499961856,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9419,"round":12,"step":"mount-begin","rss":499961856,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9422,"round":12,"step":"mount-done","rss":499974144,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9424,"round":12,"step":"frame-after-mount-begin","rss":499986432,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9430,"round":12,"step":"frame-after-mount-done","rss":500154368,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9432,"round":12,"step":"round-end","rss":500154368,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9692,"round":13,"step":"round-start","rss":498991104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9695,"round":13,"step":"unmount-begin","rss":498991104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9697,"round":13,"step":"unmount-done","rss":498995200,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9700,"round":13,"step":"frame-after-unmount-begin","rss":499064832,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9705,"round":13,"step":"frame-after-unmount-done","rss":499130368,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9707,"round":13,"step":"set-size-begin","rss":499130368,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9711,"round":13,"step":"set-size-done","rss":499146752,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9714,"round":13,"step":"dispose-begin","rss":499212288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9798,"round":13,"step":"dispose-done","rss":497885184,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+DIAG soak {"t":9801,"round":13,"step":"create-begin","rss":497733632,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":15}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":9961,"round":13,"step":"create-done","rss":500715520,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":9963,"round":13,"step":"mount-begin","rss":500793344,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":9966,"round":13,"step":"mount-done","rss":500793344,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":9968,"round":13,"step":"frame-after-mount-begin","rss":500793344,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":9973,"round":13,"step":"frame-after-mount-done","rss":500924416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":9975,"round":13,"step":"round-end","rss":500924416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10239,"round":14,"step":"round-start","rss":500391936,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10241,"round":14,"step":"unmount-begin","rss":500404224,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10243,"round":14,"step":"unmount-done","rss":500420608,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10245,"round":14,"step":"frame-after-unmount-begin","rss":500490240,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10251,"round":14,"step":"frame-after-unmount-done","rss":500621312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10254,"round":14,"step":"set-size-begin","rss":500621312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10256,"round":14,"step":"set-size-done","rss":500703232,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10258,"round":14,"step":"dispose-begin","rss":500703232,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10330,"round":14,"step":"dispose-done","rss":500600832,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+DIAG soak {"t":10333,"round":14,"step":"create-begin","rss":500363264,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":16}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":10482,"round":14,"step":"create-done","rss":497647616,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10484,"round":14,"step":"mount-begin","rss":497725440,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10487,"round":14,"step":"mount-done","rss":497737728,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10489,"round":14,"step":"frame-after-mount-begin","rss":497741824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10494,"round":14,"step":"frame-after-mount-done","rss":497893376,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10496,"round":14,"step":"round-end","rss":497905664,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10764,"round":15,"step":"round-start","rss":498659328,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10767,"round":15,"step":"unmount-begin","rss":498577408,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10769,"round":15,"step":"unmount-done","rss":498642944,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10771,"round":15,"step":"frame-after-unmount-begin","rss":498642944,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10775,"round":15,"step":"frame-after-unmount-done","rss":498774016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10778,"round":15,"step":"set-size-begin","rss":498774016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10780,"round":15,"step":"set-size-done","rss":498790400,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10783,"round":15,"step":"dispose-begin","rss":498876416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10854,"round":15,"step":"dispose-done","rss":498806784,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+DIAG soak {"t":10857,"round":15,"step":"create-begin","rss":498634752,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":17}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":11021,"round":15,"step":"create-done","rss":499838976,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11023,"round":15,"step":"mount-begin","rss":499904512,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11025,"round":15,"step":"mount-done","rss":499908608,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11028,"round":15,"step":"frame-after-mount-begin","rss":499908608,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11033,"round":15,"step":"frame-after-mount-done","rss":500051968,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11035,"round":15,"step":"round-end","rss":500051968,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11288,"round":16,"step":"round-start","rss":498700288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11295,"round":16,"step":"unmount-begin","rss":498765824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11297,"round":16,"step":"unmount-done","rss":498831360,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11299,"round":16,"step":"frame-after-unmount-begin","rss":498835456,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11304,"round":16,"step":"frame-after-unmount-done","rss":498900992,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11306,"round":16,"step":"set-size-begin","rss":498900992,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11309,"round":16,"step":"set-size-done","rss":498982912,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11311,"round":16,"step":"dispose-begin","rss":498987008,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11383,"round":16,"step":"dispose-done","rss":498647040,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+DIAG soak {"t":11388,"round":16,"step":"create-begin","rss":498532352,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":18}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":11532,"round":16,"step":"create-done","rss":502775808,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11535,"round":16,"step":"mount-begin","rss":502792192,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11537,"round":16,"step":"mount-done","rss":502812672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11539,"round":16,"step":"frame-after-mount-begin","rss":502890496,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11544,"round":16,"step":"frame-after-mount-done","rss":502956032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11546,"round":16,"step":"round-end","rss":502960128,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11798,"round":17,"step":"round-start","rss":503623680,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11801,"round":17,"step":"unmount-begin","rss":503631872,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11803,"round":17,"step":"unmount-done","rss":503697408,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11805,"round":17,"step":"frame-after-unmount-begin","rss":503697408,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11809,"round":17,"step":"frame-after-unmount-done","rss":503828480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11811,"round":17,"step":"set-size-begin","rss":503832576,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11814,"round":17,"step":"set-size-done","rss":503848960,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11816,"round":17,"step":"dispose-begin","rss":503914496,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11883,"round":17,"step":"dispose-done","rss":503697408,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+DIAG soak {"t":11886,"round":17,"step":"create-begin","rss":503640064,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":19}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":12032,"round":17,"step":"create-done","rss":505696256,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12034,"round":17,"step":"mount-begin","rss":505700352,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12036,"round":17,"step":"mount-done","rss":505712640,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12038,"round":17,"step":"frame-after-mount-begin","rss":505729024,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12044,"round":17,"step":"frame-after-mount-done","rss":505946112,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12046,"round":17,"step":"round-end","rss":505958400,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12303,"round":18,"step":"round-start","rss":501129216,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12305,"round":18,"step":"unmount-begin","rss":501133312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12307,"round":18,"step":"unmount-done","rss":501141504,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12310,"round":18,"step":"frame-after-unmount-begin","rss":501145600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12314,"round":18,"step":"frame-after-unmount-done","rss":501293056,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12317,"round":18,"step":"set-size-begin","rss":501297152,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12320,"round":18,"step":"set-size-done","rss":501383168,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12322,"round":18,"step":"dispose-begin","rss":501448704,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12396,"round":18,"step":"dispose-done","rss":501235712,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+DIAG soak {"t":12399,"round":18,"step":"create-begin","rss":501145600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":20}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":12543,"round":18,"step":"create-done","rss":506236928,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12546,"round":18,"step":"mount-begin","rss":506236928,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12548,"round":18,"step":"mount-done","rss":506253312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12550,"round":18,"step":"frame-after-mount-begin","rss":506269696,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12555,"round":18,"step":"frame-after-mount-done","rss":506499072,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12557,"round":18,"step":"round-end","rss":506499072,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12813,"round":19,"step":"round-start","rss":511139840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12822,"round":19,"step":"unmount-begin","rss":511209472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12824,"round":19,"step":"unmount-done","rss":511209472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12826,"round":19,"step":"frame-after-unmount-begin","rss":511213568,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12831,"round":19,"step":"frame-after-unmount-done","rss":511279104,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12833,"round":19,"step":"set-size-begin","rss":511344640,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12836,"round":19,"step":"set-size-done","rss":511361024,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12838,"round":19,"step":"dispose-begin","rss":511365120,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12914,"round":19,"step":"dispose-done","rss":505761792,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+DIAG soak {"t":12916,"round":19,"step":"create-begin","rss":505692160,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":21}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":13062,"round":19,"step":"create-done","rss":491843584,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13064,"round":19,"step":"mount-begin","rss":491855872,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13066,"round":19,"step":"mount-done","rss":491859968,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13068,"round":19,"step":"frame-after-mount-begin","rss":491929600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13073,"round":19,"step":"frame-after-mount-done","rss":492007424,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13075,"round":19,"step":"round-end","rss":492072960,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13330,"round":20,"step":"round-start","rss":492957696,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13337,"round":20,"step":"unmount-begin","rss":493027328,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13339,"round":20,"step":"unmount-done","rss":493092864,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13341,"round":20,"step":"frame-after-unmount-begin","rss":493092864,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13346,"round":20,"step":"frame-after-unmount-done","rss":493162496,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13348,"round":20,"step":"set-size-begin","rss":493162496,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13351,"round":20,"step":"set-size-done","rss":493203456,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13353,"round":20,"step":"dispose-begin","rss":493219840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13424,"round":20,"step":"dispose-done","rss":493109248,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+DIAG soak {"t":13427,"round":20,"step":"create-begin","rss":493010944,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":22}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":13566,"round":20,"step":"create-done","rss":487485440,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13568,"round":20,"step":"mount-begin","rss":487485440,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13570,"round":20,"step":"mount-done","rss":487485440,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13572,"round":20,"step":"frame-after-mount-begin","rss":487550976,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13577,"round":20,"step":"frame-after-mount-done","rss":487620608,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak progress {"rounds":20,"seconds":10.029,"resizeEvents":2,"idleSoak":0}
+DIAG soak {"t":13579,"round":20,"step":"round-end","rss":487686144,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13832,"round":21,"step":"round-start","rss":487821312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13835,"round":21,"step":"unmount-begin","rss":487833600,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13837,"round":21,"step":"unmount-done","rss":487849984,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13839,"round":21,"step":"frame-after-unmount-begin","rss":487862272,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13844,"round":21,"step":"frame-after-unmount-done","rss":488067072,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13846,"round":21,"step":"set-size-begin","rss":488067072,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13849,"round":21,"step":"set-size-done","rss":488083456,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13851,"round":21,"step":"dispose-begin","rss":488087552,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13925,"round":21,"step":"dispose-done","rss":487428096,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+DIAG soak {"t":13927,"round":21,"step":"create-begin","rss":487366656,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":23}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":14071,"round":21,"step":"create-done","rss":492998656,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14073,"round":21,"step":"mount-begin","rss":493064192,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14075,"round":21,"step":"mount-done","rss":493068288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14078,"round":21,"step":"frame-after-mount-begin","rss":493068288,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14082,"round":21,"step":"frame-after-mount-done","rss":493150208,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14084,"round":21,"step":"round-end","rss":493166592,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14344,"round":22,"step":"round-start","rss":494411776,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14346,"round":22,"step":"unmount-begin","rss":494411776,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14349,"round":22,"step":"unmount-done","rss":494428160,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14351,"round":22,"step":"frame-after-unmount-begin","rss":494432256,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14356,"round":22,"step":"frame-after-unmount-done","rss":494575616,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14358,"round":22,"step":"set-size-begin","rss":494575616,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14361,"round":22,"step":"set-size-done","rss":494612480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14364,"round":22,"step":"dispose-begin","rss":494612480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14435,"round":22,"step":"dispose-done","rss":494559232,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+DIAG soak {"t":14438,"round":22,"step":"create-begin","rss":494411776,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":24}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":14595,"round":22,"step":"create-done","rss":498114560,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14598,"round":22,"step":"mount-begin","rss":498135040,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14601,"round":22,"step":"mount-done","rss":498200576,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14603,"round":22,"step":"frame-after-mount-begin","rss":498204672,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14608,"round":22,"step":"frame-after-mount-done","rss":498335744,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14610,"round":22,"step":"round-end","rss":498339840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14872,"round":23,"step":"round-start","rss":494690304,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14880,"round":23,"step":"unmount-begin","rss":494690304,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14883,"round":23,"step":"unmount-done","rss":494690304,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14885,"round":23,"step":"frame-after-unmount-begin","rss":494690304,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14890,"round":23,"step":"frame-after-unmount-done","rss":494755840,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14892,"round":23,"step":"set-size-begin","rss":494825472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14895,"round":23,"step":"set-size-done","rss":494907392,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14897,"round":23,"step":"dispose-begin","rss":494907392,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14965,"round":23,"step":"dispose-done","rss":494837760,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+DIAG soak {"t":14968,"round":23,"step":"create-begin","rss":494661632,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":25}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":15110,"round":23,"step":"create-done","rss":492756992,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15114,"round":23,"step":"mount-begin","rss":492769280,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15116,"round":23,"step":"mount-done","rss":492773376,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15118,"round":23,"step":"frame-after-mount-begin","rss":492777472,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15123,"round":23,"step":"frame-after-mount-done","rss":492916736,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15126,"round":23,"step":"round-end","rss":492920832,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15380,"round":24,"step":"round-start","rss":491716608,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15387,"round":24,"step":"unmount-begin","rss":491720704,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15390,"round":24,"step":"unmount-done","rss":491851776,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15392,"round":24,"step":"frame-after-unmount-begin","rss":491851776,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15396,"round":24,"step":"frame-after-unmount-done","rss":491917312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15398,"round":24,"step":"set-size-begin","rss":491917312,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15402,"round":24,"step":"set-size-done","rss":491999232,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15405,"round":24,"step":"dispose-begin","rss":491999232,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15474,"round":24,"step":"dispose-done","rss":491794432,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+DIAG soak {"t":15476,"round":24,"step":"create-begin","rss":491700224,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":26}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":15620,"round":24,"step":"create-done","rss":501362688,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15623,"round":24,"step":"mount-begin","rss":501362688,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15626,"round":24,"step":"mount-done","rss":501366784,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15629,"round":24,"step":"frame-after-mount-begin","rss":501436416,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15634,"round":24,"step":"frame-after-mount-done","rss":501501952,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15636,"round":24,"step":"round-end","rss":501567488,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15889,"round":25,"step":"round-start","rss":502222848,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15892,"round":25,"step":"unmount-begin","rss":502288384,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15895,"round":25,"step":"unmount-done","rss":502288384,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15897,"round":25,"step":"frame-after-unmount-begin","rss":502292480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15901,"round":25,"step":"frame-after-unmount-done","rss":502358016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15904,"round":25,"step":"set-size-begin","rss":502358016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15907,"round":25,"step":"set-size-done","rss":502444032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15910,"round":25,"step":"dispose-begin","rss":502444032,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15977,"round":25,"step":"dispose-done","rss":502325248,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+DIAG soak {"t":15980,"round":25,"step":"create-begin","rss":502292480,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":27}
+mpv_kit_video: vulkan (vulkan (gpu-next) on NVIDIA GeForce RTX 4060 Laptop GPU)
+DIAG soak {"t":16123,"round":25,"step":"create-done","rss":502861824,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak {"t":16126,"round":25,"step":"mount-begin","rss":502865920,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak {"t":16128,"round":25,"step":"mount-done","rss":502870016,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak {"t":16130,"round":25,"step":"frame-after-mount-begin","rss":502939648,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak {"t":16136,"round":25,"step":"frame-after-mount-done","rss":503074816,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak {"t":16139,"round":25,"step":"round-end","rss":503140352,"resizeEvents":2,"idleSoak":0,"renderErrors":0,"deviceLost":0,"controllers":28}
+DIAG soak complete {"rounds":25,"mode":"soak-after-4k"}
+00:16 +1: (tearDownAll)
+00:16 +1: All tests passed!

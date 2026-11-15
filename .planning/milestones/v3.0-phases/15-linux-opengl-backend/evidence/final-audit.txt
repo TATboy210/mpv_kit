@@ -1,0 +1,33 @@
+# Phase 15 final audit (15-07). 所有 Linux 证据来自托管 runner（xvfb + Mesa llvmpipe）；真驱动、Wayland、真实 X11+libglvnd 的项目见 unverified.txt，一律未验证。
+# 最终产品代码 SHA：fbcd55a4406d70dfcdfe6da32ebacaeb623bf027（fbcd55a 之后到 HEAD 的产品改动：Dart 的严格 MpvLibrary.open（quick 261028-moj，packages/mpv_kit/lib/src/ffi/library.dart）、example 的 libmpv_guard 与 d3d11 测试、native-verify.yml 与文档；packages/mpv_kit_video/linux 与 src 及 native/ 自 fbcd55a 起未变）。
+# 最终门：HEAD e7bc162690be27c4ff16035af86d3928e44bbb35，native-verify run=40661093250 conclusion=success，flutter-plugin run=40661093368 conclusion=success，macos-route run=40661093429 conclusion=success；ci_gate.sh 打印 CI-GATE ok（全部 job success，且全部关键行匹配）。
+# 发布层：release.yml 在分支 ref 上 dispatch，run=40662838575 sha=e7bc162690be27c4ff16035af86d3928e44bbb35 linux-x64 与 linux-arm64 success、publish skipped（记录行见 release-runs.txt）。
+# 日志：/tmp/gsd-bak/ci/nv-40661093250.log、/tmp/gsd-bak/ci/rel-40662838575.log、/tmp/gsd-bak/ci/audits-15-07.txt（下方三项审计原样附上）。
+#
+# 三项审计原样输出（HEAD e7bc162，本地）：
+# golden-freeze manifest=.planning/phases/14-windows-native-d3d11-backend/evidence/golden-freeze-14.sha256  （sha256sum -c 全部 OK，无 FAILED）
+# python tools/check_matrix.py -> CHECK-MATRIX: all targets present, no unauthorized continue-on-error
+# bash .planning/phases/12-renderbackend-seam/tools/constants_audit.sh -> CONSTANTS ok
+#
+# 构建相关文件检查：git diff --name-only b40cdff HEAD -- native/build .github/workflows/release.yml native/tests native/mpv native/patches packages/mpv_kit_video/src 非空（render_gl_smoke.c、render_gl.h 等在 b40cdff 之后改动），因此在 HEAD 上重新 dispatch release.yml（run=40662838575）。
+#
+# 关键行（run=40661093250，job linux (ubuntu-24.04) 与 integration-test (ubuntu-24.04, linux)）：
+# CONFIG-GL ok；RENDER_GL ok api=gl renderer=gpu 与 api=gles renderer=gpu（x64、arm64）；RENDER_GL handoff ok api=gl / api=gles；LINUX-CHAIN ok；BIND ok；AFFINITY ok sw / vk。
+# INTEGRATION {"backend":"vulkan","reason":"vulkan (gpu-next) on llvmpipe (LLVM 20.1.2, 256 bits)",...} 默认；强制 opengl："reason":"opengl (gpu) on llvmpipe (LLVM 20.1.2, 256 bits); vulkan/gpu-next unavailable: excluded by MPV_KIT_VIDEO_API=opengl"，INTEGRATION-SOAK renderErrors=0 deviceLost=0。
+# PROBE api=vulkan supported nonBlackRatio=1.0 upright；PROBE api=opengl（强制）supported nonBlackRatio=1.0 upright；PROBE api=opengl（Vulkan 不可用）reason 含 vulkan/gpu-next unavailable: vkCreateInstance failed。
+# SECOND-CONTROLLER vulkan/vulkan、opengl/opengl（强制）、opengl/opengl（Vulkan 不可用）。
+# 负向：整份日志中 `opengl (gpu-next)` 0 次、`cannot create a probe EGL context` 0 次、`EGL_BAD_ACCESS` 0 次、`Couldn't open` 0 次、ubuntu integration-test 中原生 `mpv_kit:` 行 0 条。
+# soak 的 mpv_kit_video: 行（去重计数）：vulkan (gpu-next) 13、opengl (gpu)+强制 13、opengl (gpu)+vkCreateInstance failed 2。
+#
+id=GLX-01 状态=证明 证据=release run=40662838575（linux-x64 与 linux-arm64 success，publish skipped；x64 日志 `NEEDED libEGL.so.1`、`packaged 17 libraries`、`requires GLIBC_2.35`、`RENDER_GL ok api=gl renderer=gpu`）与 native-verify run=40661093250（CONFIG-GL ok、allowlist 与 ABI 审计 job success，x11/wayland 仍关闭） 说明=上游 MPV_RENDER_API_TYPE_OPENGL 已启用；llvmpipe 的 smoke 结果
+id=GLX-02 状态=证明 证据=native-verify run=40661093250：RENDER_GL ok api=gl renderer=gpu 与 api=gles renderer=gpu，pixel=254,0,0（x64、arm64、sanitizers 任务） 说明=EGL surfaceless + llvmpipe 渲染出非黑像素；真驱动未验证
+id=GLX-03 状态=部分证明 证据=run=40661093250：强制 opengl 的 INTEGRATION/PROBE（非黑、upright、resize 后仍非黑、soak renderErrors=0）、RENDER_GL handoff ok（fence+client wait、EGLImage 导入）、BIND ok、AFFINITY ok 说明=独立 EGL context（Flutter 的 EGLDisplay、share context EGL_NO_CONTEXT）、私有纹理 -> blit -> 导出纹理 -> EGLImage -> FlTextureGL、fence 后才发布、populate 不渲染均在 llvmpipe 上证明；但 create 期调用在 RunBound 的辅助线程而非渲染线程（见 SC3 与下方 proposal），且真驱动、Wayland、GL 设备丢失未验证（unverified.txt），故不记为完整证明
+id=GLX-04 状态=证明 证据=run=40661093250：LINUX-CHAIN ok（四种选择的链与 linux_candidates.h 逐项一致）；默认 PROBE api=vulkan（vulkan (gpu-next) 先行）；Vulkan 不可用时 PROBE api=opengl reason `opengl (gpu) on llvmpipe (...); vulkan/gpu-next unavailable: vkCreateInstance failed`；整份日志无 `opengl (gpu-next)` 说明=链顺序由数据测试与真实插件的两端行为共同证明；opengl 之后的 vulkan/gpu 档只由链数据测试证明，llvmpipe 以外未验证
+id=SC1 状态=证明 证据=release run=40662838575 与 native-verify run=40661093250（同 GLX-01、GLX-02） 说明=allowlist、ABI 审计绿，render_gl_smoke 在 ubuntu runner 上渲染非黑
+id=SC2 状态=证明 证据=run=40661093250：PROBE {"api":"opengl",...,"reason":"... excluded by MPV_KIT_VIDEO_API=opengl","supported":true,"nonBlackRatio":1.0,"orientation":"upright","afterResizeNonBlackRatio":1.0}；INTEGRATION-SOAK resizeEvents=30 renderErrors=0（D-PROBE=supported，toImage 读到外部纹理） 说明=私有纹理+blit、fence 后发布、populate 不渲染由代码结构与 handoff 行证明；resize 不换 texture id 由 texture_probe_test 的 textureId 前后比较断言覆盖；llvmpipe 与 xvfb 上
+id=SC3 状态=部分证明 证据=decisions.txt `decision=sc3-interpretation choice=runbound reply=A runbound`；run=40661093250：BIND ok（create 期调用都在 RunBound 线程、渲染线程一生一次绑定、RunBound 线程先解绑再由渲染线程绑定）、AFFINITY ok sw/vk、强制 opengl 的 soak（13 个控制器、EGL_BAD_ACCESS 0、epoxy abort 0）、SECOND-CONTROLLER opengl/opengl 说明=SC3 现行措辞「所有 mpv_render_* 调用都在渲染线程」对 create 期调用不成立（D-THREAD：平台线程 eglMakeCurrent 得 EGL_BAD_ACCESS，新线程成功；IMPLICATION=helper-thread）；按 runbound 的答复，create 期调用在 RunBound 的线程上且 context 当前，其余在渲染线程；措辞建议见下一行，ROADMAP 未被修改
+proposal=SC3-wording text="GL context 建在 Flutter 的 EGLDisplay 上、不加入 Flutter share group；渲染线程启动之后的所有 mpv_render_* 调用都在渲染线程上，create 期的调用（mpv_render_context_create、_get_info、首次 _set_update_callback）在 RunBound 的线程上，且两处 mpv 的 context 均为当前；create/dispose 与 resize/dispose soak 中没有 epoxy abort 或 EGL_BAD_ACCESS。" status=approved-by-user-2026-10-28
+id=SC4 状态=证明 证据=run=40661093250：默认 `vulkan (gpu-next) on llvmpipe`，强制 opengl 与 Vulkan 不可用时 `opengl (gpu) on llvmpipe (...)`，后者 `; vulkan/gpu-next unavailable: vkCreateInstance failed`；LINUX-CHAIN ok；整份日志 `opengl (gpu-next)` 0 次 说明=reason 从不冒称 gpu-next；llvmpipe 上证明，真驱动未验证
+#
+# 未验证项（全部在 unverified.txt）：NVIDIA、AMD/Intel Mesa 硬件驱动、Mesa Xe2 EGLImage 黑帧、Wayland EGL、真实 X11 + libglvnd + GLX、GL 设备丢失、arm64 真实插件的 OpenGL 路径、Impeller 外部纹理原点、populate 中 EGLImage 导入失败、原生 D-LOG 行。
+# 阶段末人工检查（待用户答复，答复原文写进 SUMMARY）：(a) 未验证清单是否完整；(b) D-PROBE=supported，SC2 已不需要「部分满足」降级；(c) 批准或拒绝上面的 SC3 措辞建议（批准后由用户或另一次规划修改 ROADMAP，执行者不改）。

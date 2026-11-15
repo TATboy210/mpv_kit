@@ -1,0 +1,377 @@
+diff --git a/example/integration_test/backend_soak_test.dart b/example/integration_test/backend_soak_test.dart
+index b9fc41e..6534052 100644
+--- a/example/integration_test/backend_soak_test.dart
++++ b/example/integration_test/backend_soak_test.dart
+@@ -66,8 +66,21 @@ import 'package:integration_test/integration_test.dart';
+ import 'package:mpv_kit_video/mpv_kit_video.dart';
+ 
+ import 'hwdec_probe.dart';
++import 'soak_debug_probe.dart';
+ import 'soak_memory.dart';
+ 
++/// SCRATCH (ci/17-debug-soak): MPV_KIT_SOAK_DEBUG=1 prints a SOAK-DEBUG
++/// snapshot at every checkpoint and a SOAK-DEBUG-ROUND line every round;
++/// MPV_KIT_SOAK_TRIM=1 additionally calls malloc_trim(0) right after each
++/// checkpoint record (an experiment, it changes the later curve).
++final bool _debugProbe = Platform.environment['MPV_KIT_SOAK_DEBUG'] == '1';
++final bool _trimProbe = Platform.environment['MPV_KIT_SOAK_TRIM'] == '1';
++
++/// SCRATCH: MPV_KIT_SOAK_LEAK_MIB=N leaks N MiB per round on purpose (a
++/// sensitivity check of the pre-registered rule, never part of a real run).
++final double _leakMiB =
++    double.tryParse(Platform.environment['MPV_KIT_SOAK_LEAK_MIB'] ?? '') ?? 0;
++
+ /// Fixed number of resize/dispose rounds (D-05); never read from the
+ /// environment and never shortened (VER-04 prohibition).
+ const int _soakRounds = 100;
+@@ -324,6 +337,9 @@ final class _SoakHarness {
+       final round = i + 1;
+       await _remountCycle(i.isEven ? _largeSize : _smallSize);
+       _rounds = round;
++      if (_debugProbe) {
++        soakDebugPrint('SOAK-DEBUG-ROUND', soakDebugRound(round));
++      }
+       if (round % _checkpointEvery == 0) _checkpoint(round);
+       await Future<void>.delayed(_roundGap);
+     }
+@@ -341,6 +357,7 @@ final class _SoakHarness {
+     final next = await _create();
+     _mount(next.textureId);
+     await _nextFrame();
++    if (_leakMiB > 0) soakDebugLeak(_leakMiB);
+   }
+ 
+   /// Creates a controller on the shared player, watches its events and checks
+@@ -419,6 +436,16 @@ final class _SoakHarness {
+     print(
+       'SOAK-CHECKPOINT ${jsonEncode(<String, Object?>{'schema': 'soak-1', 'round': round, 'utc': _utcMillis(), 'rssBytes': rss, 'controllers': _controllers, 'resizeEvents': _resizeEvents, 'renderErrors': _renderErrors, 'deviceLost': _deviceLost})}',
+     );
++    if (_debugProbe) {
++      soakDebugPrint('SOAK-DEBUG', soakDebugSnapshot('checkpoint', round));
++      if (_trimProbe) {
++        final released = soakDebugTrim();
++        soakDebugPrint('SOAK-DEBUG', {
++          ...soakDebugSnapshot('after-trim', round),
++          'trimReleased': released,
++        });
++      }
++    }
+   }
+ 
+   /// Render context before mpv core (docs/ARCHITECTURE.md:76-90). Errors are
+diff --git a/example/integration_test/soak_debug_probe.dart b/example/integration_test/soak_debug_probe.dart
+new file mode 100644
+index 0000000..d3b7376
+--- /dev/null
++++ b/example/integration_test/soak_debug_probe.dart
+@@ -0,0 +1,310 @@
++// SCRATCH diagnostic probe for the debug session ubuntu-soak-late-rss-growth.
++// Lives only on the scratch branch ci/17-debug-soak, never merged. Test code
++// only: it reads /proc, calls glibc's mallinfo2 / malloc_info / malloc_trim
++// through dart:ffi and prints one JSON line per sample. It does not change the
++// pre-registered memory rule (soak_memory.dart) nor the soak's own RSS record.
++// ignore_for_file: avoid_print
++library;
++
++import 'dart:convert';
++import 'dart:ffi';
++import 'dart:io';
++
++/// glibc `struct mallinfo2` (ten size_t fields, x64).
++final class _Mallinfo2 extends Struct {
++  @Uint64()
++  external int arena;
++  @Uint64()
++  external int ordblks;
++  @Uint64()
++  external int smblks;
++  @Uint64()
++  external int hblks;
++  @Uint64()
++  external int hblkhd;
++  @Uint64()
++  external int usmblks;
++  @Uint64()
++  external int fsmblks;
++  @Uint64()
++  external int uordblks;
++  @Uint64()
++  external int fordblks;
++  @Uint64()
++  external int keepcost;
++}
++
++typedef _Mallinfo2Fn = _Mallinfo2 Function();
++typedef _TrimNative = Int32 Function(Uint64);
++typedef _TrimFn = int Function(int);
++typedef _MallocNative = Pointer<Uint8> Function(IntPtr);
++typedef _MallocFn = Pointer<Uint8> Function(int);
++typedef _FreeNative = Void Function(Pointer<Uint8>);
++typedef _FreeFn = void Function(Pointer<Uint8>);
++typedef _FopenNative = Pointer<Void> Function(Pointer<Uint8>, Pointer<Uint8>);
++typedef _FopenFn = Pointer<Void> Function(Pointer<Uint8>, Pointer<Uint8>);
++typedef _FcloseNative = Int32 Function(Pointer<Void>);
++typedef _FcloseFn = int Function(Pointer<Void>);
++typedef _MallocInfoNative = Int32 Function(Int32, Pointer<Void>);
++typedef _MallocInfoFn = int Function(int, Pointer<Void>);
++
++final DynamicLibrary _libc = DynamicLibrary.process();
++final _Mallinfo2Fn _mallinfo2 = _libc
++    .lookupFunction<_Mallinfo2Fn, _Mallinfo2Fn>('mallinfo2');
++final _TrimFn _mallocTrim = _libc.lookupFunction<_TrimNative, _TrimFn>(
++  'malloc_trim',
++);
++final _MallocFn _malloc = _libc.lookupFunction<_MallocNative, _MallocFn>(
++  'malloc',
++);
++final _FreeFn _free = _libc.lookupFunction<_FreeNative, _FreeFn>('free');
++final _FopenFn _fopen = _libc.lookupFunction<_FopenNative, _FopenFn>('fopen');
++final _FcloseFn _fclose = _libc.lookupFunction<_FcloseNative, _FcloseFn>(
++  'fclose',
++);
++final _MallocInfoFn _mallocInfo = _libc
++    .lookupFunction<_MallocInfoNative, _MallocInfoFn>('malloc_info');
++
++const int _kib = 1024;
++const double _mib = 1024.0 * 1024.0;
++
++double _round1(double v) => (v * 10).roundToDouble() / 10;
++
++/// glibc `malloc_trim(0)`: returns free heap memory to the OS (1 = released).
++int soakDebugTrim() => _mallocTrim(0);
++
++/// Lightweight per-round sample: a few /proc/self/status fields (MiB) plus
++/// thread and fd counts. Cheap enough to run every round.
++Map<String, Object?> soakDebugRound(int round) {
++  return <String, Object?>{
++    'schema': 'dbgr-1',
++    'round': round,
++    ..._status(),
++    'fds': _count('/proc/self/fd'),
++  };
++}
++
++/// Full sample: status, glibc allocator view (totals and per arena), smaps
++/// aggregated by category, load average, thread and fd counts.
++Map<String, Object?> soakDebugSnapshot(String tag, int round) {
++  return <String, Object?>{
++    'schema': 'dbg-2',
++    'tag': tag,
++    'round': round,
++    'utc': DateTime.now().toUtc().toIso8601String(),
++    ..._status(),
++    ..._mallinfo(),
++    'arenas': _arenas(),
++    'fds': _count('/proc/self/fd'),
++    'load': _loadavg(),
++    'smaps': _smaps(),
++  };
++}
++
++/// Prints one `SOAK-DEBUG` (full) or `SOAK-DEBUG-ROUND` (light) line.
++void soakDebugPrint(String key, Map<String, Object?> record) {
++  print('$key ${jsonEncode(record)}');
++}
++
++/// Blocks kept alive on purpose by [soakDebugLeak] (sensitivity experiment).
++final List<Pointer<Uint8>> _leaks = <Pointer<Uint8>>[];
++
++/// Allocates and touches [mib] MiB through glibc malloc and never frees it: a
++/// synthetic per-round leak, used to prove that the rule still sees a real
++/// leak under a given allocator setting.
++void soakDebugLeak(double mib) {
++  final n = (mib * _mib).round();
++  final p = _malloc(n);
++  p.asTypedList(n).fillRange(0, n, 0x5a);
++  _leaks.add(p);
++}
++
++int _count(String path) {
++  try {
++    return Directory(path).listSync().length;
++  } on FileSystemException {
++    return -1;
++  }
++}
++
++String _loadavg() {
++  try {
++    return File('/proc/loadavg').readAsStringSync().trim();
++  } on FileSystemException {
++    return '';
++  }
++}
++
++/// MiB of the interesting /proc/self/status fields plus the thread count.
++Map<String, Object?> _status() {
++  final out = <String, Object?>{};
++  try {
++    for (final line in File('/proc/self/status').readAsLinesSync()) {
++      final parts = line.split(RegExp(r'\s+'));
++      switch (parts.first) {
++        case 'VmRSS:':
++        case 'RssAnon:':
++        case 'RssFile:':
++        case 'RssShmem:':
++        case 'VmData:':
++        case 'VmSize:':
++          out[parts.first.replaceAll(':', '')] = _round1(
++            int.parse(parts[1]) * _kib / _mib,
++          );
++        case 'Threads:':
++          out['Threads'] = int.parse(parts[1]);
++      }
++    }
++  } on Object {
++    out['statusError'] = true;
++  }
++  return out;
++}
++
++/// glibc allocator totals over all arenas, MiB: `inUse` (uordblks), `free`
++/// (fordblks, held by the allocator but not in use), `mmapped` (hblkhd).
++Map<String, Object?> _mallinfo() {
++  final m = _mallinfo2();
++  return <String, Object?>{
++    'malloc': <String, Object?>{
++      'arenaMiB': _round1(m.arena / _mib),
++      'inUseMiB': _round1(m.uordblks / _mib),
++      'freeMiB': _round1(m.fordblks / _mib),
++      'mmappedMiB': _round1(m.hblkhd / _mib),
++      'mmapChunks': m.hblks,
++      'freeChunks': m.ordblks,
++      'keepMiB': _round1(m.keepcost / _mib),
++    },
++  };
++}
++
++/// A NUL-terminated copy of [text] in malloc memory (the caller frees it).
++Pointer<Uint8> _cString(String text) {
++  final bytes = utf8.encode(text);
++  final p = _malloc(bytes.length + 1);
++  final view = p.asTypedList(bytes.length + 1);
++  view.setAll(0, bytes);
++  view[bytes.length] = 0;
++  return p;
++}
++
++final RegExp _heapBlock = RegExp(
++  r'<heap nr="(\d+)">(.*?)</heap>',
++  dotAll: true,
++);
++
++/// First capture group of [pattern] in [block] as an int, 0 when absent.
++int _xmlSize(String block, String pattern) {
++  final m = RegExp(pattern).firstMatch(block);
++  return m == null ? 0 : int.parse(m.group(1)!);
++}
++
++/// glibc `malloc_info(0, FILE*)` parsed per arena: [nr, systemMiB, freeMiB,
++/// subheaps]; the free figure is the "fast" plus "rest" bins of that arena.
++Map<String, Object?> _arenas() {
++  final path = '/tmp/soak_minfo_$pid.xml';
++  try {
++    final pathC = _cString(path);
++    final modeC = _cString('w');
++    final file = _fopen(pathC, modeC);
++    _free(pathC);
++    _free(modeC);
++    if (file.address == 0) return <String, Object?>{'error': 'fopen'};
++    _mallocInfo(0, file);
++    _fclose(file);
++    final xml = File(path).readAsStringSync();
++    File(path).deleteSync();
++    final rows = <List<Object?>>[];
++    for (final m in _heapBlock.allMatches(xml)) {
++      final block = m.group(2)!;
++      final free =
++          _xmlSize(block, r'<total type="fast" count="\d+" size="(\d+)"/>') +
++          _xmlSize(block, r'<total type="rest" count="\d+" size="(\d+)"/>');
++      final system = _xmlSize(
++        block,
++        r'<system type="current" size="(\d+)"/>',
++      );
++      rows.add(<Object?>[
++        int.parse(m.group(1)!),
++        _round1(system / _mib),
++        _round1(free / _mib),
++        _xmlSize(block, r'<aspace type="subheaps" size="(\d+)"/>'),
++      ]);
++    }
++    rows.sort((a, b) => (b[2]! as double).compareTo(a[2]! as double));
++    return <String, Object?>{'n': rows.length, 'top': rows.take(40).toList()};
++  } on Object catch (e) {
++    return <String, Object?>{'error': e.toString()};
++  }
++}
++
++final RegExp _vmaHeader = RegExp(
++  r'^([0-9a-f]+)-([0-9a-f]+)\s+(\S+)\s+\S+\s+\S+\s+\S+\s*(.*)$',
++);
++
++/// Aggregates /proc/self/smaps: resident MiB and mapping count per category.
++/// `heap64` are the 64 MiB aligned anonymous rw-p mappings of glibc's
++/// non-main arenas.
++Map<String, Object?> _smaps() {
++  final rss = <String, double>{};
++  final count = <String, int>{};
++  String? category;
++  try {
++    final text = utf8.decode(
++      File('/proc/self/smaps').readAsBytesSync(),
++      allowMalformed: true,
++    );
++    for (final line in text.split('\n')) {
++      final header = _vmaHeader.firstMatch(line);
++      if (header != null) {
++        // [vsyscall] sits at 0xffffffffff600000, above Dart's int range.
++        final start = int.tryParse(header.group(1)!, radix: 16) ?? 0;
++        final size = (int.tryParse(header.group(2)!, radix: 16) ?? start) - start;
++        final path = header.group(4)!.trim();
++        final isArenaHeap =
++            path.isEmpty &&
++            header.group(3) == 'rw-p' &&
++            start % (64 * 1024 * 1024) == 0;
++        category = isArenaHeap ? 'heap64' : _category(path, size);
++        count[category] = (count[category] ?? 0) + 1;
++        continue;
++      }
++      if (category != null && line.startsWith('Rss:')) {
++        rss[category] =
++            (rss[category] ?? 0) + double.parse(line.split(RegExp(r'\s+'))[1]);
++      }
++    }
++  } on Object catch (e) {
++    return <String, Object?>{'error': e.toString()};
++  }
++  final top = rss.entries.where((e) => e.value >= _kib).toList()
++    ..sort((a, b) => b.value.compareTo(a.value));
++  return <String, Object?>{
++    'vmas': count.values.fold<int>(0, (a, b) => a + b),
++    'rssMiB': <String, Object?>{
++      for (final e in top.take(14)) e.key: _round1(e.value / _kib),
++    },
++    'count': <String, Object?>{
++      for (final e in top.take(14)) e.key: count[e.key],
++    },
++  };
++}
++
++String _category(String path, int size) {
++  if (path == '[heap]') return 'heap';
++  if (path.startsWith('[stack')) return 'stack';
++  if (path.startsWith('[')) return path;
++  if (path.isEmpty) {
++    if (size < 1024 * 1024) return 'anon<1M';
++    if (size < 8 * 1024 * 1024) return 'anon1-8M';
++    if (size < 64 * 1024 * 1024) return 'anon8-64M';
++    return 'anon>=64M';
++  }
++  if (path.startsWith('/memfd:') ||
++      path.startsWith('/dev/shm') ||
++      path.startsWith('/SYSV')) {
++    return 'shm:${path.split('(').first.trim()}';
++  }
++  // File backed: library family without the version suffix.
++  return 'file:${path.split('/').last.split('.so').first}';
++}

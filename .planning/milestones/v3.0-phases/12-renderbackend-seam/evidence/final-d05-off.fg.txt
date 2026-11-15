@@ -1,0 +1,49 @@
+2026-10-27T01:41:24.142Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:26.551Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:28.734Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:30.936Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:33.111Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:35.293Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:37.479Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:39.659Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:41.862Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:44.088Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:46.272Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:48.443Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:50.619Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:52.804Z fg=WindowsTerminal title="? 窗口2可见窗口3消失问题" games=none example=absent
+2026-10-27T01:41:55.043Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:41:57.329Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:41:59.544Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:01.774Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:03.984Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:06.160Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:08.359Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:10.557Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:12.802Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:15.012Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:17.231Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:19.426Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:21.624Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:23.823Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:26.029Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:28.234Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:30.451Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:32.672Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:34.893Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:37.114Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:39.340Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:41.584Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:43.828Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:46.063Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:48.289Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:50.514Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:52.735Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:54.969Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:57.193Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:42:59.405Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:43:01.639Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:43:03.850Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:43:06.095Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:43:08.347Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10
+2026-10-27T01:43:10.596Z fg=mpv_kit_example title="mpv_kit_example" games=none example=running,visible=1,iconic=0,isfg=1,rect=1280x720@10,10

@@ -1,0 +1,16 @@
+pin pinned 6 bundles of v0.1.0-dev.4
+check PINS OK tag=v0.1.0-dev.4 targets=6
+diffstat 1 file changed, 7 insertions(+), 7 deletions(-)
+crosscheck target=linux-arm64 pin=cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1 sums=cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1 api=cae3bc2edbee83a17c46de7f547c957be238243c993aeae647d8b261adc7d6d1 match=yes
+crosscheck target=linux-x64 pin=2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29 sums=2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29 api=2e45998b64d2c7f790544a1e60dbbebbf3ceed34aaf2c58d6b12bd1840269f29 match=yes
+crosscheck target=macos-arm64 pin=38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a sums=38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a api=38259f606702a587fc083c116fb18b9095fdd7c8049b6c99ea33951d300af71a match=yes
+crosscheck target=macos-x64 pin=c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190 sums=c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190 api=c79b7de008fa7ce0699c49ebfbb21b18ba2a76d7645fcfc65752b60ee8f4e190 match=yes
+crosscheck target=windows-arm64 pin=af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1 sums=af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1 api=af6e6ba9767575298e6a909efe6cecc81fb373c7bcf5deac7c4364fc2fd800d1 match=yes
+crosscheck target=windows-x64 pin=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254 sums=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254 api=6f30c84c35643c6f185fbb482ea82e80a4f059f9cc86f2d567714deb7d45c254 match=yes
+disk_floor_mib=5804
+disk_before_mib=10166
+disk_after_mib=10086
+local-identity PINNED-IDENTITY tag=v0.1.0-dev.4 target=windows-x64 stamp=match archive=match manifest=ok libs=24 app_copy=same libmpv_env=unset libmpv_sha256=1d66e561292f13df25bac2ed0c23bc92ff4679c8c8e5ff1761d0fa8ef90cba3e exit=0
+local-identity-negative app_dir=build/phase17/libmpv-rtx/lib exit=1 line=PINNED-IDENTITY FAIL tag=v0.1.0-dev.4 target=windows-x64 reason=app copy missing: avcodec-62.dll
+local-identity-negative-differing app_dir=.dart_tool/hooks_runner/shared/mpv_kit_libs/build/v0.1.0-dev.3/windows-x64/lib exit=1 line=PINNED-IDENTITY FAIL tag=v0.1.0-dev.4 target=windows-x64 reason=app copy differs: avcodec-62.dll
+note build/phase17/libmpv-rtx/lib was found empty after the local flutter build (05:06:36); the tool is read-only and no step deleted it; negative above is therefore app-copy-missing, the differing-hash negative uses the dev.3 hook cache

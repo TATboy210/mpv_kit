@@ -1,0 +1,109 @@
+# 12-09 RED (local only, red_evidence=local-only): retire twice
+# sha=149f0beb0e93e5b8ff84af9df6176d5a81211f38 (tree clean under native/ and packages/: 0 changes)
+# host=mengyiyu002/MINGW64_NT-10.0-26300/x86_64 build=MSVC /W4 /WX (build/golden-local/p1209/build_rt.bat) run=2026-10-26T20:31:06Z
+## video_renderer_golden_vk_retire_twice golden/vk_retire_twice.txt
+GOLDEN invariant scenario=vk-retire-twice: USE AFTER DESTROY serial=1
+GOLDEN invariant scenario=vk-retire-twice: USE AFTER DESTROY serial=1 (RetainFrame)
+  [vk-retire-twice] log: mpv_kit: frame render failed (1x): render: fake error -20
+  [vk-retire-twice] log: mpv_kit: rendering recovered after 1 failed frame(s)
+GOLDEN mismatch scenario=vk-retire-twice line=37
+  expected: acquire index=-1 48x27 serial=none
+  actual:   acquire index=-2 64x36 serial=1 USE AFTER DESTROY
+  actual trace of [vk-retire-twice]:
+    start ok backend=vulkan reason="vulkan (gpu-next) on <device>"
+    create-attempts vulkan/gpu-next
+    create serial=1 64x36
+    create serial=2 64x36
+    create serial=3 64x36
+    create serial=4 64x36
+    create serial=5 64x36
+    event resize 64x36
+    render serial=1 64x36
+    acquire index=0 64x36 serial=1
+    destroy serial=2
+    destroy serial=3
+    destroy serial=4
+    destroy serial=5
+    create serial=6 32x18
+    create serial=7 32x18
+    create serial=8 32x18
+    create serial=9 32x18
+    create serial=10 32x18
+    event resize 32x18
+    render serial=6 32x18 err=-20
+    acquire index=-2 64x36 serial=1
+    event render_error render: fake error -20
+    destroy serial=1
+    destroy serial=6
+    destroy serial=7
+    destroy serial=8
+    destroy serial=9
+    destroy serial=10
+    create serial=11 48x27
+    create serial=12 48x27
+    create serial=13 48x27
+    create serial=14 48x27
+    create serial=15 48x27
+    event resize 48x27
+    render serial=11 48x27
+    acquire index=-2 64x36 serial=1 USE AFTER DESTROY
+    event recovered
+    acquire index=0 48x27 serial=11
+    render serial=12 48x27
+    acquire index=1 48x27 serial=12
+    render serial=13 48x27
+    acquire index=2 48x27 serial=13
+    quiesce renders=5 skips=0 swaps=5
+    destroy serial=11
+    destroy serial=12
+    destroy serial=13
+    destroy serial=14
+    destroy serial=15
+    teardown frees=1 live-images=0
+exit=1
+## video_renderer_golden_sw_retire_twice golden/sw_retire_twice.txt
+GOLDEN invariant scenario=sw-retire-twice: USE AFTER FREE: retired 64x36 frame handed out after the 48x27 reallocation freed its buffers
+  [sw-retire-twice] log: mpv_kit: frame render failed (1x): render: fake error -20
+  [sw-retire-twice] log: mpv_kit: frame render failed (2x): render: fake error -20
+  [sw-retire-twice] log: mpv_kit: frame render failed (4x): render: fake error -20
+  [sw-retire-twice] log: mpv_kit: rendering recovered after 5 failed frame(s)
+GOLDEN mismatch scenario=sw-retire-twice line=18
+  expected: acquire index=-1 48x27 frame=none
+  actual:   acquire index=-2 64x36 pixels=set
+  actual trace of [sw-retire-twice]:
+    start ok backend=software reason="software (sw) on cpu"
+    create-attempts sw
+    event resize 64x36
+    render buf=0 frame=1 64x36 rgb0
+    acquire index=0 64x36 frame=1
+    event resize 32x18
+    render buf=0 32x18 rgb0 err=-20
+    event render_error render: fake error -20
+    render buf=0 32x18 rgb0 err=-20
+    event render_error render: fake error -20
+    render buf=0 32x18 rgb0 err=-20
+    render buf=0 32x18 rgb0 err=-20
+    event render_error render: fake error -20
+    render buf=0 32x18 rgb0 err=-20
+    acquire index=-2 64x36 frame=1
+    event resize 48x27
+    render buf=0 frame=2 48x27 rgb0
+    acquire index=-2 64x36 pixels=set
+    event recovered
+    acquire index=0 48x27 frame=2
+    render buf=1 frame=3 48x27 rgb0
+    acquire index=1 48x27 frame=3
+    render buf=2 frame=4 48x27 rgb0
+    acquire index=2 48x27 frame=4
+    quiesce renders=9 skips=0 swaps=9
+    teardown frees=1
+exit=1
+## video_renderer_golden_vk_fallback (control)
+GOLDEN ok scenarios=1
+exit=0
+## video_renderer_golden_vk (control)
+GOLDEN ok scenarios=8
+exit=0
+## video_renderer_golden_sw (control)
+GOLDEN ok scenarios=12
+exit=0

@@ -1,0 +1,1 @@
+Key: vo.c:956 drop if end_time<now (video-sync=audio). vo_libmpv flip_page waits report_swap (vo_libmpv.c:552-563), so VO loop = render+GPU done+compositor pickup. d3d11 ~26ms => ~35% drops; vulkan ~16ms => few %.
