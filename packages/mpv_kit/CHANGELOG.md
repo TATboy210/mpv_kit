@@ -1,3 +1,10 @@
+## 0.1.4
+
+- Documented the independent vendor provenance re-verification in
+  `native/patches/UPSTREAM.md`: the official mpv v0.42.0 release tarball
+  (sha256 `bcfebbfa…5070dd`) with the seven mpv_kit patches applied matches
+  `native/mpv` exactly. No code changes.
+
 ## 0.1.3
 
 - Fixed: `Player`/`Mpv` creation no longer hard-fails on libmpv builds whose

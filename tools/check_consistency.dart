@@ -37,7 +37,7 @@ final mpvVersionPattern = RegExp(r'v?0\.\d+\.\d+(-\d+-g[0-9a-f]+)?');
 
 void main() {
   final mpvVersion =
-      read('native/mpv/MPV_VERSION').trim(); // v0.41.0-1113-gfd9265a905
+      read('native/mpv/MPV_VERSION').trim(); // 0.42.0
   final mpvBase =
       mpvVersion.startsWith('v') ? mpvVersion.substring(1) : mpvVersion;
   final mpvUpToMinor =

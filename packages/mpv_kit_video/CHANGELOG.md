@@ -1,3 +1,8 @@
+## 0.1.4
+
+- No code changes; version alignment with the provenance re-verification
+  release (see `native/patches/UPSTREAM.md`).
+
 ## 0.1.3
 
 - Validated on Dart 3.14.0 / Flutter 3.50.0; no runtime changes. The example

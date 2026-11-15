@@ -23,6 +23,18 @@ $ bash tools/check_patches.sh
 PATCH-DRIFT OK base=b0841e8c4d156b8403dc1876c4cbd9011eb583f3 patches=7
 ```
 
+**Independent re-verification (2026-11-15):** the official release tarball
+`mpv-v0.42.0.tar.gz` (sha256
+`bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd`, from
+`github.com/mpv-player/mpv/archive/refs/tags/v0.42.0.tar.gz`) with all seven
+`0*.patch` applied in name order matches `native/mpv` exactly
+(`diff -rq --strip-trailing-cr` -> 0 differences). The shipped v0.1.3
+bundles report `mpv-version` = `0.42.0` at runtime and expose mpv 0.42's
+`curl-enabled` option; the Linux artifacts are byte-identical to the v0.1.1
+builds, macOS/Windows differ only by CI toolchain drift. An earlier note in
+this repo's history claimed a version drift to `v0.41.0-689`; that was a
+misread of a system `libmpv-2.dll` found on PATH, not of the bundle.
+
 ## Patch set after the 0.42.0 rebase
 
 | Patch | State | What changed in this rebase |

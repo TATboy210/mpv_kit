@@ -1,3 +1,16 @@
+## 0.1.4
+
+- Changed: the pinned bundle moved from release `v0.1.1` to `v0.1.3` (the
+  current Latest release, same mpv 0.42.0 vendor `b0841e8c`). The Linux
+  artifacts are byte-identical to v0.1.1; macOS/Windows differ only through
+  CI toolchain drift and were verified functionally: `mpv-version` reports
+  0.42.0, mpv 0.42's `curl-enabled` option is present, `auto` for
+  `hwdec-extra-frames` applies without compat fallback, and the full
+  mpv_kit test suite passes against the new Windows DLL.
+- Documented an independent vendor provenance re-verification
+  (`native/patches/UPSTREAM.md`): official release tarball
+  (sha256 `bcfebbfa…5070dd`) + the seven patches == `native/mpv` exactly.
+
 ## 0.1.3
 
 - Dependency refresh for Dart 3.14.0: `code_assets` ^2.2.0, `hooks` ^2.2.0.

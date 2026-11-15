@@ -5,7 +5,7 @@ under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.3`). APIs may change.
+> Status: early development (`0.1.4`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -28,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.3
+  mpv_kit_video: ^0.1.4
 ```
 
 ```dart
@@ -252,7 +252,7 @@ unknowns:
 Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
 10-minute gate does not exercise it.
 
-## Dependency compatibility (0.1.3)
+## Dependency compatibility (0.1.4)
 
 The three packages add no runtime dependency beyond `ffi`, `meta` and
 `crypto`. These packages resolve together with them in one Flutter app
