@@ -23,6 +23,7 @@
 #include "video/out/gpu/context.h"
 #include "video/out/gpu/libmpv_gpu.h"
 #include "video/out/libmpv.h"
+#include "mpv/render_gl.h"
 
 struct priv {
     struct libmpv_gpu_context *context;
@@ -41,6 +42,23 @@ static int init(struct render_backend *ctx, mpv_render_param *params)
     int err = libmpv_gpu_context_create(ctx->global, ctx->log, params, &p->context);
     if (err < 0)
         return err;
+
+    // mpv_kit: hand the host's DRM render node to hwdec (VA-API), like the
+    // gpu renderer's libmpv_gpu.c does for its native resources. hwdecs are
+    // loaded below (mppl_video_init_hwdecs, load_all), so the resource must
+    // sit on the ra before that, or hwdec_vaapi's create_drm_va_display()
+    // finds no render node. Only drm_params_v2 is registered: x11/wayland
+    // are disabled in mpv_kit builds and drm_draw_surface_size only serves
+    // the drmprime overlay (the host passes fd=-1, which skips it). The
+    // struct is copied like libmpv_gpu.c copies its entries.
+    mpv_opengl_drm_params_v2 *drm = get_mpv_render_param(
+        params, MPV_RENDER_PARAM_DRM_DISPLAY_V2, NULL);
+    if (drm) {
+        drm = talloc_memdup(ctx, drm, sizeof(*drm));
+        ra_add_native_resource(p->context->ra_ctx->ra, "drm_params_v2", drm);
+        MP_VERBOSE(ctx, "gpu-next: native resource drm_params_v2 (render_fd %d)\n",
+                   drm->render_fd);
+    }
 
     bool probing = !get_mpv_render_param(params, MPV_RENDER_PARAM_RENDERER, NULL);
     p->gpu_ctx = gpu_ctx_create(ctx->log, p->context->ra_ctx, probing);

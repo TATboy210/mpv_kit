@@ -361,7 +361,7 @@ shrunk accordingly.
 | 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice`; also makes `done_frame` return `bool`; defines the private-range `MPV_RENDER_PARAM_ACTIVE_RENDERER` |
 | 0002 | `hwdec_vulkan`: pass the imported device's extensions to FFmpeg so Vulkan video decoding works |
 | 0003 | `libmpv_vk`: persistent libplacebo shader/pipeline cache in `--gpu-shader-cache-dir` |
-| 0004 | Reports the active renderer ("gpu-next"/"gpu"/"sw") through `mpv_render_context_get_info` with `MPV_RENDER_PARAM_ACTIVE_RENDERER` (the gpu-next backend itself is upstream since the 0.43-dev renderer-selection series) |
+| 0004 | On upstream's gpu-next render backend: registers the host's DRM render node (`MPV_RENDER_PARAM_DRM_DISPLAY_V2` → `drm_params_v2` native resource, as the gpu renderer does) for the VA-API zero-copy interop, and reports the active renderer ("gpu-next"/"gpu"/"sw") through `mpv_render_context_get_info` with `MPV_RENDER_PARAM_ACTIVE_RENDERER` |
 | 0006 | Asynchronous stream bridge (`<mpv/stream_bridge.h>`): custom protocols answered asynchronously, used by `Mpv.registerStreamProtocol` |
 | 0007 | Audio device fixes: CoreAudio NULL guards and WASAPI's playback COM lifetime when libmpv is destroyed on the client thread (the hotplug MTA half is upstream in 0.42) |
 | 0008 | Vendor stamp: writes the git-describe base into `MPV_VERSION` (upstream master commits carry `0.42.0-UNKNOWN`; the tools derive the provenance base from this file) |
