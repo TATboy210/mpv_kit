@@ -397,7 +397,7 @@ jobs:
         shell: bash
         env:
           MPV_KIT_LIBMPV_PATH: ${{ github.workspace }}/stage/${{ matrix.libname }}
-          MPV_KIT_EXPECT_LIBMPV_API: '2.6'
+          MPV_KIT_EXPECT_LIBMPV_API: '2.7'
           MPV_KIT_VIDEO_RENDERER: software
           MPV_KIT_REQUIRE_LIBMPV: '1'
         run: |
