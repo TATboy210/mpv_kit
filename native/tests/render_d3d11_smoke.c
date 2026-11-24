@@ -40,7 +40,7 @@
 
 #include <mpv/client.h>
 #include <mpv/render_d3d11.h>
-#include <mpv/render_vk.h> // MPV_RENDER_PARAM_VULKAN_RENDERER (renderer select/report)
+#include <mpv/render_vk.h> // MPV_RENDER_PARAM_ACTIVE_RENDERER (renderer report)
 
 #define W 64
 #define H 64
@@ -266,7 +266,7 @@ static int run(const char *renderer, const char *cache_dir,
     mpv_render_param params[] = {
         { MPV_RENDER_PARAM_API_TYPE, (void *)MPV_RENDER_API_TYPE_D3D11 },
         { MPV_RENDER_PARAM_D3D11_INIT_PARAMS, &init },
-        { MPV_RENDER_PARAM_VULKAN_RENDERER, (void *)renderer },
+        { MPV_RENDER_PARAM_RENDERER, (void *)renderer },
         { MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced },
         { 0 },
     };
@@ -280,7 +280,7 @@ static int run(const char *renderer, const char *cache_dir,
     // An older libmpv or a silent fallback reports another renderer (or
     // NOT_IMPLEMENTED): both are failures.
     const char *active = NULL;
-    mpv_render_param info = { MPV_RENDER_PARAM_VULKAN_RENDERER, &active };
+    mpv_render_param info = { MPV_RENDER_PARAM_ACTIVE_RENDERER, &active };
     err = mpv_render_context_get_info(rc, info);
     if (err < 0)
         FAIL("get_info(renderer): %s", mpv_error_string(err));

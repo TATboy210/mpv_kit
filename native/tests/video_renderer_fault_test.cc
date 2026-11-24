@@ -215,7 +215,7 @@ class FaultBackend final : public mpv_kit::RenderBackend {
     renderer_ = renderer;
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE, const_cast<char*>(api_.c_str())},
-        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
     const int err = api.render_context_create(out, handle, params);

@@ -308,7 +308,7 @@ int main(int argc, char **argv)
     mpv_render_param params[] = {
         { MPV_RENDER_PARAM_API_TYPE, (void *)MPV_RENDER_API_TYPE_VULKAN },
         { MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &vkp },
-        { MPV_RENDER_PARAM_VULKAN_RENDERER, (void *)renderer },
+        { MPV_RENDER_PARAM_RENDERER, (void *)renderer },
         { drm ? MPV_RENDER_PARAM_DRM_DISPLAY_V2 : MPV_RENDER_PARAM_INVALID, &drm_params },
         { 0 },
     };

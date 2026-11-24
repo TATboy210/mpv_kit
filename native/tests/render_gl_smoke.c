@@ -5,8 +5,9 @@
 // X server, no swapchain.
 //
 // It also proves which renderer serves the GL render API: mpv reports it
-// through mpv_render_context_get_info(MPV_RENDER_PARAM_VULKAN_RENDERER), and
-// it must be "gpu" (the GL render API is never served by gpu-next).
+// through mpv_render_context_get_info(MPV_RENDER_PARAM_ACTIVE_RENDERER), and
+// the mpv_kit candidate requests "gpu" (upstream 0.43 could also serve
+// gpu-next over GL, but this backend never asks for it).
 //
 // Exit codes: 0 pass, 1 failure, 77 skipped (no EGL surfaceless display, or
 // no context of the requested API; meson "skip"). Every skip prints one
@@ -710,7 +711,7 @@ int main(int argc, char **argv)
     // The GL render API is served by vo_gpu's renderer, never gpu-next.
     step("query active renderer");
     const char *renderer = NULL;
-    mpv_render_param info = { MPV_RENDER_PARAM_VULKAN_RENDERER, &renderer };
+    mpv_render_param info = { MPV_RENDER_PARAM_ACTIVE_RENDERER, &renderer };
     err = mpv_render_context_get_info(rc, info);
     if (err < 0)
         FAIL("get_info(VULKAN_RENDERER): %s", mpv_error_string(err));

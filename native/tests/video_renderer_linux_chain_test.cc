@@ -111,7 +111,7 @@ class FakeGlBackend final : public mpv_kit::RenderBackend {
     }
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE, const_cast<char*>(kOpenglApiType)},
-        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
     const int err = api.render_context_create(out, handle, params);
@@ -129,7 +129,7 @@ class FakeGlBackend final : public mpv_kit::RenderBackend {
     // The same honest rule as the Vulkan backend: ask mpv, never assume.
     const char* active = nullptr;
     const int info = api.render_context_get_info(
-        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+        ctx, {MPV_RENDER_PARAM_ACTIVE_RENDERER, &active});
     return info >= 0 && active ? active : "unknown renderer";
   }
 

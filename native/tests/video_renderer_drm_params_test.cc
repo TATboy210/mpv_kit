@@ -231,7 +231,7 @@ void ResolveLinux() {
 
 /// One mpv_render_context_create call as the backend made it.
 struct CreateRecord {
-  std::string renderer;  // MPV_RENDER_PARAM_VULKAN_RENDERER, "" if absent
+  std::string renderer;  // MPV_RENDER_PARAM_RENDERER, "" if absent
   bool has_drm = false;
   mpv_opengl_drm_params_v2 drm{};  // copy, as libmpv copies it
 };
@@ -246,7 +246,7 @@ int RecordingCreate(mpv_render_context** out, mpv_handle* handle,
                     mpv_render_param* params) {
   CreateRecord rec;
   if (const char* renderer = static_cast<const char*>(
-          golden::FindParam(params, MPV_RENDER_PARAM_VULKAN_RENDERER)))
+          golden::FindParam(params, MPV_RENDER_PARAM_RENDERER)))
     rec.renderer = renderer;
   if (void* drm = golden::FindParam(params, MPV_RENDER_PARAM_DRM_DISPLAY_V2)) {
     rec.has_drm = true;

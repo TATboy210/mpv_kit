@@ -240,7 +240,7 @@ class AffinityBackend final : public mpv_kit::RenderBackend {
     // the checked create-time calls.
     const char* active = nullptr;
     const int info = api.render_context_get_info(
-        ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+        ctx, {MPV_RENDER_PARAM_ACTIVE_RENDERER, &active});
     return info >= 0 && active ? active : "unknown renderer";
   }
 

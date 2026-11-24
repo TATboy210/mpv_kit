@@ -44,7 +44,9 @@ dependencies:
   shared_preferences: ^2.5.6
   ffi: ^2.2.0
   # Resize lab (lib/resize_lab.dart): frameless window + runner HWND lookup.
-  nativeapi: ^0.5.10
+  # 0.5.10 references Isolate.create, which Dart 3.14 stable does not have
+  # (0.5.11 removed it but was retracted); 0.6.0 carries the fix.
+  nativeapi: ^0.6.0
 
 dev_dependencies:
   flutter_test:

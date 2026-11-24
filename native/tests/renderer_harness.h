@@ -450,7 +450,7 @@ class FakeMpv {
     const char* api = static_cast<const char*>(
         FindParam(params, MPV_RENDER_PARAM_API_TYPE));
     const char* renderer = static_cast<const char*>(
-        FindParam(params, MPV_RENDER_PARAM_VULKAN_RENDERER));
+        FindParam(params, MPV_RENDER_PARAM_RENDERER));
     std::string what = api ? api : "(no api type)";
     if (renderer) what += std::string("/") + renderer;
     if (handle != FakeHandle()) what += " (foreign handle)";
@@ -539,7 +539,7 @@ class FakeMpv {
   int GetInfo(mpv_render_context* ctx, mpv_render_param param) {
     std::lock_guard<std::mutex> lock(mu_);
     Record("render_context_get_info", ctx);
-    if (!IsParam(param, MPV_RENDER_PARAM_VULKAN_RENDERER))
+    if (!IsParam(param, MPV_RENDER_PARAM_ACTIVE_RENDERER))
       return MPV_ERROR_NOT_IMPLEMENTED;
     if (info_err_ < 0) return info_err_;
     // info_name_ lives until the next Reset(), as mpv's string lives as long
