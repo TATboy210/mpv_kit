@@ -131,6 +131,11 @@ abstract final class MpvRenderApiType {
   /// `MPV_RENDER_API_TYPE_D3D11`（mpv 0.42 新增）：Direct3D 11 渲染目标，
   /// 见 `render_d3d11.h`。
   static const d3d11 = 'd3d11';
+
+  /// `MPV_RENDER_API_TYPE_VULKAN`（mpv_kit 扩展，见 `render_vk.h`）：Vulkan
+  /// 渲染目标，导入宿主持有的 `VkDevice`。上游 libmpv 返回
+  /// `MPV_ERROR_NOT_IMPLEMENTED`。
+  static const vulkan = 'vulkan';
 }
 
 /// `mpv_render_param_type` 取值。
@@ -205,6 +210,11 @@ abstract final class MpvRenderParamType {
   /// `MPV_RENDER_PARAM_D3D11_FBO` (22, mpv 0.42 新增)：传入
   /// `mpv_d3d11_fbo`（渲染目标纹理），见 `render_d3d11.h`。
   static const d3d11Fbo = 22;
+
+  /// `MPV_RENDER_PARAM_RENDERER` (23, mpv 0.43 新增)：创建时选择视频渲染器，
+  /// 传 `"gpu-next"` 或 `"gpu"`（字符串本身作为 data 指针）。缺省时优先
+  /// gpu-next，初始化失败则回退 gpu。
+  static const renderer = 23;
 }
 
 // ---------------------------------------------------------------------------

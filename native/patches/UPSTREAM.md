@@ -1,10 +1,13 @@
 # Upstreaming status of the mpv_kit patches
 
-Base: **mpv 0.42.0** (`b0841e8c4d156b8403dc1876c4cbd9011eb583f3`,
-2026-11-04). `native/mpv/MPV_VERSION` is upstream's `0.42.0`: release
-tags commit the version file, so the old `MPV_VERSION` patch is gone.
-Previously the base was `v0.41.0-1115-gb2c255c13` (2026-10-09 master
-snapshot); the advance to the release tag is 337 upstream commits.
+Base: **mpv master snapshot `v0.42.0-228-g35efcf53d`** (2026-11-23, the
+`0.43.0`-dev base; 228 commits past the v0.42.0 tag). `native/mpv/MPV_VERSION`
+carries the git-describe string, stamped by the revived patch 0008 —
+upstream master commits carry `0.42.0-UNKNOWN` until a release tags the
+version file, so the vendor-stamp patch is back.
+Previously the base was the **v0.42.0 release tag**
+(`b0841e8c4d156b8403dc1876c4cbd9011eb583f3`, 2026-11-04); before that
+`v0.41.0-1115-gb2c255c13` (2026-10-09 master snapshot).
 
 **Provenance gate (2026-11-07):** `tools/check_patches.sh` now accepts
 both forms in `MPV_VERSION`:
@@ -18,9 +21,50 @@ be byte-identical to `native/mpv` (only `.git` and `.gitignore` are
 excluded). GNU patch is required; `git apply` reports false success on
 these files on this host.
 
+## Rebase to v0.42.0-228-g35efcf53d (2026-11-24)
+
+Upstream took the gpu-next render backend into master (commits
+`ad9d8503e`, `eb565a237`, `3e8aa53ec` et al., 2026-11-12..17, client API
+2.7 for 0.43.0): `render_backends[]` now carries gpu-next/gpu/sw with
+`MPV_RENDER_PARAM_RENDERER` (char*, `"gpu-next"`/`"gpu"`, default
+gpu-next) selection and NOT_IMPLEMENTED fallback, `video/out/gpu_next/`
+gained the `mppl_video` abstraction (`video.c`/`libmpv_gpu_next.c`),
+`libmpv_gpu_context_create` dispatches API types for all backends, and
+`mpv_render_context_get_info` still has no active-renderer query. The
+patch set shrinks accordingly:
+
+| Patch | State | What changed in this rebase |
+|---|---|---|
+| 0001 Vulkan render backend | kept, 2 hunks re-landed | `done_frame` bool + `libmpv_gpu_context_vk` extern re-landed on the refactored `libmpv_gpu.h`; `render_vk.h` now also defines the private-range `MPV_RENDER_PARAM_ACTIVE_RENDERER` (0x6d6b0003). The old `MPV_RENDER_PARAM_VULKAN_RENDERER` is retired: creation-time selection is upstream's `MPV_RENDER_PARAM_RENDERER`. |
+| 0002 hwdec_vulkan extensions | kept | Applied clean. |
+| 0003 persistent shader cache | kept | Applied clean. Upstream's `mppl_video` attaches its own mpv file cache (`video.c`, same `shader_<key>` layout and directory), so on the gpu-next path it replaces ours with an equivalent; ours remains the only cache on the gpu fallback path, where `libmpv_gpu.c` attaches none. The old vo_gpu_next double-attach guard is gone with the rest of that file's libmpv hunks. |
+| 0004 active renderer report | **rewritten** | The gpu-next backend, D3D11 gpu-next branch and all vo_gpu_next.c libmpv hunks are upstream now (the ICC host profile is `mppl_video_set_icc_profile`, the OSD guard is `54f8cff47`, the target hint is `mppl_video_get_target_hint`). What remains is the `mpv_render_context_get_info` report answering `MPV_RENDER_PARAM_ACTIVE_RENDERER` with "gpu-next"/"gpu"/"sw" (~20 lines in vo_libmpv.c), which upstream does not provide and `controller.reason` consumes. |
+| 0006 stream bridge | kept | Applied clean (offsets only). |
+| 0007 audio fixes | kept | Applied clean. |
+| 0008 vendor stamp | **revived** | Master snapshots carry `0.42.0-UNKNOWN`; 0008 stamps `MPV_VERSION` with the describe form the provenance gate parses. |
+| 0012 libdrm floor | kept | 0.43-dev still requires libdrm >= 2.4.114; the release job still builds in `ubuntu:22.04`. |
+
+Independent re-verification: `tools/check_patches.sh` passes with
+`base=35efcf53d… patches=8`; the regenerated 0001/0004 patch files were
+additionally applied to a fresh upstream checkout and the result matched
+the vendored tree byte for byte.
+
+Numbering gaps stay intentional (0005 folded into 0004; 0009/0010 were
+upstreamed in 0.42.0 and stay gone).
+
+## Upstream fit after 0.43-dev
+
+| Patch | Upstream status | Plan |
+|---|---|---|
+| 0001/0002/0003 | Still not upstream. The process precondition the maintainers set for the 2026-07 RFC (#18258) — a gpu-next render backend — is now merged (#16818 → #17828 → the 2026-11-12 series), so a Vulkan render API re-proposal is the natural next upstream step. | Keep downstream for now; re-propose separately. |
+| 0004 | The backend half is upstream; the get_info report is mpv_kit-only. | Keep downstream. |
+| 0006 | Not upstream; upstream considers `stream_cb` sufficient. | Keep downstream. |
+| 0007 | Hotplug half upstream in 0.42; the rest stays generic. | Keep the remainder downstream. |
+| 0012 | Not upstreamable as-is. | Keep downstream until the release container moves. |
+
 ```text
 $ bash tools/check_patches.sh
-PATCH-DRIFT OK base=b0841e8c4d156b8403dc1876c4cbd9011eb583f3 patches=7
+PATCH-DRIFT OK base=35efcf53d59470b3941e61a50c8a3133035a093d patches=8
 ```
 
 **Independent re-verification (2026-11-15):** the official release tarball

@@ -515,7 +515,7 @@ class VulkanRenderBackend final : public RenderBackend {
         {MPV_RENDER_PARAM_API_TYPE,
          const_cast<char*>(MPV_RENDER_API_TYPE_VULKAN)},
         {MPV_RENDER_PARAM_VULKAN_INIT_PARAMS, &init},
-        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
         {MPV_RENDER_PARAM_INVALID, nullptr},  // replaced when there is an fd
         {MPV_RENDER_PARAM_INVALID, nullptr},

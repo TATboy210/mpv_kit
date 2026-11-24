@@ -22,7 +22,7 @@
 #include <wrl/client.h>
 
 #include <mpv/render_d3d11.h>
-#include <mpv/render_vk.h>  // MPV_RENDER_PARAM_VULKAN_RENDERER (renderer select/report)
+#include <mpv/render_vk.h>  // MPV_RENDER_PARAM_ACTIVE_RENDERER (renderer report)
 
 #include <chrono>
 #include <cstdint>
@@ -241,7 +241,7 @@ class D3D11RenderBackend final : public RenderBackend {
         {MPV_RENDER_PARAM_API_TYPE,
          const_cast<char*>(MPV_RENDER_API_TYPE_D3D11)},
         {MPV_RENDER_PARAM_D3D11_INIT_PARAMS, &init},
-        {MPV_RENDER_PARAM_VULKAN_RENDERER, const_cast<char*>(renderer)},
+        {MPV_RENDER_PARAM_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };

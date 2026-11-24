@@ -57,26 +57,13 @@ extern "C" {
 #define MPV_RENDER_PARAM_VULKAN_INIT_PARAMS ((mpv_render_param_type)0x6d6b0001)
 #define MPV_RENDER_PARAM_VULKAN_IMAGE       ((mpv_render_param_type)0x6d6b0002)
 /**
- * Optional for mpv_render_context_create(): the renderer to use, as a
- * const char* (the data pointer is the string itself, like
- * MPV_RENDER_PARAM_API_TYPE).
- *  - "gpu-next" (default): libplacebo's renderer, as used by --vo=gpu-next.
- *    Better HDR/tone mapping and color management, persistent shader and
- *    ICC caches.
- *  - "gpu": mpv's older gl_video renderer, as used by --vo=gpu.
- *
- * Also valid for mpv_render_context_get_info(): data is a const char**
- * that receives the active renderer ("gpu-next", "gpu" or "sw"). The string
- * is static. Builds without this extension return MPV_ERROR_NOT_IMPLEMENTED.
- *
- * mpv_kit builds for Windows also accept this parameter with
- * MPV_RENDER_API_TYPE_D3D11 (render_d3d11.h): "gpu-next" runs libplacebo's
- * pl_d3d11 on the host's ID3D11Device, "gpu" is the upstream ra_d3d11
- * renderer, and get_info reports the active one in the same way. It is the
- * same parameter, with the same value and name; the D3D11 backend adds no
- * parameter of its own.
+ * For mpv_render_context_get_info(): report which renderer the context was
+ * created with ("gpu-next"/"gpu"/"sw") as const char*. Which renderer is
+ * selected at creation is upstream's MPV_RENDER_PARAM_RENDERER (render.h);
+ * upstream has no get_info equivalent, so this lives in the private range.
+ * Type: const char**
  */
-#define MPV_RENDER_PARAM_VULKAN_RENDERER    ((mpv_render_param_type)0x6d6b0003)
+#define MPV_RENDER_PARAM_ACTIVE_RENDERER    ((mpv_render_param_type)0x6d6b0003)
 
 /** Queue family selection, mirrors libplacebo's pl_vulkan_queue. */
 typedef struct mpv_vulkan_queue {

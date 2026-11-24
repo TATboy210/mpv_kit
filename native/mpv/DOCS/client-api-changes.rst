@@ -32,12 +32,20 @@ API changes
 
 ::
 
- --- mpv_kit (patch on 0.42.0, API version unchanged) ---
+ --- mpv 0.43.0 ---
+ 2.7    - add MPV_RENDER_PARAM_RENDERER to select the renderer
+        - use the gpu-next renderer by default
+ --- mpv_kit (patch on 0.43.0-dev, API version 2.7) ---
         - add <mpv/render_vk.h> and MPV_RENDER_API_TYPE_VULKAN: a Vulkan
           backend for the render API importing a host-owned VkDevice.
           Detect at compile time via MPV_RENDER_API_TYPE_VULKAN, at run
           time mpv_render_context_create() returns
           MPV_ERROR_NOT_IMPLEMENTED when the backend is unavailable.
+        - add MPV_RENDER_PARAM_ACTIVE_RENDERER (mpv_kit private): query
+          which renderer the context was created with ("gpu-next"/"gpu"/
+          "sw") via mpv_render_context_get_info(), so the API user can
+          tell gpu-next from a fallback; an upstream libmpv returns
+          MPV_ERROR_NOT_IMPLEMENTED.
  --- mpv 0.42.0 ---
  2.6    - add MPV_RENDER_API_TYPE_D3D11 render API backend, along with
           MPV_RENDER_PARAM_D3D11_INIT_PARAMS and MPV_RENDER_PARAM_D3D11_FBO,

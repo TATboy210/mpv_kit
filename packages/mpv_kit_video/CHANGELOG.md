@@ -1,3 +1,22 @@
+## 0.1.5
+
+- Migrated the plugin glue to the mpv 0.43-dev render API: creation-time
+  renderer selection now goes through upstream's `MPV_RENDER_PARAM_RENDERER`
+  (23) instead of the retired mpv_kit-private
+  `MPV_RENDER_PARAM_VULKAN_RENDERER` — upstream serves gpu-next over
+  D3D11/GL natively now, and the Linux OpenGL backend passes the renderer
+  explicitly for the first time. The active-renderer report feeding
+  `controller.reason` queries the renamed private parameter
+  `MPV_RENDER_PARAM_ACTIVE_RENDERER` (same private-range value
+  `0x6d6b0003`, still `const char**` on `mpv_render_context_get_info`).
+  Header copies (`client.h` 2.7, `render.h` with parameter 23,
+  `render_vk.h`) were synced with the new vendor tree. The Dart API is
+  unchanged.
+- Bundled libmpv: master snapshot `v0.42.0-228-g35efcf53d` (client API
+  2.7) with the gpu-next render backend upstream; patch 0008 returns to
+  stamp `MPV_VERSION` for the snapshot form (see
+  `native/patches/UPSTREAM.md`).
+
 ## 0.1.4
 
 - No code changes; version alignment with the provenance re-verification

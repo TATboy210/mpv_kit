@@ -1,26 +1,31 @@
 diff --git a/DOCS/client-api-changes.rst b/DOCS/client-api-changes.rst
-index a077057..712dedd 100644
+index 63dd42f02..c776c7743 100644
 --- a/DOCS/client-api-changes.rst
 +++ b/DOCS/client-api-changes.rst
-@@ -32,6 +32,12 @@ API changes
- 
- ::
- 
-+ --- mpv_kit (patch on 0.42.0, API version unchanged) ---
+@@ -35,6 +35,17 @@ API changes
+  --- mpv 0.43.0 ---
+  2.7    - add MPV_RENDER_PARAM_RENDERER to select the renderer
+         - use the gpu-next renderer by default
++ --- mpv_kit (patch on 0.43.0-dev, API version 2.7) ---
 +        - add <mpv/render_vk.h> and MPV_RENDER_API_TYPE_VULKAN: a Vulkan
 +          backend for the render API importing a host-owned VkDevice.
 +          Detect at compile time via MPV_RENDER_API_TYPE_VULKAN, at run
 +          time mpv_render_context_create() returns
 +          MPV_ERROR_NOT_IMPLEMENTED when the backend is unavailable.
++        - add MPV_RENDER_PARAM_ACTIVE_RENDERER (mpv_kit private): query
++          which renderer the context was created with ("gpu-next"/"gpu"/
++          "sw") via mpv_render_context_get_info(), so the API user can
++          tell gpu-next from a fallback; an upstream libmpv returns
++          MPV_ERROR_NOT_IMPLEMENTED.
   --- mpv 0.42.0 ---
   2.6    - add MPV_RENDER_API_TYPE_D3D11 render API backend, along with
            MPV_RENDER_PARAM_D3D11_INIT_PARAMS and MPV_RENDER_PARAM_D3D11_FBO,
 diff --git a/include/mpv/render_vk.h b/include/mpv/render_vk.h
 new file mode 100644
-index 0000000..c6377c7
+index 000000000..2fa7cac92
 --- /dev/null
 +++ b/include/mpv/render_vk.h
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,135 @@
 +/* Copyright (C) 2026 the mpv_kit developers
 + *
 + * Permission to use, copy, modify, and/or distribute this software for any
@@ -79,6 +84,14 @@ index 0000000..c6377c7
 + */
 +#define MPV_RENDER_PARAM_VULKAN_INIT_PARAMS ((mpv_render_param_type)0x6d6b0001)
 +#define MPV_RENDER_PARAM_VULKAN_IMAGE       ((mpv_render_param_type)0x6d6b0002)
++/**
++ * For mpv_render_context_get_info(): report which renderer the context was
++ * created with ("gpu-next"/"gpu"/"sw") as const char*. Which renderer is
++ * selected at creation is upstream's MPV_RENDER_PARAM_RENDERER (render.h);
++ * upstream has no get_info equivalent, so this lives in the private range.
++ * Type: const char**
++ */
++#define MPV_RENDER_PARAM_ACTIVE_RENDERER    ((mpv_render_param_type)0x6d6b0003)
 +
 +/** Queue family selection, mirrors libplacebo's pl_vulkan_queue. */
 +typedef struct mpv_vulkan_queue {
@@ -149,10 +162,10 @@ index 0000000..c6377c7
 +
 +#endif
 diff --git a/meson.build b/meson.build
-index b15f310..b61b8e9 100644
+index 656d156d0..ddfc9c01c 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -1355,6 +1355,7 @@ if features['vulkan']
+@@ -1358,6 +1358,7 @@ if features['vulkan']
      dependencies += vulkan
      sources += files('video/out/hwdec/hwdec_vulkan.c',
                       'video/out/vulkan/context.c',
@@ -160,7 +173,7 @@ index b15f310..b61b8e9 100644
                       'video/out/vulkan/utils.c',
                       'video/filter/vf_gpu_vulkan.c')
  endif
-@@ -1853,6 +1854,9 @@ if get_option('libmpv')
+@@ -1858,6 +1859,9 @@ if get_option('libmpv')
      headers = ['include/mpv/client.h', 'include/mpv/render.h',
                 'include/mpv/render_d3d11.h', 'include/mpv/render_gl.h',
                 'include/mpv/stream_cb.h']
@@ -171,7 +184,7 @@ index b15f310..b61b8e9 100644
  
      # Allow projects to build with libmpv by cloning into ./subprojects/mpv
 diff --git a/video/out/d3d11/libmpv_d3d11.c b/video/out/d3d11/libmpv_d3d11.c
-index fb539e5..80a68e1 100644
+index fb539e5b6..80a68e115 100644
 --- a/video/out/d3d11/libmpv_d3d11.c
 +++ b/video/out/d3d11/libmpv_d3d11.c
 @@ -72,12 +72,14 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
@@ -191,7 +204,7 @@ index fb539e5..80a68e1 100644
  
  static void destroy(struct libmpv_gpu_context *ctx)
 diff --git a/video/out/gpu/libmpv_gpu.c b/video/out/gpu/libmpv_gpu.c
-index 2d8f442..f9ae201 100644
+index ab979fb1f..2613d78a3 100644
 --- a/video/out/gpu/libmpv_gpu.c
 +++ b/video/out/gpu/libmpv_gpu.c
 @@ -11,6 +11,9 @@ static const struct libmpv_gpu_context_fns *context_backends[] = {
@@ -204,7 +217,7 @@ index 2d8f442..f9ae201 100644
  #endif
      NULL
  };
-@@ -193,7 +196,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
+@@ -220,7 +223,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
  
      struct ra_fbo target = {.tex = tex, .flip = flip};
      gl_video_render_frame(p->renderer, frame, &target, RENDER_FRAME_DEF);
@@ -215,10 +228,10 @@ index 2d8f442..f9ae201 100644
      return 0;
  }
 diff --git a/video/out/gpu/libmpv_gpu.h b/video/out/gpu/libmpv_gpu.h
-index fad1a00..2ee93e3 100644
+index dafe6f0d6..9b9b1ea6d 100644
 --- a/video/out/gpu/libmpv_gpu.h
 +++ b/video/out/gpu/libmpv_gpu.h
-@@ -31,11 +31,13 @@ struct libmpv_gpu_context_fns {
+@@ -31,8 +31,9 @@ struct libmpv_gpu_context_fns {
                      struct ra_tex **out);
      // Signal that the ra_tex object obtained with wrap_fbo is no longer used.
      // For certain backends, this might also be used to signal the end of
@@ -230,12 +243,13 @@ index fad1a00..2ee93e3 100644
      // Free all data in ctx->priv.
      void (*destroy)(struct libmpv_gpu_context *ctx);
  };
+@@ -46,3 +47,4 @@ void libmpv_gpu_context_destroy(struct libmpv_gpu_context **pctx);
  
  extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
  extern const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11;
 +extern const struct libmpv_gpu_context_fns libmpv_gpu_context_vk;
 diff --git a/video/out/opengl/libmpv_gl.c b/video/out/opengl/libmpv_gl.c
-index e9fffa7..7f47e60 100644
+index e9fffa703..7f47e6025 100644
 --- a/video/out/opengl/libmpv_gl.c
 +++ b/video/out/opengl/libmpv_gl.c
 @@ -84,13 +84,14 @@ static int wrap_fbo(struct libmpv_gpu_context *ctx, mpv_render_param *params,
@@ -255,7 +269,7 @@ index e9fffa7..7f47e60 100644
  
  static void destroy(struct libmpv_gpu_context *ctx)
 diff --git a/video/out/vulkan/context.c b/video/out/vulkan/context.c
-index 892396f..0754595 100644
+index 892396f7d..07545950e 100644
 --- a/video/out/vulkan/context.c
 +++ b/video/out/vulkan/context.c
 @@ -152,15 +152,35 @@ struct priv {
@@ -296,7 +310,7 @@ index 892396f..0754595 100644
  {
      if (!ctx->swapchain)
 diff --git a/video/out/vulkan/context.h b/video/out/vulkan/context.h
-index c3013ed..b57acc7 100644
+index c3013edbd..b57acc7fb 100644
 --- a/video/out/vulkan/context.h
 +++ b/video/out/vulkan/context.h
 @@ -9,6 +9,11 @@ bool ra_vk_ctx_init(struct ra_ctx *ctx, struct mpvk_ctx *vk,
@@ -313,7 +327,7 @@ index c3013ed..b57acc7 100644
                               pl_vk_inst vkinst,
 diff --git a/video/out/vulkan/libmpv_vk.c b/video/out/vulkan/libmpv_vk.c
 new file mode 100644
-index 0000000..46c10a5
+index 000000000..46c10a5e2
 --- /dev/null
 +++ b/video/out/vulkan/libmpv_vk.c
 @@ -0,0 +1,256 @@

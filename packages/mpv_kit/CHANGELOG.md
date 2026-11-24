@@ -1,3 +1,18 @@
+## 0.1.5
+
+- Upgraded the vendored mpv from the 0.42.0 release to the master snapshot
+  `v0.42.0-228-g35efcf53d` (2026-11-23), the base of the upcoming 0.43.0:
+  client API 2.7, upstream's `MPV_RENDER_PARAM_RENDERER` renderer selection
+  with gpu-next as the render API default (matching the plugin's existing
+  `auto` ranking), the `mppl_video` refactor of vo_gpu_next, the gpu-next
+  render backend over Vulkan/D3D11/GL, and the rendering fixes since
+  0.42.0 (`target-gamut=auto` no longer limits the gamut to BT.709, queued
+  frames are re-mapped when the reference white changes, blended
+  subtitles render again after a screenshot, disc timed stills are held).
+- `MpvRenderApiType` documents the `vulkan` API type (the mpv_kit
+  `render_vk.h` extension) and `MpvRenderParamType` the new upstream
+  `renderer` parameter (23). The FFI surface is otherwise unchanged.
+
 ## 0.1.4
 
 - Documented the independent vendor provenance re-verification in

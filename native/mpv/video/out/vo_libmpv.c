@@ -104,7 +104,10 @@ struct mpv_render_context {
     bool need_resize;
     bool need_reset;
     bool need_update_external;
+    bool paused;
     struct vo *vo;
+    uint64_t frame_id_offset;       // added to the frame IDs of the VO
+    uint64_t last_frame_id;         // highest ID a frame was passed on with
 
     // --- Mostly immutable after init.
     struct mp_hwdec_devices *hwdec_devs;
@@ -117,10 +120,7 @@ struct mpv_render_context {
 };
 
 const struct render_backend_fns *render_backends[] = {
-#if HAVE_VULKAN
-    // Vulkan API: gpu-next unless MPV_RENDER_PARAM_VULKAN_RENDERER is "gpu".
     &render_backend_gpu_next,
-#endif
     &render_backend_gpu,
     &render_backend_sw,
     NULL
@@ -193,8 +193,13 @@ int mpv_render_context_create(mpv_render_context **res, mpv_handle *mpv,
     if (GET_MPV_RENDER_PARAM(params, MPV_RENDER_PARAM_ADVANCED_CONTROL, int, 0))
         ctx->advanced_control = true;
 
+    char *renderer = get_mpv_render_param(params, MPV_RENDER_PARAM_RENDERER, NULL);
+
     int err = MPV_ERROR_NOT_IMPLEMENTED;
     for (int n = 0; render_backends[n]; n++) {
+        const char *name = render_backends[n]->renderer;
+        if (name && renderer && strcmp(name, renderer) != 0)
+            continue;
         ctx->renderer = talloc_zero(NULL, struct render_backend);
         *ctx->renderer = (struct render_backend){
             .global = ctx->global,
@@ -215,6 +220,9 @@ int mpv_render_context_create(mpv_render_context **res, mpv_handle *mpv,
         mpv_render_context_free(ctx);
         return err;
     }
+
+    if (ctx->renderer->fns->renderer)
+        MP_VERBOSE(ctx, "Using the %s renderer.\n", ctx->renderer->fns->renderer);
 
     ctx->hwdec_devs = ctx->renderer->hwdec_devs;
 
@@ -381,6 +389,9 @@ int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params)
         ctx->renderer->fns->reconfig(ctx->renderer, &ctx->img_params);
     ctx->need_reconfig = false;
 
+    if (ctx->renderer->fns->set_paused)
+        ctx->renderer->fns->set_paused(ctx->renderer, ctx->paused);
+
     if (ctx->need_update_external)
         ctx->renderer->fns->update_external(ctx->renderer, ctx->vo);
     ctx->need_update_external = false;
@@ -488,10 +499,11 @@ int mpv_render_context_get_info(mpv_render_context *ctx,
         break;
     }
 #if HAVE_VULKAN
-    case MPV_RENDER_PARAM_VULKAN_RENDERER: {
+    case MPV_RENDER_PARAM_ACTIVE_RENDERER: {
         // mpv_kit: which renderer the context was created with, so the API
-        // user can tell gpu-next from a fallback (or an older libmpv, which
-        // returns MPV_ERROR_NOT_IMPLEMENTED here).
+        // user can tell gpu-next from a fallback. Upstream logs the choice
+        // but does not expose it; an older libmpv returns
+        // MPV_ERROR_NOT_IMPLEMENTED here.
         const char **name = param.data;
         const struct render_backend_fns *fns = ctx->renderer->fns;
         *name = fns == &render_backend_gpu_next ? "gpu-next" :
@@ -515,6 +527,10 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     mp_mutex_lock(&ctx->lock);
     mp_assert(!ctx->next_frame);
     ctx->next_frame = vo_frame_ref(frame);
+    if (frame->num_frames) {
+        ctx->next_frame->frame_id += ctx->frame_id_offset;
+        ctx->last_frame_id = ctx->next_frame->frame_id + frame->num_frames - 1;
+    }
     ctx->expected_flip_count = ctx->flip_count + 1;
     ctx->redrawing = frame->redraw || !frame->current;
     mp_mutex_unlock(&ctx->lock);
@@ -633,7 +649,15 @@ static int control(struct vo *vo, uint32_t request, void *data)
         vo->want_redraw = true;
         return VO_TRUE;
     case VOCTRL_PAUSE:
+        mp_mutex_lock(&ctx->lock);
+        ctx->paused = true;
+        mp_mutex_unlock(&ctx->lock);
         vo->want_redraw = true;
+        return VO_TRUE;
+    case VOCTRL_RESUME:
+        mp_mutex_lock(&ctx->lock);
+        ctx->paused = false;
+        mp_mutex_unlock(&ctx->lock);
         return VO_TRUE;
     case VOCTRL_SET_PANSCAN:
         mp_mutex_lock(&ctx->lock);
@@ -719,7 +743,9 @@ static void uninit(struct vo *vo)
     ctx->need_resize = true;
     ctx->need_update_external = true;
     ctx->need_reset = true;
+    ctx->paused = false;
     ctx->vo = NULL;
+    ctx->frame_id_offset = ctx->last_frame_id;
 
     // The following do not normally need ctx->lock, however, ctx itself may
     // become invalid once we release ctx->lock.

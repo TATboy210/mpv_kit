@@ -150,6 +150,7 @@ void update_core_idle_state(struct MPContext *mpctx)
         mpctx->playback_active = active;
 
         update_screensaver_state(mpctx);
+        mp_set_idle_power_mode(!active);
 
         mp_notify(mpctx, MP_EVENT_CORE_IDLE, NULL);
     }
@@ -897,6 +898,8 @@ static void handle_vo_events(struct MPContext *mpctx)
         mp_notify(mpctx, MP_EVENT_FOCUS, NULL);
     if (events & VO_EVENT_AMBIENT_LIGHTING_CHANGED)
         mp_notify(mpctx, MP_EVENT_AMBIENT_LIGHTING_CHANGED, NULL);
+    if (events & VO_EVENT_PRESENTATION_DELAY)
+        mp_notify(mpctx, MP_EVENT_PRESENTATION_DELAY, NULL);
 }
 
 static void handle_sstep(struct MPContext *mpctx)

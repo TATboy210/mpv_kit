@@ -5,7 +5,7 @@ under `native/mpv`) with a **Vulkan** render
 backend added by a small set of patches, rendering zero-copy into Flutter
 textures on Windows, Linux and macOS.
 
-> Status: early development (`0.1.4`). APIs may change.
+> Status: early development (`0.1.5`). APIs may change.
 
 | Package | Purpose |
 |---|---|
@@ -28,7 +28,7 @@ and pulls in `mpv_kit_libs`, which bundles libmpv into the app.
 
 ```yaml
 dependencies:
-  mpv_kit_video: ^0.1.4
+  mpv_kit_video: ^0.1.5
 ```
 
 ```dart
@@ -252,7 +252,7 @@ unknowns:
 Known upstream risk: mpv #15099 (long-play leak) has no fix in 0.42.0; the
 10-minute gate does not exercise it.
 
-## Dependency compatibility (0.1.4)
+## Dependency compatibility (0.1.5)
 
 The three packages add no runtime dependency beyond `ffi`, `meta` and
 `crypto`. These packages resolve together with them in one Flutter app
@@ -348,21 +348,29 @@ Dart and plugin code is MIT.
 
 ## mpv patches
 
-Applied on top of mpv 0.42.0 (`native/patches/`); the client API version is 2.6.
+Applied on top of the mpv master snapshot
+`v0.42.0-228-g35efcf53d` (2026-11-23, the `0.43.0`-dev base;
+`native/patches/`); the client API version is 2.7. Since 0.42.0 upstream
+gained the gpu-next render backend over D3D11/GL and the
+`MPV_RENDER_PARAM_RENDERER` selection (gpu-next is the render API's
+default, matching this plugin's `auto` ranking), so the mpv_kit patch set
+shrunk accordingly.
 
 | Patch | Summary |
 |---|---|
-| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice`; also makes `done_frame` return `bool` |
+| 0001 | `vo_libmpv`: Vulkan render backend (`<mpv/render_vk.h>`, `MPV_RENDER_API_TYPE_VULKAN`) importing a host-owned `VkDevice`; also makes `done_frame` return `bool`; defines the private-range `MPV_RENDER_PARAM_ACTIVE_RENDERER` |
 | 0002 | `hwdec_vulkan`: pass the imported device's extensions to FFmpeg so Vulkan video decoding works |
 | 0003 | `libmpv_vk`: persistent libplacebo shader/pipeline cache in `--gpu-shader-cache-dir` |
-| 0004 | gpu-next (libplacebo's renderer) as a Vulkan/D3D11 render backend, chosen with `MPV_RENDER_PARAM_VULKAN_RENDERER`; reports the active renderer through `mpv_render_context_get_info` (old 0005 folded in) |
+| 0004 | Reports the active renderer ("gpu-next"/"gpu"/"sw") through `mpv_render_context_get_info` with `MPV_RENDER_PARAM_ACTIVE_RENDERER` (the gpu-next backend itself is upstream since the 0.43-dev renderer-selection series) |
 | 0006 | Asynchronous stream bridge (`<mpv/stream_bridge.h>`): custom protocols answered asynchronously, used by `Mpv.registerStreamProtocol` |
 | 0007 | Audio device fixes: CoreAudio NULL guards and WASAPI's playback COM lifetime when libmpv is destroyed on the client thread (the hotplug MTA half is upstream in 0.42) |
-| 0012 | Build against the Ubuntu 22.04 release container's libdrm 2.4.113 (0.42 requires 2.4.114) |
+| 0008 | Vendor stamp: writes the git-describe base into `MPV_VERSION` (upstream master commits carry `0.42.0-UNKNOWN`; the tools derive the provenance base from this file) |
+| 0012 | Build against the Ubuntu 22.04 release container's libdrm 2.4.113 (0.43-dev still requires 2.4.114) |
 
-Patches 0008, 0009 and 0010 were removed for 0.42.0: release tags ship
-`MPV_VERSION`, the render backports were upstreamed, and PR #17764 provides
-the D3D11 render API (client API 2.6).
+Patches 0009 and 0010 stay removed (upstreamed in 0.42.0). 0008 was also
+removed for the 0.42.0 release base and returns here because a master
+snapshot has no release tag to stamp the version file. 0005 remains folded
+into 0004.
 
 ## CI workflows
 

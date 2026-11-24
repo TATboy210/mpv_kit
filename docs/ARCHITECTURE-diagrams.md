@@ -293,7 +293,8 @@ video/out\
 │   │     render_backend_gpu_next ★0004(HAVE_VULKAN)
 │   │     render_backend_gpu      (0001 的 GL 链)
 │   │     render_backend_sw
-│   ├── MPV_RENDER_PARAM_VULKAN_RENDERER get_info ★0005(报活跃渲染器)
+│   ├── MPV_RENDER_PARAM_ACTIVE_RENDERER get_info ★0004(报活跃渲染器;
+│   │     0.43-dev 起选择走上游 MPV_RENDER_PARAM_RENDERER, 默认 gpu-next)
 │   └── master 重构: ctx->renderer->driver_caps(与补丁已融合)
 │
 ├── gpu/
@@ -350,15 +351,17 @@ video/out\
                                                          (首帧 SPIR-V 编译 0.4s
                                                          → cache 命中 0 掉帧)
 ─────────────────────────────────────────────────────────────────────────────
-0004     539 行  include/mpv/render_vk.h                VULKAN_RENDERER 参数
-                 video/out/libmpv.h                     extern gpu_next backend
-                 video/out/vo_gpu_next.c                VO 侧 libmpv 模式(13
-                 video/out/vo_libmpv.c                    hunks,8 原样+5 手工
-                 meson.build                              rebase 到 master 重构)
-                 ※ 核心意义:gpu-next 成为 render API 默认渲染器
+0004     ~20 行  video/out/vo_libmpv.c                  get_info 报活跃渲染器
+         (0.43-dev)                                     MPV_RENDER_PARAM_ACTIVE_
+                                                        RENDERER;gpu-next 后端
+                                                        与选择参数已上游
 ─────────────────────────────────────────────────────────────────────────────
-0005      50 行  video/out/vo_libmpv.c                  get_info 报活跃渲染器
-                 (依赖 0004)
+0008      1 行  MPV_VERSION                            快照版戳(git describe)
+─────────────────────────────────────────────────────────────────────────────
+0006     412 行  include/mpv/stream_bridge.h(新增)      Dart 异步流桥:
+                 player/stream_bridge.c(新增)            stream_cb 无法同步应答
+                 meson.build                              时的异步 completions
+                 ※ Dart 侧对应 core/stream_bridge.dart(280 行)
 ─────────────────────────────────────────────────────────────────────────────
 0006     412 行  include/mpv/stream_bridge.h(新增)      Dart 异步流桥:
                  player/stream_bridge.c(新增)            stream_cb 无法同步应答

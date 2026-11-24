@@ -1,3 +1,14 @@
+## 0.1.5
+
+- Changed: the pinned bundle will move to release `v0.1.5` — the mpv
+  master snapshot `v0.42.0-228-g35efcf53d` (client API 2.7) built from the
+  rebased mpv_kit patch set; the gpu-next render backend and the
+  `MPV_RENDER_PARAM_RENDERER` selection are upstream now, the mpv_kit
+  report parameter is `MPV_RENDER_PARAM_ACTIVE_RENDERER`
+  (`packages/mpv_kit_video` 0.1.5 requires it). `bundleTag` in
+  `lib/src/bundles.dart` is re-pinned with the release's `SHA256SUMS`
+  before publishing.
+
 ## 0.1.4
 
 - Changed: the pinned bundle moved from release `v0.1.1` to `v0.1.3` (the

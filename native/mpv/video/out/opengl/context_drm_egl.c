@@ -50,6 +50,7 @@
 struct gbm_frame {
     struct gbm_bo *bo;
     struct pl_color_space color;
+    int64_t swap;           // the swap that queued the frame
 };
 
 struct gbm {
@@ -218,6 +219,21 @@ static bool init_egl(struct ra_ctx *ctx)
     return true;
 }
 
+static struct gbm_surface *create_gbm_surface(struct ra_ctx *ctx,
+                                              const uint64_t *modifiers,
+                                              unsigned int num_modifiers)
+{
+    struct priv *p = ctx->priv;
+    return gbm_surface_create_with_modifiers2(
+        p->gbm.device,
+        p->draw_surface_size.width,
+        p->draw_surface_size.height,
+        p->gbm_format,
+        modifiers,
+        num_modifiers,
+        GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+}
+
 static bool init_gbm(struct ra_ctx *ctx)
 {
     struct priv *p = ctx->priv;
@@ -231,27 +247,12 @@ static bool init_gbm(struct ra_ctx *ctx)
 
     MP_VERBOSE(ctx->vo, "Initializing GBM surface (%d x %d)\n",
         p->draw_surface_size.width, p->draw_surface_size.height);
-    if (p->num_gbm_modifiers > 0) {
-        p->gbm.surface = gbm_surface_create_with_modifiers(
-            p->gbm.device,
-            p->draw_surface_size.width,
-            p->draw_surface_size.height,
-            p->gbm_format,
-            p->gbm_modifiers,
-            p->num_gbm_modifiers);
-        if (!p->gbm.surface) {
-            MP_VERBOSE(ctx->vo, "gbm_surface_create_with_modifiers failed\n");
-        }
-    }
-    if (!p->gbm.surface) {
-        // Either gbm_surface_create_with_modifiers failed or
-        // p->num_gbm_modifiers == 0
-        p->gbm.surface = gbm_surface_create(
-            p->gbm.device,
-            p->draw_surface_size.width,
-            p->draw_surface_size.height,
-            p->gbm_format,
-            GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+    p->gbm.surface = create_gbm_surface(ctx, p->gbm_modifiers, p->num_gbm_modifiers);
+    // GBM may not support the modifiers the plane advertises.
+    if (!p->gbm.surface && p->num_gbm_modifiers) {
+        MP_VERBOSE(ctx->vo, "Failed to create GBM surface with explicit modifiers: %s\n",
+                   mp_strerror(errno));
+        p->gbm.surface = create_gbm_surface(ctx, NULL, 0);
     }
     if (!p->gbm.surface) {
         MP_ERR(ctx->vo, "Failed to create GBM surface.\n");
@@ -324,6 +325,7 @@ static void queue_flip(struct ra_ctx *ctx, struct gbm_frame *frame)
     struct priv *p = ctx->priv;
 
     update_framebuffer_from_bo(ctx, frame->bo);
+    drm->flip_swap = frame->swap;
 
     struct drm_atomic_context *atomic_ctx = drm->atomic_context;
     int flags = DRM_MODE_ATOMIC_NONBLOCK | DRM_MODE_PAGE_FLIP_EVENT;
@@ -357,6 +359,7 @@ static void enqueue_bo(struct ra_ctx *ctx, struct gbm_bo *bo, struct pl_color_sp
     struct gbm_frame *new_frame = talloc_zero(p, struct gbm_frame);
     new_frame->bo = bo;
     new_frame->color = color;
+    new_frame->swap = ctx->vo->drm->present->swaps + 1;
     MP_TARRAY_APPEND(p, p->gbm.bo_queue, p->gbm.num_bos, new_frame);
 }
 
@@ -401,6 +404,7 @@ static void drm_egl_swap_buffers(struct ra_ctx *ctx)
         return;
     }
     enqueue_bo(ctx, new_bo, drm->colorspace);
+    present_sync_swap(drm->present);
 
     while (drm->redraw || p->gbm.num_bos > ctx->vo->opts->swapchain_depth ||
            !gbm_surface_has_free_buffers(p->gbm.surface)) {

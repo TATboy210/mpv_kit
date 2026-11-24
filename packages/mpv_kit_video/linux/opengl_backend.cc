@@ -44,8 +44,8 @@
 // robust context, see Wait().
 
 #include <mpv/render_gl.h>
-// MPV_RENDER_PARAM_VULKAN_RENDERER, which mpv also answers for the GL render
-// API (RendererName).
+// MPV_RENDER_PARAM_ACTIVE_RENDERER, which mpv answers for the GL render API
+// too (RendererName).
 #include <mpv/render_vk.h>
 
 #include <cassert>
@@ -300,6 +300,10 @@ class OpenGLBackend final : public RenderBackend {
         {MPV_RENDER_PARAM_API_TYPE,
          const_cast<char*>(MPV_RENDER_API_TYPE_OPENGL)},
         {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &init},
+        // Upstream 0.43 serves both video renderers over the GL render API
+        // (the mpv_kit candidate is "gpu"); selection is upstream's
+        // MPV_RENDER_PARAM_RENDERER now.
+        {MPV_RENDER_PARAM_RENDERER, const_cast<char*>(renderer)},
         {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
         {MPV_RENDER_PARAM_INVALID, nullptr},  // replaced when there is an fd
         {MPV_RENDER_PARAM_INVALID, nullptr},

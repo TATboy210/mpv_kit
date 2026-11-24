@@ -1,6 +1,6 @@
 #include "video_renderer.h"
 
-#include <mpv/render_vk.h>  // MPV_RENDER_PARAM_VULKAN_RENDERER
+#include <mpv/render_vk.h>  // MPV_RENDER_PARAM_ACTIVE_RENDERER
 
 #include <algorithm>
 #include <cassert>
@@ -12,7 +12,7 @@ namespace mpv_kit {
 std::string ActiveRendererName(const MpvApi& api, mpv_render_context* ctx) {
   const char* active = nullptr;
   const int info = api.render_context_get_info(
-      ctx, {MPV_RENDER_PARAM_VULKAN_RENDERER, &active});
+      ctx, {MPV_RENDER_PARAM_ACTIVE_RENDERER, &active});
   return info >= 0 && active ? active : "unknown renderer";
 }
 
