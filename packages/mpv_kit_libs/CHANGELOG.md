@@ -1,3 +1,7 @@
+## 0.1.7
+
+- Version aligned with `mpv_kit_video` 0.1.7 (no code change in this package).
+
 ## 0.1.6
 
 - Version aligned with the 0.1.6 package set. The pinned libmpv bundle is

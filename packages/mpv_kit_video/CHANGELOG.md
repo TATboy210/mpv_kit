@@ -1,3 +1,19 @@
+## 0.1.7
+
+- Changed: `MpvVideo` with the default `BoxFit.contain` renders into the whole
+  box at display resolution and lets mpv letterbox the video, the same model
+  as mpv's own window (`keepaspect` is on by default, `mp_get_src_dst_rects`).
+  A file switch no longer changes the render target, the texture or the
+  shared-image ring; the ring is only reallocated when the window resizes.
+  Measured on Windows (RTX 4060, vulkan/gpu-next, 1920x1080 <-> 2160x3840):
+  the texture rect never changes during a switch, the rect-to-frame mismatch
+  is 0 ms (it was about 28 ms of a stretched frame), and the reallocation count
+  per switch is 0.
+- Changed: `MpvVideo.capRenderSize` applies to the other `BoxFit` values only;
+  contain renders the whole box, as mpv does for its own window.
+- Added (diagnostic `stats`): `shownW`, `shownH`, `shownChangeNs`, `nowNs`,
+  the size of the frame Flutter draws and when it changed.
+
 ## 0.1.6
 
 - Version aligned with `mpv_kit` 0.1.6 (adds the optional resume-playback
