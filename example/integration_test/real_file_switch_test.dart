@@ -269,10 +269,8 @@ Future<_SwitchResult> _switchTo({
       sizes.add('$label@${nowMs}ms');
     }
 
-    final expected = _expectedFit(
-      player.videoParams.value,
-      const Size(_boxWidth, _boxHeight),
-    );
+    // Fixed render target (contain): the texture is the whole box.
+    final expected = const Size(_boxWidth, _boxHeight);
     final matches =
         expected != null &&
         (frame.size.width - expected.width).abs() <= _sizeTolerance &&

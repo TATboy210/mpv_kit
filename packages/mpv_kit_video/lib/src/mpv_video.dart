@@ -35,6 +35,10 @@ class MpvVideo extends StatefulWidget {
   /// With this on, the requested size is uniformly shrunk to the source
   /// size; the texture is then stretched by the compositor (same quality as
   /// any other upscale of an already-rendered frame, but cheaper).
+  ///
+  /// Only the non-[BoxFit.contain] path uses this. The default contain path
+  /// renders the whole box, as mpv does for its own window, so a file switch
+  /// never reallocates the shared-image ring.
   final bool capRenderSize;
 
   /// 创建内部状态对象：渲染循环、resize 去抖与控制器对接都在
@@ -143,6 +147,9 @@ class _MpvVideoState extends State<MpvVideo> {
     // FFI work at all; only a real display change reaches mpv.
     final hz = View.maybeOf(context)?.display.refreshRate;
     if (hz != null) widget.controller.syncDisplayRefreshRate(hz);
+    // Contain is the default and matches mpv's own window model: the render
+    // target is the box and mpv letterboxes the video inside it.
+    if (widget.fit == BoxFit.contain) return _buildFixedTarget(dpr);
     return StreamBuilder<MpvVideoParams?>(
       stream: widget.controller.player.videoParams.stream,
       initialData: widget.controller.player.videoParams.value,
@@ -197,6 +204,27 @@ class _MpvVideoState extends State<MpvVideo> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  /// Fixed render target for [BoxFit.contain]: the render size and the
+  /// texture are the whole box at display resolution, and mpv fits the video
+  /// inside it (`keepaspect` is on by default, see mpv's
+  /// `mp_get_src_dst_rects`). A file switch therefore changes neither the
+  /// render target nor the texture; only a window resize does.
+  Widget _buildFixedTarget(double dpr) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final box = constraints.biggest;
+        if (!box.isFinite || box.isEmpty) return const SizedBox.expand();
+        _requestSize(box, dpr, immediate: false, source: null);
+        return SizedBox.expand(
+          child: Texture(
+            textureId: widget.controller.textureId,
+            filterQuality: FilterQuality.low,
+          ),
         );
       },
     );

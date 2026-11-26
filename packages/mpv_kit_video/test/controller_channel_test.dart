@@ -374,17 +374,23 @@ void main() {
     expect(calls.where((m) => m.method == 'dispose'), hasLength(1));
   }, skip: skip);
 
-  testWidgets('MpvVideo shows nothing until the video size is known',
+  testWidgets('MpvVideo renders into its whole box before any video size',
       (tester) async {
+    // Contain uses a fixed render target: the texture is the box, whether or
+    // not mpv has reported the video geometry yet.
     final c = await MpvVideoController.create(player);
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
       child: MpvVideo(controller: c),
     ));
-    expect(find.byType(Texture), findsNothing);
+    expect(find.byType(Texture), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(Texture)),
+      tester.getSize(find.byType(MpvVideo)),
+    );
   }, skip: skip != null);
 
-  testWidgets('MpvVideo sizes the texture to the letterboxed video rect',
+  testWidgets('MpvVideo renders the box and mpv letterboxes the video',
       (tester) async {
     final c = await tester.runAsync(() => MpvVideoController.create(player));
     await tester.runAsync(() async {
@@ -400,14 +406,15 @@ void main() {
       ),
     ));
     await tester.pump();
-    expect(tester.getSize(find.byType(Texture)), const Size(400, 225));
+    // Fixed target: the texture is the whole 400x400 box, not the video rect.
+    expect(tester.getSize(find.byType(Texture)), const Size(400, 400));
     // The first size is applied without waiting for the debounce.
     await tester.runAsync(pumpEventQueue);
     final sizes = calls.where((m) => m.method == 'setSize').toList();
-    // dev.9: the display rect (1200x675 at dpr 3) is capped to the source's
-    // own pixel size; rendering larger only wastes ring memory and fill rate.
-    expect(sizes.single.arguments, containsPair('width', 320));
-    expect(sizes.single.arguments, containsPair('height', 180));
+    // The whole box at dpr 3 (400x400 logical); mpv letterboxes the 320x180
+    // video inside it, so a file switch never changes this request.
+    expect(sizes.single.arguments, containsPair('width', 1200));
+    expect(sizes.single.arguments, containsPair('height', 1200));
   }, skip: skip != null);
 
   test('create maps every private GPU wire name to MpvVideoBackend.vulkan',

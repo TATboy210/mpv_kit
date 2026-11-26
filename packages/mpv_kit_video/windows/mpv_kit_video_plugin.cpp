@@ -118,6 +118,13 @@ struct Instance {
   std::atomic<int64_t> null_describes{0};
   std::atomic<int64_t> pixels_seen{0};
   std::atomic<int64_t> null_pixels{0};
+  // Size of the frame Flutter was last handed, and when that size changed
+  // (steady clock, ns). Written on the raster thread only; diagnostic `stats`
+  // reads it to measure the window between a new geometry and the frame that
+  // shows it.
+  std::atomic<int64_t> shown_w{0};
+  std::atomic<int64_t> shown_h{0};
+  std::atomic<int64_t> shown_change_ns{0};
   std::unique_ptr<D3D11Interop> interop;
   std::unique_ptr<VideoRenderer> renderer;
   std::unique_ptr<flutter::TextureVariant> texture;
@@ -228,6 +235,14 @@ class MpvKitVideoPlugin : public flutter::Plugin {
            EncodableValue(inst->null_pixels.load())},
           {EncodableValue("sync"),
            EncodableValue(std::string(inst->renderer->sync_mode()))},
+          // Frame Flutter is drawing now, its change time, and the native clock
+          // at this call (same steady clock), so Dart can place events on one
+          // timeline. Diagnostic only.
+          {EncodableValue("shownW"), EncodableValue(inst->shown_w.load())},
+          {EncodableValue("shownH"), EncodableValue(inst->shown_h.load())},
+          {EncodableValue("shownChangeNs"),
+           EncodableValue(inst->shown_change_ns.load())},
+          {EncodableValue("nowNs"), EncodableValue(SteadyNowNs())},
           // Ring reallocation cost (render thread), see VideoRenderer::alloc_stats.
           {EncodableValue("allocCount"),
            EncodableValue(inst->renderer->alloc_stats().count)},
@@ -460,6 +475,13 @@ class MpvKitVideoPlugin : public flutter::Plugin {
     d.handle = f.handle;
     d.width = d.visible_width = static_cast<size_t>(f.width);
     d.height = d.visible_height = static_cast<size_t>(f.height);
+    // Record the size Flutter will draw, and when it changed, for `stats`.
+    if (static_cast<int64_t>(f.width) != inst->shown_w.load() ||
+        static_cast<int64_t>(f.height) != inst->shown_h.load()) {
+      inst->shown_w.store(static_cast<int64_t>(f.width));
+      inst->shown_h.store(static_cast<int64_t>(f.height));
+      inst->shown_change_ns.store(SteadyNowNs());
+    }
     d.format = kFlutterDesktopPixelFormatBGRA8888;
     // Balances the AddRef taken in RetainFrame once Flutter opened it.
     d.release_context = f.release_context;

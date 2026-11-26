@@ -67,6 +67,7 @@ void main() {
     WidgetTester tester,
     MpvVideoController c, {
     bool cap = true,
+    BoxFit fit = BoxFit.contain,
   }) async {
     await tester.pumpWidget(
       Directionality(
@@ -75,7 +76,7 @@ void main() {
           child: SizedBox(
             width: 400,
             height: 300,
-            child: MpvVideo(controller: c, capRenderSize: cap),
+            child: MpvVideo(controller: c, capRenderSize: cap, fit: fit),
           ),
         ),
       ),
@@ -87,7 +88,7 @@ void main() {
   ) async {
     final controller = await MpvVideoController.create(player);
     addTearDown(controller.dispose);
-    await pumpVideo(tester, controller);
+    await pumpVideo(tester, controller, fit: BoxFit.fitWidth);
     await tester.runAsync(() async {
       await player.open('av://lavfi:testsrc2=size=320x180:rate=30:duration=8');
       await _until(
@@ -181,7 +182,7 @@ void main() {
         '320x180 params',
       );
     });
-    await pumpVideo(tester, controller);
+    await pumpVideo(tester, controller, fit: BoxFit.fitWidth);
     await tester.pump();
     // 400x225 display box at dpr 1, capped to the 320x180 source.
     expect(
@@ -206,7 +207,7 @@ void main() {
     final uncapped = await MpvVideoController.create(player);
     addTearDown(uncapped.dispose);
     calls.clear();
-    await pumpVideo(tester, uncapped, cap: false);
+    await pumpVideo(tester, uncapped, cap: false, fit: BoxFit.fitWidth);
     await tester.pump();
     expect(
       calls.any(
