@@ -153,6 +153,21 @@ class VideoRenderer {
     return render_backend_ ? render_backend_->sync_mode() : "";
   }
 
+  /// Lifetime cost of ring (re)allocations: the AllocTargets call (and its
+  /// fallback retry) plus FreeRetired, measured on the render thread. Read by
+  /// the plugin's diagnostic `stats` method; microseconds, all zero until the
+  /// first reallocation. Thread-safe.
+  struct AllocStats {
+    int64_t count;
+    int64_t last_us;
+    int64_t max_us;
+    int64_t total_us;
+  };
+  AllocStats alloc_stats() const {
+    return {alloc_count_.load(), alloc_last_us_.load(), alloc_max_us_.load(),
+            alloc_total_us_.load()};
+  }
+
  private:
   static void OnMpvUpdate(void* self);
   void RenderLoop();
@@ -276,6 +291,15 @@ class VideoRenderer {
   Frame retired_front_;
   int retired_countdown_ = -1;  // acquisitions left; 0: free it
   std::atomic<bool> resize_pending_{false};
+
+  // Ring reallocation cost (see alloc_stats()). Written only by the render
+  // thread, so a load-compare-store max is race-free; the atomics only let
+  // the plugin thread read them without a lock.
+  void RecordAlloc(std::chrono::steady_clock::duration took);
+  std::atomic<int64_t> alloc_count_{0};
+  std::atomic<int64_t> alloc_last_us_{0};
+  std::atomic<int64_t> alloc_max_us_{0};
+  std::atomic<int64_t> alloc_total_us_{0};
 };
 
 }  // namespace mpv_kit

@@ -228,6 +228,15 @@ class MpvKitVideoPlugin : public flutter::Plugin {
            EncodableValue(inst->null_pixels.load())},
           {EncodableValue("sync"),
            EncodableValue(std::string(inst->renderer->sync_mode()))},
+          // Ring reallocation cost (render thread), see VideoRenderer::alloc_stats.
+          {EncodableValue("allocCount"),
+           EncodableValue(inst->renderer->alloc_stats().count)},
+          {EncodableValue("allocLastUs"),
+           EncodableValue(inst->renderer->alloc_stats().last_us)},
+          {EncodableValue("allocMaxUs"),
+           EncodableValue(inst->renderer->alloc_stats().max_us)},
+          {EncodableValue("allocTotalUs"),
+           EncodableValue(inst->renderer->alloc_stats().total_us)},
       }));
     }
     if (m == "setSize") {

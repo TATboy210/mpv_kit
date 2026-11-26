@@ -445,6 +445,18 @@ void VideoRenderer::Emit(const char* kind, const std::string& msg) {
   if (event_) event_(kind, msg);
 }
 
+void VideoRenderer::RecordAlloc(std::chrono::steady_clock::duration took) {
+  // Microseconds: a 4K ring is ~7 allocations, so ms would lose the detail
+  // that separates a 1 ms reallocation from a 30 ms one.
+  const int64_t us =
+      std::chrono::duration_cast<std::chrono::microseconds>(took).count();
+  alloc_count_.fetch_add(1);
+  alloc_last_us_.store(us);
+  alloc_total_us_.fetch_add(us);
+  // Single writer (the render thread), so compare-then-store cannot race.
+  if (us > alloc_max_us_.load()) alloc_max_us_.store(us);
+}
+
 void VideoRenderer::SetSize(int width, int height) {
   if (width <= 0 || height <= 0) return;
   {
@@ -780,6 +792,9 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
   }
 
   if (w != ring_w_ || h != ring_h_) {
+    // Timed for alloc_stats(): this is the GPU stall a resize costs the
+    // render thread, the quantity the switch-stutter investigation needs.
+    const auto alloc_begin = std::chrono::steady_clock::now();
     {
       // Under the lock: AcquireFront() must never observe a half-built ring.
       std::lock_guard<std::mutex> lock(mutex_);
@@ -823,6 +838,7 @@ VideoRenderer::RenderResult VideoRenderer::RenderOnce(std::string* error) {
       }
     }
     if (release_retired) render_backend_->FreeRetired();
+    RecordAlloc(std::chrono::steady_clock::now() - alloc_begin);
     if (failed_before_render) {
       SkipFrame();  // mpv still waits for this frame to be consumed
       if (render_backend_->device_removed()) {
