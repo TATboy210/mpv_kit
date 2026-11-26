@@ -1,3 +1,12 @@
+## 0.1.6
+
+- Added: `MpvResumeOptions` and the optional `Player(resume:)` parameter for
+  libmpv's resume-playback position memory (`resume-playback`,
+  `save-position-on-quit`, `watch-later-dir`, `resume-playback-check-mtime`).
+  The new parameter is optional and additive; existing signatures are
+  unchanged. Positions are written by libmpv when the player is disposed
+  (`mpv_terminate_destroy`), so no Dart-side persistence is involved.
+
 ## 0.1.5
 
 - Upgraded the vendored mpv from the 0.42.0 release to the master snapshot

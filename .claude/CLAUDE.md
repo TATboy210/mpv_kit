@@ -11,7 +11,7 @@ libmpv 的 Dart/Flutter 绑定工程：`mpv_kit` 提供纯 Dart FFI 的完整客
 ### Constraints
 
 - **Compatibility**: Windows 10+、macOS 12+（实际 bundle 目前需 macOS 15）、Linux glibc 2.35+；x64 与 arm64 六个桌面目标。
-- **API**: 公共 API 冻结，不新增、不破坏。
+- **API**: 公共 API 冻结：不破坏现有签名。允许新增可选 API（新增可选参数、新类型），需在 CHANGELOG 注明；0.1.6 起按此规则新增续播持久化（`MpvResumeOptions` / `Player(resume:)`）。
 - **Change size**: 每项改动尽量小、可独立回滚；拒绝大范围重写。
 - **Platform**: 不做移动端与 web。
 - **License**: FFmpeg 保持 LGPL 构建；默认发布 bundle 为 GPL-3.0+ full（ADR 0007），自建可用 `MPV_KIT_FLAVOR=lgpl`；禁止 nonfree 依赖进入 bundle。

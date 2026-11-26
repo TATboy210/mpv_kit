@@ -1,3 +1,8 @@
+## 0.1.6
+
+- Version aligned with the 0.1.6 package set. The pinned libmpv bundle is
+  unchanged (`bundleTag` stays `v0.1.5`); only the package version moved.
+
 ## 0.1.5
 
 - Changed: the pinned bundle moved to release `v0.1.5` — the mpv

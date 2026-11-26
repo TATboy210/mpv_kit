@@ -1,3 +1,9 @@
+## 0.1.6
+
+- Version aligned with `mpv_kit` 0.1.6 (adds the optional resume-playback
+  API; no change to the video path in this release yet). The portrait ↔
+  landscape switch stutter is still under investigation.
+
 ## 0.1.5
 
 - Migrated the plugin glue to the mpv 0.43-dev render API: creation-time
