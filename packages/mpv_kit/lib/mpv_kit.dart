@@ -26,3 +26,4 @@ export 'src/player/hwdec_defaults.dart'
     show defaultHwdecFor, defaultHwdecForBackend;
 export 'src/player/models.dart' hide secondsToDuration, nodeInt;
 export 'src/player/player.dart';
+export 'src/player/resume_options.dart';

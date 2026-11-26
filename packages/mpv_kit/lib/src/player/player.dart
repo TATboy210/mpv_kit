@@ -16,6 +16,7 @@ import '../core/events.dart';
 import '../core/mpv.dart';
 import 'hwdec_defaults.dart';
 import 'models.dart';
+import 'resume_options.dart';
 
 /// 一个随 mpv 属性同步的值。
 final class MpvState<T> {
@@ -102,10 +103,17 @@ final class Player {
   /// queue to the frame size of each file (see
   /// [demuxerQueueBudgetForTesting]); pass false to keep the configured
   /// `demuxer-max-bytes` / `demuxer-max-back-bytes` unchanged.
+  ///
+  /// [resume] (default null, libmpv defaults) configures libmpv's
+  /// resume-playback position memory; see [MpvResumeOptions]. Keys in
+  /// [options] override the values it produces.
   factory Player({
     Map<String, String> options = const {},
     String? libraryPath,
     bool autoTuneDemuxer = true,
+    // Typed resume-playback settings (libmpv position memory). Applied before
+    // [options], so an explicit raw option of the same name still wins.
+    MpvResumeOptions? resume,
   }) {
     final mpv = Mpv.create(
       libraryPath: libraryPath,
@@ -141,6 +149,8 @@ final class Player {
         // 与掉帧；这个全局 no 已覆盖 7680 宽以上的源，无需按分辨率另设。
         'hdr-compute-peak': 'no',
         'deband': 'no',
+        // Typed resume settings first, so raw [options] override them.
+        ...?resume?.toOptions(),
         ...options,
       },
     );
